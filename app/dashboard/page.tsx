@@ -23,11 +23,11 @@ import {
 } from 'lucide-react';
 
 // Types based on our Prisma schema
-type Rol = 'USUARIO' | 'SUPERVISOR' | 'INSPECTOR' | 'JEFE' | 'ADMIN';
-type GrupoTurno = 'A' | 'B' | 'C' | 'D';
+type Rol = 'SUPERVISOR' | 'INSPECTOR' | 'JEFE';
+type GrupoTurno = 'A' | 'B';
 type EstadoEmpleado = 'ACTIVO' | 'LICENCIA' | 'AUSENTE' | 'INACTIVO';
 
-interface Usuario {
+interface Inspector {
   id: string;
   email: string;
   nombre: string;
@@ -50,11 +50,11 @@ interface Usuario {
 }
 
 // Mock data generator
-const generateMockEmployees = (): Usuario[] => {
+const generateMockEmployees = (): Inspector[] => {
   const nombres = ['Juan', 'María', 'Carlos', 'Ana', 'Luis', 'Patricia', 'Roberto', 'Carmen', 'Miguel', 'Isabel'];
   const apellidos = ['García', 'Rodríguez', 'López', 'Martínez', 'González', 'Hernández', 'Pérez', 'Sánchez', 'Díaz', 'Torres'];
-  const roles: Rol[] = ['INSPECTOR', 'SUPERVISOR', 'JEFE', 'ADMIN', 'USUARIO'];
-  const grupos: GrupoTurno[] = ['A', 'B', 'C', 'D'];
+  const roles: Rol[] = ['INSPECTOR', 'SUPERVISOR', 'JEFE'];
+  const grupos: GrupoTurno[] = ['A', 'B'];
   
   return Array.from({ length: 25 }, (_, i) => ({
     id: `USR${String(i + 1).padStart(3, '0')}`,
@@ -79,15 +79,15 @@ const generateMockEmployees = (): Usuario[] => {
 };
 
 export default function DashboardPage() {
-  const [employees, setEmployees] = useState<Usuario[]>([]);
-  const [filteredEmployees, setFilteredEmployees] = useState<Usuario[]>([]);
+  const [employees, setEmployees] = useState<Inspector[]>([]);
+  const [filteredEmployees, setFilteredEmployees] = useState<Inspector[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<Rol | 'TODOS'>('TODOS');
   const [selectedShift, setSelectedShift] = useState<GrupoTurno | 'TODOS'>('TODOS');
-  const [selectedEmployee, setSelectedEmployee] = useState<Usuario | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<Inspector | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'view' | 'edit' | 'create'>('view');
-  const [formData, setFormData] = useState<Partial<Usuario>>({});
+  const [formData, setFormData] = useState<Partial<Inspector>>({});
 
   // Initialize mock data
   useEffect(() => {
@@ -124,7 +124,7 @@ export default function DashboardPage() {
   }, [searchTerm, selectedRole, selectedShift, employees]);
 
   // Modal handlers
-  const openModal = (mode: 'view' | 'edit' | 'create', employee?: Usuario) => {
+  const openModal = (mode: 'view' | 'edit' | 'create', employee?: Inspector) => {
     setModalMode(mode);
     if (employee) {
       setSelectedEmployee(employee);
@@ -153,8 +153,8 @@ export default function DashboardPage() {
 
   const handleSave = () => {
     if (modalMode === 'create') {
-      const newEmployee: Usuario = {
-        ...formData as Usuario,
+      const newEmployee: Inspector = {
+        ...formData as Inspector,
         id: `USR${String(employees.length + 1).padStart(3, '0')}`,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -195,11 +195,11 @@ export default function DashboardPage() {
   // Role styles
   const getRoleColor = (rol: Rol) => {
     const colors = {
-      ADMIN: 'bg-purple-100 text-purple-800',
+      Supervisor: 'bg-purple-100 text-purple-800',
       JEFE: 'bg-red-100 text-red-800',
       SUPERVISOR: 'bg-orange-100 text-orange-800',
       INSPECTOR: 'bg-blue-100 text-blue-800',
-      USUARIO: 'bg-gray-100 text-gray-800'
+      Inspector: 'bg-gray-100 text-gray-800'
     };
     return colors[rol];
   };
@@ -332,11 +332,11 @@ export default function DashboardPage() {
             onChange={(e) => setSelectedRole(e.target.value as Rol | 'TODOS')}
           >
             <option value="TODOS">Todos los Roles</option>
-            <option value="ADMIN">Admin</option>
+
             <option value="JEFE">Jefe</option>
             <option value="SUPERVISOR">Supervisor</option>
             <option value="INSPECTOR">Inspector</option>
-            <option value="USUARIO">Usuario</option>
+
           </select>
 
           <select
@@ -347,8 +347,6 @@ export default function DashboardPage() {
             <option value="TODOS">Todos los Turnos</option>
             <option value="A">Turno A</option>
             <option value="B">Turno B</option>
-            <option value="C">Turno C</option>
-            <option value="D">Turno D</option>
           </select>
 
           <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center gap-2">
@@ -630,11 +628,9 @@ export default function DashboardPage() {
                         value={formData.rol || 'INSPECTOR'}
                         onChange={(e) => setFormData({...formData, rol: e.target.value as Rol})}
                       >
-                        <option value="USUARIO">Usuario</option>
                         <option value="INSPECTOR">Inspector</option>
                         <option value="SUPERVISOR">Supervisor</option>
                         <option value="JEFE">Jefe</option>
-                        <option value="ADMIN">Admin</option>
                       </select>
                     </div>
                     <div>
@@ -648,8 +644,7 @@ export default function DashboardPage() {
                       >
                         <option value="A">Turno A</option>
                         <option value="B">Turno B</option>
-                        <option value="C">Turno C</option>
-                        <option value="D">Turno D</option>
+
                       </select>
                     </div>
                   </div>
