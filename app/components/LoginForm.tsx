@@ -13,7 +13,7 @@ export default function LoginForm() {
     e.preventDefault();
 
     // 👇 Acá simulamos la verificación del login
-    if (email === "admin@test.com" && password === "1234") {
+    if (email === "admin@workshift.com" && password === "1234") {
       // Guardar token o usuario en localStorage (opcional)
       localStorage.setItem("token", "fake-jwt-token");
 
