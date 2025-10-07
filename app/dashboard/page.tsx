@@ -64,8 +64,8 @@ const generateMockEmployees = (): Inspector[] => {
     nombre: nombres[i % nombres.length],
     apellido: apellidos[i % apellidos.length],
     rol: roles[Math.floor(Math.random() * roles.length)],
-    telefono: `+34 6${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}`,
-    direccion: `Calle ${apellidos[(i + 3) % apellidos.length]} ${Math.floor(Math.random() * 100)}, Madrid`,
+    telefono: `+54 11${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}`,
+    direccion: `Calle ${apellidos[(i + 3) % apellidos.length]} ${Math.floor(Math.random() * 100)}, Buenos Aires`,
     fechaNacimiento: new Date(1970 + Math.floor(Math.random() * 30), Math.floor(Math.random() * 12), Math.floor(Math.random() * 28)).toISOString(),
     activo: Math.random() > 0.2,
     grupoTurno: grupos[i % grupos.length],
@@ -103,14 +103,21 @@ export default function DashboardPage() {
     let filtered = [...employees];
 
     // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(emp => 
-        emp.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.id.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
+if (searchTerm) {
+  const term = searchTerm.toLowerCase().trim();
+  
+  filtered = filtered.filter(emp => {
+    const fullName = `${emp.nombre} ${emp.apellido}`.toLowerCase(); // nombre completo
+    return (
+      emp.nombre.toLowerCase().includes(term) ||
+      emp.apellido.toLowerCase().includes(term) ||
+      fullName.includes(term) || // busca "nombre apellido"
+      emp.email.toLowerCase().includes(term) ||
+      emp.id.toString().toLowerCase().includes(term)
+    );
+  });
+}
+
 
     // Role filter
     if (selectedRole !== 'TODOS') {
