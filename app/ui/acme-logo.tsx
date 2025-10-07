@@ -1,13 +1,17 @@
-import { GlobeAltIcon } from '@heroicons/react/24/outline';
-import { inter } from './fonts';
+import Image from "next/image";
 
 export default function AcmeLogo() {
   return (
-    <div
-      className={`${inter.className} flex flex-row items-center leading-none text-white`}
-    >
-      <GlobeAltIcon className="h-12 w-12 rotate-[15deg]" />
-      <p className="text-[44px]">Acme</p>
+    <div className="flex items-center justify-center w-full h-full">
+      <div className="relative w-[80%] h-[80px] md:h-[120px]">
+        <Image
+          src="/LogoWSv4.png"
+          alt="WorkShift Logo"
+          fill
+          className="object-contain rounded-lg"
+          priority
+        />
+      </div>
     </div>
   );
 }
