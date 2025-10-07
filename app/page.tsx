@@ -14,7 +14,7 @@ export default function Page() {
       style={{ backgroundColor: '#cddcea' }}>
         <MigraLogo className=" relative w-[30%] h-[80px] md:h-[120px]" />
       </div>
-      <div className=" flex grow flex-col gap-4 md:flex-row mt-2">
+      <div className=" flex grow flex-col gap-4 md:flex-row mt-1">
         <div className="flex flex-col justify-center gap-2 rounded-lg bg-gray-50 md:w-2/5 md:px-10 ">
           <p className={`${inter.className} antialiased text-xl text-gray-800 md:text-3xl md:leading-normal`}>
             <div/>
