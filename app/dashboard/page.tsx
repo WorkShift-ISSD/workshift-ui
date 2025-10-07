@@ -19,8 +19,10 @@ import {
   Mail,
   Phone,
   MapPin,
-  Briefcase
+  Briefcase,
+
 } from 'lucide-react';
+import WSMSLogo from '@/app/ui/WSMSLogo';
 
 // Types based on our Prisma schema
 type Rol = 'SUPERVISOR' | 'INSPECTOR' | 'JEFE';
@@ -718,10 +720,17 @@ export default function DashboardPage() {
                   {modalMode === 'create' ? 'Crear' : 'Guardar'}
                 </button>
               )}
-            </div>
+            </div>         
           </div>
         </div>
       )}
-    </div>
+      
+            {/* Marca de agua */}
+            <div className="flex items-center justify-center mt-8 gap-x-0">
+              <span className="text-sm text-gray-700 flex items-center">Powered by
+              <WSMSLogo className="h-20 w-20 ml-3" />
+              </span>
+            </div>
+          </div>
   );
 }
