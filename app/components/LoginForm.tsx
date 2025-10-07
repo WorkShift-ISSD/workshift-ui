@@ -8,19 +8,25 @@ export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false); // Estado para el spinner
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true); // Activar el spinner
 
-    // 👇 Acá simulamos la verificación del login
+    // Simulamos la verificación del login
     if (email === "admin@workshift.com" && password === "1234") {
       // Guardar token o usuario en localStorage (opcional)
       localStorage.setItem("token", "fake-jwt-token");
 
-      // ✅ Redirigir al home (pantalla principal)
-      router.push("/dashboard");
+      // Simulamos un tiempo de carga y luego redirigimos al dashboard
+      setTimeout(() => {
+        // ✅ Redirigir al home (pantalla principal)
+        router.push("/dashboard");
+      }, 2000); // 2 segundos de espera para simular carga
     } else {
       setError("Correo o contraseña incorrectos");
+      setLoading(false); // Detener el spinner si hay error
     }
   };
 
@@ -50,12 +56,20 @@ export default function LoginForm() {
           className="border border-gray-300 p-2 rounded w-full mb-6 focus:outline-none focus:ring focus:ring-blue-300"
         />
 
-        <button
-          type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
-        >
-          Ingresar
-        </button>
+        {/* Mostrar spinner mientras está cargando */}
+        {loading ? (
+          <div className="spinner">
+            <div></div><div></div><div></div><div></div>
+            <div></div><div></div><div></div><div></div>
+          </div>
+        ) : (
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+          >
+            Ingresar
+          </button>
+        )}
       </form>
     </div>
   );
