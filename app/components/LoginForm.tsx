@@ -1,19 +1,23 @@
 "use client";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginForm() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Simulación de login (en producción usarías fetch a tu API)
+    // 👇 Acá simulamos la verificación del login
     if (email === "admin@test.com" && password === "1234") {
+      // Guardar token o usuario en localStorage (opcional)
       localStorage.setItem("token", "fake-jwt-token");
+
+      // ✅ Redirigir al home (pantalla principal)
       router.push("/dashboard");
     } else {
       setError("Correo o contraseña incorrectos");
