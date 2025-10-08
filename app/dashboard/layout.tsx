@@ -21,11 +21,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!isAuthorized) return null; // evita parpadeos antes de validar
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="w-64 bg-white shadow-md">
+    <div className="flex h-screen flex-col md:flex-row md:overflow-hidden">
+      <div className="w-full flex-none md:w-64">
         <SideNav />
-      </aside>
-      <main className="flex-1 bg-gray-50 p-6">{children}</main>
+      </div>
+      <div className="flex-grow p-6 md:overflow-y-auto md:p-12">{children}</div>
+      
     </div>
   );
 }
