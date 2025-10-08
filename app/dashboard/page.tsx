@@ -19,7 +19,7 @@ import {
 import { useCambios } from '@/hooks/useCambios';
 import { useStats } from '@/hooks/useStats';
 import { useTurnosData } from '@/hooks/useTurnosData';
-import { Cambio } from '../lib/api/types';
+import { Cambio as TipoCambio } from '../api/types';
 
 
 export default function DashboardHome() {
@@ -386,7 +386,7 @@ export default function DashboardHome() {
           </div>
 
           <div className="space-y-3">
-            {cambios && cambios.map((cambio: Cambio) => {
+            {cambios && cambios.map((cambio: TipoCambio) => {
               const { day, month } = formatDate(cambio.fecha);
               return (
                 <div 

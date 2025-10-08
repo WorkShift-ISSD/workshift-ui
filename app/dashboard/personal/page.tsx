@@ -23,6 +23,7 @@ import {
 
 } from 'lucide-react';
 import WSMSLogo from '@/app/ui/WSMSLogo';
+import { useEmpleados } from '../../../hooks/useEmpleados';
 
 // Types based on our Prisma schema
 type Rol = 'SUPERVISOR' | 'INSPECTOR' | 'JEFE';
@@ -53,40 +54,9 @@ interface Inspector {
   intercambiosPendientes?: number;
 }
 
-// Mock data generator
-const generateMockEmployees = (): Inspector[] => {
-  const nombres = ['Juan', 'María', 'Carlos', 'Ana', 'Luis', 'Patricia', 'Roberto', 'Carmen', 'Miguel', 'Isabel'];
-  const apellidos = ['García', 'Rodríguez', 'López', 'Martínez', 'González', 'Hernández', 'Pérez', 'Sánchez', 'Díaz', 'Torres'];
-  const legajos = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011, 1012, 1013, 1014, 1015, 1016, 1017, 1018, 1019, 1020, 1021, 1022, 1023, 1024, 1025];
-  const roles: Rol[] = ['INSPECTOR', 'SUPERVISOR', 'JEFE'];
-  const grupos: GrupoTurno[] = ['A', 'B'];
 
-  return Array.from({ length: 25 }, (_, i) => ({
-    id: `USR${String(i + 1).padStart(3, '0')}`,
-    email: `${nombres[i % nombres.length].toLowerCase()}.${apellidos[i % apellidos.length].toLowerCase()}@workshift.com`,
-    nombre: nombres[i % nombres.length],
-    apellido: apellidos[i % apellidos.length],
-    legajo: legajos[i % legajos.length],
-    rol: roles[Math.floor(Math.random() * roles.length)],
-    telefono: `+54 11${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}`,
-    direccion: `Calle ${apellidos[(i + 3) % apellidos.length]} ${Math.floor(Math.random() * 100)}, Buenos Aires`,
-    horario: `${8 + Math.floor(Math.random() * 5)}:00 - ${17 + Math.floor(Math.random() * 5)}:00`,
-    fechaNacimiento: new Date(1970 + Math.floor(Math.random() * 30), Math.floor(Math.random() * 12), Math.floor(Math.random() * 28)).toISOString(),
-    activo: Math.random() > 0.2,
-    grupoTurno: grupos[i % grupos.length],
-    fotoPerfil: null,
-    ultimoLogin: new Date(Date.now() - Math.floor(Math.random() * 86400000 * 7)).toISOString(),
-    createdAt: new Date(Date.now() - Math.floor(Math.random() * 86400000 * 365)).toISOString(),
-    updatedAt: new Date(Date.now() - Math.floor(Math.random() * 86400000 * 30)).toISOString(),
-    estado: ['ACTIVO', 'LICENCIA', 'AUSENTE', 'ACTIVO', 'ACTIVO'][Math.floor(Math.random() * 5)] as EstadoEmpleado,
-    turnosEsteMes: Math.floor(Math.random() * 22),
-    horasAcumuladas: Math.floor(Math.random() * 160) + 40,
-    intercambiosPendientes: Math.floor(Math.random() * 3)
-  }));
-};
 
 export default function DashboardPage() {
-  const [employees, setEmployees] = useState<Inspector[]>([]);
   const [filteredEmployees, setFilteredEmployees] = useState<Inspector[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<Rol | 'TODOS'>('TODOS');
@@ -97,6 +67,17 @@ export default function DashboardPage() {
   const [formData, setFormData] = useState<Partial<Inspector>>({});
   const [formError, setFormError] = useState('');
 
+  const { 
+  empleados, 
+  isLoading, 
+  error, 
+  createEmpleado, 
+  updateEmpleado, 
+  deleteEmpleado 
+} = useEmpleados();
+
+const employees = empleados || [];
+
     const horariosPorRol: Record<Rol, string[]> = {
     INSPECTOR: ["04:00-14:00", "06:00-16:00", "10:00-20:00", "13:00-23:00", "19:00-05:00"],
     SUPERVISOR: ["05:00-14:00", "14:00-23:00", "23:00-05:00"],
@@ -104,11 +85,6 @@ export default function DashboardPage() {
   };
 
   // Initialize mock data
-  useEffect(() => {
-    const mockData = generateMockEmployees();
-    setEmployees(mockData);
-    setFilteredEmployees(mockData);
-  }, []);
 
   // Filter employees
   useEffect(() => {
@@ -176,12 +152,12 @@ export default function DashboardPage() {
     setFormError('');
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
 
-if (!formData.nombre || formData.nombre.trim() === '') {
-    setFormError('El nombre es obligatorio');
-    return;
-  }
+  if (!formData.nombre || formData.nombre.trim() === '') {
+      setFormError('El nombre es obligatorio');
+      return;
+    }
 
   if (!formData.apellido || formData.apellido.trim() === '') {
     setFormError('El apellido es obligatorio');
@@ -205,54 +181,68 @@ const legajoExistente = employees.find(emp =>
   // Si pasa las validaciones, limpiar error
   setFormError('');
 
-  if (modalMode === 'create') {
-    const confirmCreate = window.confirm('¿Seguro que quiere crear un nuevo empleado?');
-    if (!confirmCreate) return;
-    // ...código para crear...
-    const newEmployee: Inspector = {
-      ...formData as Inspector,
-      id: `USR${String(employees.length + 1).padStart(3, '0')}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      ultimoLogin: null,
-      fotoPerfil: null,
-      fechaNacimiento: formData.fechaNacimiento || null,
-      estado: 'ACTIVO',
-      turnosEsteMes: 0,
-      horasAcumuladas: 0,
-      intercambiosPendientes: 0
-    };
-    setEmployees([...employees, newEmployee]);
-  } else if (modalMode === 'edit' && selectedEmployee) {
-    const confirmEdit = window.confirm('¿Seguro quiere modificar los datos del empleado?');
-    if (!confirmEdit) return;
-    // ...código para editar...
-    const updatedEmployees = employees.map(emp =>
-      emp.id === selectedEmployee.id
-        ? { ...emp, ...formData, updatedAt: new Date().toISOString() }
-        : emp
-    );
-    setEmployees(updatedEmployees);
+try {
+    if (modalMode === 'create') {
+      const confirmCreate = window.confirm('¿Seguro que quiere crear un nuevo empleado?');
+      if (!confirmCreate) return;
+      
+      await createEmpleado({
+        legajo: formData.legajo!,
+        email: formData.email!,
+        nombre: formData.nombre!,
+        apellido: formData.apellido!,
+        rol: formData.rol || 'INSPECTOR',
+        telefono: formData.telefono || null,
+        direccion: formData.direccion || null,
+        horario: formData.horario || null,
+        fechaNacimiento: formData.fechaNacimiento || null,
+        activo: formData.activo !== undefined ? formData.activo : true,
+        grupoTurno: formData.grupoTurno || 'A',
+      });
+    } else if (modalMode === 'edit' && selectedEmployee) {
+      const confirmEdit = window.confirm('¿Seguro quiere modificar los datos del empleado?');
+      if (!confirmEdit) return;
+      
+      await updateEmpleado(selectedEmployee.id, formData);
+    }
+    closeModal();
+  } catch (error) {
+    console.error('Error guardando empleado:', error);
+    setFormError('Error al guardar el empleado');
   }
-  closeModal();
 };
 
-  const handleDelete = (id: string) => {
-    if (confirm('¿Está seguro de eliminar este empleado?')) {
-      setEmployees(employees.filter(emp => emp.id !== id));
+const handleDelete = async (id: string) => {
+  if (confirm('¿Está seguro de eliminar este empleado?')) {
+    try {
+      await deleteEmpleado(id);
+    } catch (error) {
+      console.error('Error eliminando empleado:', error);
+      alert('Error al eliminar el empleado');
     }
-  };
+  }
+};
 
 
 
 
-  // Stats calculation
-  const stats = {
-    total: employees.length,
-    activos: employees.filter(e => e.activo && e.estado === 'ACTIVO').length,
-    enLicencia: employees.filter(e => e.estado === 'LICENCIA').length,
-    ausentes: employees.filter(e => e.estado === 'AUSENTE').length
-  };
+const calcularEstado = (empleado: Inspector): EstadoEmpleado => {
+  if (!empleado.activo) return 'INACTIVO';
+  
+  // Aquí puedes agregar lógica más compleja basada en otros campos
+  // Por ejemplo, verificar si tiene ausencias registradas, licencias, etc.
+  
+  // Por ahora, simplemente retornamos ACTIVO si está activo
+  return 'ACTIVO';
+};
+
+// Luego modifica el cálculo de stats:
+const stats = {
+  total: employees.length,
+  activos: employees.filter(e => e.activo && calcularEstado(e) === 'ACTIVO').length,
+  enLicencia: employees.filter(e => calcularEstado(e) === 'LICENCIA').length,
+  ausentes: employees.filter(e => calcularEstado(e) === 'AUSENTE').length
+};
 
   // Role styles
   const getRoleColor = (rol: Rol) => {
@@ -755,7 +745,7 @@ const legajoExistente = employees.find(emp =>
                             setFormData({
                              ...formData,
                              rol: nuevoRol,
-                            grupoTurno: horariosPorRol[nuevoRol][0], 
+                             grupoTurno: formData.grupoTurno && (formData.grupoTurno === 'A' || formData.grupoTurno === 'B') ? formData.grupoTurno : 'A',
                             });
                           }}
                         >

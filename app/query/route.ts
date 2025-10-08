@@ -1,4 +1,5 @@
 // app/api/data/route.ts
+import { NextRequest } from 'next/server';
 import postgres from 'postgres';
 
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
@@ -192,7 +193,10 @@ async function getAllDashboardData() {
   };
 }
 
-export async function GET(request: Request) {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
     // Obtener parámetro de query para filtrar qué datos obtener
     const { searchParams } = new URL(request.url);

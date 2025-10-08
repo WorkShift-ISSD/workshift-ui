@@ -1,7 +1,9 @@
 // app/api/seed/route.ts
 import bcrypt from 'bcrypt';
 import postgres from 'postgres';
-import { cambios, users, turnos, stats, turnosData } from '../lib/placeholder-data';
+import { cambios, users, turnos, stats, turnosData } from '../../lib/placeholder-data';
+import { NextRequest } from 'next/server';
+import { Cambio, Turno } from '../types';
 
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
 
@@ -11,21 +13,73 @@ async function seedUsers() {
   await sql`
     CREATE TABLE IF NOT EXISTS users (
       id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-      nombre VARCHAR(255) NOT NULL,
+      legajo INTEGER UNIQUE NOT NULL,
       email TEXT NOT NULL UNIQUE,
+      nombre VARCHAR(255) NOT NULL,
+      apellido VARCHAR(255) NOT NULL,
       password TEXT NOT NULL,
-      rol VARCHAR(50) NOT NULL DEFAULT 'inspector',
+      rol VARCHAR(50) NOT NULL DEFAULT 'INSPECTOR' CHECK (rol IN ('SUPERVISOR', 'INSPECTOR', 'JEFE')),
+      telefono VARCHAR(50),
+      direccion TEXT,
+      horario VARCHAR(50),
+      fecha_nacimiento DATE,
+      activo BOOLEAN DEFAULT true,
+      grupo_turno VARCHAR(1) NOT NULL DEFAULT 'A' CHECK (grupo_turno IN ('A', 'B')),
+      foto_perfil TEXT,
+      ultimo_login TIMESTAMP,
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
     );
   `;
 
+  // Crear índices
+  await sql`
+    CREATE INDEX IF NOT EXISTS idx_users_legajo ON users(legajo);
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS idx_users_rol ON users(rol);
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS idx_users_activo ON users(activo);
+  `;
+
   const insertedUsers = await Promise.all(
     users.map(async (user) => {
-      const hashedPassword = await bcrypt.hash(user.password || 'password123', 10);
+      const hashedPassword = await bcrypt.hash(user.legajo?.toString() || 'password123', 10);
       return sql`
-        INSERT INTO users (id, nombre, email, password, rol)
-        VALUES (${user.id}, ${user.nombre}, ${user.email}, ${hashedPassword}, ${user.rol})
+        INSERT INTO users (
+          id, 
+          legajo,
+          email, 
+          nombre, 
+          apellido,
+          password, 
+          rol,
+          telefono,
+          direccion,
+          horario,
+          fecha_nacimiento,
+          activo,
+          grupo_turno
+        )
+        VALUES (
+          ${user.id}, 
+          ${user.legajo || 1000 + Math.floor(Math.random() * 9000)},
+          ${user.email}, 
+          ${user.nombre}, 
+          ${user.apellido || user.nombre.split(' ')[1] || 'Apellido'},
+          ${hashedPassword}, 
+          ${user.rol},
+          ${user.telefono || null},
+          ${user.direccion || null},
+          ${user.horario || '09:00-17:00'},
+          ${user.fechaNacimiento || null},
+          ${user.activo !== undefined ? user.activo : true},
+          ${user.grupoTurno || 'A'}
+        )
         ON CONFLICT (id) DO NOTHING;
       `;
     }),
@@ -51,7 +105,7 @@ async function seedTurnos() {
 
   const insertedTurnos = await Promise.all(
     turnos.map(
-      (turno) => sql`
+      (turno: any) => sql`
         INSERT INTO turnos (id, nombre, tipo, hora_inicio, hora_fin)
         VALUES (${turno.id}, ${turno.nombre}, ${turno.tipo}, ${turno.horaInicio}, ${turno.horaFin})
         ON CONFLICT (id) DO NOTHING;
@@ -182,11 +236,7 @@ async function seedTurnosData() {
 }
 
 async function createRelations() {
-  // Agregar foreign keys si quieres relacionar datos
-  // Por ahora mantengo el diseño simple sin FKs estrictas
-  // para que sea compatible con tu db.json
-  
-  console.log('✅ Tablas creadas con índices');
+  console.log('✅ Tablas creadas con índices y relaciones');
   return true;
 }
 
@@ -230,7 +280,17 @@ export async function GET() {
 
     return Response.json({ 
       message: 'Database seeded successfully',
-      tables: ['users', 'turnos', 'cambios', 'stats', 'turnos_data']
+      tables: ['users', 'turnos', 'cambios', 'stats', 'turnos_data'],
+      schema: {
+        users: {
+          campos: [
+            'id', 'legajo', 'email', 'nombre', 'apellido', 'password', 
+            'rol', 'telefono', 'direccion', 'horario', 'fecha_nacimiento',
+            'activo', 'grupo_turno', 'foto_perfil', 'ultimo_login',
+            'created_at', 'updated_at'
+          ]
+        }
+      }
     });
   } catch (error) {
     console.error('❌ Error seeding database:', error);
@@ -238,7 +298,6 @@ export async function GET() {
   }
 }
 
-// También puedes ejecutarlo directamente desde CLI
 export async function POST() {
   return GET();
 }

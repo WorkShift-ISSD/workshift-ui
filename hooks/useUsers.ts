@@ -1,5 +1,6 @@
-import { deleter, endpoints, fetcher, poster, putter } from '@/app/lib/api/endpoints';
-import { Turno, User } from '@/app/lib/api/types';
+import { endpoints } from '@/app/api/endpoints';
+import { deleter, fetcher, poster, putter } from '@/app/api/fetcher';
+import { Turno, User } from '@/app/api/types';
 import useSWR from 'swr';
 
 export function useUsers() {
