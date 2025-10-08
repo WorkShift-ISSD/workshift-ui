@@ -1,84 +1,60 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { 
   Calendar,
   CheckCircle,
   Clock,
   XCircle,
   TrendingUp,
-  Users,
   ArrowRight,
-  AlertCircle
+  AlertCircle,
+  Loader2,
+  Plus,
+  Trash2,
+  Edit,
+  Check,
+  X as XIcon
 } from 'lucide-react';
+import { useCambios } from '@/hooks/useCambios';
+import { useStats } from '@/hooks/useStats';
+import { useTurnosData } from '@/hooks/useTurnosData';
+import { Cambio } from '../lib/api/types';
 
-interface Cambio {
-  id: string;
-  fecha: string;
-  turno: string;
-  solicitante: string;
-  destinatario: string;
-  estado: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO';
-}
-
-// Mock data para próximos cambios
-const mockCambios: Cambio[] = [
-  {
-    id: '1',
-    fecha: '2025-10-10',
-    turno: 'Nocturno - Inspector Gadget',
-    solicitante: 'Juan García',
-    destinatario: 'María López',
-    estado: 'PENDIENTE'
-  },
-  {
-    id: '2',
-    fecha: '2025-10-08',
-    turno: 'Tarde - Inspector Poirot',
-    solicitante: 'Carlos Martínez',
-    destinatario: 'Ana Rodríguez',
-    estado: 'APROBADO'
-  },
-  {
-    id: '3',
-    fecha: '2025-10-12',
-    turno: 'Mañana - Inspector Clouseau',
-    solicitante: 'Luis González',
-    destinatario: 'Patricia Hernández',
-    estado: 'PENDIENTE'
-  },
-  {
-    id: '4',
-    fecha: '2025-10-15',
-    turno: 'Nocturno - Inspector Morse',
-    solicitante: 'Roberto Pérez',
-    destinatario: 'Carmen Sánchez',
-    estado: 'APROBADO'
-  }
-];
 
 export default function DashboardHome() {
-  const [userName] = useState('Emanuel');
-  const [cambios] = useState<Cambio[]>(mockCambios);
+  const userName = 'Emanuel';
+  
+  // Hooks SWR
+  const { 
+    cambios, 
+    isLoading: loadingCambios, 
+    error: errorCambios,
+    createCambio,
+    updateCambio,
+    deleteCambio
+  } = useCambios();
+  
+  const { stats, isLoading: loadingStats, error: errorStats } = useStats();
+  const { turnosData, isLoading: loadingTurnos, error: errorTurnos } = useTurnosData();
 
-  // Estadísticas mock
-  const stats = {
-    turnosOferta: 3,
-    aprobados: 12,
-    pendientes: 5,
-    rechazados: 2
-  };
+  // Estados para crear nuevo cambio
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    fecha: '',
+    turno: '',
+    solicitante: '',
+    destinatario: '',
+    estado: 'PENDIENTE' as 'PENDIENTE' | 'APROBADO' | 'RECHAZADO'
+  });
 
-  // Datos para el gráfico circular
-  const turnosData = {
-    misGuardias: 15,
-    guardiasCubiertas: 8,
-    guardiasQueMeCubrieron: 3,
-    total: 26
-  };
-
-  const porcentajeCubierto = Math.round((turnosData.guardiasCubiertas / turnosData.total) * 100);
+  // Calcular porcentaje cubierto
+  const porcentajeCubierto = turnosData 
+    ? Math.round((turnosData.guardiasCubiertas / turnosData.total) * 100)
+    : 0;
 
   // Función para formatear fecha
   const formatDate = (dateString: string) => {
@@ -98,13 +74,189 @@ export default function DashboardHome() {
     return colors[estado as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
 
+  // Manejar creación de cambio
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    try {
+      await createCambio(formData);
+      
+      // Resetear formulario
+      setFormData({
+        fecha: '',
+        turno: '',
+        solicitante: '',
+        destinatario: '',
+        estado: 'PENDIENTE'
+      });
+      setShowCreateForm(false);
+    } catch (error) {
+      console.error('Error creando cambio:', error);
+      alert('Error al crear el cambio');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Manejar actualización de estado
+  const handleUpdateEstado = async (id: string, nuevoEstado: 'APROBADO' | 'RECHAZADO') => {
+    try {
+      await updateCambio(id, { estado: nuevoEstado });
+    } catch (error) {
+      console.error('Error actualizando cambio:', error);
+      alert('Error al actualizar el cambio');
+    }
+  };
+
+  // Manejar eliminación
+  const handleDelete = async (id: string) => {
+    if (!confirm('¿Estás seguro de eliminar este cambio?')) return;
+    
+    try {
+      await deleteCambio(id);
+    } catch (error) {
+      console.error('Error eliminando cambio:', error);
+      alert('Error al eliminar el cambio');
+    }
+  };
+
+  // Componente de loading
+  if (loadingCambios || loadingStats || loadingTurnos) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Cargando dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Manejo de errores
+  if (errorCambios || errorStats || errorTurnos) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center max-w-md">
+          <AlertCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Error al cargar datos</h2>
+          <p className="text-gray-600 mb-4">
+            No se pudo conectar con el servidor. Asegúrate de que la base de datos esté configurada.
+          </p>
+          <code className="text-sm bg-gray-100 px-3 py-1 rounded block">
+            Verifica POSTGRES_URL en .env.local
+          </code>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header de Bienvenida */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Bienvenido, {userName}</h1>
-        <p className="text-gray-600 mt-1">Aquí está el resumen de tu actividad en WorkShift</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Bienvenido, {userName}</h1>
+          <p className="text-gray-600 mt-1">Aquí está el resumen de tu actividad en WorkShift</p>
+        </div>
+        <button
+          onClick={() => setShowCreateForm(!showCreateForm)}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <Plus className="h-5 w-5" />
+          Nuevo Cambio
+        </button>
       </div>
+
+      {/* Formulario de creación */}
+      {showCreateForm && (
+        <div className="mb-8 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Crear nuevo cambio</h2>
+          <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Fecha
+              </label>
+              <input
+                type="date"
+                required
+                value={formData.fecha}
+                onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Turno
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Ej: Nocturno - Inspector Gadget"
+                value={formData.turno}
+                onChange={(e) => setFormData({ ...formData, turno: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Solicitante
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Nombre del solicitante"
+                value={formData.solicitante}
+                onChange={(e) => setFormData({ ...formData, solicitante: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Destinatario
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Nombre del destinatario"
+                value={formData.destinatario}
+                onChange={(e) => setFormData({ ...formData, destinatario: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            
+            <div className="md:col-span-2 flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowCreateForm(false)}
+                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Creando...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4" />
+                    Crear Cambio
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -116,7 +268,7 @@ export default function DashboardHome() {
             </div>
             <span className="text-sm text-gray-500">En oferta</span>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{stats.turnosOferta}</p>
+          <p className="text-3xl font-bold text-gray-900">{stats?.turnosOferta || 0}</p>
           <p className="text-sm text-gray-600 mt-1">Turnos disponibles</p>
         </div>
 
@@ -128,7 +280,7 @@ export default function DashboardHome() {
             </div>
             <span className="text-sm text-gray-500">Este mes</span>
           </div>
-          <p className="text-3xl font-bold text-green-600">{stats.aprobados}</p>
+          <p className="text-3xl font-bold text-green-600">{stats?.aprobados || 0}</p>
           <p className="text-sm text-gray-600 mt-1">Solicitudes aprobadas</p>
         </div>
 
@@ -140,7 +292,7 @@ export default function DashboardHome() {
             </div>
             <span className="text-sm text-gray-500">Esperando</span>
           </div>
-          <p className="text-3xl font-bold text-yellow-600">{stats.pendientes}</p>
+          <p className="text-3xl font-bold text-yellow-600">{stats?.pendientes || 0}</p>
           <p className="text-sm text-gray-600 mt-1">Solicitudes pendientes</p>
         </div>
 
@@ -152,7 +304,7 @@ export default function DashboardHome() {
             </div>
             <span className="text-sm text-gray-500">Este mes</span>
           </div>
-          <p className="text-3xl font-bold text-red-600">{stats.rechazados}</p>
+          <p className="text-3xl font-bold text-red-600">{stats?.rechazados || 0}</p>
           <p className="text-sm text-gray-600 mt-1">Solicitudes rechazadas</p>
         </div>
       </div>
@@ -197,48 +349,49 @@ export default function DashboardHome() {
           </div>
 
           {/* Leyenda */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-sky-400"></div>
-                <span className="text-sm text-gray-600">Mis Guardias</span>
+          {turnosData && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-sky-400"></div>
+                  <span className="text-sm text-gray-600">Mis Guardias</span>
+                </div>
+                <span className="text-sm font-semibold text-gray-900">{turnosData.misGuardias}</span>
               </div>
-              <span className="text-sm font-semibold text-gray-900">{turnosData.misGuardias}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-blue-600"></div>
-                <span className="text-sm text-gray-600">Guardias Cubiertas</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-blue-600"></div>
+                  <span className="text-sm text-gray-600">Guardias Cubiertas</span>
+                </div>
+                <span className="text-sm font-semibold text-gray-900">{turnosData.guardiasCubiertas}</span>
               </div>
-              <span className="text-sm font-semibold text-gray-900">{turnosData.guardiasCubiertas}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-gray-800"></div>
-                <span className="text-sm text-gray-600">Guardias que me cubrieron</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-gray-800"></div>
+                  <span className="text-sm text-gray-600">Guardias que me cubrieron</span>
+                </div>
+                <span className="text-sm font-semibold text-gray-900">{turnosData.guardiasQueMeCubrieron}</span>
               </div>
-              <span className="text-sm font-semibold text-gray-900">{turnosData.guardiasQueMeCubrieron}</span>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Próximos Cambios */}
         <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-900">Próximos cambios</h2>
-            <button className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1">
-              Ver todos
-              <ArrowRight className="h-4 w-4" />
-            </button>
+            <span className="text-sm text-gray-500">
+              {cambios?.length || 0} cambios
+            </span>
           </div>
 
           <div className="space-y-3">
-            {cambios.map((cambio) => {
+            {cambios && cambios.map((cambio: Cambio) => {
               const { day, month } = formatDate(cambio.fecha);
               return (
                 <div 
                   key={cambio.id}
-                  className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
                 >
                   {/* Fecha */}
                   <div className="flex flex-col items-center justify-center bg-blue-600 text-white rounded-lg p-3 min-w-[60px]">
@@ -254,41 +407,78 @@ export default function DashboardHome() {
                     </p>
                   </div>
 
-                  {/* Estado */}
-                  <div>
+                  {/* Estado y acciones */}
+                  <div className="flex items-center gap-2">
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getEstadoColor(cambio.estado)}`}>
                       {cambio.estado}
                     </span>
+                    
+                    {/* Acciones rápidas para pendientes */}
+                    {cambio.estado === 'PENDIENTE' && (
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => handleUpdateEstado(cambio.id, 'APROBADO')}
+                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                          title="Aprobar"
+                        >
+                          <Check className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleUpdateEstado(cambio.id, 'RECHAZADO')}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Rechazar"
+                        >
+                          <XIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+                    
+                    {/* Botón eliminar */}
+                    <button
+                      onClick={() => handleDelete(cambio.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                      title="Eliminar"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {cambios.length === 0 && (
+          {cambios && cambios.length === 0 && (
             <div className="text-center py-12">
               <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
               <p className="text-gray-600">No hay cambios próximos</p>
+              <button
+                onClick={() => setShowCreateForm(true)}
+                className="mt-4 text-blue-600 hover:text-blue-700 text-sm font-medium"
+              >
+                Crear el primer cambio
+              </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* Sección de Estadísticas Rápidas (Opcional) */}
-      <div className="mt-6 bg-gradient-to-r from-blue-600 to-blue-700 p-6 rounded-lg shadow-sm text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-blue-100 text-sm">Rendimiento del mes</p>
-            <p className="text-2xl font-bold mt-1">Excelente trabajo</p>
-            <p className="text-blue-100 text-sm mt-1">
-              Has cubierto {turnosData.guardiasCubiertas} turnos y te han cubierto {turnosData.guardiasQueMeCubrieron}
-            </p>
-          </div>
-          <div className="p-4 bg-white/10 rounded-lg">
-            <TrendingUp className="h-8 w-8" />
+      {/* Sección de Estadísticas Rápidas */}
+      {turnosData && (
+        <div className="mt-6 bg-gradient-to-r from-blue-600 to-blue-700 p-6 rounded-lg shadow-sm text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-100 text-sm">Rendimiento del mes</p>
+              <p className="text-2xl font-bold mt-1">Excelente trabajo</p>
+              <p className="text-blue-100 text-sm mt-1">
+                Has cubierto {turnosData.guardiasCubiertas} turnos y te han cubierto {turnosData.guardiasQueMeCubrieron}
+              </p>
+            </div>
+            <div className="p-4 bg-white/10 rounded-lg">
+              <TrendingUp className="h-8 w-8" />
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
