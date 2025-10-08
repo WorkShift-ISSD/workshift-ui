@@ -31,6 +31,7 @@ type EstadoEmpleado = 'ACTIVO' | 'LICENCIA' | 'AUSENTE' | 'INACTIVO';
 
 interface Inspector {
   id: string;
+  legajo: number;
   email: string;
   nombre: string;
   apellido: string;
@@ -56,6 +57,7 @@ interface Inspector {
 const generateMockEmployees = (): Inspector[] => {
   const nombres = ['Juan', 'María', 'Carlos', 'Ana', 'Luis', 'Patricia', 'Roberto', 'Carmen', 'Miguel', 'Isabel'];
   const apellidos = ['García', 'Rodríguez', 'López', 'Martínez', 'González', 'Hernández', 'Pérez', 'Sánchez', 'Díaz', 'Torres'];
+  const legajos = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011, 1012, 1013, 1014, 1015, 1016, 1017, 1018, 1019, 1020, 1021, 1022, 1023, 1024, 1025];
   const roles: Rol[] = ['INSPECTOR', 'SUPERVISOR', 'JEFE'];
   const grupos: GrupoTurno[] = ['A', 'B'];
 
@@ -64,6 +66,7 @@ const generateMockEmployees = (): Inspector[] => {
     email: `${nombres[i % nombres.length].toLowerCase()}.${apellidos[i % apellidos.length].toLowerCase()}@workshift.com`,
     nombre: nombres[i % nombres.length],
     apellido: apellidos[i % apellidos.length],
+    legajo: legajos[i % legajos.length],
     rol: roles[Math.floor(Math.random() * roles.length)],
     telefono: `+54 11${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}`,
     direccion: `Calle ${apellidos[(i + 3) % apellidos.length]} ${Math.floor(Math.random() * 100)}, Buenos Aires`,
@@ -147,6 +150,7 @@ export default function DashboardPage() {
       setFormData({
         nombre: '',
         apellido: '',
+        legajo: undefined,
         email: '',
         rol: 'INSPECTOR',
         grupoTurno: 'A',
@@ -178,6 +182,19 @@ if (!formData.nombre || formData.nombre.trim() === '') {
     return;
   }
 
+  if (!formData.legajo || isNaN(Number(formData.legajo))) {
+    setFormError('El legajo es obligatorio');
+    return;
+  }
+
+const legajoExistente = employees.find(emp => 
+    emp.legajo === formData.legajo && emp.id !== selectedEmployee?.id
+  );
+
+  if (legajoExistente) {
+    setFormError('El legajo ya está asignado a otro empleado');
+    return;
+  }
 
   // Si pasa las validaciones, limpiar error
   setFormError('');
@@ -430,9 +447,6 @@ if (!formData.nombre || formData.nombre.trim() === '') {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Último Acceso
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Acciones
-                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -546,6 +560,10 @@ if (!formData.nombre || formData.nombre.trim() === '') {
                     <div>
                       <p className="text-sm text-gray-600">ID</p>
                       <p className="font-semibold">{selectedEmployee.id}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Legajo</p>
+                      <p className="font-semibold">{selectedEmployee.legajo || 'No asignado'}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Estado</p>
@@ -670,18 +688,51 @@ if (!formData.nombre || formData.nombre.trim() === '') {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={formData.email || ''}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    />
-                  </div>
+                <div className="grid grid-cols-2 gap-4">
 
+<div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">
+      Legajo <span className="text-red-500">*</span>
+    </label>
+    <input
+      type="text"
+      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+        formError && (!formData.legajo || isNaN(Number(formData.legajo)))
+          ? 'border-red-300 bg-red-50'
+          : 'border-gray-300'
+      }`}
+      value={formData.legajo || ''}
+      onChange={(e) => {
+        setFormData({...formData, legajo: e.target.value ? Number(e.target.value) : undefined});
+        if (formError) setFormError('');
+      }}
+      placeholder="Ej: LEG001"
+    />
+  </div>
+
+
+
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">
+      Email
+    </label>
+    <input
+      type="email"
+      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+        formError && (!formData.email || formData.email.trim() === '')
+          ? 'border-red-300 bg-red-50'
+          : 'border-gray-300'
+      }`}
+      value={formData.email || ''}
+      onChange={(e) => {
+        setFormData({...formData, email: e.target.value});
+        if (formError) setFormError('');
+      }}
+    />
+  </div>
+  
+  
+</div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
