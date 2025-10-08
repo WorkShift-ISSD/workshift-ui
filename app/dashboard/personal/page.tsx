@@ -54,37 +54,7 @@ interface Inspector {
   intercambiosPendientes?: number;
 }
 
-// Mock data generator
-const generateMockEmployees = (): Inspector[] => {
-  const nombres = ['Juan', 'María', 'Carlos', 'Ana', 'Luis', 'Patricia', 'Roberto', 'Carmen', 'Miguel', 'Isabel'];
-  const apellidos = ['García', 'Rodríguez', 'López', 'Martínez', 'González', 'Hernández', 'Pérez', 'Sánchez', 'Díaz', 'Torres'];
-  const legajos = [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011, 1012, 1013, 1014, 1015, 1016, 1017, 1018, 1019, 1020, 1021, 1022, 1023, 1024, 1025];
-  const roles: Rol[] = ['INSPECTOR', 'SUPERVISOR', 'JEFE'];
-  const grupos: GrupoTurno[] = ['A', 'B'];
 
-  return Array.from({ length: 25 }, (_, i) => ({
-    id: `USR${String(i + 1).padStart(3, '0')}`,
-    email: `${nombres[i % nombres.length].toLowerCase()}.${apellidos[i % apellidos.length].toLowerCase()}@workshift.com`,
-    nombre: nombres[i % nombres.length],
-    apellido: apellidos[i % apellidos.length],
-    legajo: legajos[i % legajos.length],
-    rol: roles[Math.floor(Math.random() * roles.length)],
-    telefono: `+54 11${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}`,
-    direccion: `Calle ${apellidos[(i + 3) % apellidos.length]} ${Math.floor(Math.random() * 100)}, Buenos Aires`,
-    horario: `${8 + Math.floor(Math.random() * 5)}:00 - ${17 + Math.floor(Math.random() * 5)}:00`,
-    fechaNacimiento: new Date(1970 + Math.floor(Math.random() * 30), Math.floor(Math.random() * 12), Math.floor(Math.random() * 28)).toISOString(),
-    activo: Math.random() > 0.2,
-    grupoTurno: grupos[i % grupos.length],
-    fotoPerfil: null,
-    ultimoLogin: new Date(Date.now() - Math.floor(Math.random() * 86400000 * 7)).toISOString(),
-    createdAt: new Date(Date.now() - Math.floor(Math.random() * 86400000 * 365)).toISOString(),
-    updatedAt: new Date(Date.now() - Math.floor(Math.random() * 86400000 * 30)).toISOString(),
-    estado: ['ACTIVO', 'LICENCIA', 'AUSENTE', 'ACTIVO', 'ACTIVO'][Math.floor(Math.random() * 5)] as EstadoEmpleado,
-    turnosEsteMes: Math.floor(Math.random() * 22),
-    horasAcumuladas: Math.floor(Math.random() * 160) + 40,
-    intercambiosPendientes: Math.floor(Math.random() * 3)
-  }));
-};
 
 export default function DashboardPage() {
   const [filteredEmployees, setFilteredEmployees] = useState<Inspector[]>([]);
@@ -115,10 +85,6 @@ const employees = empleados || [];
   };
 
   // Initialize mock data
-  useEffect(() => {
-    const mockData = generateMockEmployees();
-    setFilteredEmployees(mockData);
-  }, []);
 
   // Filter employees
   useEffect(() => {
