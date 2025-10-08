@@ -6,6 +6,7 @@ import { inter } from './ui/fonts';
 import LoginForm from './components/LoginForm';
 import MigraLogo from '@/app/ui/MigraLogo';
 import WSMSLogo from '@/app/ui/WSMSLogo';
+import Footer from './components/Footer';
 
 export default function Page() {
   return (
@@ -30,14 +31,15 @@ export default function Page() {
           <LoginForm/>
         </div>
       </div>
-    <div className="flex items-center justify-center align-center h-15 shrink-0 rounded-lg p-4 md:h-20"
+    {/* <div className="flex items-center justify-center align-center h-15 shrink-0 rounded-lg p-4 md:h-20"
       style={{ backgroundColor: '#cddcea' }}>
         <div className="flex items-center justify-center mt- gap-x-0">
                       <span className="text-sm text-gray-700 flex  items-center">Powered by
                       <WSMSLogo className="h-20 w-20 ml-3" />
                       </span>
                     </div>
-      </div>
+      </div> */}
+      
 
     </main>
   );

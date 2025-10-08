@@ -733,11 +733,11 @@ if (searchTerm) {
       )}
       
             {/* Marca de agua */}
-            <div className="flex items-center justify-center mt-8 gap-x-0">
+            {/* <div className="flex items-center justify-center mt-8 gap-x-0">
               <span className="text-sm text-gray-700 flex items-center">Powered by
               <WSMSLogo className="h-20 w-20 ml-3" />
               </span>
-            </div>
+            </div> */}
           </div>
   );
 }
