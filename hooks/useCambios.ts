@@ -3,6 +3,7 @@ import { deleter, fetcher, poster, putter } from '@/app/api/fetcher';
 import { Cambio, Turno } from '@/app/api/types';
 import useSWR from 'swr';
 
+
 export function useCambios() {
   const { data, error, isLoading, mutate } = useSWR<Cambio[]>(
     endpoints.cambios.list(),
