@@ -251,11 +251,10 @@ const legajoExistente = employees.find(emp =>
   // Role styles
   const getRoleColor = (rol: Rol) => {
     const colors = {
-      Supervisor: 'bg-purple-100 text-purple-800',
       JEFE: 'bg-red-100 text-red-800',
       SUPERVISOR: 'bg-orange-100 text-orange-800',
       INSPECTOR: 'bg-blue-100 text-blue-800',
-      Inspector: 'bg-gray-100 text-gray-800'
+
     };
     return colors[rol];
   };
@@ -265,8 +264,6 @@ const legajoExistente = employees.find(emp =>
     const colors = {
       A: 'bg-green-100 text-green-800',
       B: 'bg-blue-100 text-blue-800',
-      C: 'bg-yellow-100 text-yellow-800',
-      D: 'bg-red-100 text-red-800'
     };
     return colors[shift];
   };
@@ -467,7 +464,7 @@ const legajoExistente = employees.find(emp =>
                           {employee.email}
                         </div>
                         <div className="text-xs text-gray-400">
-                          ID: {employee.id}
+                          ID: {employee.id}  {/*Colocar Legajo o */}
                         </div>
                       </div>
                     </div>
