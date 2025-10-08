@@ -1,5 +1,6 @@
-import { deleter, endpoints, fetcher, poster, putter } from '@/app/lib/api/endpoints';
-import { Turno, TurnosData } from '@/app/lib/api/types';
+import { endpoints } from '@/app/api/endpoints';
+import { fetcher, putter } from '@/app/api/fetcher';
+import { Turno, TurnosData } from '@/app/api/types';
 import useSWR from 'swr';
 
 export function useTurnosData() {

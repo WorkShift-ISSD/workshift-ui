@@ -4,59 +4,48 @@ export const users = [
   {
     id: '410544b2-4001-4271-9855-fec4b6a6442a',
     nombre: 'Emanuel',
+    apellido: 'González',
+    legajo: 1001,
     email: 'emanuel@workshift.com',
     password: 'password123',
-    rol: 'inspector'
+    rol: 'INSPECTOR',
+    telefono: '+54 11 4444-5555',
+    direccion: 'Av. Corrientes 1234, Buenos Aires',
+    horario: '08:00-16:00',
+    fechaNacimiento: '1990-05-15',
+    activo: true,
+    grupoTurno: 'A'
   },
   {
     id: '3958dc9e-712f-4377-85e9-fec4b6a6442b',
-    nombre: 'Juan García',
+    nombre: 'Juan',
+    apellido: 'García',
+    legajo: 1002,
     email: 'juan.garcia@workshift.com',
     password: 'password123',
-    rol: 'inspector'
+    rol: 'INSPECTOR',
+    telefono: '+54 11 5555-6666',
+    direccion: 'Calle Falsa 123, Buenos Aires',
+    horario: '14:00-22:00',
+    fechaNacimiento: '1985-03-20',
+    activo: true,
+    grupoTurno: 'B'
   },
   {
     id: '3958dc9e-742f-4377-85e9-fec4b6a6442c',
-    nombre: 'María López',
+    nombre: 'María',
+    apellido: 'López',
+    legajo: 1003,
     email: 'maria.lopez@workshift.com',
     password: 'password123',
-    rol: 'inspector'
+    rol: 'SUPERVISOR',
+    telefono: '+54 11 6666-7777',
+    direccion: 'Av. Santa Fe 4567, Buenos Aires',
+    horario: '06:00-14:00',
+    fechaNacimiento: '1988-11-10',
+    activo: true,
+    grupoTurno: 'A'
   },
-  {
-    id: '3958dc9e-737f-4377-85e9-fec4b6a6442d',
-    nombre: 'Carlos Martínez',
-    email: 'carlos.martinez@workshift.com',
-    password: 'password123',
-    rol: 'inspector'
-  },
-  {
-    id: '3958dc9e-722f-4377-85e9-fec4b6a6442e',
-    nombre: 'Ana Rodríguez',
-    email: 'ana.rodriguez@workshift.com',
-    password: 'password123',
-    rol: 'inspector'
-  },
-  {
-    id: '3958dc9e-799f-4377-85e9-fec4b6a64430',
-    nombre: 'Patricia Hernández',
-    email: 'patricia.hernandez@workshift.com',
-    password: 'password123',
-    rol: 'inspector'
-  },
-  {
-    id: '3958dc9e-765f-4377-85e9-fec4b6a64431',
-    nombre: 'Roberto Pérez',
-    email: 'roberto.perez@workshift.com',
-    password: 'password123',
-    rol: 'inspector'
-  },
-  {
-    id: '3958dc9e-754f-4377-85e9-fec4b6a64432',
-    nombre: 'Carmen Sánchez',
-    email: 'carmen.sanchez@workshift.com',
-    password: 'password123',
-    rol: 'inspector'
-  }
 ];
 
 export const turnos = [

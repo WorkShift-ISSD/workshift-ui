@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test CRUD - WorkShift</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f3f4f6;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        button.delete {
+            background: #ef4444;
+        }
+        button.delete:hover {
+            background: #dc2626;
+        }
+        button.update {
+            background: #f59e0b;
+        }
+        button.update:hover {
+            background: #d97706;
+        }
+        pre {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 13px;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .status.loading {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        input, select {
+            padding: 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            margin: 5px;
+            font-size: 14px;
+        }
+        h2 {
+            color: #1f2937;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 10px;
+        }
+        .cambio-item {
+            background: #f9fafb;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border-left: 4px solid #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test CRUD - WorkShift</h1>
+    
+    <div class="container">
+        <h2>1. GET - Listar todos los cambios</h2>
+        <button onclick="getCambios()">📋 Obtener Cambios</button>
+        <div id="getCambiosStatus"></div>
+        <pre id="getCambiosResult">Haz clic en el botón para obtener los cambios...</pre>
+    </div>
+
+    <div class="container">
+        <h2>2. POST - Crear nuevo cambio</h2>
+        <div>
+            <input type="date" id="createFecha" placeholder="Fecha">
+            <input type="text" id="createTurno" placeholder="Turno" value="Test - Inspector Holmes">
+            <input type="text" id="createSolicitante" placeholder="Solicitante" value="Test User">
+            <input type="text" id="createDestinatario" placeholder="Destinatario" value="Test Destinatario">
+            <select id="createEstado">
+                <option value="PENDIENTE">PENDIENTE</option>
+                <option value="APROBADO">APROBADO</option>
+                <option value="RECHAZADO">RECHAZADO</option>
+            </select>
+        </div>
+        <button onclick="createCambio()">➕ Crear Cambio</button>
+        <div id="createCambioStatus"></div>
+        <pre id="createCambioResult">Llena los campos y haz clic en crear...</pre>
+    </div>
+
+    <div class="container">
+        <h2>3. PUT - Actualizar estado de un cambio</h2>
+        <div>
+            <input type="text" id="updateId" placeholder="ID del cambio">
+            <select id="updateEstado">
+                <option value="PENDIENTE">PENDIENTE</option>
+                <option value="APROBADO">APROBADO</option>
+                <option value="RECHAZADO">RECHAZADO</option>
+            </select>
+        </div>
+        <button onclick="updateCambio()" class="update">✏️ Actualizar Estado</button>
+        <div id="updateCambioStatus"></div>
+        <pre id="updateCambioResult">Ingresa un ID y selecciona el nuevo estado...</pre>
+    </div>
+
+    <div class="container">
+        <h2>4. DELETE - Eliminar un cambio</h2>
+        <div>
+            <input type="text" id="deleteId" placeholder="ID del cambio a eliminar">
+        </div>
+        <button onclick="deleteCambio()" class="delete">🗑️ Eliminar Cambio</button>
+        <div id="deleteCambioStatus"></div>
+        <pre id="deleteCambioResult">Ingresa un ID y haz clic en eliminar...</pre>
+    </div>
+
+    <div class="container">
+        <h2>5. Lista de cambios actuales</h2>
+        <button onclick="refreshCambiosList()">🔄 Refrescar Lista</button>
+        <div id="cambiosList"></div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+
+        // Set default date to today
+        document.getElementById('createFecha').value = new Date().toISOString().split('T')[0];
+
+        async function getCambios() {
+            setStatus('getCambiosStatus', 'loading', 'Cargando...');
+            try {
+                const res = await fetch(`${API_BASE}/cambios`);
+                const data = await res.json();
+                
+                document.getElementById('getCambiosResult').textContent = JSON.stringify(data, null, 2);
+                setStatus('getCambiosStatus', 'success', `✅ ${data.length} cambios obtenidos`);
+            } catch (error) {
+                document.getElementById('getCambiosResult').textContent = String(error);
+                setStatus('getCambiosStatus', 'error', '❌ Error al obtener cambios');
+            }
+        }
+
+        async function createCambio() {
+            setStatus('createCambioStatus', 'loading', 'Creando...');
+            
+            const cambio = {
+                fecha: document.getElementById('createFecha').value,
+                turno: document.getElementById('createTurno').value,
+                solicitante: document.getElementById('createSolicitante').value,
+                destinatario: document.getElementById('createDestinatario').value,
+                estado: document.getElementById('createEstado').value
+            };
+
+            try {
+                const res = await fetch(`${API_BASE}/cambios`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(cambio)
+                });
+                
+                const data = await res.json();
+                document.getElementById('createCambioResult').textContent = JSON.stringify(data, null, 2);
+                
+                if (res.ok) {
+                    setStatus('createCambioStatus', 'success', `✅ Cambio creado con ID: ${data.id}`);
+                    refreshCambiosList();
+                } else {
+                    setStatus('createCambioStatus', 'error', '❌ Error al crear cambio');
+                }
+            } catch (error) {
+                document.getElementById('createCambioResult').textContent = String(error);
+                setStatus('createCambioStatus', 'error', '❌ Error al crear cambio');
+            }
+        }
+
+        async function updateCambio() {
+            setStatus('updateCambioStatus', 'loading', 'Actualizando...');
+            
+            const id = document.getElementById('updateId').value;
+            const estado = document.getElementById('updateEstado').value;
+
+            if (!id) {
+                setStatus('updateCambioStatus', 'error', '❌ Ingresa un ID');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/cambios/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ estado })
+                });
+                
+                const data = await res.json();
+                document.getElementById('updateCambioResult').textContent = JSON.stringify(data, null, 2);
+                
+                if (res.ok) {
+                    setStatus('updateCambioStatus', 'success', `✅ Estado actualizado a: ${estado}`);
+                    refreshCambiosList();
+                } else {
+                    setStatus('updateCambioStatus', 'error', '❌ ' + (data.error || 'Error al actualizar'));
+                }
+            } catch (error) {
+                document.getElementById('updateCambioResult').textContent = String(error);
+                setStatus('updateCambioStatus', 'error', '❌ Error al actualizar cambio');
+            }
+        }
+
+        async function deleteCambio() {
+            setStatus('deleteCambioStatus', 'loading', 'Eliminando...');
+            
+            const id = document.getElementById('deleteId').value;
+
+            if (!id) {
+                setStatus('deleteCambioStatus', 'error', '❌ Ingresa un ID');
+                return;
+            }
+
+            if (!confirm(`¿Estás seguro de eliminar el cambio ${id}?`)) {
+                setStatus('deleteCambioStatus', '', '');
+                return;
+            }
+
+            try {
+                console.log('Eliminando cambio:', id);
+                const res = await fetch(`${API_BASE}/cambios/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await res.json();
+                console.log('Respuesta del servidor:', data);
+                
+                document.getElementById('deleteCambioResult').textContent = JSON.stringify(data, null, 2);
+                
+                if (res.ok) {
+                    setStatus('deleteCambioStatus', 'success', `✅ Cambio eliminado: ${id}`);
+                    document.getElementById('deleteId').value = '';
+                    refreshCambiosList();
+                } else {
+                    setStatus('deleteCambioStatus', 'error', '❌ ' + (data.error || 'Error al eliminar'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('deleteCambioResult').textContent = String(error);
+                setStatus('deleteCambioStatus', 'error', '❌ Error al eliminar cambio');
+            }
+        }
+
+        async function refreshCambiosList() {
+            try {
+                const res = await fetch(`${API_BASE}/cambios`);
+                const cambios = await res.json();
+                
+                const html = cambios.map(c => `
+                    <div class="cambio-item">
+                        <strong>ID:</strong> ${c.id}<br>
+                        <strong>Fecha:</strong> ${c.fecha}<br>
+                        <strong>Turno:</strong> ${c.turno}<br>
+                        <strong>Estado:</strong> <span class="status ${c.estado.toLowerCase()}">${c.estado}</span><br>
+                        <strong>${c.solicitante}</strong> → <strong>${c.destinatario}</strong>
+                        <div style="margin-top: 10px;">
+                            <button onclick="document.getElementById('updateId').value='${c.id}'" class="update">Actualizar</button>
+                            <button onclick="document.getElementById('deleteId').value='${c.id}'; deleteCambio()" class="delete">Eliminar</button>
+                        </div>
+                    </div>
+                `).join('');
+                
+                document.getElementById('cambiosList').innerHTML = html || '<p>No hay cambios</p>';
+            } catch (error) {
+                document.getElementById('cambiosList').innerHTML = `<p style="color: red;">Error: ${error}</p>`;
+            }
+        }
+
+        function setStatus(elementId, type, message) {
+            const el = document.getElementById(elementId);
+            el.innerHTML = message ? `<span class="status ${type}">${message}</span>` : '';
+        }
+
+        // Load initial data
+        refreshCambiosList();
+    </script>
+</body>
+</html>

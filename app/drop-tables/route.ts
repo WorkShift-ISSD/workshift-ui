@@ -1,3 +1,4 @@
+import { NextRequest } from 'next/server';
 import postgres from 'postgres';
 
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
@@ -26,7 +27,11 @@ async function showTables() {
   return tables.map(t => t.tablename);
 }
 
-export async function GET() {
+
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
     const tablesBefore = await showTables();
     
@@ -46,6 +51,6 @@ export async function GET() {
 }
 
 // También soporta POST
-export async function POST() {
-  return GET();
+export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  return GET(request, context);
 }
