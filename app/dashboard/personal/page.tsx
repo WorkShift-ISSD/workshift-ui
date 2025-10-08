@@ -92,6 +92,7 @@ export default function DashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'view' | 'edit' | 'create'>('view');
   const [formData, setFormData] = useState<Partial<Inspector>>({});
+  const [formError, setFormError] = useState('');
 
   // Initialize mock data
   useEffect(() => {
@@ -137,6 +138,7 @@ export default function DashboardPage() {
   // Modal handlers
   const openModal = (mode: 'view' | 'edit' | 'create', employee?: Inspector) => {
     setModalMode(mode);
+    setFormError('');
     if (employee) {
       setSelectedEmployee(employee);
       setFormData({ ...employee });
@@ -161,40 +163,65 @@ export default function DashboardPage() {
     setIsModalOpen(false);
     setSelectedEmployee(null);
     setFormData({});
+    setFormError('');
   };
 
   const handleSave = () => {
-    if (modalMode === 'create') {
-      const newEmployee: Inspector = {
-        ...formData as Inspector,
-        id: `USR${String(employees.length + 1).padStart(3, '0')}`,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        ultimoLogin: null,
-        fotoPerfil: null,
-        fechaNacimiento: formData.fechaNacimiento || null,
-        estado: 'ACTIVO',
-        turnosEsteMes: 0,
-        horasAcumuladas: 0,
-        intercambiosPendientes: 0
-      };
-      setEmployees([...employees, newEmployee]);
-    } else if (modalMode === 'edit' && selectedEmployee) {
-      const updatedEmployees = employees.map(emp =>
-        emp.id === selectedEmployee.id
-          ? { ...emp, ...formData, updatedAt: new Date().toISOString() }
-          : emp
-      );
-      setEmployees(updatedEmployees);
-    }
-    closeModal();
-  };
+
+if (!formData.nombre || formData.nombre.trim() === '') {
+    setFormError('El nombre es obligatorio');
+    return;
+  }
+
+  if (!formData.apellido || formData.apellido.trim() === '') {
+    setFormError('El apellido es obligatorio');
+    return;
+  }
+
+
+  // Si pasa las validaciones, limpiar error
+  setFormError('');
+
+  if (modalMode === 'create') {
+    const confirmCreate = window.confirm('¿Seguro que quiere crear un nuevo empleado?');
+    if (!confirmCreate) return;
+    // ...código para crear...
+    const newEmployee: Inspector = {
+      ...formData as Inspector,
+      id: `USR${String(employees.length + 1).padStart(3, '0')}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      ultimoLogin: null,
+      fotoPerfil: null,
+      fechaNacimiento: formData.fechaNacimiento || null,
+      estado: 'ACTIVO',
+      turnosEsteMes: 0,
+      horasAcumuladas: 0,
+      intercambiosPendientes: 0
+    };
+    setEmployees([...employees, newEmployee]);
+  } else if (modalMode === 'edit' && selectedEmployee) {
+    const confirmEdit = window.confirm('¿Seguro quiere modificar los datos del empleado?');
+    if (!confirmEdit) return;
+    // ...código para editar...
+    const updatedEmployees = employees.map(emp =>
+      emp.id === selectedEmployee.id
+        ? { ...emp, ...formData, updatedAt: new Date().toISOString() }
+        : emp
+    );
+    setEmployees(updatedEmployees);
+  }
+  closeModal();
+};
 
   const handleDelete = (id: string) => {
     if (confirm('¿Está seguro de eliminar este empleado?')) {
       setEmployees(employees.filter(emp => emp.id !== id));
     }
   };
+
+
+
 
   // Stats calculation
   const stats = {
@@ -504,6 +531,14 @@ export default function DashboardPage() {
             </div>
 
             <div className="p-6">
+
+              {/* Error message */}
+              {formError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-600 text-sm">{formError}</p>
+                </div>
+              )}
+
               {modalMode === 'view' && selectedEmployee ? (
                 // View mode
                 <div className="space-y-4">
@@ -599,24 +634,38 @@ export default function DashboardPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Nombre
+                        Nombre <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        formError && (!formData.nombre || formData.nombre.trim() === '')
+                        ? 'border-red-300 bg-red-50'
+                        : 'border-gray-300'
+                        }`}
                         value={formData.nombre || ''}
-                        onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                      />
+                          onChange={(e) => {
+                          setFormData({...formData, nombre: e.target.value});
+                          if (formError) setFormError('');
+                        }}
+/>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Apellido
+                        Apellido <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        formError && (!formData.apellido || formData.apellido.trim() === '')
+                        ? 'border-red-300 bg-red-50'
+                        : 'border-gray-300'
+                        }`}
                         value={formData.apellido || ''}
-                        onChange={(e) => setFormData({ ...formData, apellido: e.target.value })}
+                        onChange={(e) => {
+                        setFormData({...formData, apellido: e.target.value});
+                        if (formError) setFormError('');
+                        }}
                       />
                     </div>
                   </div>

@@ -18,7 +18,6 @@ export default function Page() {
       <div className=" flex grow flex-col gap-4 md:flex-row mt-1">
         <div className="flex flex-col justify-center gap-2 rounded-lg bg-gray-50 md:w-2/5 md:px-10 ">
           <p className={`${inter.className} antialiased text-xl text-gray-800 md:text-3xl md:leading-normal`}>
-            <div/>
             <strong>Bienvenido </strong> al sistema de {' '}
             <span className="text-blue-500">
               Gestión de turnos
