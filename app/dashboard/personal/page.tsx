@@ -755,7 +755,7 @@ const legajoExistente = employees.find(emp =>
                             setFormData({
                              ...formData,
                              rol: nuevoRol,
-                            grupoTurno: horariosPorRol[nuevoRol][0], 
+                             grupoTurno: formData.grupoTurno && (formData.grupoTurno === 'A' || formData.grupoTurno === 'B') ? formData.grupoTurno : 'A',
                             });
                           }}
                         >
