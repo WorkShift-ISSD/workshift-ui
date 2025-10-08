@@ -10,13 +10,13 @@ import Footer from './components/Footer';
 
 export default function Page() {
   return (
-    <main className="flex min-h-screen flex-col p-3">
-      <div className="flex h-20 shrink-0 items-end rounded-lg bg-cddcea p-4 md:h-40"
+    <main className="flex flex-col p-4">
+      <div className="flex items-center h-20 shrink-0 rounded-lg bg-gray-100 p-4 md:h-40"
       style={{ backgroundColor: '#cddcea' }}>
-        <MigraLogo className=" relative w-[30%] h-[80px] md:h-[120px]" />
+        <MigraLogo className="relative w-[40%] h-12 md:h-32" />
       </div>
-      <div className=" flex grow flex-col gap-4 md:flex-row mt-1">
-        <div className="flex flex-col justify-center gap-2 rounded-lg bg-gray-50 md:w-2/5 md:px-10 ">
+      <div className=" flex flex-col gap-4 md:flex-row mt-8 mb-8 md:ml-48">
+        <div className="flex flex-col justify-center gap-2 rounded-lg bg-gray-100 md:w-2/5 md:px-10 ">
           <p className={`${inter.className} antialiased text-xl text-gray-800 md:text-3xl md:leading-normal`}>
             <strong>Bienvenido </strong> al sistema de {' '}
             <span className="text-blue-500">
