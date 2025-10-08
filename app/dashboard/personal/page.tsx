@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { 
-  Search, 
-  Plus, 
-  Edit2, 
-  Trash2, 
-  Eye, 
+import {
+  Search,
+  Plus,
+  Edit2,
+  Trash2,
+  Eye,
   Filter,
   Download,
   Calendar,
@@ -58,7 +58,7 @@ const generateMockEmployees = (): Inspector[] => {
   const apellidos = ['García', 'Rodríguez', 'López', 'Martínez', 'González', 'Hernández', 'Pérez', 'Sánchez', 'Díaz', 'Torres'];
   const roles: Rol[] = ['INSPECTOR', 'SUPERVISOR', 'JEFE'];
   const grupos: GrupoTurno[] = ['A', 'B'];
-  
+
   return Array.from({ length: 25 }, (_, i) => ({
     id: `USR${String(i + 1).padStart(3, '0')}`,
     email: `${nombres[i % nombres.length].toLowerCase()}.${apellidos[i % apellidos.length].toLowerCase()}@workshift.com`,
@@ -105,20 +105,20 @@ export default function DashboardPage() {
     let filtered = [...employees];
 
     // Search filter
-if (searchTerm) {
-  const term = searchTerm.toLowerCase().trim();
-  
-  filtered = filtered.filter(emp => {
-    const fullName = `${emp.nombre} ${emp.apellido}`.toLowerCase(); // nombre completo
-    return (
-      emp.nombre.toLowerCase().includes(term) ||
-      emp.apellido.toLowerCase().includes(term) ||
-      fullName.includes(term) || // busca "nombre apellido"
-      emp.email.toLowerCase().includes(term) ||
-      emp.id.toString().toLowerCase().includes(term)
-    );
-  });
-}
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase().trim();
+
+      filtered = filtered.filter(emp => {
+        const fullName = `${emp.nombre} ${emp.apellido}`.toLowerCase(); // nombre completo
+        return (
+          emp.nombre.toLowerCase().includes(term) ||
+          emp.apellido.toLowerCase().includes(term) ||
+          fullName.includes(term) || // busca "nombre apellido"
+          emp.email.toLowerCase().includes(term) ||
+          emp.id.toString().toLowerCase().includes(term)
+        );
+      });
+    }
 
 
     // Role filter
@@ -137,7 +137,7 @@ if (searchTerm) {
   // Modal handlers
   const openModal = (mode: 'view' | 'edit' | 'create', employee?: Inspector) => {
     setModalMode(mode);
-    if (employee ) {
+    if (employee) {
       setSelectedEmployee(employee);
       setFormData({ ...employee });
     } else {
@@ -180,8 +180,8 @@ if (searchTerm) {
       };
       setEmployees([...employees, newEmployee]);
     } else if (modalMode === 'edit' && selectedEmployee) {
-      const updatedEmployees = employees.map(emp => 
-        emp.id === selectedEmployee.id 
+      const updatedEmployees = employees.map(emp =>
+        emp.id === selectedEmployee.id
           ? { ...emp, ...formData, updatedAt: new Date().toISOString() }
           : emp
       );
@@ -242,10 +242,10 @@ if (searchTerm) {
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+    return date.toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
     });
   };
 
@@ -256,7 +256,7 @@ if (searchTerm) {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    
+
     if (diffHours < 1) return 'Hace menos de 1 hora';
     if (diffHours < 24) return `Hace ${diffHours} horas`;
     if (diffHours < 48) return 'Ayer';
@@ -324,8 +324,7 @@ if (searchTerm) {
 
       {/* Filters and Actions */}
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
+        <div className="flex-1 py-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <input
@@ -337,22 +336,23 @@ if (searchTerm) {
               />
             </div>
           </div>
+        <div className="flex flex-col md:flex-row gap-4">
           
+
           <select
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base bg-white text-gray-800 hover:border-blue-400"
             value={selectedRole}
             onChange={(e) => setSelectedRole(e.target.value as Rol | 'TODOS')}
           >
             <option value="TODOS">Todos los Roles</option>
-
             <option value="JEFE">Jefe</option>
             <option value="SUPERVISOR">Supervisor</option>
             <option value="INSPECTOR">Inspector</option>
-
           </select>
 
+
           <select
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={selectedShift}
             onChange={(e) => setSelectedShift(e.target.value as GrupoTurno | 'TODOS')}
           >
@@ -366,7 +366,7 @@ if (searchTerm) {
             Exportar
           </button>
 
-          <button 
+          <button
             onClick={() => openModal('create')}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
           >
@@ -457,21 +457,21 @@ if (searchTerm) {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center gap-2">
-                      <button 
+                      <button
                         onClick={() => openModal('view', employee)}
                         className="text-blue-600 hover:text-blue-900"
                         title="Ver detalles"
                       >
                         <Eye className="h-4 w-4" />
                       </button>
-                      <button 
+                      <button
                         onClick={() => openModal('edit', employee)}
                         className="text-yellow-600 hover:text-yellow-900"
                         title="Editar"
                       >
                         <Edit2 className="h-4 w-4" />
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleDelete(employee.id)}
                         className="text-red-600 hover:text-red-900"
                         title="Eliminar"
@@ -494,7 +494,7 @@ if (searchTerm) {
             <div className="p-6 border-b border-gray-200">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold">
-                  {modalMode === 'create' ? 'Nuevo Empleado' : 
+                  {modalMode === 'create' ? 'Nuevo Empleado' :
                     modalMode === 'edit' ? 'Editar Empleado' : 'Detalles del Empleado'}
                 </h2>
                 <button onClick={closeModal} className="text-gray-400 hover:text-gray-600">
@@ -605,7 +605,7 @@ if (searchTerm) {
                         type="text"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={formData.nombre || ''}
-                        onChange={(e) => setFormData({...formData, nombre: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                       />
                     </div>
                     <div>
@@ -616,7 +616,7 @@ if (searchTerm) {
                         type="text"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={formData.apellido || ''}
-                        onChange={(e) => setFormData({...formData, apellido: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, apellido: e.target.value })}
                       />
                     </div>
                   </div>
@@ -629,7 +629,7 @@ if (searchTerm) {
                       type="email"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       value={formData.email || ''}
-                      onChange={(e) => setFormData({...formData, email: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     />
                   </div>
 
@@ -641,7 +641,7 @@ if (searchTerm) {
                       <select
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={formData.rol || 'INSPECTOR'}
-                        onChange={(e) => setFormData({...formData, rol: e.target.value as Rol})}
+                        onChange={(e) => setFormData({ ...formData, rol: e.target.value as Rol })}
                       >
                         <option value="INSPECTOR">Inspector</option>
                         <option value="SUPERVISOR">Supervisor</option>
@@ -655,7 +655,7 @@ if (searchTerm) {
                       <select
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={formData.grupoTurno || 'A'}
-                        onChange={(e) => setFormData({...formData, grupoTurno: e.target.value as GrupoTurno})}
+                        onChange={(e) => setFormData({ ...formData, grupoTurno: e.target.value as GrupoTurno })}
                       >
                         <option value="A">Turno A</option>
                         <option value="B">Turno B</option>
@@ -673,7 +673,7 @@ if (searchTerm) {
                         type="tel"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={formData.telefono || ''}
-                        onChange={(e) => setFormData({...formData, telefono: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
                       />
                     </div>
                     <div>
@@ -684,7 +684,7 @@ if (searchTerm) {
                         type="date"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={formData.fechaNacimiento ? formData.fechaNacimiento.split('T')[0] : ''}
-                        onChange={(e) => setFormData({...formData, fechaNacimiento: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, fechaNacimiento: e.target.value })}
                       />
                     </div>
                   </div>
@@ -697,7 +697,7 @@ if (searchTerm) {
                       type="text"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       value={formData.direccion || ''}
-                      onChange={(e) => setFormData({...formData, direccion: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
                     />
                   </div>
                   <div>
@@ -716,7 +716,7 @@ if (searchTerm) {
                         type="checkbox"
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         checked={formData.activo || false}
-                        onChange={(e) => setFormData({...formData, activo: e.target.checked})}
+                        onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
                       />
                       <span className="text-sm font-medium text-gray-700">
                         Cuenta activa
@@ -742,17 +742,17 @@ if (searchTerm) {
                   {modalMode === 'create' ? 'Crear' : 'Guardar'}
                 </button>
               )}
-            </div>         
+            </div>
           </div>
         </div>
       )}
-      
-            {/* Marca de agua */}
-            {/* <div className="flex items-center justify-center mt-8 gap-x-0">
+
+      {/* Marca de agua */}
+      {/* <div className="flex items-center justify-center mt-8 gap-x-0">
               <span className="text-sm text-gray-700 flex items-center">Powered by
               <WSMSLogo className="h-20 w-20 ml-3" />
               </span>
             </div> */}
-          </div>
+    </div>
   );
 }
