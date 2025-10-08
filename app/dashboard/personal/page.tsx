@@ -37,6 +37,7 @@ interface Inspector {
   rol: Rol;
   telefono: string | null;
   direccion: string | null;
+  horario: string | null;
   fechaNacimiento: string | null;
   activo: boolean;
   grupoTurno: GrupoTurno;
@@ -66,6 +67,7 @@ const generateMockEmployees = (): Inspector[] => {
     rol: roles[Math.floor(Math.random() * roles.length)],
     telefono: `+54 11${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}`,
     direccion: `Calle ${apellidos[(i + 3) % apellidos.length]} ${Math.floor(Math.random() * 100)}, Buenos Aires`,
+    horario: `${8 + Math.floor(Math.random() * 5)}:00 - ${17 + Math.floor(Math.random() * 5)}:00`,
     fechaNacimiento: new Date(1970 + Math.floor(Math.random() * 30), Math.floor(Math.random() * 12), Math.floor(Math.random() * 28)).toISOString(),
     activo: Math.random() > 0.2,
     grupoTurno: grupos[i % grupos.length],
@@ -135,7 +137,7 @@ if (searchTerm) {
   // Modal handlers
   const openModal = (mode: 'view' | 'edit' | 'create', employee?: Inspector) => {
     setModalMode(mode);
-    if (employee) {
+    if (employee ) {
       setSelectedEmployee(employee);
       setFormData({ ...employee });
     } else {
@@ -147,6 +149,7 @@ if (searchTerm) {
         rol: 'INSPECTOR',
         grupoTurno: 'A',
         telefono: '',
+        horario: '',
         direccion: '',
         activo: true
       });
@@ -387,6 +390,9 @@ if (searchTerm) {
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Turno
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Horario
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Estado
@@ -693,6 +699,15 @@ if (searchTerm) {
                       value={formData.direccion || ''}
                       onChange={(e) => setFormData({...formData, direccion: e.target.value})}
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Horario
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g., 9:00 - 18:00"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"  ></input>
                   </div>
 
                   <div>
