@@ -8,17 +8,17 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
+import { ChartLineIcon, FileClockIcon, IdCardIcon, IterationCcwIcon, Repeat, RepeatIcon, StarIcon } from 'lucide-react';
 
 // Map of links to display in the side navigation.
 // Depending on the size of the application, this would be stored in a database.
 const links = [
   { name: 'Home', href: '/dashboard', icon: HomeIcon },
-  {
-    name: 'Invoices',
-    href: '/dashboard/invoices',
-    icon: DocumentDuplicateIcon,
-  },
-  { name: 'Customers', href: '/dashboard/customers', icon: UserGroupIcon },
+  { name: 'Personal', href: '/dashboard/personal', icon: UserGroupIcon },
+  { name: 'Cambios',  href: '/dashboard/cambios',  icon: RepeatIcon },
+  { name: 'Licencias', href: '/dashboard/licencias', icon: FileClockIcon },
+  { name: 'Calificaciones', href: '/dashboard/calificaciones', icon: StarIcon },
+  { name: 'Estadísticas', href: '/dashboard/estadisticas', icon: ChartLineIcon },
 ];
 
 export default function NavLinks() {

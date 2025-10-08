@@ -11,17 +11,18 @@
     "autoprefixer": "10.4.20",
     "bcrypt": "^5.1.1",
     "clsx": "^2.1.1",
+    "lucide-react": "^0.524.0",
     "next": "latest",
     "next-auth": "5.0.0-beta.25",
     "postcss": "8.5.1",
     "postgres": "^3.4.6",
     "react": "latest",
     "react-dom": "latest",
+    "swr": "^2.3.6",
     "tailwindcss": "3.4.17",
     "typescript": "5.7.3",
     "use-debounce": "^10.0.4",
-    "zod": "^3.25.17",
-    "lucide-react": "^0.524.0"
+    "zod": "^3.25.17"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
