@@ -97,6 +97,12 @@ export default function DashboardPage() {
   const [formData, setFormData] = useState<Partial<Inspector>>({});
   const [formError, setFormError] = useState('');
 
+    const horariosPorRol: Record<Rol, string[]> = {
+    INSPECTOR: ["04:00-14:00", "06:00-16:00", "10:00-20:00", "13:00-23:00", "19:00-05:00"],
+    SUPERVISOR: ["05:00-14:00", "14:00-23:00", "23:00-05:00"],
+    JEFE: ["05:00-17:00", "17:00-05:00"],
+  };
+
   // Initialize mock data
   useEffect(() => {
     const mockData = generateMockEmployees();
@@ -741,15 +747,23 @@ const legajoExistente = employees.find(emp =>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Rol
                       </label>
-                      <select
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={formData.rol || 'INSPECTOR'}
-                        onChange={(e) => setFormData({ ...formData, rol: e.target.value as Rol })}
-                      >
-                        <option value="INSPECTOR">Inspector</option>
-                        <option value="SUPERVISOR">Supervisor</option>
-                        <option value="JEFE">Jefe</option>
-                      </select>
+                        <select
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          value={formData.rol || 'INSPECTOR'}
+                          onChange={(e) => {
+                            const nuevoRol = e.target.value as Rol;
+                            setFormData({
+                             ...formData,
+                             rol: nuevoRol,
+                            grupoTurno: horariosPorRol[nuevoRol][0], 
+                            });
+                          }}
+                        >
+                          <option value="INSPECTOR">Inspector</option>
+                          <option value="SUPERVISOR">Supervisor</option>
+                          <option value="JEFE">Jefe</option>
+                        </select>
+
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -807,10 +821,20 @@ const legajoExistente = employees.find(emp =>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Horario
                     </label>
-                    <input
-                      type="text"
-                      placeholder="e.g., 9:00 - 18:00"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"  ></input>
+                   <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={formData.grupoTurno || horariosPorRol[formData.rol || "INSPECTOR"][0]}
+                      onChange={(e) =>
+                        setFormData({ ...formData, grupoTurno: e.target.value as GrupoTurno })
+                      }
+                    >
+                     {horariosPorRol[formData.rol || "INSPECTOR"].map((horario) => (
+                       <option key={horario} value={horario}>
+                          {horario}
+                       </option>
+                      ))}
+                    </select>
+
                   </div>
 
                   <div>
