@@ -620,8 +620,12 @@ const stats = {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
+                      <p className="text-gray-600">Cuenta creada</p>
+                      <p className="font-semibold">{formatDate(selectedEmployee.createdAt)}</p>
+                      {/*
                       <p className="text-sm text-gray-600">ID</p>
                       <p className="font-semibold">{selectedEmployee.id}</p>
+                      */}
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Legajo</p>
@@ -695,6 +699,7 @@ const stats = {
                     </div>
                   </div>
 
+                  {/*
                   <div className="pt-4 border-t border-gray-200">
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
@@ -707,6 +712,7 @@ const stats = {
                       </div>
                     </div>
                   </div>
+                  */}
                 </div>
               ) : (
                 // Edit/Create form
