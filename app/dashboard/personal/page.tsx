@@ -61,6 +61,7 @@ export default function DashboardPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<Rol | 'TODOS'>('TODOS');
   const [selectedShift, setSelectedShift] = useState<GrupoTurno | 'TODOS'>('TODOS');
+   const [selectedHorario, setSelectedHorario] = useState<string>("");
   const [selectedEmployee, setSelectedEmployee] = useState<Inspector | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'view' | 'edit' | 'create'>('view');
@@ -421,7 +422,7 @@ const stats = {
               />
             </div>
           </div>
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-col md:flex-row gap-5">
           
 
           <select
@@ -445,6 +446,21 @@ const stats = {
             <option value="A">Turno A</option>
             <option value="B">Turno B</option>
           </select>
+
+          <select
+             className="px-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+             value={selectedHorario}
+             onChange={(e) => setSelectedHorario(e.target.value)}
+             disabled={selectedRole === "TODOS"} // deshabilitado si no se seleccionó un rol
+            >
+             <option value="">Seleccionar horario laboral</option>
+              {selectedRole !== "TODOS" &&
+                horariosPorRol[selectedRole as keyof typeof horariosPorRol].map((horario) => (
+                  <option key={horario} value={horario}>
+                   {horario}
+                  </option>
+               ))}
+           </select>        
 
           <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center gap-2">
             <Download className="h-4 w-4" />
