@@ -137,7 +137,7 @@ const employees = empleados || [];
         rol: 'INSPECTOR',
         grupoTurno: 'A',
         telefono: '',
-        horario: '',
+        horario:  horariosPorRol['INSPECTOR'][0],
         direccion: '',
         activo: true
       });
@@ -198,21 +198,28 @@ const legajoExistente = employees.find(emp =>
     if (!emailRegex.test(formData.email!)) {  
       setFormError('El formato del email no es válido');
   return;
-} 
+}
+
+  if (formData.telefono && formData.telefono.trim() !== '') {
+  // Acepta: números, espacios, guiones, paréntesis, y el signo +
+  const telefonoRegex = /^[\d\s\-\+\(\)]+$/;
+  if (!telefonoRegex.test(formData.telefono)) {
+    setFormError('El teléfono solo puede contener números, espacios, guiones, paréntesis y el signo +');
+    return;
+  }
+  
+  // Validar que tenga al menos 7 dígitos (sin contar símbolos)
+  const soloNumeros = formData.telefono.replace(/\D/g, '');
+  if (soloNumeros.length < 7) {
+    setFormError('El teléfono debe tener al menos 7 dígitos');
+    return;
+  }
+}
+
 /*  Acepta formato internacional: +54 221 123-4567
 Acepta formato con guiones: 221-123-4567
 Acepta formato sin separadores: 2211234567
 Acepta paréntesis: (221) 123-4567*/
-
-
-  if (formData.telefono && formData.telefono.trim() !== '') {
-    const telefonoRegex = /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/;
-    if (!telefonoRegex.test(formData.telefono)) {
-      setFormError('El formato del teléfono no es válido');
-      return;
-    }
-  }
-
 
 
   // Si pasa las validaciones, limpiar error
@@ -265,11 +272,13 @@ const handleDelete = async (id: string) => {
 
 const calcularEstado = (empleado: Inspector): EstadoEmpleado => {
   if (!empleado.activo) return 'INACTIVO';
+
   
   // Aquí puedes agregar lógica más compleja basada en otros campos
   // Por ejemplo, verificar si tiene ausencias registradas, licencias, etc.
   
   // Por ahora, simplemente retornamos ACTIVO si está activo
+
   return 'ACTIVO';
 };
 
@@ -311,6 +320,8 @@ const stats = {
     };
     return colors[estado];
   };
+
+
 
   // Format date
   const formatDate = (dateString: string | null) => {
@@ -483,7 +494,18 @@ const stats = {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredEmployees.map((employee) => (
+              {filteredEmployees.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center text-gray-500">
+                      <AlertCircle className="h-12 w-12 mb-3 text-blue-500" />
+                      <p className="text-lg font-medium text-gray-900">No se encontraron empleados</p>
+                      <p className="text-sm mt-1">Intenta ajustar los filtros de búsqueda</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : 
+              filteredEmployees.map((employee) => (
                 <tr key={employee.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -519,8 +541,8 @@ const stats = {
                     {(employee.horario)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(employee.estado || 'ACTIVO')}`}>
-                      {employee.estado || 'ACTIVO'}
+                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(calcularEstado(employee))}`}>
+                      {calcularEstado(employee)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -742,7 +764,7 @@ const stats = {
         setFormData({...formData, legajo: e.target.value ? Number(e.target.value) : undefined});
         if (formError) setFormError('');
       }}
-      placeholder="Ej: LEG001"
+      placeholder="Ej: 12345"
     />
   </div>
 
@@ -782,6 +804,7 @@ const stats = {
                             setFormData({
                             ...formData,
                             rol: nuevoRol,
+                            horario: horariosPorRol[nuevoRol][0],
                             grupoTurno: formData.grupoTurno && (formData.grupoTurno === 'A' || formData.grupoTurno === 'B') ? formData.grupoTurno : 'A',
                             });
                           }}
