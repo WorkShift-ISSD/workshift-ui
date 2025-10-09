@@ -27,7 +27,7 @@ export default function Footer() {
       {/* 🔹 Sección derecha */}
       <div className="flex items-center justify-center gap-2">
         <span className="text-sm">Powered by</span>
-        <WSMSLogo className="h-10 w-10" />
+        
       </div>
     </footer>
   );
