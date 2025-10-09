@@ -48,9 +48,9 @@ input[type='number']::-webkit-outer-spin-button {
   100% { transform: rotate(360deg) translate(25px) rotate(-360deg); }
 }
 
-@keyframes colorchange {
+@keyframes colorchange {v
   0% { background: #f8c291; }
-  20% { background: #e55039; }
+  20% { background: #f1ab20; }
   40% { background: #4a69bd; }
   60% { background: #38ada9; }
   80% { background: #f6b93b; }
