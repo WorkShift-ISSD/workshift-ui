@@ -159,13 +159,29 @@ const employees = empleados || [];
       return;
     }
 
+    const nombreRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
+  if (!nombreRegex.test(formData.nombre)) {
+    setFormError('El nombre solo puede contener letras');
+    return;
+  }
+
   if (!formData.apellido || formData.apellido.trim() === '') {
     setFormError('El apellido es obligatorio');
     return;
   }
 
+  if (!nombreRegex.test(formData.apellido)) {
+    setFormError('El apellido solo puede contener letras');
+    return;
+  }
+
   if (!formData.legajo || isNaN(Number(formData.legajo))) {
     setFormError('El legajo es obligatorio');
+    return;
+  }
+
+  if (isNaN(Number(formData.legajo))) {
+    setFormError('El legajo debe ser numérico');
     return;
   }
 
@@ -177,6 +193,27 @@ const legajoExistente = employees.find(emp =>
     setFormError('El legajo ya está asignado a otro empleado');
     return;
   }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email!)) {  
+      setFormError('El formato del email no es válido');
+  return;
+} 
+/*  Acepta formato internacional: +54 221 123-4567
+Acepta formato con guiones: 221-123-4567
+Acepta formato sin separadores: 2211234567
+Acepta paréntesis: (221) 123-4567*/
+
+
+  if (formData.telefono && formData.telefono.trim() !== '') {
+    const telefonoRegex = /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/;
+    if (!telefonoRegex.test(formData.telefono)) {
+      setFormError('El formato del teléfono no es válido');
+      return;
+    }
+  }
+
+
 
   // Si pasa las validaciones, limpiar error
   setFormError('');
@@ -743,9 +780,9 @@ const stats = {
                           onChange={(e) => {
                             const nuevoRol = e.target.value as Rol;
                             setFormData({
-                             ...formData,
-                             rol: nuevoRol,
-                             grupoTurno: formData.grupoTurno && (formData.grupoTurno === 'A' || formData.grupoTurno === 'B') ? formData.grupoTurno : 'A',
+                            ...formData,
+                            rol: nuevoRol,
+                            grupoTurno: formData.grupoTurno && (formData.grupoTurno === 'A' || formData.grupoTurno === 'B') ? formData.grupoTurno : 'A',
                             });
                           }}
                         >
@@ -811,17 +848,16 @@ const stats = {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Horario
                     </label>
-                   <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={formData.grupoTurno || horariosPorRol[formData.rol || "INSPECTOR"][0]}
+                    <select
+                      value={formData.horario || horariosPorRol[formData.rol || "INSPECTOR"][0]}
                       onChange={(e) =>
-                        setFormData({ ...formData, grupoTurno: e.target.value as GrupoTurno })
-                      }
-                    >
-                     {horariosPorRol[formData.rol || "INSPECTOR"].map((horario) => (
-                       <option key={horario} value={horario}>
+                      setFormData({ ...formData, horario: e.target.value })
+              }
+              >
+                    {horariosPorRol[formData.rol || "INSPECTOR"].map((horario) => (
+                        <option key={horario} value={horario}>
                           {horario}
-                       </option>
+                      </option>
                       ))}
                     </select>
 
