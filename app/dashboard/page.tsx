@@ -386,7 +386,9 @@ export default function DashboardHome() {
           </div>
 
           <div className="space-y-3">
-            {cambios && cambios.map((cambio: TipoCambio) => {
+            {cambios && [...cambios]
+              .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
+              .map((cambio: TipoCambio) => {
               const { day, month } = formatDate(cambio.fecha);
               return (
                 <div 
