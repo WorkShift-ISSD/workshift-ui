@@ -485,9 +485,11 @@ const stats = {
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Turnos/Mes
                 </th>
+                {/*}
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Último Acceso
                 </th>
+                */}
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Acciones
                 </th>
@@ -551,9 +553,11 @@ const stats = {
                       {employee.turnosEsteMes}
                     </div>
                   </td>
+                  {/*}
                   <td className="px-6 py-4 text-center whitespace-nowrap text-sm text-gray-500">
                     {formatLastLogin(employee.ultimoLogin)}
                   </td>
+                  */}
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center gap-2">
                       <button
