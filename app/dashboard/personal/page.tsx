@@ -118,8 +118,13 @@ const employees = empleados || [];
       filtered = filtered.filter(emp => emp.grupoTurno === selectedShift);
     }
 
+    // Horario Laboral Filter
+    if (selectedHorario) {
+    filtered = filtered.filter(emp => emp.horario === selectedHorario);
+  }
+
     setFilteredEmployees(filtered);
-  }, [searchTerm, selectedRole, selectedShift, employees]);
+  }, [searchTerm, selectedRole, selectedShift, selectedHorario, employees]);
 
   // Modal handlers
   const openModal = (mode: 'view' | 'edit' | 'create', employee?: Inspector) => {
