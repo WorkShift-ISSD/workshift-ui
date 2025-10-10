@@ -386,7 +386,9 @@ export default function DashboardHome() {
           </div>
 
           <div className="space-y-3">
-            {cambios && cambios.map((cambio: TipoCambio) => {
+            {cambios && [...cambios]
+              .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
+              .map((cambio: TipoCambio) => {
               const { day, month } = formatDate(cambio.fecha);
               return (
                 <div 
@@ -413,34 +415,7 @@ export default function DashboardHome() {
                       {cambio.estado}
                     </span>
                     
-                    {/* Acciones rápidas para pendientes */}
-                    {cambio.estado === 'PENDIENTE' && (
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => handleUpdateEstado(cambio.id, 'APROBADO')}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                          title="Aprobar"
-                        >
-                          <Check className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleUpdateEstado(cambio.id, 'RECHAZADO')}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Rechazar"
-                        >
-                          <XIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-                    )}
-                    
-                    {/* Botón eliminar */}
-                    <button
-                      onClick={() => handleDelete(cambio.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                      title="Eliminar"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+
                   </div>
                 </div>
               );

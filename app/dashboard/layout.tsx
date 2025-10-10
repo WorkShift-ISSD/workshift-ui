@@ -1,7 +1,25 @@
-import SideNav from '@/app/ui/dashboard/sidenav';
-import Footer from '../components/Footer';
+"use client";
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import SideNav from "../ui/dashboard/sidenav";
+
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const [isAuthorized, setIsAuthorized] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/");
+    } else {
+      setIsAuthorized(true);
+    }
+  }, [router]);
+
+  if (!isAuthorized) return null; // evita parpadeos antes de validar
+
   return (
     <div className="flex h-screen flex-col md:flex-row md:overflow-hidden">
       <div className="w-full flex-none md:w-64">

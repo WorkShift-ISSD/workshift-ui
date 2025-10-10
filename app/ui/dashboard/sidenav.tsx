@@ -9,7 +9,7 @@ export default function SideNav() {
     <div className="flex h-full flex-col px-3 py-4 md:px-2">
       <Link
         className="mb-2 flex h-32 items-center justify-center rounded-md bg-ws-background p-4 md:h-20" //caja azul donde está el logo en md:h-20 está la altura de la vista normal
-        href="/"
+        href=""
       >
         <div className="relative w-[99%] h-[80px] md:h-[120px]">
           <MigraLogo className=" relative w-[99%] h-[80px] md:h-[120px]"/>
