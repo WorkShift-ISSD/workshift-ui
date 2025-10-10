@@ -61,12 +61,14 @@ export default function DashboardPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<Rol | 'TODOS'>('TODOS');
   const [selectedShift, setSelectedShift] = useState<GrupoTurno | 'TODOS'>('TODOS');
-  const [selectedHorario, setSelectedHorario] = useState<string>("");
+  const [selectedHorario, setSelectedHorario] = useState<string>("TODOS");
   const [selectedEmployee, setSelectedEmployee] = useState<Inspector | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'view' | 'edit' | 'create'>('view');
   const [formData, setFormData] = useState<Partial<Inspector>>({});
   const [formError, setFormError] = useState('');
+  
+
 
   const {
     empleados,
@@ -107,6 +109,8 @@ export default function DashboardPage() {
       });
     }
 
+    
+
 
     // Role filter
     if (selectedRole !== 'TODOS') {
@@ -119,12 +123,16 @@ export default function DashboardPage() {
     }
 
     // Horario Laboral Filter
-    if (selectedHorario) {
-      filtered = filtered.filter(emp => emp.horario === selectedHorario);
-    }
+    if (selectedHorario && selectedHorario !== 'TODOS') {
+  filtered = filtered.filter(emp => emp.horario === selectedHorario);
+}
 
     setFilteredEmployees(filtered);
   }, [searchTerm, selectedRole, selectedShift, selectedHorario, employees]);
+
+  useEffect(() => {
+  setSelectedHorario('TODOS');
+}, [selectedRole]);
 
   // Modal handlers
   const openModal = (mode: 'view' | 'edit' | 'create', employee?: Inspector) => {
