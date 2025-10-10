@@ -15,13 +15,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       router.push("/");
     } else {
       setIsAuthorized(true);
+
+      const tokenBackup = localStorage.getItem("token");
+      localStorage.clear();
+      if (tokenBackup) {
+        localStorage.setItem("token", tokenBackup);
+      }
     }
   }, [router]);
 
   if (!isAuthorized) return null; // evita parpadeos antes de validar
 
   return (
-    <div className="flex h-screen flex-col md:flex-row md:overflow-hidden">
+    <div className="flex min-h-screen flex-col md:flex-row md:overflow-hidden">
       <div className="w-full flex-none md:w-64">
         <SideNav />
       </div>
