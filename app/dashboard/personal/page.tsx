@@ -437,9 +437,9 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-sm text-gray-600text-sm text-gray-500 dark:text-gray-400">Total Empleados</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.total}</p>
+              <p className="text-2xl font-bold text-blue-400 dark:text-blue-400">{stats.total}</p>
             </div>
-            <div className="p-3 bg-blue-100 rounded-lg">
+            <div className="p-3 bg-blue-100 rounded-lg dark:bg-blue-900">
               <Briefcase className="h-6 w-6 text-blue-600" />
             </div>
           </div>
@@ -451,7 +451,7 @@ export default function DashboardPage() {
               <p className="text-sm text-gray-600text-sm text-gray-500 dark:text-gray-400">Activos</p>
               <p className="text-2xl font-bold text-green-600">{stats.activos}</p>
             </div>
-            <div className="p-3 bg-green-100 rounded-lg">
+            <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
               <Check className="h-6 w-6 text-green-600" />
             </div>
           </div>
@@ -463,7 +463,7 @@ export default function DashboardPage() {
               <p className="text-sm text-gray-600text-sm text-gray-500 dark:text-gray-400">En Licencia</p>
               <p className="text-2xl font-bold text-yellow-600">{stats.enLicencia}</p>
             </div>
-            <div className="p-3 bg-yellow-100 rounded-lg">
+            <div className="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
               <Calendar className="h-6 w-6 text-yellow-600" />
             </div>
           </div>
@@ -475,7 +475,7 @@ export default function DashboardPage() {
               <p className="text-sm text-gray-600text-sm text-gray-500 dark:text-gray-400">Ausentes</p>
               <p className="text-2xl font-bold text-red-600">{stats.ausentes}</p>
             </div>
-            <div className="p-3 bg-red-100 rounded-lg">
+            <div className="p-3 bg-red-100 dark:bg-red-900 rounded-lg">
               <AlertCircle className="h-6 w-6 text-red-600" />
             </div>
           </div>
@@ -491,7 +491,7 @@ export default function DashboardPage() {
             <input
               type="text"
               placeholder="Buscar por nombre, email o Legajo..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+              className="w-full pl-10 pr-4 py-2 dark:bg-gray-700 dark:border-gray-600 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -502,7 +502,7 @@ export default function DashboardPage() {
         <div className="flex flex-col sm:flex-wrap md:flex-row gap-3 md:gap-4 w-full justify-between items-stretch">
           {/* Rol */}
           <select
-            className="flex-1 min-w-[180px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 text-sm sm:text-base"
+            className="flex-1 dark:text-gray-500 min-w-[180px] px-4 py-2 dark:bg-gray-700 border dark:border-gray-600 border-gray-200 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 text-sm sm:text-base"
             value={selectedRole}
             onChange={(e) => setSelectedRole(e.target.value as Rol | 'TODOS')}
           >
@@ -514,7 +514,7 @@ export default function DashboardPage() {
 
           {/* Turno */}
           <select
-            className="flex-1 min-w-[160px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 text-sm sm:text-base"
+            className="flex-1 dark:text-gray-500 min-w-[160px] dark:bg-gray-700 border dark:border-gray-600 border-gray-200 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 text-sm sm:text-base"
             value={selectedShift}
             onChange={(e) => setSelectedShift(e.target.value as GrupoTurno | 'TODOS')}
           >
@@ -525,7 +525,7 @@ export default function DashboardPage() {
 
           {/* Horario */}
           <select
-            className="flex-1 min-w-[160px] px-4 pr-7 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 text-sm sm:text-base disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
+            className="flex-1 min-w-[160px] px-4 pr-7 dark:text-gray-500 py-2 dark:bg-gray-700 dark:border-gray-600 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 text-sm sm:text-base disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
             value={selectedHorario}
             onChange={(e) => setSelectedHorario(e.target.value)}
             disabled={selectedRole === "TODOS"}
@@ -541,7 +541,7 @@ export default function DashboardPage() {
 
           {/* Botón Exportar */}
           <button 
-            className="flex-1 sm:flex-none px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center justify-center gap-2 text-sm sm:text-base transition-colors"
+            className="flex-1 sm:flex-none px-4 dark:text-gray-500 py-2 dark:bg-gray-700 dark:border-gray-600 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center justify-center gap-2 text-sm sm:text-base transition-colors"
             title="Exportar datos"
           >
             <Download className="h-4 w-4" />
