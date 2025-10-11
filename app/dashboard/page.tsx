@@ -52,9 +52,10 @@ export default function DashboardHome() {
   });
 
   // Calcular porcentaje cubierto
-  const porcentajeCubierto = turnosData 
-    ? Math.round((turnosData.guardiasCubiertas / turnosData.total) * 100)
-    : 0;
+  const porcentajeCubierto = (() => {
+    if (!turnosData || turnosData.misGuardias === 0) return 0;
+    return Math.round((turnosData.guardiasCubiertas / turnosData.misGuardias) * 100);
+  })();
 
   // Función para formatear fecha
   const formatDate = (dateString: string) => {
