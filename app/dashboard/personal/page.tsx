@@ -88,20 +88,20 @@ export default function DashboardPage() {
   // Calcular estado del empleado
   const calcularEstado = (empleado: Inspector): EstadoEmpleado => {
     if (!empleado.activo) return 'INACTIVO';
-    
+
     // Si tiene campos adicionales para estado
     if (empleado.enLicencia) return 'LICENCIA';
     if (empleado.ausente) return 'AUSENTE';
-    
+
     // Si el empleado no ha iniciado sesión en más de 7 días, considerarlo ausente
     if (empleado.ultimoLogin) {
       const ultimoAcceso = new Date(empleado.ultimoLogin);
       const ahora = new Date();
       const diasSinAcceso = Math.floor((ahora.getTime() - ultimoAcceso.getTime()) / (1000 * 60 * 60 * 24));
-      
+
       if (diasSinAcceso > 7) return 'AUSENTE';
     }
-    
+
     return 'ACTIVO';
   };
 
@@ -412,8 +412,8 @@ export default function DashboardPage() {
           <AlertCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Error al cargar empleados</h2>
           <p className="text-gray-600 mb-4">{error}</p>
-          <button 
-            onClick={() => window.location.reload()} 
+          <button
+            onClick={() => window.location.reload()}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Reintentar
@@ -426,72 +426,72 @@ export default function DashboardPage() {
   return (
     <div className="p-6 max-w-7xl mx-auto overflow-y-auto">
       {/* Header */}
-      <div className="mb-6">
+      <div className="  ">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Gestión de Empleados</h1>
         <p className="text-gray-600 dark:text-gray-400 mt-1">Administra los empleados, turnos y permisos del sistema WorkShift</p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Empleados</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-2 sm:mb-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Total Empleados</p>
+              <p className="text-xl sm:text-2xl font-bold text-blue-400 dark:text-blue-400 truncate">{stats.total}</p>
             </div>
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <Briefcase className="h-6 w-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Activos</p>
-              <p className="text-2xl font-bold text-green-600">{stats.activos}</p>
-            </div>
-            <div className="p-3 bg-green-100 rounded-lg">
-              <Check className="h-6 w-6 text-green-600" />
+            <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900 rounded-lg ml-2 flex-shrink-0">
+              <Briefcase className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">En Licencia</p>
-              <p className="text-2xl font-bold text-yellow-600">{stats.enLicencia}</p>
+        <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-2 sm:mb-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Activos</p>
+              <p className="text-xl sm:text-2xl font-bold text-green-600 truncate">{stats.activos}</p>
             </div>
-            <div className="p-3 bg-yellow-100 rounded-lg">
-              <Calendar className="h-6 w-6 text-yellow-600" />
+            <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900 rounded-lg ml-2 flex-shrink-0">
+              <Check className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Ausentes</p>
-              <p className="text-2xl font-bold text-red-600">{stats.ausentes}</p>
+        <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-2 sm:mb-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">En Licencia</p>
+              <p className="text-xl sm:text-2xl font-bold text-yellow-600 truncate">{stats.enLicencia}</p>
             </div>
-            <div className="p-3 bg-red-100 rounded-lg">
-              <AlertCircle className="h-6 w-6 text-red-600" />
+            <div className="p-2 sm:p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg ml-2 flex-shrink-0">
+              <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-2 sm:mb-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Ausentes</p>
+              <p className="text-xl sm:text-2xl font-bold text-red-600 truncate">{stats.ausentes}</p>
+            </div>
+            <div className="p-2 sm:p-3 bg-red-100 dark:bg-red-900 rounded-lg ml-2 flex-shrink-0">
+              <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
             </div>
           </div>
         </div>
       </div>
 
       {/* Filters and Actions */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6 w-full">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
         {/* Input de búsqueda */}
         <div className="w-full mb-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5 " />
             <input
               type="text"
               placeholder="Buscar por nombre, email o Legajo..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+              className="w-full pl-10 pr-4 py-2 dark:bg-gray-700 dark:border-gray-600 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -502,7 +502,7 @@ export default function DashboardPage() {
         <div className="flex flex-col sm:flex-wrap md:flex-row gap-3 md:gap-4 w-full justify-between items-stretch">
           {/* Rol */}
           <select
-            className="flex-1 min-w-[180px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 text-sm sm:text-base"
+            className="flex-1 dark:text-gray-500 min-w-[180px] px-4 py-2 dark:bg-gray-700 border dark:border-gray-600 border-gray-200 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 text-sm sm:text-base"
             value={selectedRole}
             onChange={(e) => setSelectedRole(e.target.value as Rol | 'TODOS')}
           >
@@ -514,7 +514,7 @@ export default function DashboardPage() {
 
           {/* Turno */}
           <select
-            className="flex-1 min-w-[160px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 text-sm sm:text-base"
+            className="flex-1 dark:text-gray-500 min-w-[160px] dark:bg-gray-700 border dark:border-gray-600 border-gray-200 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 text-sm sm:text-base"
             value={selectedShift}
             onChange={(e) => setSelectedShift(e.target.value as GrupoTurno | 'TODOS')}
           >
@@ -525,7 +525,7 @@ export default function DashboardPage() {
 
           {/* Horario */}
           <select
-            className="flex-1 min-w-[160px] px-4 pr-7 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 text-sm sm:text-base disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
+            className="flex-1 min-w-[160px] px-4 pr-7 dark:text-gray-500 py-2 dark:bg-gray-700 dark:border-gray-600 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 text-sm sm:text-base disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
             value={selectedHorario}
             onChange={(e) => setSelectedHorario(e.target.value)}
             disabled={selectedRole === "TODOS"}
@@ -540,8 +540,8 @@ export default function DashboardPage() {
           </select>
 
           {/* Botón Exportar */}
-          <button 
-            className="flex-1 sm:flex-none px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center justify-center gap-2 text-sm sm:text-base transition-colors"
+          <button
+            className="flex-1 sm:flex-none px-4 dark:text-gray-500 py-2 dark:bg-gray-700 dark:border-gray-600 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center justify-center gap-2 text-sm sm:text-base transition-colors"
             title="Exportar datos"
           >
             <Download className="h-4 w-4" />
@@ -560,122 +560,149 @@ export default function DashboardPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 ">
-        <div className="overflow-x-auto ">
-          <table className="w-full ">
-            <thead className="bg-gray-50 border-b border-gray-200">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-300">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            {/* ENCABEZADO */}
+            <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 transition-colors">
               <tr>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Empleado
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Rol
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Turno
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Horario
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Estado
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Turnos/Mes
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Acciones
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+
+            {/* CUERPO */}
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 transition-colors">
               {filteredEmployees.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center justify-center text-gray-500">
-                      <AlertCircle className="h-12 w-12 mb-3 text-blue-500" />
-                      <p className="text-lg font-medium text-gray-900">No se encontraron empleados</p>
-                      <p className="text-sm mt-1">Intenta ajustar los filtros de búsqueda</p>
+                    <div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
+                      <AlertCircle className="h-12 w-12 mb-3 text-blue-500 dark:text-blue-400" />
+                      <p className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                        No se encontraron empleados
+                      </p>
+                      <p className="text-sm mt-1 text-gray-500 dark:text-gray-400">
+                        Intenta ajustar los filtros de búsqueda
+                      </p>
                     </div>
                   </td>
                 </tr>
-              ) :
+              ) : (
                 filteredEmployees.map((employee) => (
-                  <tr key={employee.id} className="hover:bg-gray-50 transition-colors">
+                  <tr
+                    key={employee.id}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
                           <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
-                            {employee.nombre[0]}{employee.apellido[0]}
+                            {employee.nombre[0]}
+                            {employee.apellido[0]}
                           </div>
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                             {employee.nombre} {employee.apellido}
                           </div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
                             {employee.email}
                           </div>
-                          <div className="text-xs text-gray-400">
+                          <div className="text-xs text-gray-400 dark:text-gray-500">
                             Legajo: {employee.legajo}
                           </div>
                         </div>
                       </div>
                     </td>
+
                     <td className="px-6 py-4 text-center whitespace-nowrap">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getRoleColor(employee.rol)}`}>
+                      <span
+                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getRoleColor(
+                          employee.rol
+                        )}`}
+                      >
                         {employee.rol}
                       </span>
                     </td>
+
                     <td className="px-6 py-4 text-center whitespace-nowrap">
-                      <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getShiftColor(employee.grupoTurno)}`}>
+                      <span
+                        className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getShiftColor(
+                          employee.grupoTurno
+                        )}`}
+                      >
                         {employee.grupoTurno}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-center whitespace-nowrap text-sm text-gray-500">
+
+                    <td className="px-6 py-4 text-center whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {employee.horario || 'No asignado'}
                     </td>
+
                     <td className="px-6 py-4 text-center whitespace-nowrap">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(calcularEstado(employee))}`}>
+                      <span
+                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
+                          calcularEstado(employee)
+                        )}`}
+                      >
                         {calcularEstado(employee)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-center whitespace-nowrap text-sm text-gray-900">
+
+                    <td className="px-6 py-4 text-center whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                       <div className="flex justify-center items-center gap-2">
-                        <Clock className="h-4 w-4 text-gray-400" />
+                        <Clock className="h-4 w-4 text-gray-400 dark:text-gray-300" />
                         {employee.turnosEsteMes || 0}
                       </div>
                     </td>
+
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => openModal('view', employee)}
-                          className="text-blue-600 hover:text-blue-900 transition-colors"
+                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
                           title="Ver detalles"
-                          aria-label={`Ver detalles de ${employee.nombre} ${employee.apellido}`}
                         >
                           <Eye className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => openModal('edit', employee)}
-                          className="text-yellow-600 hover:text-yellow-900 transition-colors"
+                          className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 transition-colors"
                           title="Editar"
-                          aria-label={`Editar ${employee.nombre} ${employee.apellido}`}
                         >
                           <Edit2 className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(employee.id)}
-                          className="text-red-600 hover:text-red-900 transition-colors"
+                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors"
                           title="Eliminar"
-                          aria-label={`Eliminar ${employee.nombre} ${employee.apellido}`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </td>
                   </tr>
-                ))}
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -683,17 +710,17 @@ export default function DashboardPage() {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
+        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl transition-colors">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
               <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                   {modalMode === 'create' ? 'Nuevo Empleado' :
                     modalMode === 'edit' ? 'Editar Empleado' : 'Detalles del Empleado'}
                 </h2>
-                <button 
-                  onClick={closeModal} 
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                <button
+                  onClick={closeModal}
+                  className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                   aria-label="Cerrar modal"
                 >
                   <X className="h-6 w-6" />
@@ -704,10 +731,10 @@ export default function DashboardPage() {
             <div className="p-6">
               {/* Error message */}
               {formError && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                   <div className="flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
-                    <p className="text-red-600 text-sm">{formError}</p>
+                    <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                    <p className="text-red-600 dark:text-red-400 text-sm">{formError}</p>
                   </div>
                 </div>
               )}
@@ -717,15 +744,15 @@ export default function DashboardPage() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm text-gray-600">Cuenta creada</p>
-                      <p className="font-semibold">{formatDate(selectedEmployee.createdAt)}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Cuenta creada</p>
+                      <p className="font-semibold text-gray-900 dark:text-gray-100">{formatDate(selectedEmployee.createdAt)}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Legajo</p>
-                      <p className="font-semibold">{selectedEmployee.legajo || 'No asignado'}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Legajo</p>
+                      <p className="font-semibold text-gray-900 dark:text-gray-100">{selectedEmployee.legajo || 'No asignado'}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Estado</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Estado</p>
                       <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(calcularEstado(selectedEmployee))}`}>
                         {calcularEstado(selectedEmployee)}
                       </span>
@@ -734,24 +761,24 @@ export default function DashboardPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm text-gray-600">Nombre Completo</p>
-                      <p className="font-semibold">{selectedEmployee.nombre} {selectedEmployee.apellido}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Nombre Completo</p>
+                      <p className="font-semibold text-gray-900 dark:text-gray-100">{selectedEmployee.nombre} {selectedEmployee.apellido}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Email</p>
-                      <p className="font-semibold break-all">{selectedEmployee.email}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Email</p>
+                      <p className="font-semibold text-gray-900 dark:text-gray-100 break-all">{selectedEmployee.email}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm text-gray-600">Rol</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Rol</p>
                       <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getRoleColor(selectedEmployee.rol)}`}>
                         {selectedEmployee.rol}
                       </span>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Grupo de Turno</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Grupo de Turno</p>
                       <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getShiftColor(selectedEmployee.grupoTurno)}`}>
                         {selectedEmployee.grupoTurno}
                       </span>
@@ -760,45 +787,45 @@ export default function DashboardPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm text-gray-600">Horario Laboral</p>
-                      <p className="font-semibold">{selectedEmployee.horario || 'No asignado'}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Horario Laboral</p>
+                      <p className="font-semibold text-gray-900 dark:text-gray-100">{selectedEmployee.horario || 'No asignado'}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Teléfono</p>
-                      <p className="font-semibold">{selectedEmployee.telefono || 'No registrado'}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Teléfono</p>
+                      <p className="font-semibold text-gray-900 dark:text-gray-100">{selectedEmployee.telefono || 'No registrado'}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm text-gray-600">Fecha de Nacimiento</p>
-                      <p className="font-semibold">{formatDate(selectedEmployee.fechaNacimiento)}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Fecha de Nacimiento</p>
+                      <p className="font-semibold text-gray-900 dark:text-gray-100">{formatDate(selectedEmployee.fechaNacimiento)}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Última actualización</p>
-                      <p className="font-semibold">{formatDate(selectedEmployee.updatedAt)}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Última actualización</p>
+                      <p className="font-semibold text-gray-900 dark:text-gray-100">{formatDate(selectedEmployee.updatedAt)}</p>
                     </div>
                   </div>
 
                   <div>
-                    <p className="text-sm text-gray-600">Dirección</p>
-                    <p className="font-semibold">{selectedEmployee.direccion || 'No registrada'}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Dirección</p>
+                    <p className="font-semibold text-gray-900 dark:text-gray-100">{selectedEmployee.direccion || 'No registrada'}</p>
                   </div>
 
-                  <div className="pt-4 border-t border-gray-200">
-                    <h3 className="font-semibold mb-2">Estadísticas del Mes</h3>
+                  <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Estadísticas del Mes</h3>
                     <div className="grid grid-cols-3 gap-4">
-                      <div className="bg-gray-50 p-3 rounded">
-                        <p className="text-sm text-gray-600">Turnos</p>
-                        <p className="text-xl font-bold">{selectedEmployee.turnosEsteMes || 0}</p>
+                      <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Turnos</p>
+                        <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{selectedEmployee.turnosEsteMes || 0}</p>
                       </div>
-                      <div className="bg-gray-50 p-3 rounded">
-                        <p className="text-sm text-gray-600">Horas</p>
-                        <p className="text-xl font-bold">{selectedEmployee.horasAcumuladas || 0}</p>
+                      <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Horas</p>
+                        <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{selectedEmployee.horasAcumuladas || 0}</p>
                       </div>
-                      <div className="bg-gray-50 p-3 rounded">
-                        <p className="text-sm text-gray-600">Intercambios</p>
-                        <p className="text-xl font-bold">{selectedEmployee.intercambiosPendientes || 0}</p>
+                      <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Intercambios</p>
+                        <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{selectedEmployee.intercambiosPendientes || 0}</p>
                       </div>
                     </div>
                   </div>
@@ -808,16 +835,15 @@ export default function DashboardPage() {
                 <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Nombre <span className="text-red-500">*</span>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Nombre <span className="text-red-500 dark:text-red-400">*</span>
                       </label>
                       <input
                         type="text"
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                          formError && (!formData.nombre || formData.nombre.trim() === '')
-                            ? 'border-red-300 bg-red-50'
-                            : 'border-gray-300'
-                        }`}
+                        className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${formError && (!formData.nombre || formData.nombre.trim() === '')
+                          ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
+                          : 'border-gray-300 dark:border-gray-600'
+                          }`}
                         value={formData.nombre || ''}
                         onChange={(e) => {
                           setFormData({ ...formData, nombre: e.target.value });
@@ -827,16 +853,15 @@ export default function DashboardPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Apellido <span className="text-red-500">*</span>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Apellido <span className="text-red-500 dark:text-red-400">*</span>
                       </label>
                       <input
                         type="text"
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                          formError && (!formData.apellido || formData.apellido.trim() === '')
-                            ? 'border-red-300 bg-red-50'
-                            : 'border-gray-300'
-                        }`}
+                        className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${formError && (!formData.apellido || formData.apellido.trim() === '')
+                          ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
+                          : 'border-gray-300 dark:border-gray-600'
+                          }`}
                         value={formData.apellido || ''}
                         onChange={(e) => {
                           setFormData({ ...formData, apellido: e.target.value });
@@ -849,16 +874,15 @@ export default function DashboardPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Legajo <span className="text-red-500">*</span>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Legajo <span className="text-red-500 dark:text-red-400">*</span>
                       </label>
                       <input
                         type="number"
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                          formError && (!formData.legajo || isNaN(Number(formData.legajo)))
-                            ? 'border-red-300 bg-red-50'
-                            : 'border-gray-300'
-                        }`}
+                        className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${formError && (!formData.legajo || isNaN(Number(formData.legajo)))
+                          ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
+                          : 'border-gray-300 dark:border-gray-600'
+                          }`}
                         value={formData.legajo || ''}
                         onChange={(e) => {
                           setFormData({ ...formData, legajo: e.target.value ? Number(e.target.value) : undefined });
@@ -869,16 +893,15 @@ export default function DashboardPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Email <span className="text-red-500">*</span>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Email <span className="text-red-500 dark:text-red-400">*</span>
                       </label>
                       <input
                         type="email"
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                          formError && (!formData.email || formData.email.trim() === '')
-                            ? 'border-red-300 bg-red-50'
-                            : 'border-gray-300'
-                        }`}
+                        className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${formError && (!formData.email || formData.email.trim() === '')
+                          ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
+                          : 'border-gray-300 dark:border-gray-600'
+                          }`}
                         value={formData.email || ''}
                         onChange={(e) => {
                           setFormData({ ...formData, email: e.target.value });
@@ -891,11 +914,11 @@ export default function DashboardPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Rol <span className="text-red-500">*</span>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Rol <span className="text-red-500 dark:text-red-400">*</span>
                       </label>
                       <select
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
                         value={formData.rol || 'INSPECTOR'}
                         onChange={(e) => {
                           const nuevoRol = e.target.value as Rol;
@@ -913,11 +936,11 @@ export default function DashboardPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Grupo de Turno <span className="text-red-500">*</span>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Grupo de Turno <span className="text-red-500 dark:text-red-400">*</span>
                       </label>
                       <select
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
                         value={formData.grupoTurno || 'A'}
                         onChange={(e) => {
                           setFormData({ ...formData, grupoTurno: e.target.value as GrupoTurno });
@@ -931,11 +954,11 @@ export default function DashboardPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Horario Laboral
                     </label>
                     <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
                       value={formData.horario || horariosPorRol[formData.rol || "INSPECTOR"][0]}
                       onChange={(e) => setFormData({ ...formData, horario: e.target.value })}
                     >
@@ -949,12 +972,12 @@ export default function DashboardPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Teléfono
                       </label>
                       <input
                         type="tel"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
                         value={formData.telefono || ''}
                         onChange={(e) => {
                           setFormData({ ...formData, telefono: e.target.value });
@@ -964,12 +987,12 @@ export default function DashboardPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Fecha de Nacimiento
                       </label>
                       <input
                         type="date"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
                         value={formData.fechaNacimiento ? formData.fechaNacimiento.split('T')[0] : ''}
                         onChange={(e) => setFormData({ ...formData, fechaNacimiento: e.target.value })}
                       />
@@ -977,27 +1000,27 @@ export default function DashboardPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Dirección
                     </label>
                     <input
                       type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
                       value={formData.direccion || ''}
                       onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
                       placeholder="Ej: Calle 123, Cipolletti"
                     />
                   </div>
 
-                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                     <input
                       type="checkbox"
                       id="activo-checkbox"
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                      className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-500 focus:ring-blue-500 dark:focus:ring-blue-400 h-4 w-4 bg-white dark:bg-gray-700"
                       checked={formData.activo !== undefined ? formData.activo : true}
                       onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
                     />
-                    <label htmlFor="activo-checkbox" className="text-sm font-medium text-gray-700 cursor-pointer">
+                    <label htmlFor="activo-checkbox" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
                       Cuenta activa
                     </label>
                   </div>
@@ -1005,17 +1028,17 @@ export default function DashboardPage() {
               )}
             </div>
 
-            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+            <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
               <button
                 onClick={closeModal}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
               >
                 Cancelar
               </button>
               {modalMode !== 'view' && (
                 <button
                   onClick={handleSave}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center gap-2"
                 >
                   {modalMode === 'create' ? (
                     <>

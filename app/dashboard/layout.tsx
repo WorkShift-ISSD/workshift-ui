@@ -26,13 +26,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!isAuthorized) return null; // evita parpadeos antes de validar
 
-  return (
-    <div className="flex h-screen flex-col md:flex-row overflow-hidden dark:bg-gray-900">
-      <div className="w-full flex-none md:w-64 md:overflow-y-auto bg-white dark:bg-gray-900">
-        <SideNav />
-      </div>
-      <div className="flex-grow p-6 overflow-y-auto md:p-12">{children}</div>
-      
+return (
+  <div className="flex h-screen flex-col md:flex-row overflow-hidden bg-gray-50 dark:bg-gray-900 transition-colors">
+    <div className="w-full flex-none md:w-64 md:overflow-y-auto bg-white dark:bg-gray-800 transition-colors">
+      <SideNav />
     </div>
-  );
+    <div className="flex-grow p-6 overflow-y-auto md:p-12 bg-gray-50 dark:bg-gray-900 transition-colors">
+      {children}
+    </div>
+  </div>
+);
+
 }
