@@ -68,10 +68,10 @@ export default function Footer() {
             />
           ) : (
             <Image
-              src="/LogoWSv4-2fondo-blc.png"
+              src="/Logo-v4-2.png"
               alt="WSMS Logo"
               fill
-              className="object-contain"
+              className="object-contain dark:invert"
             />
           )}
         </div>
