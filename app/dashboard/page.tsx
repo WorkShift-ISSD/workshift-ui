@@ -269,7 +269,7 @@ export default function DashboardHome() {
             </div>
             <span className="text-sm text-gray-500 dark:text-gray-400">En oferta</span>
           </div>
-          <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{stats?.turnosOferta || 0}</p>
+          <p className="text-3xl font-bold text-blue-400 dark:text-blue-400">{stats?.turnosOferta || 0}</p>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Turnos disponibles</p>
         </div>
 
@@ -277,11 +277,11 @@ export default function DashboardHome() {
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
-              <CheckCircle className="h-6 w-6 text-green-600" />
+              <CheckCircle className="h-6 w-6 text-green-500" />
             </div>
             <span className="text-sm text-gray-500">Este mes</span>
           </div>
-          <p className="text-3xl font-bold text-green-600 dark:text-green-300">{stats?.aprobados || 0}</p>
+          <p className="text-3xl font-bold text-green-600 dark:text-green-400">{stats?.aprobados || 0}</p>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes aprobadas</p>
         </div>
 
@@ -289,11 +289,11 @@ export default function DashboardHome() {
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
-              <Clock className="h-6 w-6 text-yellow-600" />
+              <Clock className="h-6 w-6 text-yellow-500" />
             </div>
             <span className="text-sm text-gray-500">Esperando</span>
           </div>
-          <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-200">{stats?.pendientes || 0}</p>
+          <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{stats?.pendientes || 0}</p>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes pendientes</p>
         </div>
 
@@ -301,11 +301,11 @@ export default function DashboardHome() {
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-red-100 dark:bg-red-900 rounded-lg">
-              <XCircle className="h-6 w-6 text-red-400" />
+              <XCircle className="h-6 w-6 text-red-500" />
             </div>
             <span className="text-sm text-gray-500">Este mes</span>
           </div>
-          <p className="text-3xl font-bold text-red-600 dark:text-red-300">{stats?.rechazados || 0}</p>
+          <p className="text-3xl font-bold text-red-600 dark:text-red-400">{stats?.rechazados || 0}</p>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes rechazadas</p>
         </div>
       </div>
