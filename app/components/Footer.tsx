@@ -39,7 +39,7 @@ export default function Footer() {
       {/* 🔹 Centro */}
       <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-6 text-xs sm:text-sm">
         <Link
-          href="/privacy"
+          href="/dashboard/privacy"
           className="hover:text-blue-600 dark:hover:text-blue-400 transition"
         >
           Política de Privacidad
@@ -48,7 +48,7 @@ export default function Footer() {
           |
         </span>
         <Link
-          href="/terms"
+          href="/dashboard/terms"
           className="hover:text-blue-600 dark:hover:text-blue-400 transition"
         >
           Términos y Condiciones
