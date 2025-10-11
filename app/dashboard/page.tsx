@@ -368,7 +368,7 @@ export default function DashboardHome() {
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-gray-800"></div>
+                  <div className="w-3 h-3 rounded-full bg-gray-600"></div>
                   <span className="text-sm text-gray-600 dark:text-gray-400">Guardias que me cubrieron</span>
                 </div>
                 <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{turnosData.guardiasQueMeCubrieron}</span>
