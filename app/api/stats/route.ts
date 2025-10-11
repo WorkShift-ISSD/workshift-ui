@@ -4,7 +4,7 @@ import { sql } from '../../lib/postgres';
 
 export async function GET(
   request: NextRequest,
- context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const currentMonth = new Date().toISOString().slice(0, 7);

@@ -424,11 +424,11 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 max-w-7xl mx-auto overflow-y-auto">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Gestión de Empleados</h1>
-        <p className="text-gray-600 mt-1">Administra los empleados, turnos y permisos del sistema WorkShift</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Gestión de Empleados</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Administra los empleados, turnos y permisos del sistema WorkShift</p>
       </div>
 
       {/* Stats Cards */}
@@ -525,7 +525,7 @@ export default function DashboardPage() {
 
           {/* Horario */}
           <select
-            className="flex-1 min-w-[160px] px-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 text-sm sm:text-base disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
+            className="flex-1 min-w-[160px] px-4 pr-7 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 text-sm sm:text-base disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
             value={selectedHorario}
             onChange={(e) => setSelectedHorario(e.target.value)}
             disabled={selectedRole === "TODOS"}
@@ -560,9 +560,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 ">
+        <div className="overflow-x-auto ">
+          <table className="w-full ">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">

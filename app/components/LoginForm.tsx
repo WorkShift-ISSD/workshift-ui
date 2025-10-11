@@ -12,7 +12,7 @@ export default function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (email === "admin@workshift.com" && password === "1234") {
+    if (email === "admin@workshift.com" && password === "Workshift25") {
       localStorage.setItem("token", "fake-jwt-token");
       router.push("/loading"); // ← redirige a pantalla de carga
       setTimeout(() => {
