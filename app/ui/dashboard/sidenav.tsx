@@ -6,9 +6,9 @@ import LogoutButton from '@/app/components/LogoutButton';
 
 export default function SideNav() {
   return (
-    <div className="flex h-full flex-col px-3 py-4 md:px-2 bg-white dark:bg-gray-700">
+    <div className="flex h-full flex-col px-3 py-4 md:px-2 bg-white dark:bg-gray-800">
       <Link
-        className="mb-2 flex h-32 items-center justify-center rounded-md bg-ws-background dark:bg-gray-800 p-4 md:h-20"
+        className="mb-8 flex h-32 items-center justify-center rounded-md bg-ws-background dark:bg-gray-800 p-4 md:h-20"
         href=""
       >
         <div className="relative w-[99%] h-[80px] md:h-[120px]">
