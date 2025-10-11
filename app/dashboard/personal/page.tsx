@@ -432,51 +432,51 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-sm text-gray-600text-sm text-gray-500 dark:text-gray-400">Total Empleados</p>
-              <p className="text-2xl font-bold text-blue-400 dark:text-blue-400">{stats.total}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-2 sm:mb-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Total Empleados</p>
+              <p className="text-xl sm:text-2xl font-bold text-blue-400 dark:text-blue-400 truncate">{stats.total}</p>
             </div>
-            <div className="p-3 bg-blue-100 rounded-lg dark:bg-blue-900">
-              <Briefcase className="h-6 w-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600text-sm text-gray-500 dark:text-gray-400">Activos</p>
-              <p className="text-2xl font-bold text-green-600">{stats.activos}</p>
-            </div>
-            <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
-              <Check className="h-6 w-6 text-green-600" />
+            <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900 rounded-lg ml-2 flex-shrink-0">
+              <Briefcase className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600text-sm text-gray-500 dark:text-gray-400">En Licencia</p>
-              <p className="text-2xl font-bold text-yellow-600">{stats.enLicencia}</p>
+        <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-2 sm:mb-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Activos</p>
+              <p className="text-xl sm:text-2xl font-bold text-green-600 truncate">{stats.activos}</p>
             </div>
-            <div className="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
-              <Calendar className="h-6 w-6 text-yellow-600" />
+            <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900 rounded-lg ml-2 flex-shrink-0">
+              <Check className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600text-sm text-gray-500 dark:text-gray-400">Ausentes</p>
-              <p className="text-2xl font-bold text-red-600">{stats.ausentes}</p>
+        <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-2 sm:mb-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">En Licencia</p>
+              <p className="text-xl sm:text-2xl font-bold text-yellow-600 truncate">{stats.enLicencia}</p>
             </div>
-            <div className="p-3 bg-red-100 dark:bg-red-900 rounded-lg">
-              <AlertCircle className="h-6 w-6 text-red-600" />
+            <div className="p-2 sm:p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg ml-2 flex-shrink-0">
+              <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-2 sm:mb-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Ausentes</p>
+              <p className="text-xl sm:text-2xl font-bold text-red-600 truncate">{stats.ausentes}</p>
+            </div>
+            <div className="p-2 sm:p-3 bg-red-100 dark:bg-red-900 rounded-lg ml-2 flex-shrink-0">
+              <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
             </div>
           </div>
         </div>
@@ -841,8 +841,8 @@ export default function DashboardPage() {
                       <input
                         type="text"
                         className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${formError && (!formData.nombre || formData.nombre.trim() === '')
-                            ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
-                            : 'border-gray-300 dark:border-gray-600'
+                          ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
+                          : 'border-gray-300 dark:border-gray-600'
                           }`}
                         value={formData.nombre || ''}
                         onChange={(e) => {
@@ -859,8 +859,8 @@ export default function DashboardPage() {
                       <input
                         type="text"
                         className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${formError && (!formData.apellido || formData.apellido.trim() === '')
-                            ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
-                            : 'border-gray-300 dark:border-gray-600'
+                          ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
+                          : 'border-gray-300 dark:border-gray-600'
                           }`}
                         value={formData.apellido || ''}
                         onChange={(e) => {
@@ -880,8 +880,8 @@ export default function DashboardPage() {
                       <input
                         type="number"
                         className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${formError && (!formData.legajo || isNaN(Number(formData.legajo)))
-                            ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
-                            : 'border-gray-300 dark:border-gray-600'
+                          ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
+                          : 'border-gray-300 dark:border-gray-600'
                           }`}
                         value={formData.legajo || ''}
                         onChange={(e) => {
@@ -899,8 +899,8 @@ export default function DashboardPage() {
                       <input
                         type="email"
                         className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${formError && (!formData.email || formData.email.trim() === '')
-                            ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
-                            : 'border-gray-300 dark:border-gray-600'
+                          ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
+                          : 'border-gray-300 dark:border-gray-600'
                           }`}
                         value={formData.email || ''}
                         onChange={(e) => {
