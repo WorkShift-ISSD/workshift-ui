@@ -5,8 +5,8 @@ import ThemeToggle from './components/ThemeToggle';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className="h-full">
-      <body className={`${inter.className} antialiased flex flex-col min-h-screen`}>
+    <html lang="es" className="h-full bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 transition-colors duration-300">
+      <body className={`${inter.className} antialiased flex flex-col min-h-screen transition-colors duration-300`}>
         <div className="fixed top-4 right-4 z-50">
           <ThemeToggle />
         </div>

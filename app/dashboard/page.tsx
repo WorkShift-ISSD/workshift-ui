@@ -170,11 +170,11 @@ export default function DashboardHome() {
 
       {/* Formulario de creación */}
       {showCreateForm && (
-        <div className="mb-8 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Crear nuevo cambio</h2>
+        <div className="mb-8 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Crear nuevo cambio</h2>
           <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Fecha
               </label>
               <input
@@ -182,7 +182,7 @@ export default function DashboardHome() {
                 required
                 value={formData.fecha}
                 onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent rounded-lg transition-colors"
               />
             </div>
             
@@ -196,7 +196,7 @@ export default function DashboardHome() {
                 placeholder="Ej: Nocturno - Inspector Gadget"
                 value={formData.turno}
                 onChange={(e) => setFormData({ ...formData, turno: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent rounded-lg transition-colors"
               />
             </div>
             
@@ -210,7 +210,7 @@ export default function DashboardHome() {
                 placeholder="Nombre del solicitante"
                 value={formData.solicitante}
                 onChange={(e) => setFormData({ ...formData, solicitante: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent rounded-lg transition-colors"
               />
             </div>
             
@@ -224,7 +224,7 @@ export default function DashboardHome() {
                 placeholder="Nombre del destinatario"
                 value={formData.destinatario}
                 onChange={(e) => setFormData({ ...formData, destinatario: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent rounded-lg transition-colors"
               />
             </div>
             
@@ -232,14 +232,14 @@ export default function DashboardHome() {
               <button
                 type="button"
                 onClick={() => setShowCreateForm(false)}
-                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 {isSubmitting ? (
                   <>
@@ -261,51 +261,51 @@ export default function DashboardHome() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* Turnos en Oferta */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <Calendar className="h-6 w-6 text-blue-600" />
+            <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
+              <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
-            <span className="text-sm text-gray-500">En oferta</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">En oferta</span>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{stats?.turnosOferta || 0}</p>
-          <p className="text-sm text-gray-600 mt-1">Turnos disponibles</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{stats?.turnosOferta || 0}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Turnos disponibles</p>
         </div>
 
         {/* Aprobados */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-green-100 rounded-lg">
+            <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
               <CheckCircle className="h-6 w-6 text-green-600" />
             </div>
             <span className="text-sm text-gray-500">Este mes</span>
           </div>
-          <p className="text-3xl font-bold text-green-600">{stats?.aprobados || 0}</p>
-          <p className="text-sm text-gray-600 mt-1">Solicitudes aprobadas</p>
+          <p className="text-3xl font-bold text-green-600 dark:text-green-300">{stats?.aprobados || 0}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes aprobadas</p>
         </div>
 
         {/* Pendientes */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-yellow-100 rounded-lg">
+            <div className="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
               <Clock className="h-6 w-6 text-yellow-600" />
             </div>
             <span className="text-sm text-gray-500">Esperando</span>
           </div>
-          <p className="text-3xl font-bold text-yellow-600">{stats?.pendientes || 0}</p>
-          <p className="text-sm text-gray-600 mt-1">Solicitudes pendientes</p>
+          <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-200">{stats?.pendientes || 0}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes pendientes</p>
         </div>
 
         {/* Rechazados */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-red-100 rounded-lg">
-              <XCircle className="h-6 w-6 text-red-600" />
+            <div className="p-3 bg-red-100 dark:bg-red-900 rounded-lg">
+              <XCircle className="h-6 w-6 text-red-400" />
             </div>
             <span className="text-sm text-gray-500">Este mes</span>
           </div>
-          <p className="text-3xl font-bold text-red-600">{stats?.rechazados || 0}</p>
-          <p className="text-sm text-gray-600 mt-1">Solicitudes rechazadas</p>
+          <p className="text-3xl font-bold text-red-600 dark:text-red-300">{stats?.rechazados || 0}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes rechazadas</p>
         </div>
       </div>
 
