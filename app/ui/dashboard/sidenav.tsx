@@ -6,22 +6,20 @@ import LogoutButton from '@/app/components/LogoutButton';
 
 export default function SideNav() {
   return (
-    <div className="flex h-full flex-col px-3 py-4 md:px-2 ">
+    <div className="flex h-full flex-col px-3 py-4 md:px-2 bg-white dark:bg-gray-700">
       <Link
-        className="mb-2 flex h-32 items-center justify-center rounded-md bg-ws-background p-4 md:h-20" //caja azul donde está el logo en md:h-20 está la altura de la vista normal
+        className="mb-2 flex h-32 items-center justify-center rounded-md bg-ws-background dark:bg-gray-800 p-4 md:h-20"
         href=""
       >
         <div className="relative w-[99%] h-[80px] md:h-[120px]">
-          <MigraLogo className=" relative w-[99%] h-[80px] md:h-[120px]"/>
+          <MigraLogo className="relative w-[99%] h-[80px] md:h-[120px]"/>
         </div>
       </Link>
       <div className="flex grow flex-row justify-between space-x-2 md:flex-col md:space-x-0 md:space-y-2">
         <NavLinks />
         <br />
         <LogoutButton/>
-        <div className="hidden h-auto w-full grow rounded-md bg-gray-50 md:block"></div>
-        
-
+        <div className="hidden h-auto w-full grow rounded-md bg-gray-50 dark:bg-gray-800 md:block"></div>
       </div>
     </div>
   );

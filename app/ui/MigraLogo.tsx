@@ -11,7 +11,7 @@ export default function MigraLogo({ className }: WSMSLogoProps) {
           src="/logo migra.png"
           alt="Migraciones Logo"
           fill
-          className="object-contain rounded-lg"
+          className="object-contain rounded-lg dark:invert dark:brightness-0 dark:contrast-200"
           priority
         />
     </div>
