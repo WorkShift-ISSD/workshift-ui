@@ -1,9 +1,30 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import WSMSLogo from "@/app/ui/WSMSLogo";
+import Image from "next/image";
 
 export default function Footer() {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    // Detectar si el modo oscuro está activo
+    const checkDarkMode = () => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    };
+
+    checkDarkMode();
+
+    // Observar cambios en el modo oscuro
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <footer className="mt-auto flex flex-col items-center justify-center gap-3 px-4 py-4 bg-[#cddcea] dark:bg-gray-800 text-gray-700 dark:text-gray-300 w-full md:flex-row md:justify-between md:gap-4 md:px-6 transition-colors">
       {/* 🔹 Izquierda */}
@@ -37,7 +58,23 @@ export default function Footer() {
       {/* 🔹 Derecha */}
       <div className="flex items-center justify-center gap-2">
         <span className="text-xs sm:text-sm">Powered by</span>
-        <WSMSLogo className="h-8 w-8 sm:h-10 sm:w-10" />
+        <div className="relative h-8 w-8 sm:h-10 sm:w-10">
+          {isDark ? (
+            <Image
+              src="/Logo-v4-2a.png"
+              alt="WSMS Logo"
+              fill
+              className="object-contain"
+            />
+          ) : (
+            <Image
+              src="/LogoWSv4-2fondo-blc.png"
+              alt="WSMS Logo"
+              fill
+              className="object-contain"
+            />
+          )}
+        </div>
       </div>
     </footer>
   );
