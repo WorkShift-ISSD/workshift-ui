@@ -313,8 +313,8 @@ export default function DashboardHome() {
       {/* Sección Principal: Gráfico y Próximos Cambios */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Gráfico Circular - Turnos Cubiertos */}
-        <div className="lg:col-span-1 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Turnos cubiertos del mes</h2>
+        <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Turnos cubiertos del mes</h2>
           
           {/* SVG Circular Chart */}
           <div className="flex items-center justify-center mb-6">
@@ -343,7 +343,7 @@ export default function DashboardHome() {
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center">
-                  <p className="text-4xl font-bold text-gray-900">{porcentajeCubierto}%</p>
+                  <p className="text-4xl font-bold text-gray-900 dark:text-gray-100">{porcentajeCubierto}%</p>
                 </div>
               </div>
             </div>
@@ -355,33 +355,33 @@ export default function DashboardHome() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-sky-400"></div>
-                  <span className="text-sm text-gray-600">Mis Guardias</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Mis Guardias</span>
                 </div>
-                <span className="text-sm font-semibold text-gray-900">{turnosData.misGuardias}</span>
+                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{turnosData.misGuardias}</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-blue-600"></div>
-                  <span className="text-sm text-gray-600">Guardias Cubiertas</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Guardias Cubiertas</span>
                 </div>
-                <span className="text-sm font-semibold text-gray-900">{turnosData.guardiasCubiertas}</span>
+                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{turnosData.guardiasCubiertas}</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-gray-800"></div>
-                  <span className="text-sm text-gray-600">Guardias que me cubrieron</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Guardias que me cubrieron</span>
                 </div>
-                <span className="text-sm font-semibold text-gray-900">{turnosData.guardiasQueMeCubrieron}</span>
+                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{turnosData.guardiasQueMeCubrieron}</span>
               </div>
             </div>
           )}
         </div>
 
         {/* Próximos Cambios */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Próximos cambios</h2>
-            <span className="text-sm text-gray-500">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Próximos cambios</h2>
+            <span className="text-sm text-gray-500 dark:text-gray-400">
               {cambios?.length || 0} cambios
             </span>
           </div>
@@ -394,7 +394,7 @@ export default function DashboardHome() {
               return (
                 <div 
                   key={cambio.id}
-                  className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
+                  className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-700 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors"
                 >
                   {/* Fecha */}
                   <div className="flex flex-col items-center justify-center bg-blue-600 text-white rounded-lg p-3 min-w-[60px]">
@@ -403,9 +403,9 @@ export default function DashboardHome() {
                   </div>
 
                   {/* Información del turno */}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900 truncate">{cambio.turno}</p>
-                    <p className="text-sm text-gray-600 truncate">
+                  <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors group">
+                    <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">{cambio.turno}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
                       {cambio.solicitante} → {cambio.destinatario}
                     </p>
                   </div>
