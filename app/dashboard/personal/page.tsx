@@ -256,6 +256,32 @@ export default function DashboardPage() {
       return;
     }
 
+    // Validar fecha de nacimiento
+    if (formData.fechaNacimiento) {
+      const fechaNacimiento = new Date(formData.fechaNacimiento);
+      const hoy = new Date();
+
+      // Validar que la fecha no sea futura
+      if (fechaNacimiento > hoy) {
+        setFormError('La fecha de nacimiento no puede ser futura');
+        return;
+      }
+
+      // Validar que sea mayor a 18 años
+      let edad = hoy.getFullYear() - fechaNacimiento.getFullYear();
+      const mesActual = hoy.getMonth();
+      const mesNacimiento = fechaNacimiento.getMonth();
+
+      if (mesActual < mesNacimiento || (mesActual === mesNacimiento && hoy.getDate() < fechaNacimiento.getDate())) {
+        edad--;
+      }
+
+      if (edad < 18) {
+        setFormError('Debes ser mayor de 18 años');
+        return;
+      }
+    }
+
     // Verificar email duplicado
     const emailExistente = employees.find(emp =>
       emp.email.toLowerCase() === formData.email!.toLowerCase() && emp.id !== selectedEmployee?.id
