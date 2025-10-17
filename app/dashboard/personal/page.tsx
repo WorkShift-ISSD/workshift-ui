@@ -256,6 +256,32 @@ export default function DashboardPage() {
       return;
     }
 
+    // Validar fecha de nacimiento
+    if (formData.fechaNacimiento) {
+      const fechaNacimiento = new Date(formData.fechaNacimiento);
+      const hoy = new Date();
+
+      // Validar que la fecha no sea futura
+      if (fechaNacimiento > hoy) {
+        setFormError('La fecha de nacimiento no puede ser futura');
+        return;
+      }
+
+      // Validar que sea mayor a 18 años
+      let edad = hoy.getFullYear() - fechaNacimiento.getFullYear();
+      const mesActual = hoy.getMonth();
+      const mesNacimiento = fechaNacimiento.getMonth();
+
+      if (mesActual < mesNacimiento || (mesActual === mesNacimiento && hoy.getDate() < fechaNacimiento.getDate())) {
+        edad--;
+      }
+
+      if (edad < 18) {
+        setFormError('Debes ser mayor de 18 años');
+        return;
+      }
+    }
+
     // Verificar email duplicado
     const emailExistente = employees.find(emp =>
       emp.email.toLowerCase() === formData.email!.toLowerCase() && emp.id !== selectedEmployee?.id
@@ -915,7 +941,7 @@ export default function DashboardPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Rol <span className="text-red-500 dark:text-red-400">*</span>
+                        Rol 
                       </label>
                       <select
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
@@ -937,7 +963,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Grupo de Turno <span className="text-red-500 dark:text-red-400">*</span>
+                        Grupo de Turno 
                       </label>
                       <select
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
