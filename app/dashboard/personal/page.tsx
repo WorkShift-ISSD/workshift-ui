@@ -67,6 +67,7 @@ export default function DashboardPage() {
   const [modalMode, setModalMode] = useState<'view' | 'edit' | 'create'>('view');
   const [formData, setFormData] = useState<Partial<Inspector>>({});
   const [formError, setFormError] = useState('');
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 
   const {
     empleados,
@@ -586,7 +587,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-300">
+      <div className="hidden md:block bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-300">
         <div className="overflow-x-auto">
           <table className="w-full">
             {/* ENCABEZADO */}
@@ -733,6 +734,114 @@ export default function DashboardPage() {
           </table>
         </div>
       </div>
+
+      {/* Vista móvil tipo lista de contactos */}
+<div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800 rounded-lg shadow-sm mt-4">
+  {filteredEmployees.length === 0 ? (
+    <div className="p-6 text-center text-gray-500 dark:text-gray-400">
+      <AlertCircle className="h-8 w-8 mb-2 mx-auto text-blue-500" />
+      <p className="font-medium text-gray-700 dark:text-gray-200">No se encontraron empleados</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400">Intenta ajustar los filtros</p>
+    </div>
+  ) : (
+    filteredEmployees.map((emp) => (
+      <div key={emp.id} className="transition-colors">
+        {/* Parte superior de la card (siempre visible) */}
+        <div
+          className="flex items-center justify-between p-4 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+          onClick={() => setExpandedCardId(expandedCardId === emp.id ? null : emp.id)}
+        >
+          {/* Izquierda: Avatar + datos */}
+          <div className="flex items-center space-x-3 flex-1 min-w-0">
+            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center font-bold flex-shrink-0">
+              {emp.nombre[0]}{emp.apellido[0]}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                {emp.nombre} {emp.apellido}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{emp.email}</p>
+              <div className="flex flex-wrap items-center gap-1 mt-1">
+                <span className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full ${getRoleColor(emp.rol)}`}>
+                  {emp.rol[0]}
+                </span>
+                <span className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full ${getShiftColor(emp.grupoTurno)}`}>
+                  {emp.grupoTurno}
+                </span>
+                <span className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full ${getStatusColor(calcularEstado(emp))}`}>
+                  {calcularEstado(emp)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Derecha: acciones */}
+          <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                openModal('view', emp);
+              }}
+              className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition"
+              title="Ver"
+            >
+              <Eye className="h-4 w-4" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                openModal('edit', emp);
+              }}
+              className="text-yellow-600 dark:text-yellow-400 hover:text-yellow-800 dark:hover:text-yellow-300 transition"
+              title="Editar"
+            >
+              <Edit2 className="h-4 w-4" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete(emp.id);
+              }}
+              className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition"
+              title="Eliminar"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Parte expandible (detalles adicionales) */}
+        {expandedCardId === emp.id && (
+          <div className="px-4 pb-4 bg-gray-50 dark:bg-gray-600 border-t border-gray-200 dark:border-gray-600">
+            <div className="grid grid-cols-3 gap-3 pt-3">
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Legajo</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  {emp.legajo}
+                </p>
+              </div>              
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Horario</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  {emp.horario || 'No asignado'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Turnos/Mes</p>
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3 w-3 text-gray-400 dark:text-gray-300" />
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {emp.turnosEsteMes || 0}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    ))
+  )}
+</div>
 
       {/* Modal */}
       {isModalOpen && (

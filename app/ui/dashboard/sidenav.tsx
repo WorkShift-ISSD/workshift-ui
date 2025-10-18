@@ -14,10 +14,10 @@ export default function SideNav() {
   return (
     <>
       {/* BOTÓN HAMBURGUESA - SOLO EN MÓVILES */}
-      <div className="md:hidden fixed top-4 left-4 z-50">
+      <div className="md:hidden fixed top-5 left-4 z-50">
         <button
           onClick={() => setOpen(!open)}
-          className="p-2 rounded-md bg-white dark:bg-gray-800 shadow-md focus:outline-none"
+          className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none transition-colors"
         >
           {open ? (
             <XIcon className="h-6 w-6 text-gray-800 dark:text-gray-200" />
@@ -43,7 +43,7 @@ export default function SideNav() {
 
         {/* MENÚ PRINCIPAL */}
         <nav className="flex flex-col flex-grow overflow-y-auto px-6 py-6 space-y-4">
-          <NavLinks />
+          <NavLinks onLinkClick={() => setOpen(false)} />
         </nav>
 
         {/* BOTÓN DE LOGOUT */}
