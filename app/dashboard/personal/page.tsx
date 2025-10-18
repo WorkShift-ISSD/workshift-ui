@@ -765,9 +765,7 @@ export default function DashboardPage() {
                 <span className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full ${getRoleColor(emp.rol)}`}>
                   {emp.rol}
                 </span>
-                <span className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full ${getShiftColor(emp.grupoTurno)}`}>
-                  {emp.grupoTurno}
-                </span>
+
                 <span className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full ${getStatusColor(calcularEstado(emp))}`}>
                   {calcularEstado(emp)}
                 </span>
@@ -813,22 +811,28 @@ export default function DashboardPage() {
         {/* Parte expandible (detalles adicionales) */}
         {expandedCardId === emp.id && (
           <div className="px-4 pb-4 bg-gray-50 dark:bg-gray-600 border-t border-gray-200 dark:border-gray-600">
-            <div className="grid grid-cols-3 gap-3 pt-3">
-              <div>
+            <div className="grid grid-cols-[1fr_1.2fr_1.5fr_1.3fr] gap-3 pt-3">
+              <div className="text-center">
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Legajo</p>
                 <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                   {emp.legajo}
                 </p>
-              </div>              
-              <div>
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Turno</p>
+                <span className={`px-2.5 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full ${getShiftColor(emp.grupoTurno)}`}>
+                  {emp.grupoTurno}
+                </span>
+              </div>
+              <div className="text-center">
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Horario</p>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 whitespace-nowrap">
                   {emp.horario || 'No asignado'}
                 </p>
               </div>
-              <div>
+              <div className="text-center">
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Turnos/Mes</p>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 justify-center">
                   <Clock className="h-3 w-3 text-gray-400 dark:text-gray-300" />
                   <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                     {emp.turnosEsteMes || 0}
