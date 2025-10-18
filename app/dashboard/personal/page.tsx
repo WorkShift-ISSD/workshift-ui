@@ -763,7 +763,7 @@ export default function DashboardPage() {
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{emp.email}</p>
               <div className="flex flex-wrap items-center gap-1 mt-1">
                 <span className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full ${getRoleColor(emp.rol)}`}>
-                  {emp.rol[0]}
+                  {emp.rol}
                 </span>
                 <span className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full ${getShiftColor(emp.grupoTurno)}`}>
                   {emp.grupoTurno}
