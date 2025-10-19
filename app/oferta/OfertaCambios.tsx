@@ -24,7 +24,7 @@ import {
 // Types
 type Rol = 'SUPERVISOR' | 'INSPECTOR' | 'JEFE';
 type GrupoTurno = 'A' | 'B';
-type TipoOferta = 'INTERCAMBIO' | 'GRATIS' | 'ABIERTO';
+type TipoOferta = 'INTERCAMBIO' | 'ABIERTO';
 type Prioridad = 'NORMAL' | 'URGENTE';
 type EstadoOferta = 'DISPONIBLE' | 'SOLICITADO' | 'APROBADO' | 'COMPLETADO' | 'CANCELADO';
 
@@ -67,7 +67,7 @@ const generateMockOfertas = (): Oferta[] => {
   const horarios = ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '14:00-23:00'];
   
   return Array.from({ length: 12 }, (_, i) => {
-    const tipo: TipoOferta = ['INTERCAMBIO', 'GRATIS', 'ABIERTO'][Math.floor(Math.random() * 3)] as TipoOferta;
+    const tipo: TipoOferta = ['INTERCAMBIO', 'ABIERTO'][Math.floor(Math.random() * 2)] as TipoOferta;
     const fecha = new Date();
     fecha.setDate(fecha.getDate() + Math.floor(Math.random() * 14) + 1);
     
@@ -98,8 +98,6 @@ const generateMockOfertas = (): Oferta[] => {
       } : undefined,
       descripcion: tipo === 'ABIERTO' 
         ? 'Disponible para negociar cambios. Preferiblemente horarios de tarde. Contactame para coordinar.'
-        : tipo === 'GRATIS'
-        ? 'Regalo mi turno, no necesito nada a cambio.'
         : 'Necesito ese día para un trámite médico importante.',
       prioridad: Math.random() > 0.7 ? 'URGENTE' : 'NORMAL',
       validoHasta: new Date(fecha.getTime() - 86400000).toISOString(),
@@ -171,7 +169,6 @@ export default function CambiosTurnosPage() {
   const stats = useMemo(() => ({
     total: ofertas.length,
     intercambios: ofertas.filter(o => o.tipo === 'INTERCAMBIO').length,
-    gratis: ofertas.filter(o => o.tipo === 'GRATIS').length,
     abiertos: ofertas.filter(o => o.tipo === 'ABIERTO').length,
     urgentes: ofertas.filter(o => o.prioridad === 'URGENTE').length,
   }), [ofertas]);
@@ -200,7 +197,6 @@ export default function CambiosTurnosPage() {
   const getTipoIcon = (tipo: TipoOferta) => {
     switch (tipo) {
       case 'INTERCAMBIO': return <RefreshCw className="h-4 w-4" />;
-      case 'GRATIS': return <Gift className="h-4 w-4" />;
       case 'ABIERTO': return <MessageSquare className="h-4 w-4" />;
     }
   };
@@ -209,7 +205,6 @@ export default function CambiosTurnosPage() {
   const getTipoColor = (tipo: TipoOferta) => {
     switch (tipo) {
       case 'INTERCAMBIO': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
-      case 'GRATIS': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
       case 'ABIERTO': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300';
     }
   };
@@ -246,7 +241,7 @@ export default function CambiosTurnosPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <p className="text-xs text-gray-600 dark:text-gray-400">Total Ofertas</p>
           <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.total}</p>
@@ -254,10 +249,6 @@ export default function CambiosTurnosPage() {
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <p className="text-xs text-gray-600 dark:text-gray-400">Intercambios</p>
           <p className="text-2xl font-bold text-blue-600">{stats.intercambios}</p>
-        </div>
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          <p className="text-xs text-gray-600 dark:text-gray-400">Gratis</p>
-          <p className="text-2xl font-bold text-green-600">{stats.gratis}</p>
         </div>
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <p className="text-xs text-gray-600 dark:text-gray-400">Abiertos</p>
@@ -358,7 +349,6 @@ export default function CambiosTurnosPage() {
                 >
                   <option value="TODOS">Todos los tipos</option>
                   <option value="INTERCAMBIO">🔄 Intercambio</option>
-                  <option value="GRATIS">🎁 Gratis</option>
                   <option value="ABIERTO">💬 Abierto</option>
                 </select>
 
@@ -431,7 +421,7 @@ export default function CambiosTurnosPage() {
                       <div className="flex items-center gap-2">
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${getTipoColor(oferta.tipo)}`}>
                           {getTipoIcon(oferta.tipo)}
-                          {oferta.tipo === 'INTERCAMBIO' ? 'Intercambio' : oferta.tipo === 'GRATIS' ? 'Gratis' : 'Abierto'}
+                          {oferta.tipo === 'INTERCAMBIO' ? 'Intercambio' : 'Abierto'}
                         </span>
                         {oferta.prioridad === 'URGENTE' && (
                           <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 flex items-center gap-1">
@@ -547,20 +537,6 @@ export default function CambiosTurnosPage() {
                     </p>
                   </div>
                 </label>
-                
-                <label className="flex items-center p-4 border-2 border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                  <input type="radio" name="tipo" value="GRATIS" className="mr-3" />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 font-medium text-gray-900 dark:text-gray-100">
-                      <Gift className="h-4 w-4 text-green-600" />
-                      Gratis
-                    </div>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                      Regalas tu turno sin necesitar nada a cambio
-                    </p>
-                  </div>
-                </label>
-                
                 <label className="flex items-center p-4 border-2 border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                   <input type="radio" name="tipo" value="ABIERTO" className="mr-3" />
                   <div className="flex-1">
