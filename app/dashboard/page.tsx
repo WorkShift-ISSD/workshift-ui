@@ -20,6 +20,7 @@ import { useCambios } from '@/hooks/useCambios';
 import { useStats } from '@/hooks/useStats';
 import { useTurnosData } from '@/hooks/useTurnosData';
 import { Cambio as TipoCambio } from '../api/types';
+import { LoadingSpinner } from '@/app/components/LoadingSpinner';
 
 
 export default function DashboardHome() {
@@ -125,11 +126,9 @@ export default function DashboardHome() {
   // Componente de loading
   if (loadingCambios || loadingStats || loadingTurnos) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Cargando dashboard...</p>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <LoadingSpinner />
+        <p className="text-gray-600 dark:text-gray-400">Cargando dashboard...</p>
       </div>
     );
   }

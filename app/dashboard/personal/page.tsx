@@ -23,6 +23,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useEmpleados } from '@/hooks/useEmpleados';
+import { LoadingSpinner } from '@/app/components/LoadingSpinner';
 
 // Types based on our Prisma schema
 type Rol = 'SUPERVISOR' | 'INSPECTOR' | 'JEFE';
@@ -422,11 +423,9 @@ export default function DashboardPage() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Cargando empleados...</p>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <LoadingSpinner />
+        <p className="text-gray-600 dark:text-gray-400">Cargando empleados...</p>
       </div>
     );
   }

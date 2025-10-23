@@ -6,7 +6,9 @@ interface WSMSLogoProps {
 
 export default function MigraLogo({ className }: WSMSLogoProps) {
   return (
-    <div className={`relative ${className}`}>
+    <>
+      {/* Logo completo - Solo visible en desktop */}
+      <div className={`hidden md:block relative ${className}`}>
         <Image
           src="/logo migra.png"
           alt="Migraciones Logo"
@@ -14,6 +16,18 @@ export default function MigraLogo({ className }: WSMSLogoProps) {
           className="object-contain rounded-lg dark:invert dark:brightness-0 dark:contrast-200"
           priority
         />
-    </div>
+      </div>
+
+      {/* Icono pequeño - Solo visible en móvil */}
+      <div className={`block md:hidden relative ${className}`}>
+        <Image
+          src="/icon migra.png"
+          alt="Migraciones Icon"
+          fill
+          className="object-contain rounded-lg dark:invert dark:brightness-0 dark:contrast-200"
+          priority
+        />
+      </div>
+    </>
   );
 }
