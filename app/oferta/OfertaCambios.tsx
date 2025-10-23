@@ -242,26 +242,26 @@ export default function CambiosTurnosPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-400 dark:border-gray-700">
           <p className="text-xs text-gray-600 dark:text-gray-400">Total Ofertas</p>
           <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.total}</p>
         </div>
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-400 dark:border-gray-700">
           <p className="text-xs text-gray-600 dark:text-gray-400">Intercambios</p>
           <p className="text-2xl font-bold text-blue-600">{stats.intercambios}</p>
         </div>
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-400 dark:border-gray-700">
           <p className="text-xs text-gray-600 dark:text-gray-400">Abiertos</p>
           <p className="text-2xl font-bold text-purple-600">{stats.abiertos}</p>
         </div>
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-400 dark:border-gray-700">
           <p className="text-xs text-gray-600 dark:text-gray-400">Urgentes</p>
           <p className="text-2xl font-bold text-red-600">{stats.urgentes}</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-400 dark:border-gray-700 mb-6">
         <div className="flex overflow-x-auto">
           <button
             onClick={() => setActiveTab('buscar')}
@@ -574,6 +574,7 @@ export default function CambiosTurnosPage() {
                     <option>06:00-16:00</option>
                     <option>10:00-20:00</option>
                     <option>13:00-23:00</option>
+                    <option>19:00-05:00</option>
                   </select>
                 </div>
                 <div>
@@ -610,6 +611,7 @@ export default function CambiosTurnosPage() {
                     <option>06:00-16:00</option>
                     <option>10:00-20:00</option>
                     <option>13:00-23:00</option>
+                    <option>19:00-05:00</option>
                   </select>
                 </div>
                 <div>
