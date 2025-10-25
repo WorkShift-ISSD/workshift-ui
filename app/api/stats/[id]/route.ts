@@ -1,6 +1,6 @@
 // app/api/stats/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '../../lib/postgres';
+import { sql } from '../../../lib/postgres';
 
 export async function GET(
   request: NextRequest,

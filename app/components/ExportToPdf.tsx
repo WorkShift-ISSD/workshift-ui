@@ -3,39 +3,26 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Download, FileSpreadsheet, FileText, FileCode2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'framer-motion';
+import { User } from '../api/types';
 
 // Tipos (mismos que tenías)
 type Rol = 'SUPERVISOR' | 'INSPECTOR' | 'JEFE';
 type GrupoTurno = 'A' | 'B';
 type EstadoEmpleado = 'ACTIVO' | 'LICENCIA' | 'AUSENTE' | 'INACTIVO';
 
-interface Inspector {
-  id: string;
-  legajo: number;
-  email: string;
-  nombre: string;
-  apellido: string;
-  rol: Rol;
-  telefono: string | null;
-  direccion: string | null;
-  horario: string | null;
-  fechaNacimiento: string | null;
-  activo: boolean;
-  grupoTurno: GrupoTurno;
-  fotoPerfil: string | null;
-  ultimoLogin: string | null;
-  createdAt: string;
-  updatedAt: string;
+interface InspectorExtended extends User {
+  // Computed fields
   estado?: EstadoEmpleado;
   turnosEsteMes?: number;
   horasAcumuladas?: number;
   intercambiosPendientes?: number;
+  // Campos adicionales para cálculo de estado
   enLicencia?: boolean;
   ausente?: boolean;
 }
 
 interface ExportDataProps {
-  employees: Inspector[];
+  employees: InspectorExtended[];
   stats: {
     total: number;
     activos: number;
@@ -48,7 +35,7 @@ interface ExportDataProps {
     selectedShift?: string;
     selectedHorario?: string;
   };
-  calcularEstado: (empleado: Inspector) => EstadoEmpleado;
+  calcularEstado: (empleado: User) => EstadoEmpleado;
   className?: string;
 }
 
@@ -97,7 +84,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
       Apellido: emp.apellido,
       Rol: emp.rol,
       Turno: emp.grupoTurno,
-      Horario: emp.horario || 'N/A',
+      Horario: emp.horarioLaboral || 'N/A',
       Estado: calcularEstado(emp),
       Email: emp.email,
       Teléfono: emp.telefono || 'N/A',
@@ -121,7 +108,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
       xml += `    <apellido>${emp.apellido}</apellido>\n`;
       xml += `    <rol>${emp.rol}</rol>\n`;
       xml += `    <turno>${emp.grupoTurno}</turno>\n`;
-      xml += `    <horario>${emp.horario || 'N/A'}</horario>\n`;
+      xml += `    <horario>${emp.horarioLaboral || 'N/A'}</horario>\n`;
       xml += `    <estado>${estado}</estado>\n`;
       xml += `    <email>${emp.email}</email>\n`;
       xml += `    <telefono>${emp.telefono || ''}</telefono>\n`;
