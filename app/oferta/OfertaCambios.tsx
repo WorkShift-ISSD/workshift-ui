@@ -118,6 +118,7 @@ export default function CambiosTurnosPage() {
   const [minCalificacion, setMinCalificacion] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [solicitudesTab, setSolicitudesTab] = useState<'estado' | 'historico'>('estado');
 
   // Initialize mock data
   useEffect(() => {
@@ -260,467 +261,171 @@ export default function CambiosTurnosPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-400 dark:border-gray-700 mb-6">
-        <div className="flex overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('buscar')}
-            className={`flex-1 min-w-[120px] px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'buscar'
-                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-            }`}
-          >
-            <Search className="h-4 w-4 inline-block mr-2" />
-            Buscar Turno
-          </button>
-          <button
-            onClick={() => setActiveTab('ofrecer')}
-            className={`flex-1 min-w-[120px] px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'ofrecer'
-                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-            }`}
-          >
-            <Plus className="h-4 w-4 inline-block mr-2" />
-            Ofrecer Turno
-          </button>
-          <button
-            onClick={() => setActiveTab('mis-ofertas')}
-            className={`flex-1 min-w-[120px] px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'mis-ofertas'
-                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-            }`}
-          >
-            <User className="h-4 w-4 inline-block mr-2" />
-            Mis Ofertas
-          </button>
-          <button
-            onClick={() => setActiveTab('historial')}
-            className={`flex-1 min-w-[120px] px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'historial'
-                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-            }`}
-          >
-            <Clock className="h-4 w-4 inline-block mr-2" />
-            Historial
-          </button>
+
+      {/* Main Content - Dos Cards Superiores */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-6">
+        {/* Card 1: Ofertas comprar/vender */}
+        <div 
+          className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-sm border border-gray-400 dark:border-gray-700 hover:shadow-md transition-all cursor-pointer group"
+          onClick={() => setIsModalOpen(true)}
+        >
+          <div className="flex flex-col items-center justify-center h-full min-h-[280px]">
+            <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <RefreshCw className="h-10 w-10 text-blue-600 dark:text-blue-400" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3 text-center">
+              Ofertas comprar/vender
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 text-center max-w-sm">
+              Publica o busca ofertas de cambio de turnos con tus compañeros
+            </p>
+          </div>
+        </div>
+
+        {/* Card 2: Solicitud directa */}
+        <div 
+          className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-sm border border-gray-400 dark:border-gray-700 hover:shadow-md transition-all cursor-pointer group"
+          onClick={() => setIsModalOpen(true)}
+        >
+          <div className="flex flex-col items-center justify-center h-full min-h-[280px]">
+            <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <MessageSquare className="h-10 w-10 text-green-600 dark:text-green-400" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3 text-center">
+              Solicitud directa
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 text-center max-w-sm">
+              Envía una solicitud directa de cambio a un compañero específico
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Content - Buscar Turno */}
-      {activeTab === 'buscar' && (
-        <>
-          {/* Search and Filters */}
-          <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
-            {/* Search bar */}
-            <div className="mb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                <input
-                  type="text"
-                  placeholder="Buscar por nombre del ofertante..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
+      {/* Sección Inferior - Estado de solicitudes */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-400 dark:border-gray-700">
+        {/* Header con tabs */}
+        <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-6">
+              <button 
+                onClick={() => setSolicitudesTab('estado')}
+                className={`font-semibold text-base pb-1 transition-colors ${
+                  solicitudesTab === 'estado'
+                    ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:border-b-2 hover:border-gray-900 dark:hover:border-gray-100'
+                }`}
+              >
+                Estado de solicitudes
+              </button>
+              <button 
+                onClick={() => setSolicitudesTab('historico')}
+                className={`font-semibold text-base pb-1 transition-colors ${
+                  solicitudesTab === 'historico'
+                    ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:border-b-2 hover:border-gray-900 dark:hover:border-gray-100'
+                }`}
+              >
+                Histórico
+              </button>
             </div>
-
-            {/* Filter toggle */}
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 mb-3"
-            >
-              <Filter className="h-4 w-4" />
-              {showFilters ? 'Ocultar filtros' : 'Mostrar filtros'}
-              <ChevronDown className={`h-4 w-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+            <button className="w-full md:w-auto px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors text-sm">
+              Detalles...
             </button>
-
-            {/* Filters */}
-            {showFilters && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <select
-                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
-                  value={selectedTipo}
-                  onChange={(e) => setSelectedTipo(e.target.value as TipoOferta | 'TODOS')}
-                >
-                  <option value="TODOS">Todos los tipos</option>
-                  <option value="INTERCAMBIO">🔄 Intercambio</option>
-                  <option value="ABIERTO">💬 Abierto</option>
-                </select>
-
-                <select
-                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
-                  value={selectedTurno}
-                  onChange={(e) => setSelectedTurno(e.target.value as GrupoTurno | 'TODOS')}
-                >
-                  <option value="TODOS">Todos los turnos</option>
-                  <option value="A">Turno A</option>
-                  <option value="B">Turno B</option>
-                </select>
-
-                <select
-                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
-                  value={selectedPrioridad}
-                  onChange={(e) => setSelectedPrioridad(e.target.value as Prioridad | 'TODOS')}
-                >
-                  <option value="TODOS">Todas las prioridades</option>
-                  <option value="URGENTE">🔥 Urgente</option>
-                  <option value="NORMAL">📅 Normal</option>
-                </select>
-
-                <select
-                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm"
-                  value={minCalificacion}
-                  onChange={(e) => setMinCalificacion(Number(e.target.value))}
-                >
-                  <option value="0">Cualquier calificación</option>
-                  <option value="4.5">⭐ 4.5+</option>
-                  <option value="4.0">⭐ 4.0+</option>
-                  <option value="3.5">⭐ 3.5+</option>
-                </select>
-              </div>
-            )}
           </div>
+        </div>
 
-          {/* Ofertas List */}
-          <div className="space-y-4">
-            {filteredOfertas.length === 0 ? (
-              <div className="bg-white dark:bg-gray-800 p-12 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 text-center">
-                <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-600 dark:text-gray-400">No se encontraron ofertas con estos filtros</p>
-              </div>
-            ) : (
-              filteredOfertas.map((oferta) => (
-                <div
-                  key={oferta.id}
-                  className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all overflow-hidden"
-                >
-                  <div className="p-4 md:p-6">
-                    {/* Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-                      <div className="flex items-start gap-3">
-                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold flex-shrink-0">
-                          {oferta.ofertante.nombre[0]}{oferta.ofertante.apellido[0]}
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                            {oferta.ofertante.nombre} {oferta.ofertante.apellido}
-                          </h3>
-                          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                            <span>{oferta.ofertante.rol}</span>
-                            <span>•</span>
-                            {renderStars(oferta.ofertante.calificacion)}
-                            <span className="text-xs">({oferta.ofertante.totalIntercambios})</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${getTipoColor(oferta.tipo)}`}>
-                          {getTipoIcon(oferta.tipo)}
-                          {oferta.tipo === 'INTERCAMBIO' ? 'Intercambio' : 'Abierto'}
-                        </span>
-                        {oferta.prioridad === 'URGENTE' && (
-                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 flex items-center gap-1">
-                            <Flame className="h-3 w-3" />
-                            Urgente
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Turno Info */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      {/* Ofrece */}
-                      {oferta.tipo !== 'ABIERTO' && oferta.turnoOfrece && (
-                        <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
-                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 font-medium">📅 OFRECE</p>
-                          <p className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                            {formatDate(oferta.turnoOfrece.fecha)}
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-700 dark:text-gray-300">
-                              🕐 {oferta.turnoOfrece.horario}
-                            </span>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getTurnoColor(oferta.turnoOfrece.grupoTurno)}`}>
-                              {oferta.turnoOfrece.grupoTurno}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Busca */}
-                      {oferta.tipo === 'INTERCAMBIO' && oferta.turnoBusca && (
-                        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-                          <p className="text-xs text-blue-600 dark:text-blue-400 mb-2 font-medium">🔍 BUSCA</p>
-                          <p className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                            {formatDate(oferta.turnoBusca.fecha)}
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-700 dark:text-gray-300">
-                              🕐 {oferta.turnoBusca.horario}
-                            </span>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getTurnoColor(oferta.turnoBusca.grupoTurno)}`}>
-                              {oferta.turnoBusca.grupoTurno}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Rango Abierto */}
-                      {oferta.tipo === 'ABIERTO' && oferta.rangoFechas && (
-                        <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border border-purple-200 dark:border-purple-800 md:col-span-2">
-                          <p className="text-xs text-purple-600 dark:text-purple-400 mb-2 font-medium">📆 DISPONIBILIDAD</p>
-                          <p className="font-semibold text-gray-900 dark:text-gray-100">
-                            {formatDate(oferta.rangoFechas.desde)} - {formatDate(oferta.rangoFechas.hasta)}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Description */}
-                    {oferta.descripcion && (
-                      <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg mb-4">
-                        <p className="text-sm text-gray-700 dark:text-gray-300">
-                          💬 {oferta.descripcion}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Footer */}
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center gap-4 text-xs text-gray-600 dark:text-gray-400">
-                        <span className="flex items-center gap-1">
-                          <AlertCircle className="h-3 w-3" />
-                          Válido hasta {formatDate(oferta.validoHasta)}
-                        </span>
-                      </div>
-                      <button className="w-full sm:w-auto px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
-                        <Check className="h-4 w-4" />
-                        Solicitar Cambio
-                      </button>
-                    </div>
+        {/* Content Area - Estado de solicitudes */}
+        {solicitudesTab === 'estado' && (
+          <div className="p-6">
+            <div className="space-y-3">
+              {/* Solicitud Item 1 */}
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between py-4 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 px-4 rounded-lg transition-colors gap-2">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                    <span className="text-gray-900 dark:text-gray-100 font-medium text-sm">Solicitud de cambio pendiente</span>
                   </div>
                 </div>
-              ))
-            )}
+                <div className="text-xs text-gray-500 dark:text-gray-400 md:ml-5">Hace 2 horas</div>
+              </div>
+
+              {/* Solicitud Item 2 */}
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between py-4 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 px-4 rounded-lg transition-colors gap-2">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                    <span className="text-gray-900 dark:text-gray-100 font-medium text-sm">Nueva oferta disponible</span>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 md:ml-5">Hace 5 horas</div>
+              </div>
+
+              {/* Solicitud Item 3 */}
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between py-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 px-4 rounded-lg transition-colors gap-2">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
+                    <span className="text-gray-900 dark:text-gray-100 font-medium text-sm">Cambio aprobado por supervisor</span>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 md:ml-5">Ayer</div>
+              </div>
+            </div>
           </div>
-        </>
-      )}
+        )}
 
-      {/* Content - Ofrecer Turno */}
-      {activeTab === 'ofrecer' && (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-6">
-            Crear Nueva Oferta
-          </h2>
-          
-          <form className="space-y-6">
-            {/* Tipo de Oferta */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                Tipo de Oferta <span className="text-red-500">*</span>
-              </label>
-              <div className="space-y-2">
-                <label className="flex items-center p-4 border-2 border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                  <input type="radio" name="tipo" value="INTERCAMBIO" className="mr-3" defaultChecked />
+        {/* Content Area - Histórico */}
+        {solicitudesTab === 'historico' && (
+          <div className="p-6">
+            <div className="text-center py-12">
+              <Clock className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+              <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-2">
+                Historial de Cambios
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                Aquí verás todos tus cambios de turno realizados anteriormente
+              </p>
+              <div className="space-y-3 max-w-2xl mx-auto">
+                {/* Ejemplo de item histórico */}
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between py-4 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 px-4 rounded-lg transition-colors gap-2">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 font-medium text-gray-900 dark:text-gray-100">
-                      <RefreshCw className="h-4 w-4 text-blue-600" />
-                      Intercambio específico
+                    <div className="flex items-center gap-3 mb-1">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full flex-shrink-0"></div>
+                      <span className="text-gray-900 dark:text-gray-100 font-medium text-sm">Intercambio con Juan García</span>
                     </div>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                      Ofreces un turno específico y buscas otro turno específico a cambio
-                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 ml-5">Turno del 15 Oct por turno del 20 Oct</p>
                   </div>
-                </label>
-                <label className="flex items-center p-4 border-2 border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                  <input type="radio" name="tipo" value="ABIERTO" className="mr-3" />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 font-medium text-gray-900 dark:text-gray-100">
-                      <MessageSquare className="h-4 w-4 text-purple-600" />
-                      Abierto a negociar
-                    </div>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                      Anuncias disponibilidad para coordinar intercambios flexibles
-                    </p>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            {/* Mi Turno (para INTERCAMBIO y GRATIS) */}
-            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
-              <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-4">Mi Turno</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Fecha <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Horario <span className="text-red-500">*</span>
-                  </label>
-                  <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                    <option>04:00-14:00</option>
-                    <option>06:00-16:00</option>
-                    <option>10:00-20:00</option>
-                    <option>13:00-23:00</option>
-                    <option>19:00-05:00</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Turno <span className="text-red-500">*</span>
-                  </label>
-                  <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                    <option value="A">Turno A</option>
-                    <option value="B">Turno B</option>
-                  </select>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 md:ml-5">Hace 2 semanas</div>
                 </div>
               </div>
             </div>
-
-            {/* Turno que Necesito (solo para INTERCAMBIO) */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-              <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-4">Turno que Necesito</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Fecha <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Horario <span className="text-red-500">*</span>
-                  </label>
-                  <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                    <option>04:00-14:00</option>
-                    <option>06:00-16:00</option>
-                    <option>10:00-20:00</option>
-                    <option>13:00-23:00</option>
-                    <option>19:00-05:00</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Turno <span className="text-red-500">*</span>
-                  </label>
-                  <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                    <option value="A">Turno A</option>
-                    <option value="B">Turno B</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Disponibilidad (solo para ABIERTO) */}
-            <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border border-purple-200 dark:border-purple-800 hidden">
-              <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-4">Disponibilidad</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Desde <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Hasta <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Detalles Adicionales */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Detalles Adicionales (opcional)
-              </label>
-              <textarea
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 resize-none"
-                rows={4}
-                maxLength={500}
-                placeholder="Ej: Prefiero horarios de tarde, puedo coordinar en varios días..."
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Máximo 500 caracteres</p>
-            </div>
-
-            {/* Configuración */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Prioridad
-                </label>
-                <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                  <option value="NORMAL">📅 Normal</option>
-                  <option value="URGENTE">🔥 Urgente</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Válido hasta
-                </label>
-                <input
-                  type="datetime-local"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                />
-              </div>
-            </div>
-
-            {/* Buttons */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+          </div>
+        )}
+      </div>
+      {/* Modal de ejemplo (puedes personalizarlo según necesites) */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-400 dark:border-gray-700">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                Nueva Solicitud
+              </h2>
               <button
-                type="button"
-                className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium transition-colors"
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
               >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-              >
-                <Check className="h-4 w-4" />
-                Publicar Oferta
+                <X className="h-6 w-6" />
               </button>
             </div>
-          </form>
+            <div className="p-6">
+              <p className="text-gray-600 dark:text-gray-400 text-center py-12">
+                Contenido del formulario aquí...
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Content - Mis Ofertas */}
-      {activeTab === 'mis-ofertas' && (
-        <div className="bg-white dark:bg-gray-800 p-12 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 text-center">
-          <User className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-            Mis Ofertas Activas
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Aquí verás las ofertas que has publicado y su estado actual
-          </p>
-          <button className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
-            Crear Primera Oferta
-          </button>
-        </div>
-      )}
-
-    </div>)}
+    </div>
+  );
+}
