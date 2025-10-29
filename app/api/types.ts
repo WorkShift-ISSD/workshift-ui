@@ -64,5 +64,7 @@ export interface SolicitudesDirectas {
   turnoSolicitante: string;
   turnoDestinatario: string;
   motivo: string;
+  estado: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO';
+  fechaSolicitud: string;
   prioridad: 'BAJA' | 'MEDIA' | 'ALTA';
 }

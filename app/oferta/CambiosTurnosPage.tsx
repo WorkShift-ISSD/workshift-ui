@@ -25,16 +25,14 @@ import { SolicitudesTabType, useTabs } from '@/hooks/useTabs';
 import { useFormatters } from '@/hooks/useFormatters';
 import { GrupoTurno, NuevaOfertaForm, useOfertas } from '@/hooks/useOfertas';
 import { SolicitudDirectaForm, useSolicitudesDirectas } from '@/hooks/useSolicitudesDirectas';
+import useSWR from 'swr';
 
 // Constantes
+const fetcher = (url: string) => fetch(url).then(res => res.json());
 const HORARIOS = ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '14:00-23:00'];
 const GRUPOS: GrupoTurno[] = ['A', 'B'];
-const COMPANEROS = [
-  { id: 'USR1', nombre: 'Juan García', cargo: 'Inspector' },
-  { id: 'USR2', nombre: 'María López', cargo: 'Supervisor' },
-  { id: 'USR3', nombre: 'Carlos Martínez', cargo: 'Inspector' },
-  { id: 'USR4', nombre: 'Ana Rodríguez', cargo: 'Supervisor' },
-];
+
+
 
 const INITIAL_OFERTA_FORM: NuevaOfertaForm = {
   tipo: 'INTERCAMBIO',
@@ -51,6 +49,7 @@ const INITIAL_OFERTA_FORM: NuevaOfertaForm = {
 };
 
 const INITIAL_SOLICITUD_FORM: SolicitudDirectaForm = {
+  solicitanteId: '410544b2-4001-4271-9855-fec4b6a6442a',
   destinatarioId: '',
   fechaSolicitante: '',
   horarioSolicitante: '04:00-14:00',
@@ -63,23 +62,34 @@ const INITIAL_SOLICITUD_FORM: SolicitudDirectaForm = {
 };
 
 export default function CambiosTurnosPage() {
+
+  // Cargar usuarios dinámicamente
+  const { data: usuarios, error: errorUsuarios } = useSWR('/api/users', fetcher);
+
+  // Transformar para compatibilidad (opcional)
+  const COMPANEROS = usuarios?.map((u: any) => ({
+    id: u.id,
+    nombre: `${u.nombre} ${u.apellido}`,
+    cargo: u.rol
+  })) || [];
+
   // Hooks personalizados - SEPARADOS correctamente
-  const { 
-    ofertas, 
-    stats, 
-    agregarOferta, 
+  const {
+    ofertas,
+    stats,
+    agregarOferta,
     actualizarEstado: actualizarEstadoOferta,
     eliminarOferta,
-    isLoading: isLoadingOfertas, 
-    error: errorOfertas 
+    isLoading: isLoadingOfertas,
+    error: errorOfertas
   } = useOfertas();
-  
-  const { 
-    solicitudes, 
-    agregarSolicitud, 
-    actualizarEstado: actualizarEstadoSolicitud,
-    isLoading: isLoadingSolicitudes, 
-    error: errorSolicitudes 
+
+  const {
+    solicitudes,
+    agregarSolicitud,
+    actualizarEstado,
+    isLoading: isLoadingSolicitudes,
+    error: errorSolicitudes
   } = useSolicitudesDirectas();
 
   const { modalType, isModalOpen, openModal, closeModal } = useModal();
@@ -156,6 +166,11 @@ export default function CambiosTurnosPage() {
 
     setIsSubmitting(true);
     try {
+      const solicitudCompleta = {
+        ...solicitudDirectaForm,
+        solicitanteId: 'USR1' // 👈 Hardcodear aquí el ID del usuario
+      };
+
       await agregarOferta(nuevaOfertaForm);
       closeModal();
       setNuevaOfertaForm(INITIAL_OFERTA_FORM);
@@ -180,6 +195,7 @@ export default function CambiosTurnosPage() {
 
     setIsSubmitting(true);
     try {
+
       await agregarSolicitud(solicitudDirectaForm);
       closeModal();
       setSolicitudDirectaForm(INITIAL_SOLICITUD_FORM);
@@ -217,23 +233,58 @@ export default function CambiosTurnosPage() {
     }
   }, [eliminarOferta]);
 
-  const handleAceptarSolicitud = useCallback(async (solicitudId: string) => {
+  const handleAceptarSolicitud = async (id: string) => {
     try {
-      await actualizarEstadoSolicitud(solicitudId, 'COMPLETADO');
+      await actualizarEstado(id, 'APROBADO');
     } catch (error) {
       console.error('Error al aceptar solicitud:', error);
-      alert('Error al aceptar la solicitud');
+      setFormError('Error al aceptar la solicitud');
     }
-  }, [actualizarEstadoSolicitud]);
+  };
 
-  const handleCancelarSolicitud = useCallback(async (solicitudId: string) => {
+  const handleRechazarSolicitud = async (id: string) => {
     try {
-      await actualizarEstadoSolicitud(solicitudId, 'CANCELADO');
+      await actualizarEstado(id, 'CANCELADO');
     } catch (error) {
-      console.error('Error al cancelar solicitud:', error);
-      alert('Error al cancelar la solicitud');
+      console.error('Error al rechazar solicitud:', error);
+      setFormError('Error al rechazar la solicitud');
     }
-  }, [actualizarEstadoSolicitud]);
+  };
+  const handleEliminarSolicitud = async (id: string) => {
+    if (!confirm('¿Eliminar esta solicitud de la base de datos?')) return;
+
+    try {
+      const res = await fetch(`/api/solicitudes-directas/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        console.log('✅ Solicitud eliminada');
+        // Forzar recarga
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  const formatearFecha = (fecha: string | null | undefined) => {
+    if (!fecha) return 'Fecha no disponible';
+
+    try {
+      const date = new Date(fecha);
+      if (isNaN(date.getTime())) return 'Fecha inválida';
+
+      return date.toLocaleDateString("es-AR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    } catch (error) {
+      return 'Error en fecha';
+    }
+  };
+
 
   // Loading y error states
   const isLoading = isLoadingOfertas || isLoadingSolicitudes;
@@ -386,6 +437,8 @@ export default function CambiosTurnosPage() {
           </div>
         </div>
 
+
+
         {/* Content Area - Estado de solicitudes */}
         {solicitudesTab === 'estado' && (
           <div className="p-6" role="tabpanel">
@@ -453,21 +506,22 @@ export default function CambiosTurnosPage() {
                     })}
 
                   {/* Solicitudes directas disponibles */}
+                  {/* Solicitudes directas */}
                   {solicitudes
-                    .filter(s => s.estado === 'DISPONIBLE')
+                    .filter(s => ['SOLICITADO', 'APROBADO'].includes(s.estado))  // 👈 Filtro correcto
                     .map((solicitud) => {
-                      const fechaFormateada = new Date(solicitud.fechaSolicitud).toLocaleDateString("es-AR", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                      });
+                      console.log('🔍 Solicitud completa:', solicitud);
+                      const fechaFormateada = solicitud.fechaSolicitud
+                        ? formatearFecha(solicitud.fechaSolicitud)
+                        : formatearFecha(new Date().toISOString());  // 👈 Fecha actual como fallback
 
                       return (
                         <div
                           key={solicitud.id}
-                          className="flex flex-col md:flex-row items-start md:items-center justify-between py-4 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 px-4 rounded-lg transition-colors gap-2"
+                          className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
                         >
-                          <div className="flex-1">
+                          {/* Header */}
+                          <div className="flex items-start justify-between mb-3">
                             <div className="flex items-center gap-3">
                               <div
                                 className={`w-2 h-2 rounded-full flex-shrink-0 ${solicitud.prioridad === "URGENTE" ? "bg-red-500" : "bg-blue-500"
@@ -475,33 +529,85 @@ export default function CambiosTurnosPage() {
                                 title={solicitud.prioridad === "URGENTE" ? "Urgente" : "Normal"}
                               ></div>
 
-                              <span className="text-gray-900 dark:text-gray-100 font-medium text-sm">
-                                Solicitud directa enviada ({solicitud.prioridad})
-                              </span>
+                              <div>
+                                <span className="text-gray-900 dark:text-gray-100 font-medium text-sm">
+                                  {solicitud.solicitante.nombre} {solicitud.solicitante.apellido}
+                                  <span className="text-gray-500 dark:text-gray-400 mx-2">→</span>
+                                  {solicitud.destinatario.nombre} {solicitud.destinatario.apellido}
+                                </span>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  {fechaFormateada}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Badge de estado */}
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${solicitud.estado === 'SOLICITADO' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
+                              solicitud.estado === 'APROBADO' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                                solicitud.estado === 'COMPLETADO' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
+                                  'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                              }`}>
+                              {solicitud.estado}
+                            </span>
+                          </div>
+
+                          {/* Turnos */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                            {/* Turno ofrecido */}
+                            <div className="bg-blue-50 dark:bg-blue-900/10 rounded p-3 border border-blue-200 dark:border-blue-800">
+                              <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">
+                                Ofrece:
+                              </p>
+                              <p className="text-xs text-gray-900 dark:text-gray-100">
+                                📅 {new Date(solicitud.turnoSolicitante.fecha).toLocaleDateString('es-AR')}
+                              </p>
+                              <p className="text-xs text-gray-700 dark:text-gray-300">
+                                🕐 {solicitud.turnoSolicitante.horario} - Grupo {solicitud.turnoSolicitante.grupoTurno}
+                              </p>
+                            </div>
+
+                            {/* Turno solicitado */}
+                            <div className="bg-green-50 dark:bg-green-900/10 rounded p-3 border border-green-200 dark:border-green-800">
+                              <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-1">
+                                Solicita:
+                              </p>
+                              <p className="text-xs text-gray-900 dark:text-gray-100">
+                                📅 {new Date(solicitud.turnoDestinatario.fecha).toLocaleDateString('es-AR')}
+                              </p>
+                              <p className="text-xs text-gray-700 dark:text-gray-300">
+                                🕐 {solicitud.turnoDestinatario.horario} - Grupo {solicitud.turnoDestinatario.grupoTurno}
+                              </p>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-3">
-                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                              {fechaFormateada}
-                            </div>
+                          {/* Motivo */}
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 italic">
+                            "{solicitud.motivo}"
+                          </p>
 
-                            {/* Botones de acción */}
+                          {/* Botones (solo si está SOLICITADO) */}
+                          {solicitud.estado === 'SOLICITADO' && (
                             <div className="flex gap-2">
                               <button
                                 onClick={() => handleAceptarSolicitud(solicitud.id)}
-                                className="px-3 py-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition"
+                                className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition"
                               >
-                                Aceptar
+                                ✓ Aceptar
                               </button>
                               <button
-                                onClick={() => handleCancelarSolicitud(solicitud.id)}
-                                className="px-3 py-1 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
+                                onClick={() => handleRechazarSolicitud(solicitud.id)}
+                                className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
                               >
-                                Cancelar
+                                ✗ Rechazar
+                              </button>
+                              <button
+                                onClick={() => handleEliminarSolicitud(solicitud.id)}
+                                className="px-3 py-1.5 text-xs font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-lg transition"
+                              >
+                                🗑️
                               </button>
                             </div>
-                          </div>
+                          )}
                         </div>
                       );
                     })}
@@ -974,13 +1080,16 @@ export default function CambiosTurnosPage() {
                   id="destinatario"
                   required
                   value={solicitudDirectaForm.destinatarioId}
-                  onChange={(e) => setSolicitudDirectaForm(prev => ({ ...prev, destinatarioId: e.target.value }))}
+                  onChange={(e) => setSolicitudDirectaForm(prev => ({
+                    ...prev,
+                    destinatarioId: e.target.value
+                  }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 >
                   <option value="">Selecciona un compañero...</option>
-                  {COMPANEROS.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.nombre} - {c.cargo}
+                  {usuarios?.map((usuario: any) => (
+                    <option key={usuario.id} value={usuario.id}>
+                      {usuario.nombre} {usuario.apellido} - {usuario.rol}
                     </option>
                   ))}
                 </select>

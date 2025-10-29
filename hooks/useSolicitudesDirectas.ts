@@ -30,6 +30,7 @@ export interface SolicitudesDirectas {
 }
 
 export interface SolicitudDirectaForm {
+  solicitanteId: string;
   destinatarioId: string;
   fechaSolicitante: string;
   horarioSolicitante: string;
@@ -54,11 +55,15 @@ export const useSolicitudesDirectas = () => {
     isLoading,
     mutate,
   } = useSWR<SolicitudesDirectas[]>("/api/solicitudes-directas", fetcher, {
-    refreshInterval: 8000,
+    refreshInterval: 5000,
   });
 
   // Crear nueva solicitud directa
   const agregarSolicitud = async (formData: SolicitudDirectaForm) => {
+    console.log("Agregar solicitud directa:", formData);
+
+    
+
     const res = await fetch("/api/solicitudes-directas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -66,9 +71,14 @@ export const useSolicitudesDirectas = () => {
     });
 
     const data = await res.json();
+
+    console.log("📥 Respuesta del servidor:", data);
+    console.log("📊 Status de la respuesta:", res.status);
+  
+
     if (!res.ok) throw new Error(data.error || "Error al crear solicitud");
 
-    mutate(); // Refresca la lista
+    await mutate(); // Refresca la lista
     return data;
   };
 
