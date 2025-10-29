@@ -11,6 +11,24 @@ export const endpoints = {
     delete: (id: string) => `${API_BASE_URL}/cambios/${id}`,
   },
   
+  // Ofertas
+  ofertas: {
+    list: () => `${API_BASE_URL}/ofertas`,
+    byId: (id: string) => `${API_BASE_URL}/ofertas/${id}`,
+    create: () => `${API_BASE_URL}/ofertas`,
+    update: (id: string) => `${API_BASE_URL}/ofertas/${id}`,
+    delete: (id: string) => `${API_BASE_URL}/ofertas/${id}`,
+  },
+
+  // Solicitudes Directas
+  solicitudesDirectas: {
+    list: () => `${API_BASE_URL}/solicitudes-directas`,
+    byId: (id: string) => `${API_BASE_URL}/solicitudes-directas/${id}`,
+    create: () => `${API_BASE_URL}/solicitudes-directas`,
+    update: (id: string) => `${API_BASE_URL}/solicitudes-directas/${id}`,
+    delete: (id: string) => `${API_BASE_URL}/solicitudes-directas/${id}`,
+  },
+
   // Stats
   stats: {
     get: () => `${API_BASE_URL}/stats`,

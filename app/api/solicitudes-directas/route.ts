@@ -91,13 +91,36 @@ export async function GET(request: NextRequest) {
 }
 
 // POST - Crear solicitud directa
+// POST - Crear solicitud directa
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
-    // TODO: Obtener userId de la sesión
-    const userId = '410544b2-4001-4271-9855-fec4b6a6442a';
-    
+
+    // Validar campos obligatorios según SolicitudDirectaForm
+    const requiredFields = [
+      "destinatarioId",
+      "fechaSolicitante",
+      "horarioSolicitante",
+      "grupoSolicitante",
+      "fechaDestinatario",
+      "horarioDestinatario",
+      "grupoDestinatario",
+      "motivo",
+      "prioridad",
+    ];
+
+    const missingFields = requiredFields.filter((f) => !body[f]);
+    if (missingFields.length > 0) {
+      return NextResponse.json(
+        { error: `Faltan campos obligatorios: ${missingFields.join(", ")}` },
+        { status: 400 }
+      );
+    }
+
+    // TEMP: userId simulado
+    const userId = "410544b2-4001-4271-9855-fec4b6a6442a";
+
+    // Insertar la solicitud
     const [solicitud] = await sql`
       INSERT INTO solicitudes_directas (
         solicitante_id,
@@ -129,20 +152,12 @@ export async function POST(request: NextRequest) {
       RETURNING *;
     `;
 
-    // Obtener solicitud completa
+    // Obtener solicitud completa con usuarios
     const [solicitudCompleta] = await sql`
       SELECT 
         sd.*,
-        json_build_object(
-          'id', us.id,
-          'nombre', us.nombre,
-          'apellido', us.apellido
-        ) as solicitante,
-        json_build_object(
-          'id', ud.id,
-          'nombre', ud.nombre,
-          'apellido', ud.apellido
-        ) as destinatario,
+        json_build_object('id', us.id, 'nombre', us.nombre, 'apellido', us.apellido) as solicitante,
+        json_build_object('id', ud.id, 'nombre', ud.nombre, 'apellido', ud.apellido) as destinatario,
         to_char(sd.fecha_solicitud, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as fecha_solicitud
       FROM solicitudes_directas sd
       JOIN users us ON sd.solicitante_id = us.id
@@ -150,30 +165,32 @@ export async function POST(request: NextRequest) {
       WHERE sd.id = ${solicitud.id};
     `;
 
-    return NextResponse.json({
-      id: solicitudCompleta.id,
-      solicitante: solicitudCompleta.solicitante,
-      destinatario: solicitudCompleta.destinatario,
-      turnoSolicitante: {
-        fecha: solicitudCompleta.fecha_solicitante,
-        horario: solicitudCompleta.horario_solicitante,
-        grupoTurno: solicitudCompleta.grupo_solicitante,
-      },
-      turnoDestinatario: {
-        fecha: solicitudCompleta.fecha_destinatario,
-        horario: solicitudCompleta.horario_destinatario,
-        grupoTurno: solicitudCompleta.grupo_destinatario,
-      },
-      motivo: solicitudCompleta.motivo,
-      prioridad: solicitudCompleta.prioridad,
-      estado: solicitudCompleta.estado,
-      fechaSolicitud: solicitudCompleta.fecha_solicitud,
-    }, { status: 201 });
-    
-  } catch (error) {
-    console.error('Error creating solicitud:', error);
     return NextResponse.json(
-      { error: 'Error al crear solicitud' }, 
+      {
+        id: solicitudCompleta.id,
+        solicitante: solicitudCompleta.solicitante,
+        destinatario: solicitudCompleta.destinatario,
+        turnoSolicitante: {
+          fecha: solicitudCompleta.fecha_solicitante,
+          horario: solicitudCompleta.horario_solicitante,
+          grupoTurno: solicitudCompleta.grupo_solicitante,
+        },
+        turnoDestinatario: {
+          fecha: solicitudCompleta.fecha_destinatario,
+          horario: solicitudCompleta.horario_destinatario,
+          grupoTurno: solicitudCompleta.grupo_destinatario,
+        },
+        motivo: solicitudCompleta.motivo,
+        prioridad: solicitudCompleta.prioridad,
+        estado: solicitudCompleta.estado,
+        fechaSolicitud: solicitudCompleta.fecha_solicitud,
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("Error creating solicitud:", error);
+    return NextResponse.json(
+      { error: "Error inesperado al crear la solicitud" },
       { status: 500 }
     );
   }
