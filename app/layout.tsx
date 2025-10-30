@@ -2,6 +2,7 @@ import '@/app/ui/global.css';
 import { inter } from '@/app/ui/fonts';
 import Footer from './components/Footer';
 import ThemeToggle from './components/ThemeToggle';
+import { AuthProvider } from './context/AuthContext';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -11,9 +12,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ThemeToggle />
         </div>
         {/* Contenido principal */}
-        <main className="flex-grow">
+        <AuthProvider>
           {children}
-        </main>
+        </AuthProvider>
         
         {/* Footer: siempre al final de la página */}
         <Footer />
