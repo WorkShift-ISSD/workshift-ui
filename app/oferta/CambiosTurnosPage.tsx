@@ -588,17 +588,17 @@ export default function CambiosTurnosPage() {
                           {/* Botones (solo si está SOLICITADO) */}
                           {solicitud.estado === 'SOLICITADO' && (
                             <div className="flex gap-2">
-                              <button
+                              {/* <button
                                 onClick={() => handleAceptarSolicitud(solicitud.id)}
                                 className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition"
                               >
                                 ✓ Aceptar
-                              </button>
+                              </button> */}
                               <button
                                 onClick={() => handleRechazarSolicitud(solicitud.id)}
                                 className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
                               >
-                                ✗ Rechazar
+                                ✗ Cancelar solicitud
                               </button>
                               <button
                                 onClick={() => handleEliminarSolicitud(solicitud.id)}

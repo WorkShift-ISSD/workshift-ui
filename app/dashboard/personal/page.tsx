@@ -458,6 +458,22 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Gestión de Empleados</h1>
         <p className="text-gray-600 dark:text-gray-400 mt-1">Administra los empleados, turnos y permisos del sistema WorkShift</p>
       </div>
+      <div className="flex justify-end mb-4 mt-4">
+        {/* Botón Exportar */}
+          
+          <ExportData
+            employees={filteredEmployees}
+            stats={stats}
+            filters={{
+              searchTerm,
+              selectedRole,
+              selectedShift,
+              selectedHorario
+            }}
+            calcularEstado={calcularEstado}
+            
+          />
+      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -567,20 +583,7 @@ export default function DashboardPage() {
               ))}
           </select>
 
-          {/* Botón Exportar */}
           
-          <ExportData
-            employees={filteredEmployees}
-            stats={stats}
-            filters={{
-              searchTerm,
-              selectedRole,
-              selectedShift,
-              selectedHorario
-            }}
-            calcularEstado={calcularEstado}
-            
-          />
 
           {/* Botón Nuevo Empleado */}
           <button

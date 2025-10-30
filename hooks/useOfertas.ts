@@ -71,7 +71,7 @@ export const useOfertas = () => {
     isLoading,
     mutate,
   } = useSWR<Oferta[]>("/api/ofertas", fetcher, {
-    refreshInterval: 10000,
+    refreshInterval: 5000,
   });
 
   // Crear nueva oferta
