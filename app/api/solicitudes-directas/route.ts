@@ -1,11 +1,16 @@
 // app/api/solicitudes-directas/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import postgres from 'postgres';
+import { cookies } from 'next/headers';
+import { jwtVerify } from 'jose';
 
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
 
+const SECRET_KEY = new TextEncoder().encode(
+  process.env.JWT_SECRET || 'Workshift25'
+);
+
 // GET - Obtener solicitudes directas
-// app/api/solicitudes-directas/route.ts
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -94,11 +99,29 @@ export async function GET(request: NextRequest) {
 }
 
 // POST - Crear solicitud directa en la BD
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log('📥 Body recibido:', body);
+
+    // ✅ Obtener el usuario autenticado del token JWT
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth-token')?.value;
+
+    if (!token) {
+      return NextResponse.json(
+        { error: 'No autenticado' },
+        { status: 401 }
+      );
+    }
+
+    // Verificar y decodificar el token
+    const { payload } = await jwtVerify(token, SECRET_KEY);
+    const solicitanteId = payload.id as string;
+
+    console.log('✅ Usuario autenticado:', solicitanteId);
+
     const {
-      solicitanteId,
       destinatarioId,
       fechaSolicitante,
       horarioSolicitante,
@@ -110,8 +133,8 @@ export async function POST(request: Request) {
       prioridad
     } = body;
 
+    // Validar campos obligatorios
     if (
-      !solicitanteId ||
       !destinatarioId ||
       !fechaSolicitante ||
       !horarioSolicitante ||
@@ -128,6 +151,33 @@ export async function POST(request: Request) {
       );
     }
 
+    // Verificar que el solicitante no se envíe una solicitud a sí mismo
+    if (solicitanteId === destinatarioId) {
+      return NextResponse.json(
+        { error: 'No puedes enviarte una solicitud a ti mismo' },
+        { status: 400 }
+      );
+    }
+
+    // Verificar que ambos usuarios existan
+    const [solicitante] = await sql`
+      SELECT id FROM users WHERE id = ${solicitanteId}::uuid;
+    `;
+    
+    const [destinatario] = await sql`
+      SELECT id FROM users WHERE id = ${destinatarioId}::uuid;
+    `;
+
+    if (!solicitante || !destinatario) {
+      return NextResponse.json(
+        { error: 'Usuario no encontrado' },
+        { status: 404 }
+      );
+    }
+
+    console.log('✅ Usuarios validados');
+
+    // Insertar la solicitud
     const [nuevaSolicitud] = await sql`
       INSERT INTO solicitudes_directas (
         solicitante_id,
@@ -143,8 +193,8 @@ export async function POST(request: Request) {
         estado,
         fecha_solicitud
       ) VALUES (
-        ${solicitanteId},
-        ${destinatarioId},
+        ${solicitanteId}::uuid,
+        ${destinatarioId}::uuid,
         ${fechaSolicitante},
         ${horarioSolicitante},
         ${grupoSolicitante},
@@ -159,6 +209,8 @@ export async function POST(request: Request) {
       RETURNING *;
     `;
 
+    console.log('✅ Solicitud creada:', nuevaSolicitud);
+
     return NextResponse.json(
       { message: 'Solicitud creada correctamente', solicitud: nuevaSolicitud },
       { status: 201 }
@@ -166,7 +218,10 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('❌ Error en POST /api/solicitudes-directas:', error);
     return NextResponse.json(
-      { error: 'Error al procesar la solicitud' },
+      { 
+        error: 'Error al procesar la solicitud',
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     );
   }

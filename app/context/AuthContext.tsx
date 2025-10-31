@@ -9,7 +9,7 @@ interface User {
   email: string;
   nombre: string;
   apellido: string;
-  rol: 'SUPERVISOR' | 'INSPECTOR' | 'JEFE';
+  rol: 'ADMINISTRADOR' | 'SUPERVISOR' | 'INSPECTOR' | 'JEFE';
   grupoTurno: 'A' | 'B';
   activo: boolean;
 }

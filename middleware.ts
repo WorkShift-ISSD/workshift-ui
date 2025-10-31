@@ -38,6 +38,22 @@ const RUTAS_POR_ROL = {
     '/dashboard/privacy',
     '/dashboard/terms',
   ],
+  // ✅ ADMINISTRADOR tiene acceso a TODAS las rutas del dashboard
+  ADMINISTRADOR: [
+    '/dashboard',
+    '/dashboard/cambios',
+    '/dashboard/solicitudes',
+    '/dashboard/licencias',
+    '/dashboard/calificaciones',
+    '/dashboard/personal',
+    '/dashboard/faltas',
+    '/dashboard/sanciones',
+    '/dashboard/autorizaciones',
+    '/dashboard/estadisticas',
+    '/dashboard/informes',
+    '/dashboard/privacy',
+    '/dashboard/terms',
+  ],
 };
 
 export async function middleware(request: NextRequest) {
@@ -63,6 +79,13 @@ export async function middleware(request: NextRequest) {
   try {
     const { payload } = await jwtVerify(token, SECRET_KEY);
     const userRole = payload.rol as keyof typeof RUTAS_POR_ROL;
+
+    // ✅ El ADMINISTRADOR tiene acceso a todo
+    if (userRole === 'ADMINISTRADOR') {
+      const response = NextResponse.next();
+      response.headers.set('x-user-role', userRole);
+      return response;
+    }
 
     const rutasPermitidas = RUTAS_POR_ROL[userRole] || [];
     const tieneAcceso = rutasPermitidas.some(ruta => pathname.startsWith(ruta));

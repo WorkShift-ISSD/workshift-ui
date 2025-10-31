@@ -59,6 +59,10 @@ export interface Oferta {
     horario: string;
     grupoTurno: GrupoTurno;
   };
+  tomador?: {
+    id: string;
+    nombre: string;
+  };
 }
 
 export interface NuevaOfertaForm {

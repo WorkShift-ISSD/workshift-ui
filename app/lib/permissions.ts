@@ -14,9 +14,9 @@ export type Permiso =
   | 'eliminar_solicitud_pendiente'  // Cancelar solicitud antes de ser aceptada
   
   // LICENCIAS
-  | 'pedir_licencia_ordinaria'    // Pedir licencia ordinaria (genera autorización)
-  | 'pedir_licencia_especial'     // Pedir licencia especial (sin autorización)
-  | 'cargar_licencia_especial_otros' // Supervisor puede cargar licencias especiales de otros
+  | 'pedir_licencia_ordinaria'        // Pedir licencia ordinaria (genera autorización)
+  | 'pedir_licencia_especial'         // Pedir licencia especial (sin autorización)
+  | 'cargar_licencia_especial_otros'  // Supervisor puede cargar licencias especiales de otros
   
   // CALIFICACIONES
   | 'calificar_usuario'           // Calificar después de un cambio realizado
@@ -52,7 +52,9 @@ export type Permiso =
   // PERSONAL (Solo lectura para Jefe)
   | 'ver_personal_solo_lectura';
 
-export const PERMISOS_POR_ROL: Record<string, Permiso[]> = {
+
+// 🔒 Permisos por rol
+export const PERMISOS_POR_ROL: Record<string, (Permiso | '*')[]> = {
   INSPECTOR: [
     // Ofertas
     'ofertar_turno',
@@ -125,13 +127,19 @@ export const PERMISOS_POR_ROL: Record<string, Permiso[]> = {
     'ver_estadisticas',
     'ver_informes',
   ],
+
+  // 🧠 ADMIN con acceso total
+  ADMINISTRADOR: ['*'],
 };
+
 
 // Helper para verificar si un permiso es de escritura
 export const esPermisoEscritura = (permiso: Permiso): boolean => {
-  return permiso.includes('cargar') || 
-         permiso.includes('modificar') || 
-         permiso.includes('eliminar') ||
-         permiso.includes('autorizar') ||
-         permiso.includes('rechazar');
+  return (
+    permiso.includes('cargar') || 
+    permiso.includes('modificar') || 
+    permiso.includes('eliminar') ||
+    permiso.includes('autorizar') ||
+    permiso.includes('rechazar')
+  );
 };

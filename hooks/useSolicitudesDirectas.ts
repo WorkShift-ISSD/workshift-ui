@@ -59,28 +59,29 @@ export const useSolicitudesDirectas = () => {
   });
 
   // Crear nueva solicitud directa
-  const agregarSolicitud = async (formData: SolicitudDirectaForm) => {
-    console.log("Agregar solicitud directa:", formData);
+  // En useSolicitudesDirectas.ts
+const agregarSolicitud = async (solicitud: SolicitudDirectaForm) => {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("Usuario no autenticado");
 
-    
+  // ❌ NO enviar solicitanteId en el body
+  const { solicitanteId, ...solicitudSinSolicitante } = solicitud;
 
-    const res = await fetch("/api/solicitudes-directas", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
-    });
+  const res = await fetch("/api/solicitudes-directas", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(solicitudSinSolicitante), // ✅ Sin solicitanteId
+  });
 
-    const data = await res.json();
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Error al crear solicitud");
 
-    console.log("📥 Respuesta del servidor:", data);
-    console.log("📊 Status de la respuesta:", res.status);
-  
-
-    if (!res.ok) throw new Error(data.error || "Error al crear solicitud");
-
-    await mutate(); // Refresca la lista
-    return data;
-  };
+  mutate();
+  return data;
+};
 
   // Actualizar estado
   const actualizarEstado = async (id: string, nuevoEstado: EstadoOferta) => {

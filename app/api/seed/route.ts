@@ -9,7 +9,7 @@ const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
 
 async function seedUsers() {
   await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
-  
+
   await sql`
     CREATE TABLE IF NOT EXISTS users (
       id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -18,7 +18,7 @@ async function seedUsers() {
       nombre VARCHAR(255) NOT NULL,
       apellido VARCHAR(255) NOT NULL,
       password TEXT NOT NULL,
-      rol VARCHAR(50) NOT NULL DEFAULT 'INSPECTOR' CHECK (rol IN ('SUPERVISOR', 'INSPECTOR', 'JEFE')),
+      rol VARCHAR(50) NOT NULL DEFAULT 'INSPECTOR' CHECK (rol IN ('SUPERVISOR', 'INSPECTOR', 'JEFE', 'ADMINISTRADOR')),
       telefono VARCHAR(50),
       direccion TEXT,
       horario VARCHAR(50),
@@ -82,6 +82,45 @@ async function seedUsers() {
       `;
     }),
   );
+  // 🔹 Crear usuario administrador
+  const hashedAdminPassword = await bcrypt.hash('Workshift25', 10);
+  await sql`
+  INSERT INTO users (
+    id,
+    legajo,
+    email,
+    nombre,
+    apellido,
+    password,
+    rol,
+    telefono,
+    direccion,
+    horario,
+    fecha_nacimiento,
+    activo,
+    grupo_turno,
+    calificacion,
+    total_intercambios
+  )
+  VALUES (
+    uuid_generate_v4(),
+    300001,
+    'admin@workshift.com',
+    'Admin',
+    'General',
+    ${hashedAdminPassword},
+    'ADMINISTRADOR',
+    NULL,
+    NULL,
+    '09:00-17:00',
+    NULL,
+    TRUE,
+    'A',
+    5.0,
+    0
+  )
+  ON CONFLICT (email) DO NOTHING;
+`;
 
   return insertedUsers;
 }
@@ -162,7 +201,7 @@ async function seedStats() {
   `;
 
   const currentMonth = new Date().toISOString().slice(0, 7);
-  
+
   await sql`
     INSERT INTO stats (turnos_oferta, aprobados, pendientes, rechazados, mes)
     VALUES (${stats.turnosOferta}, ${stats.aprobados}, ${stats.pendientes}, ${stats.rechazados}, ${currentMonth})
@@ -195,7 +234,7 @@ async function seedTurnosData() {
 
   const currentMonth = new Date().toISOString().slice(0, 7);
   const firstUser = users[0];
-  
+
   await sql`
     INSERT INTO turnos_data (
       user_id, 
@@ -303,7 +342,7 @@ async function createRelations() {
 
 async function dropAllTables() {
   console.log('🗑️  Eliminando tablas existentes...');
-  
+
   await sql`DROP TABLE IF EXISTS solicitudes_directas CASCADE`;
   await sql`DROP TABLE IF EXISTS ofertas CASCADE`;
   await sql`DROP TABLE IF EXISTS turnos_data CASCADE`;
@@ -311,7 +350,7 @@ async function dropAllTables() {
   await sql`DROP TABLE IF EXISTS stats CASCADE`;
   await sql`DROP TABLE IF EXISTS turnos CASCADE`;
   await sql`DROP TABLE IF EXISTS users CASCADE`;
-  
+
   console.log('✅ Tablas eliminadas');
 }
 
@@ -319,39 +358,39 @@ export async function GET() {
   try {
     await sql.begin(async (sql) => {
       console.log('🌱 Iniciando seed de la base de datos...');
-      
+
       // IMPORTANTE: Eliminar tablas existentes primero
       await dropAllTables();
-      
+
       await seedUsers();
       console.log('✅ Usuarios creados');
-      
+
       await seedTurnos();
       console.log('✅ Turnos creados');
-      
+
       await seedCambios();
       console.log('✅ Cambios creados');
-      
+
       await seedStats();
       console.log('✅ Estadísticas creadas');
-      
+
       await seedTurnosData();
       console.log('✅ Datos de turnos creados');
-      
+
       // ✨ AGREGAR: Crear tablas de ofertas y solicitudes
       await seedOfertas();
       await seedSolicitudesDirectas();
-      
+
       await createRelations();
     });
 
-    return Response.json({ 
+    return Response.json({
       message: 'Database seeded successfully',
       tables: ['users', 'turnos', 'cambios', 'stats', 'turnos_data', 'ofertas', 'solicitudes_directas'],
       schema: {
         users: {
           campos: [
-            'id', 'legajo', 'email', 'nombre', 'apellido', 'password', 
+            'id', 'legajo', 'email', 'nombre', 'apellido', 'password',
             'rol', 'telefono', 'direccion', 'horario', 'fecha_nacimiento',
             'activo', 'grupo_turno', 'foto_perfil', 'ultimo_login',
             'calificacion', 'total_intercambios',
@@ -360,7 +399,7 @@ export async function GET() {
         },
         ofertas: {
           campos: [
-            'id', 'ofertante_id', 'tipo', 'fecha_ofrece', 'horario_ofrece', 
+            'id', 'ofertante_id', 'tipo', 'fecha_ofrece', 'horario_ofrece',
             'grupo_ofrece', 'fecha_busca', 'horario_busca', 'grupo_busca',
             'fecha_desde', 'fecha_hasta', 'descripcion', 'prioridad', 'estado',
             'valido_hasta', 'publicado', 'created_at', 'updated_at'

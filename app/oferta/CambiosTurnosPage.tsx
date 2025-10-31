@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   Search,
   Filter,
@@ -25,17 +25,14 @@ import { SolicitudesTabType, useTabs } from '@/hooks/useTabs';
 import { useFormatters } from '@/hooks/useFormatters';
 import { GrupoTurno, NuevaOfertaForm, useOfertas } from '@/hooks/useOfertas';
 import { SolicitudDirectaForm, useSolicitudesDirectas } from '@/hooks/useSolicitudesDirectas';
-import useSWR, { mutate } from 'swr';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import Can from '../components/Can';
+import { calcularGrupoTrabaja, esFechaValidaParaGrupo } from '../lib/turnosUtils';
 
 // Constantes
-const fetcher = (url: string) => fetch(url).then(res => res.json());
 const HORARIOS = ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '14:00-23:00'];
 const GRUPOS: GrupoTurno[] = ['A', 'B'];
-
-
 
 const INITIAL_OFERTA_FORM: NuevaOfertaForm = {
   tipo: 'INTERCAMBIO',
@@ -52,7 +49,7 @@ const INITIAL_OFERTA_FORM: NuevaOfertaForm = {
 };
 
 const INITIAL_SOLICITUD_FORM: SolicitudDirectaForm = {
-  solicitanteId: '410544b2-4001-4271-9855-fec4b6a6442a',
+  solicitanteId: '',
   destinatarioId: '',
   fechaSolicitante: '',
   horarioSolicitante: '04:00-14:00',
@@ -65,29 +62,14 @@ const INITIAL_SOLICITUD_FORM: SolicitudDirectaForm = {
 };
 
 export default function CambiosTurnosPage() {
-
-  // Cargar usuarios dinámicamente
-  const { data: usuarios, error: errorUsuarios } = useSWR('/api/users', fetcher);
-
+  // Auth y permisos
   const { user } = useAuth();
   const { can } = usePermissions();
 
-
-
-
-
-  // Transformar para compatibilidad (opcional)
-  const COMPANEROS = usuarios?.map((u: any) => ({
-    id: u.id,
-    nombre: `${u.nombre} ${u.apellido}`,
-    cargo: u.rol
-  })) || [];
-
-  // Hooks personalizados - SEPARADOS correctamente
+  // Hooks personalizados
   const {
     ofertas,
     stats,
-    solicitudes,
     agregarOferta,
     actualizarEstado: actualizarEstadoOferta,
     eliminarOferta,
@@ -103,41 +85,88 @@ export default function CambiosTurnosPage() {
     error: errorSolicitudes
   } = useSolicitudesDirectas();
 
-  // Filtrar ofertas
-  const misOfertas = ofertas.filter(
-    o => o.ofertante?.id === user?.id && o.estado === 'DISPONIBLE'
-  );
-
- 
-  const ofertasDisponibles = ofertas.filter(o => {
-  console.log('🔍 Comparando:', {
-    ofertanteId: o.ofertante?.id,
-    userId: user?.id,
-    sonIguales: o.ofertante?.id === user?.id,
-    oferta: o
-  });
-  return o.ofertante?.id !== user?.id && o.estado === 'DISPONIBLE';
-});
-
-  // Filtrar solicitudes directas
-  const solicitudesEnviadas = solicitudesDirectas.filter(
-    s => s.solicitante.id === user?.id
-  );
-
-  const solicitudesRecibidas = solicitudesDirectas.filter(
-    s => s.destinatario.id === user?.id && s.estado === 'SOLICITADO'
-  );
-
-
   const { modalType, isModalOpen, openModal, closeModal } = useModal();
   const { activeTab: solicitudesTab, setActiveTab: setSolicitudesTab } = useTabs<SolicitudesTabType>('estado');
   const { formatTimeAgo, formatDate } = useFormatters();
 
-  // Form states
+  // Estados locales
+  const [usuarios, setUsuarios] = useState<any[]>([]);
+  const [loadingUsuarios, setLoadingUsuarios] = useState(false);
   const [nuevaOfertaForm, setNuevaOfertaForm] = useState<NuevaOfertaForm>(INITIAL_OFERTA_FORM);
   const [solicitudDirectaForm, setSolicitudDirectaForm] = useState<SolicitudDirectaForm>(INITIAL_SOLICITUD_FORM);
   const [formError, setFormError] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Cargar usuarios una sola vez
+  useEffect(() => {
+    const fetchUsuarios = async () => {
+      setLoadingUsuarios(true);
+      try {
+        const res = await fetch('/api/users');
+        if (res.ok) {
+          const data = await res.json();
+          setUsuarios(data);
+        }
+      } catch (error) {
+        console.error('Error al cargar usuarios:', error);
+      } finally {
+        setLoadingUsuarios(false);
+      }
+    };
+
+    fetchUsuarios();
+  }, []);
+
+  // Filtrar usuarios (excluir al usuario actual y mismo rol)
+  const usuariosFiltrados = useMemo(() => {
+    if (!user) return [];
+    return usuarios.filter(
+      (u) => u.rol === user.rol && u.id !== user.id
+    );
+  }, [usuarios, user]);
+
+  // Obtener compañero seleccionado
+  const companeroSeleccionado = useMemo(() => {
+    if (!solicitudDirectaForm.destinatarioId) return null;
+    return usuarios.find(u => u.id === solicitudDirectaForm.destinatarioId);
+  }, [solicitudDirectaForm.destinatarioId, usuarios]);
+
+  // Auto-completar horario y grupo del destinatario
+  useEffect(() => {
+    if (companeroSeleccionado) {
+      setSolicitudDirectaForm(prev => ({
+        ...prev,
+        horarioDestinatario: companeroSeleccionado.horario || '04:00-14:00',
+        grupoDestinatario: companeroSeleccionado.grupoTurno || 'A'
+      }));
+    }
+  }, [companeroSeleccionado]);
+
+  // Filtrar ofertas
+  const misOfertas = useMemo(() => {
+    return ofertas.filter(
+      o => o.ofertante?.id === user?.id && o.estado === 'DISPONIBLE'
+    );
+  }, [ofertas, user?.id]);
+
+  const ofertasDisponibles = useMemo(() => {
+    return ofertas.filter(
+      o => o.ofertante?.id !== user?.id && o.estado === 'DISPONIBLE'
+    );
+  }, [ofertas, user?.id]);
+
+  // Filtrar solicitudes directas
+  const solicitudesEnviadas = useMemo(() => {
+    return solicitudesDirectas.filter(
+      s => s.solicitante.id === user?.id
+    );
+  }, [solicitudesDirectas, user?.id]);
+
+  const solicitudesRecibidas = useMemo(() => {
+    return solicitudesDirectas.filter(
+      s => s.destinatario.id === user?.id && s.estado === 'SOLICITADO'
+    );
+  }, [solicitudesDirectas, user?.id]);
 
   // Validación de formularios
   const validateOfertaForm = useCallback((form: NuevaOfertaForm): string => {
@@ -192,33 +221,27 @@ export default function CambiosTurnosPage() {
 
   // Handlers para nueva oferta
   const handleNuevaOfertaSubmit = useCallback(async (e: React.FormEvent) => {
-  e.preventDefault();
-  setFormError('');
-
-  const error = validateOfertaForm(nuevaOfertaForm);
-  if (error) {
-    setFormError(error);
-    return;
-  }
-
-  setIsSubmitting(true);
-  try {
-    // ✅ Asegurate de enviar el ID del usuario logueado
-    const ofertaConUsuario = {
-      ...nuevaOfertaForm,
-      ofertanteId: user?.id  // 👈 ✅ USAR EL ID DEL USUARIO ACTUAL
-    };
-
-    await agregarOferta(ofertaConUsuario);
-    closeModal();
-    setNuevaOfertaForm(INITIAL_OFERTA_FORM);
+    e.preventDefault();
     setFormError('');
-  } catch (error) {
-    setFormError('Error al publicar la oferta. Intenta nuevamente.');
-  } finally {
-    setIsSubmitting(false);
-  }
-}, [nuevaOfertaForm, validateOfertaForm, agregarOferta, closeModal, user]);
+
+    const error = validateOfertaForm(nuevaOfertaForm);
+    if (error) {
+      setFormError(error);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await agregarOferta(nuevaOfertaForm);
+      closeModal();
+      setNuevaOfertaForm(INITIAL_OFERTA_FORM);
+      setFormError('');
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Error al publicar la oferta. Intenta nuevamente.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [nuevaOfertaForm, validateOfertaForm, agregarOferta, closeModal]);
 
   // Handlers para solicitud directa
   const handleSolicitudDirectaSubmit = useCallback(async (e: React.FormEvent) => {
@@ -233,13 +256,12 @@ export default function CambiosTurnosPage() {
 
     setIsSubmitting(true);
     try {
-
       await agregarSolicitud(solicitudDirectaForm);
       closeModal();
       setSolicitudDirectaForm(INITIAL_SOLICITUD_FORM);
       setFormError('');
     } catch (error) {
-      setFormError('Error al enviar la solicitud. Intenta nuevamente.');
+      setFormError(error instanceof Error ? error.message : 'Error al enviar la solicitud. Intenta nuevamente.');
     } finally {
       setIsSubmitting(false);
     }
@@ -252,7 +274,7 @@ export default function CambiosTurnosPage() {
     setIsSubmitting(false);
   }, [closeModal]);
 
-  // Handlers para acciones de ofertas y solicitudes
+  // Handlers para acciones de ofertas
   const handleAceptarOferta = useCallback(async (ofertaId: string) => {
     try {
       await actualizarEstadoOferta(ofertaId, 'COMPLETADO');
@@ -271,24 +293,50 @@ export default function CambiosTurnosPage() {
     }
   }, [eliminarOferta]);
 
-  const handleAceptarSolicitud = async (id: string) => {
+  const handleTomarOferta = useCallback(async (ofertaId: string) => {
+    try {
+      if (!confirm('¿Estás seguro de que quieres tomar esta oferta?')) {
+        return;
+      }
+
+      const res = await fetch(`/api/ofertas/${ofertaId}/tomar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tomadorId: user?.id }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Error al tomar la oferta');
+      }
+
+      alert('¡Oferta tomada exitosamente! Pendiente de autorización.');
+    } catch (error) {
+      console.error('Error al tomar oferta:', error);
+      alert('Error al tomar la oferta. Intenta nuevamente.');
+    }
+  }, [user?.id]);
+
+  // Handlers para solicitudes
+  const handleAceptarSolicitud = useCallback(async (id: string) => {
     try {
       await actualizarEstado(id, 'APROBADO');
     } catch (error) {
       console.error('Error al aceptar solicitud:', error);
       setFormError('Error al aceptar la solicitud');
     }
-  };
+  }, [actualizarEstado]);
 
-  const handleRechazarSolicitud = async (id: string) => {
+  const handleRechazarSolicitud = useCallback(async (id: string) => {
     try {
       await actualizarEstado(id, 'CANCELADO');
     } catch (error) {
       console.error('Error al rechazar solicitud:', error);
       setFormError('Error al rechazar la solicitud');
     }
-  };
-  const handleEliminarSolicitud = async (id: string) => {
+  }, [actualizarEstado]);
+
+  const handleEliminarSolicitud = useCallback(async (id: string) => {
     if (!confirm('¿Eliminar esta solicitud de la base de datos?')) return;
 
     try {
@@ -298,15 +346,15 @@ export default function CambiosTurnosPage() {
 
       if (res.ok) {
         console.log('✅ Solicitud eliminada');
-        // Forzar recarga
         window.location.reload();
       }
     } catch (error) {
       console.error('Error:', error);
     }
-  };
+  }, []);
 
-  const formatearFecha = (fecha: string | null | undefined) => {
+  // Utilidades
+  const formatearFecha = useCallback((fecha: string | null | undefined) => {
     if (!fecha) return 'Fecha no disponible';
 
     try {
@@ -321,43 +369,54 @@ export default function CambiosTurnosPage() {
     } catch (error) {
       return 'Error en fecha';
     }
-  };
+  }, []);
 
-  const handleTomarOferta = async (ofertaId: string) => {
-    try {
-      // Confirmar con el usuario
-      if (!confirm('¿Estás seguro de que quieres tomar esta oferta?')) {
-        return;
+  const validarFechaGrupo = useCallback((fecha: string): boolean => {
+    if (!fecha || !user) return false;
+    const fechaObj = new Date(fecha + 'T00:00:00');
+    return esFechaValidaParaGrupo(fechaObj, user.grupoTurno);
+  }, [user]);
+
+  const getFechasDeshabilitadas = useCallback((fechaInicio: string, fechaFin: string) => {
+    if (!user) return '';
+
+    const inicio = new Date(fechaInicio + 'T00:00:00');
+    const fin = new Date(fechaFin + 'T00:00:00');
+    const fechasInvalidas: string[] = [];
+
+    for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
+      if (!esFechaValidaParaGrupo(d, user.grupoTurno)) {
+        fechasInvalidas.push(d.toISOString().split('T')[0]);
       }
-
-      // Llamar a la API para tomar la oferta
-      const res = await fetch(`/api/ofertas/${ofertaId}/tomar`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tomadorId: user?.id
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Error al tomar la oferta');
-      }
-
-      // Refrescar la lista
-      // O la función que uses para refrescar
-
-      alert('¡Oferta tomada exitosamente! Pendiente de autorización.');
-    } catch (error) {
-      console.error('Error al tomar oferta:', error);
-      alert('Error al tomar la oferta. Intenta nuevamente.');
     }
-  };
 
+    return fechasInvalidas;
+  }, [user]);
+
+  // Componente helper
+  const GrupoDelDia = ({ fecha }: { fecha: string }) => {
+    if (!fecha) return null;
+
+    const fechaObj = new Date(fecha + 'T00:00:00');
+    const grupo = calcularGrupoTrabaja(fechaObj);
+    const esValido = user && grupo === user.grupoTurno;
+
+    return (
+      <span className={`text-xs ml-2 px-2 py-1 rounded ${
+        esValido
+          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+          : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+      }`}>
+        Grupo {grupo} {esValido ? '✓' : '✗'}
+      </span>
+    );
+  };
 
   // Loading y error states
   const isLoading = isLoadingOfertas || isLoadingSolicitudes;
   const error = errorOfertas || errorSolicitudes;
+
+  // ... resto del componente (render)
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
@@ -664,11 +723,12 @@ export default function CambiosTurnosPage() {
             {(() => {
               // Combinar ofertas completadas/canceladas
               const ofertasHistorico = ofertas.filter(
-                o => o.estado === 'COMPLETADO' || o.estado === 'CANCELADO'
+                o => (o.ofertante?.id === user?.id || o.tomador?.id === user?.id) &&
+                  (o.estado === 'COMPLETADO' || o.estado === 'CANCELADO')
               );
 
               // Combinar solicitudes directas completadas/canceladas
-              const solicitudesHistorico = solicitudes.filter(
+              const solicitudesHistorico = solicitudesDirectas.filter(
                 s => s.estado === 'COMPLETADO' || s.estado === 'CANCELADO'
               );
 
@@ -781,9 +841,9 @@ export default function CambiosTurnosPage() {
                             </span>
                           </div>
                           <p className="text-xs text-gray-500 dark:text-gray-400 ml-5">
-                            Tu turno: {solicitud.turnoSolicitado ? (
+                            Tu turno: {solicitud.turnoSolicitante ? (
                               <>
-                                {formatDate(solicitud.turnoSolicitado.fecha)} ({solicitud.turnoSolicitado.horario})
+                                {formatDate(solicitud.turnoSolicitante.fecha)} ({solicitud.turnoSolicitante.horario})
                               </>
                             ) : (
                               'Información no disponible'
@@ -926,8 +986,8 @@ export default function CambiosTurnosPage() {
                       </p>
                     </div>
                     <span className={`px-2 py-1 rounded text-xs font-medium ${oferta.prioridad === 'URGENTE'
-                        ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                      ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                      : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
                       }`}>
                       {oferta.prioridad}
                     </span>
@@ -1021,8 +1081,8 @@ export default function CambiosTurnosPage() {
                           </p>
                         </div>
                         <span className={`px-2 py-1 rounded text-xs font-medium ${oferta.prioridad === 'URGENTE'
-                            ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                            : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                          ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                          : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
                           }`}>
                           {oferta.prioridad}
                         </span>
@@ -1196,16 +1256,62 @@ export default function CambiosTurnosPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <label htmlFor="fecha-ofrece" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Fecha
+                          Fecha que ofreces
+                          {nuevaOfertaForm.fechaOfrece && (
+                            <span className={`text-xs ml-2 px-2 py-1 rounded ${nuevaOfertaForm.fechaOfrece && user &&
+                              esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno)
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                              }`}>
+                              Grupo {calcularGrupoTrabaja(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'))}
+                              {user && esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno) ? ' ✓' : ' ✗'}
+                            </span>
+                          )}
                         </label>
                         <input
                           id="fecha-ofrece"
                           type="date"
                           required
+                          min={new Date().toISOString().split('T')[0]}
                           value={nuevaOfertaForm.fechaOfrece}
-                          onChange={(e) => setNuevaOfertaForm(prev => ({ ...prev, fechaOfrece: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                          onChange={(e) => {
+                            const fecha = e.target.value;
+                            setNuevaOfertaForm(prev => ({ ...prev, fechaOfrece: fecha }));
+
+                            // Validar que la fecha ofrecida sea del grupo del usuario
+                            if (fecha && user) {
+                              const fechaObj = new Date(fecha + 'T00:00:00');
+
+                              if (!esFechaValidaParaGrupo(fechaObj, user.grupoTurno)) {
+                                setFormError(`La fecha seleccionada no corresponde al Grupo ${user.grupoTurno}. Solo puedes ofrecer turnos de tu grupo.`);
+                              } else {
+                                // Limpiar error solo si no hay otros errores
+                                if (formError.includes('no corresponde al Grupo')) {
+                                  setFormError('');
+                                }
+                              }
+                            }
+                          }}
+                          className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 ${nuevaOfertaForm.fechaOfrece && user &&
+                            !esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno)
+                            ? 'border-red-500 dark:border-red-600'
+                            : 'border-gray-300 dark:border-gray-600'
+                            }`}
                         />
+                        {nuevaOfertaForm.fechaOfrece && user &&
+                          !esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno) && (
+                            <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3" />
+                              Esta fecha corresponde al Grupo {calcularGrupoTrabaja(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'))}, pero tú eres del Grupo {user.grupoTurno}. Solo puedes ofrecer tus propios turnos.
+                            </p>
+                          )}
+                        {nuevaOfertaForm.fechaOfrece && user &&
+                          esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno) && (
+                            <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
+                              <Check className="h-3 w-3" />
+                              Fecha válida (tu turno del Grupo {user.grupoTurno})
+                            </p>
+                          )}
                       </div>
                       <div>
                         <label htmlFor="horario-ofrece" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1220,7 +1326,7 @@ export default function CambiosTurnosPage() {
                           {HORARIOS.map(h => <option key={h} value={h}>{h}</option>)}
                         </select>
                       </div>
-                      <div>
+                      {/* <div>
                         <label htmlFor="grupo-ofrece" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Grupo
                         </label>
@@ -1232,7 +1338,7 @@ export default function CambiosTurnosPage() {
                         >
                           {GRUPOS.map(g => <option key={g} value={g}>Grupo {g}</option>)}
                         </select>
-                      </div>
+                      </div> */}
                     </div>
                   </div>
 
@@ -1250,6 +1356,7 @@ export default function CambiosTurnosPage() {
                           id="fecha-busca"
                           type="date"
                           required
+                          min={new Date().toISOString().split('T')[0]}
                           value={nuevaOfertaForm.fechaBusca}
                           onChange={(e) => setNuevaOfertaForm(prev => ({ ...prev, fechaBusca: e.target.value }))}
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
@@ -1268,7 +1375,7 @@ export default function CambiosTurnosPage() {
                           {HORARIOS.map(h => <option key={h} value={h}>{h}</option>)}
                         </select>
                       </div>
-                      <div>
+                      {/* <div>
                         <label htmlFor="grupo-busca" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Grupo
                         </label>
@@ -1280,7 +1387,7 @@ export default function CambiosTurnosPage() {
                         >
                           {GRUPOS.map(g => <option key={g} value={g}>Grupo {g}</option>)}
                         </select>
-                      </div>
+                      </div> */}
                     </div>
                   </div>
                 </>
@@ -1293,32 +1400,7 @@ export default function CambiosTurnosPage() {
                     Rango de Fechas Disponibles
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="fecha-desde" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Desde
-                      </label>
-                      <input
-                        id="fecha-desde"
-                        type="date"
-                        required
-                        value={nuevaOfertaForm.fechaDesde}
-                        onChange={(e) => setNuevaOfertaForm(prev => ({ ...prev, fechaDesde: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="fecha-hasta" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Hasta
-                      </label>
-                      <input
-                        id="fecha-hasta"
-                        type="date"
-                        required
-                        value={nuevaOfertaForm.fechaHasta}
-                        onChange={(e) => setNuevaOfertaForm(prev => ({ ...prev, fechaHasta: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      />
-                    </div>
+
                   </div>
                 </div>
               )}
@@ -1440,20 +1522,33 @@ export default function CambiosTurnosPage() {
                 <select
                   id="destinatario"
                   required
+                  disabled={loadingUsuarios}
                   value={solicitudDirectaForm.destinatarioId}
                   onChange={(e) => setSolicitudDirectaForm(prev => ({
                     ...prev,
                     destinatarioId: e.target.value
                   }))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <option value="">Selecciona un compañero...</option>
-                  {usuarios?.map((usuario: any) => (
-                    <option key={usuario.id} value={usuario.id}>
-                      {usuario.nombre} {usuario.apellido} - {usuario.rol}
+                  <option value="">
+                    {loadingUsuarios ? 'Cargando usuarios...' : 'Selecciona un compañero...'}
+                  </option>
+                  {usuariosFiltrados?.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.nombre} {u.apellido} ({u.rol}) - Grupo {u.grupoTurno}
                     </option>
                   ))}
                 </select>
+
+                {/* Info del compañero seleccionado */}
+                {companeroSeleccionado && (
+                  <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      <strong>Horario:</strong> {companeroSeleccionado.horario} |
+                      <strong> Grupo:</strong> {companeroSeleccionado.grupoTurno}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Tu turno */}
@@ -1471,6 +1566,7 @@ export default function CambiosTurnosPage() {
                       id="fecha-solicitante"
                       type="date"
                       required
+                      min={new Date().toISOString().split('T')[0]}
                       value={solicitudDirectaForm.fechaSolicitante}
                       onChange={(e) => setSolicitudDirectaForm(prev => ({ ...prev, fechaSolicitante: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
@@ -1520,6 +1616,7 @@ export default function CambiosTurnosPage() {
                       id="fecha-destinatario"
                       type="date"
                       required
+                      min={new Date().toISOString().split('T')[0]}
                       value={solicitudDirectaForm.fechaDestinatario}
                       onChange={(e) => setSolicitudDirectaForm(prev => ({ ...prev, fechaDestinatario: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
@@ -1529,27 +1626,33 @@ export default function CambiosTurnosPage() {
                     <label htmlFor="horario-destinatario" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Horario
                     </label>
-                    <select
+                    <input
                       id="horario-destinatario"
-                      value={solicitudDirectaForm.horarioDestinatario}
-                      onChange={(e) => setSolicitudDirectaForm(prev => ({ ...prev, horarioDestinatario: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    >
-                      {HORARIOS.map(h => <option key={h} value={h}>{h}</option>)}
-                    </select>
+                      type="text"
+                      disabled
+                      value={solicitudDirectaForm.horarioDestinatario || 'Selecciona un compañero'}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 cursor-not-allowed"
+                      placeholder="Se asigna automáticamente"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Horario del compañero seleccionado
+                    </p>
                   </div>
                   <div>
                     <label htmlFor="grupo-destinatario" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Grupo
                     </label>
-                    <select
+                    <input
                       id="grupo-destinatario"
-                      value={solicitudDirectaForm.grupoDestinatario}
-                      onChange={(e) => setSolicitudDirectaForm(prev => ({ ...prev, grupoDestinatario: e.target.value as GrupoTurno }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    >
-                      {GRUPOS.map(g => <option key={g} value={g}>Grupo {g}</option>)}
-                    </select>
+                      type="text"
+                      disabled
+                      value={solicitudDirectaForm.grupoDestinatario ? `Grupo ${solicitudDirectaForm.grupoDestinatario}` : 'Selecciona un compañero'}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 cursor-not-allowed"
+                      placeholder="Se asigna automáticamente"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Grupo del compañero seleccionado
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1614,7 +1717,7 @@ export default function CambiosTurnosPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !solicitudDirectaForm.destinatarioId}
                   className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? (
@@ -1631,6 +1734,7 @@ export default function CambiosTurnosPage() {
           </div>
         </div>
       )}
+
     </div>
 
 
