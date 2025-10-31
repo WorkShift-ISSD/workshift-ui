@@ -64,6 +64,7 @@ export default function Footer() {
               src="/Logo-v4-2a.png"
               alt="WSMS Logo"
               fill
+              sizes="(max-width: 640px) 32px, 40px"
               className="object-contain"
             />
           ) : (
@@ -71,6 +72,7 @@ export default function Footer() {
               src="/Logo-v4-2.png"
               alt="WSMS Logo"
               fill
+              sizes="(max-width: 640px) 32px, 40px"
               className="object-contain dark:invert"
             />
           )}

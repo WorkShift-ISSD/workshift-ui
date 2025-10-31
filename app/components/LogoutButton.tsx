@@ -1,30 +1,30 @@
-"use client";
+'use client';
 
-import { PowerIcon } from "@heroicons/react/24/outline";
-import { useRouter } from "next/navigation";
+
+import { useRouter } from 'next/navigation';
+import { LogOut } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function LogoutButton() {
+  const { logout } = useAuth();
   const router = useRouter();
 
-  const handleLogout = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // 🔹 Eliminar token del almacenamiento local
-    localStorage.removeItem("token");
-
-    // 🔹 Redirigir directamente al login
-    router.push("/");
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/login');
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    }
   };
 
   return (
-    <form onSubmit={handleLogout}>
-      <button
-        type="submit"
-        className="flex h-[48px] w-full grow items-center justify-center gap-2 rounded-md bg-gray-50 dark:bg-gray-800 p-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-red-100 dark:hover:bg-red-900 hover:text-red-600 dark:hover:text-red-400 md:flex-none md:justify-start md:p-2 md:px-3 transition-colors"
-      >
-        <PowerIcon className="w-6" />
-        <div className="hidden md:block">Sign Out</div>
-      </button>
-    </form>
+    <button
+      onClick={handleLogout}
+      className="flex items-center justify-center md:justify-start gap-2 w-full h-[48px] rounded-md bg-gray-50 dark:bg-gray-800 p-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-red-100 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+    >
+      <LogOut className="w-5 h-5" />
+      <span className="hidden md:block">Cerrar Sesión</span>
+    </button>
   );
 }

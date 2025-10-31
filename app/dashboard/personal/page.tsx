@@ -23,6 +23,9 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useEmpleados } from '@/hooks/useEmpleados';
+import { LoadingSpinner } from '@/app/components/LoadingSpinner';
+import { ExportData } from '@/app/components/ExportToPdf';
+
 
 // Types based on our Prisma schema
 type Rol = 'SUPERVISOR' | 'INSPECTOR' | 'JEFE';
@@ -422,11 +425,9 @@ export default function DashboardPage() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Cargando empleados...</p>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <LoadingSpinner />
+        <p className="text-gray-600 dark:text-gray-400">Cargando empleados...</p>
       </div>
     );
   }
@@ -456,6 +457,22 @@ export default function DashboardPage() {
       <div className="  ">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Gestión de Empleados</h1>
         <p className="text-gray-600 dark:text-gray-400 mt-1">Administra los empleados, turnos y permisos del sistema WorkShift</p>
+      </div>
+      <div className="flex justify-end mb-4 mt-4">
+        {/* Botón Exportar */}
+          
+          <ExportData
+            employees={filteredEmployees}
+            stats={stats}
+            filters={{
+              searchTerm,
+              selectedRole,
+              selectedShift,
+              selectedHorario
+            }}
+            calcularEstado={calcularEstado}
+            
+          />
       </div>
 
       {/* Stats Cards */}
@@ -566,14 +583,7 @@ export default function DashboardPage() {
               ))}
           </select>
 
-          {/* Botón Exportar */}
-          <button
-            className="flex-1 sm:flex-none px-4 dark:text-gray-500 py-2 dark:bg-gray-700 dark:border-gray-600 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center justify-center gap-2 text-sm sm:text-base transition-colors"
-            title="Exportar datos"
-          >
-            <Download className="h-4 w-4" />
-            Exportar
-          </button>
+          
 
           {/* Botón Nuevo Empleado */}
           <button
@@ -736,112 +746,116 @@ export default function DashboardPage() {
       </div>
 
       {/* Vista móvil tipo lista de contactos */}
-<div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800 rounded-lg shadow-sm mt-4">
-  {filteredEmployees.length === 0 ? (
-    <div className="p-6 text-center text-gray-500 dark:text-gray-400">
-      <AlertCircle className="h-8 w-8 mb-2 mx-auto text-blue-500" />
-      <p className="font-medium text-gray-700 dark:text-gray-200">No se encontraron empleados</p>
-      <p className="text-sm text-gray-500 dark:text-gray-400">Intenta ajustar los filtros</p>
-    </div>
-  ) : (
-    filteredEmployees.map((emp) => (
-      <div key={emp.id} className="transition-colors">
-        {/* Parte superior de la card (siempre visible) */}
-        <div
-          className="flex items-center justify-between p-4 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
-          onClick={() => setExpandedCardId(expandedCardId === emp.id ? null : emp.id)}
-        >
-          {/* Izquierda: Avatar + datos */}
-          <div className="flex items-center space-x-3 flex-1 min-w-0">
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center font-bold flex-shrink-0">
-              {emp.nombre[0]}{emp.apellido[0]}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">
-                {emp.nombre} {emp.apellido}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{emp.email}</p>
-              <div className="flex flex-wrap items-center gap-1 mt-1">
-                <span className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full ${getRoleColor(emp.rol)}`}>
-                  {emp.rol}
-                </span>
-                <span className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full ${getShiftColor(emp.grupoTurno)}`}>
-                  {emp.grupoTurno}
-                </span>
-                <span className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full ${getStatusColor(calcularEstado(emp))}`}>
-                  {calcularEstado(emp)}
-                </span>
-              </div>
-            </div>
+      <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800 rounded-lg shadow-sm mt-4">
+        {filteredEmployees.length === 0 ? (
+          <div className="p-6 text-center text-gray-500 dark:text-gray-400">
+            <AlertCircle className="h-8 w-8 mb-2 mx-auto text-blue-500" />
+            <p className="font-medium text-gray-700 dark:text-gray-200">No se encontraron empleados</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Intenta ajustar los filtros</p>
           </div>
+        ) : (
+          filteredEmployees.map((emp) => (
+            <div key={emp.id} className="transition-colors">
+              {/* Parte superior de la card (siempre visible) */}
+              <div
+                className="flex items-center justify-between p-4 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+                onClick={() => setExpandedCardId(expandedCardId === emp.id ? null : emp.id)}
+              >
+                {/* Izquierda: Avatar + datos */}
+                <div className="flex items-center space-x-3 flex-1 min-w-0">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center font-bold flex-shrink-0">
+                    {emp.nombre[0]}{emp.apellido[0]}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                      {emp.nombre} {emp.apellido}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{emp.email}</p>
+                    <div className="flex flex-wrap items-center gap-1 mt-1">
+                      <span className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full ${getRoleColor(emp.rol)}`}>
+                        {emp.rol}
+                      </span>
 
-          {/* Derecha: acciones */}
-          <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                openModal('view', emp);
-              }}
-              className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition"
-              title="Ver"
-            >
-              <Eye className="h-4 w-4" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                openModal('edit', emp);
-              }}
-              className="text-yellow-600 dark:text-yellow-400 hover:text-yellow-800 dark:hover:text-yellow-300 transition"
-              title="Editar"
-            >
-              <Edit2 className="h-4 w-4" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDelete(emp.id);
-              }}
-              className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition"
-              title="Eliminar"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
+                      <span className={`px-2 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full ${getStatusColor(calcularEstado(emp))}`}>
+                        {calcularEstado(emp)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
-        {/* Parte expandible (detalles adicionales) */}
-        {expandedCardId === emp.id && (
-          <div className="px-4 pb-4 bg-gray-50 dark:bg-gray-600 border-t border-gray-200 dark:border-gray-600">
-            <div className="grid grid-cols-3 gap-3 pt-3">
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Legajo</p>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {emp.legajo}
-                </p>
-              </div>              
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Horario</p>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {emp.horario || 'No asignado'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Turnos/Mes</p>
-                <div className="flex items-center gap-1">
-                  <Clock className="h-3 w-3 text-gray-400 dark:text-gray-300" />
-                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    {emp.turnosEsteMes || 0}
-                  </p>
+                {/* Derecha: acciones */}
+                <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openModal('view', emp);
+                    }}
+                    className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition"
+                    title="Ver"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openModal('edit', emp);
+                    }}
+                    className="text-yellow-600 dark:text-yellow-400 hover:text-yellow-800 dark:hover:text-yellow-300 transition"
+                    title="Editar"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(emp.id);
+                    }}
+                    className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition"
+                    title="Eliminar"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
+
+              {/* Parte expandible (detalles adicionales) */}
+              {expandedCardId === emp.id && (
+                <div className="px-4 pb-4 bg-gray-50 dark:bg-gray-600 border-t border-gray-200 dark:border-gray-600">
+                  <div className="grid grid-cols-[1fr_1.2fr_1.5fr_1.3fr] gap-3 pt-3">
+                    <div className="text-center">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Legajo</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {emp.legajo}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Turno</p>
+                      <span className={`px-2.5 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full ${getShiftColor(emp.grupoTurno)}`}>
+                        {emp.grupoTurno}
+                      </span>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Horario</p>
+                      <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                        {emp.horario || 'No asignado'}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Turnos/Mes</p>
+                      <div className="flex items-center gap-1 justify-center">
+                        <Clock className="h-3 w-3 text-gray-400 dark:text-gray-300" />
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                          {emp.turnosEsteMes || 0}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
+          ))
         )}
       </div>
-    ))
-  )}
-</div>
 
       {/* Modal */}
       {isModalOpen && (
@@ -1050,7 +1064,7 @@ export default function DashboardPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Rol 
+                        Rol
                       </label>
                       <select
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
@@ -1072,7 +1086,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Grupo de Turno 
+                        Grupo de Turno
                       </label>
                       <select
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"

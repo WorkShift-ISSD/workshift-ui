@@ -16,6 +16,8 @@ export interface Stats {
   rechazados: number;
 }
 
+
+
 export interface TurnosData {
   misGuardias: number;
   guardiasCubiertas: number;
@@ -40,4 +42,29 @@ export interface Turno {
   horaFin: string;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface Ofertas {
+  id: string;
+  ofertante: string;
+  tipo: string;
+  turnoOfrece: string | null;
+  turnoBusca: string | null;
+  descripcion: string;
+  prioridad: 'BAJA' | 'MEDIA' | 'ALTA';
+  validoHasta: string;
+  publicado: string;
+  estado: 'DISPONIBLE' | 'SOLICITADO' | 'APROBADO' | 'COMPLETADO' | 'CANCELADO';
+}
+
+export interface SolicitudesDirectas {
+  id: string;
+  solicitante: string;
+  destinatario: string;
+  turnoSolicitante: string;
+  turnoDestinatario: string;
+  motivo: string;
+  estado: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO';
+  fechaSolicitud: string;
+  prioridad: 'BAJA' | 'MEDIA' | 'ALTA';
 }
