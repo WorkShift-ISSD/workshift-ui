@@ -13,6 +13,7 @@ export type EstadoOferta =
   | "CANCELADO";
 
 export interface Oferta {
+  destinatario: any;
   id: string;
   ofertante: {
     id: string;
@@ -42,6 +43,22 @@ export interface Oferta {
   validoHasta: string;
   publicado: string;
   estado: EstadoOferta;
+  motivo?: string;
+  turnoSolicitado?: {
+    fecha: string;
+    horario: string;
+  };
+  turnoOfrecido?: {
+    grupoTurno: GrupoTurno;
+    horario: string;
+    fecha: string;
+  };
+  fechaSolicitud?: string;
+  turnoDestinatario?: {
+    fecha: string;
+    horario: string;
+    grupoTurno: GrupoTurno;
+  };
 }
 
 export interface NuevaOfertaForm {
@@ -75,25 +92,30 @@ export const useOfertas = () => {
   });
 
   // Crear nueva oferta
-  const agregarOferta = async (oferta: NuevaOfertaForm) => {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Usuario no autenticado");
+  // Crear nueva oferta
+const agregarOferta = async (oferta: NuevaOfertaForm) => {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("Usuario no autenticado");
 
-    const res = await fetch("/api/ofertas", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(oferta),
-    });
+  console.log('📤 Enviando oferta:', oferta); // ← AGREGAR ESTO
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Error al crear oferta");
+  const res = await fetch("/api/ofertas", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(oferta),
+  });
 
-    mutate();
-    return data;
-  };
+  const data = await res.json();
+  console.log('📥 Respuesta del servidor:', data); // ← Y ESTO
+  
+  if (!res.ok) throw new Error(data.error || "Error al crear oferta");
+
+  mutate();
+  return data;
+};
 
   // Actualizar estado de oferta
   const actualizarEstado = async (id: string, nuevoEstado: EstadoOferta) => {
@@ -133,6 +155,7 @@ export const useOfertas = () => {
     ofertas: ofertas || [],
     stats,
     agregarOferta,
+    solicitudes: ofertas?.filter(o => o.estado === "SOLICITADO") || [],
     actualizarEstado,
     eliminarOferta,
     isLoading,

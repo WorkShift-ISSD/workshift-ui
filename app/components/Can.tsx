@@ -1,7 +1,6 @@
 'use client';
 
 import { usePermissions } from '@/hooks/usePermissions';
-
 import { ReactNode } from 'react';
 import { Permiso } from '../lib/permissions';
 

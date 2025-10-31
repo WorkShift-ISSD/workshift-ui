@@ -3,109 +3,92 @@
 import {
   UserGroupIcon,
   HomeIcon,
+  ChartBarIcon,
+  CalendarIcon,
+  StarIcon,
+  DocumentTextIcon,
+  ShieldExclamationIcon,
+  CheckCircleIcon,
+  ClipboardDocumentListIcon,
 } from '@heroicons/react/24/outline';
+import { MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
-import { 
-  ChartLineIcon, 
-  FileClockIcon, 
-  RepeatIcon, 
-  StarIcon,
-  ClipboardCheckIcon,
-  AlertTriangleIcon,
-  ShieldAlertIcon
-} from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
-import { Permiso } from '@/app/lib/permissions';
 
-
-interface LinkItem {
-  name: string;
-  href: string;
-  icon: any;
-  requiredPermissions: Permiso[]; // Permisos necesarios (con UNO basta)
-}
-
-// Links con sus permisos requeridos
-const links: LinkItem[] = [
+const links = [
   { 
-    name: 'Home', 
+    name: 'Inicio', 
     href: '/dashboard', 
     icon: HomeIcon,
-    requiredPermissions: [], // Todos pueden ver Home
+    roles: ['INSPECTOR', 'SUPERVISOR', 'JEFE'],
   },
-  { 
-    name: 'Cambios',  
-    href: '/dashboard/cambios',  
-    icon: RepeatIcon,
-    requiredPermissions: ['ofertar_turno', 'pedir_turno'], // Inspector, Supervisor
+  {
+    name: 'Cambios',
+    href: '/dashboard/cambios',
+    icon: CalendarIcon,
+    roles: ['INSPECTOR', 'SUPERVISOR'],
   },
-  { 
-    name: 'Solicitudes',  
-    href: '/dashboard/solicitudes',  
-    icon: RepeatIcon,
-    requiredPermissions: ['solicitud_directa'], // Inspector, Supervisor
+  
+  {
+    name: 'Licencias',
+    href: '/dashboard/licencias',
+    icon: ClipboardDocumentListIcon,
+    roles: ['INSPECTOR', 'SUPERVISOR'],
   },
-  { 
-    name: 'Licencias', 
-    href: '/dashboard/licencias', 
-    icon: FileClockIcon,
-    requiredPermissions: ['pedir_licencia_ordinaria', 'pedir_licencia_especial'], // Inspector, Supervisor
-  },
-  { 
-    name: 'Calificaciones', 
-    href: '/dashboard/calificaciones', 
+  {
+    name: 'Calificaciones',
+    href: '/dashboard/calificaciones',
     icon: StarIcon,
-    requiredPermissions: ['ver_calificaciones'], // Inspector, Supervisor
+    roles: ['INSPECTOR', 'SUPERVISOR'],
   },
-  { 
-    name: 'Personal', 
-    href: '/dashboard/personal', 
+  {
+    name: 'Personal',
+    href: '/dashboard/personal',
     icon: UserGroupIcon,
-    requiredPermissions: ['cargar_empleado', 'ver_personal_solo_lectura'], // Supervisor, Jefe
+    roles: ['SUPERVISOR', 'JEFE'],
   },
-  { 
-    name: 'Faltas', 
-    href: '/dashboard/faltas', 
-    icon: AlertTriangleIcon,
-    requiredPermissions: ['cargar_falta'], // Solo Supervisor
+  {
+    name: 'Faltas',
+    href: '/dashboard/faltas',
+    icon: ShieldExclamationIcon,
+    roles: ['SUPERVISOR'],
   },
-  { 
-    name: 'Sanciones', 
-    href: '/dashboard/sanciones', 
-    icon: ShieldAlertIcon,
-    requiredPermissions: ['cargar_sancion'], // Solo Supervisor
+  {
+    name: 'Sanciones',
+    href: '/dashboard/sanciones',
+    icon: ShieldExclamationIcon,
+    roles: ['SUPERVISOR'],
   },
-  { 
-    name: 'Autorizaciones', 
-    href: '/dashboard/autorizaciones', 
-    icon: ClipboardCheckIcon,
-    requiredPermissions: ['ver_autorizaciones'], // Solo Jefe
+  {
+    name: 'Autorizaciones',
+    href: '/dashboard/autorizaciones',
+    icon: CheckCircleIcon,
+    roles: ['JEFE'],
   },
-  { 
-    name: 'Estadísticas', 
-    href: '/dashboard/estadisticas', 
-    icon: ChartLineIcon,
-    requiredPermissions: ['ver_estadisticas'], // Solo Jefe
+  {
+    name: 'Informes',
+    href: '/dashboard/informes',
+    icon: DocumentTextIcon,
+    roles: ['JEFE'],
+  },
+  {
+    name: 'Estadísticas',
+    href: '/dashboard/estadisticas',
+    icon: ChartBarIcon,
+    roles: ['JEFE'],
   },
 ];
 
-interface NavLinksProps {
-  onLinkClick?: () => void;
-}
-
-export default function NavLinks({ onLinkClick }: NavLinksProps) {
+export default function NavLinks() {
   const pathname = usePathname();
-  const { canAny } = usePermissions();
+  const { userRole } = usePermissions();
 
-  // Filtrar links según permisos
-  const visibleLinks = links.filter((link) => {
-    // Si no requiere permisos, mostrarlo
-    if (link.requiredPermissions.length === 0) return true;
-    // Si requiere permisos, verificar que tenga al menos uno
-    return canAny(link.requiredPermissions);
-  });
+  // Filtrar links según rol
+  const visibleLinks = links.filter(link => 
+    link.roles.includes(userRole || '')
+  );
 
   return (
     <>
@@ -115,11 +98,10 @@ export default function NavLinks({ onLinkClick }: NavLinksProps) {
           <Link
             key={link.name}
             href={link.href}
-            onClick={onLinkClick}
             className={clsx(
-              'flex h-[48px] grow items-center justify-center gap-2 rounded-md bg-gray-50 dark:bg-gray-800 p-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-sky-100 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 md:flex-none md:justify-start md:p-2 md:px-3 transition-colors',
+              'flex h-[48px] grow items-center justify-center gap-2 rounded-md bg-gray-50 dark:bg-gray-800 p-3 text-sm font-medium hover:bg-sky-100 dark:hover:bg-sky-900 hover:text-blue-600 dark:hover:text-blue-400 md:flex-none md:justify-start md:p-2 md:px-3 transition-colors',
               {
-                'bg-sky-100 dark:bg-gray-700 text-blue-600 dark:text-blue-400': pathname === link.href,
+                'bg-sky-100 dark:bg-sky-900 text-blue-600 dark:text-blue-400': pathname === link.href,
               },
             )}
           >

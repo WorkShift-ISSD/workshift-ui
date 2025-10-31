@@ -1,82 +1,137 @@
-export type Rol = 'INSPECTOR' | 'SUPERVISOR' | 'JEFE';
-
-export type Permiso =
-  // Permisos de Inspector
-  | 'ofertar_turno'
-  | 'pedir_turno'
-  | 'solicitud_directa'
-  | 'recibir_solicitud_directa'
-  | 'pedir_licencia_ordinaria'
-  | 'pedir_licencia_especial'
-  | 'calificar_usuario'
-  | 'ver_calificaciones'
+export type Permiso = 
+  // OFERTAS Y CAMBIOS
+  | 'ofertar_turno'           // Publicar oferta de turno
+  | 'pedir_turno'             // Tomar oferta de otro
+  | 'consultar_mis_ofertas'   // Ver mis ofertas
+  | 'modificar_mis_ofertas'   // Editar mis ofertas
+  | 'eliminar_mis_ofertas'    // Cancelar mis ofertas
   
-  // Permisos de Supervisor (Inspector +)
+  // SOLICITUDES DIRECTAS
+  | 'enviar_solicitud_directa'      // Mandar solicitud a otro usuario
+  | 'recibir_solicitud_directa'     // Recibir y responder solicitudes
+  | 'consultar_mis_solicitudes'     // Ver mis solicitudes enviadas
+  | 'modificar_solicitud_pendiente' // Modificar solicitud antes de ser aceptada
+  | 'eliminar_solicitud_pendiente'  // Cancelar solicitud antes de ser aceptada
+  
+  // LICENCIAS
+  | 'pedir_licencia_ordinaria'    // Pedir licencia ordinaria (genera autorización)
+  | 'pedir_licencia_especial'     // Pedir licencia especial (sin autorización)
+  | 'cargar_licencia_especial_otros' // Supervisor puede cargar licencias especiales de otros
+  
+  // CALIFICACIONES
+  | 'calificar_usuario'           // Calificar después de un cambio realizado
+  | 'consultar_calificaciones'    // Ver calificaciones propias y de otros
+  
+  // GESTIÓN DE PERSONAL (Supervisor)
   | 'cargar_empleado'
-  | 'cargar_falta'
-  | 'cargar_sancion'
-  | 'cargar_licencia_especial_otros'
+  | 'consultar_empleado'
+  | 'modificar_empleado'
+  | 'eliminar_empleado'
   
-  // Permisos de Jefe
+  // FALTAS Y SANCIONES (Supervisor)
+  | 'cargar_falta'
+  | 'consultar_falta'
+  | 'modificar_falta'
+  | 'eliminar_falta'
+  | 'cargar_sancion'
+  | 'consultar_sancion'
+  | 'modificar_sancion'
+  | 'eliminar_sancion'
+  
+  // AUTORIZACIONES (Jefe)
   | 'ver_autorizaciones'
-  | 'autorizar_rechazar'
-  | 'ver_personal_solo_lectura'
-  | 'ver_estadisticas';
+  | 'autorizar_cambio'
+  | 'rechazar_cambio'
+  | 'autorizar_licencia'
+  | 'rechazar_licencia'
+  
+  // INFORMES/ESTADÍSTICAS
+  | 'ver_estadisticas'
+  | 'ver_informes'
+  
+  // PERSONAL (Solo lectura para Jefe)
+  | 'ver_personal_solo_lectura';
 
-// Mapa de permisos por rol
-const PERMISOS_POR_ROL: Record<Rol, Permiso[]> = {
+export const PERMISOS_POR_ROL: Record<string, Permiso[]> = {
   INSPECTOR: [
+    // Ofertas
     'ofertar_turno',
     'pedir_turno',
-    'solicitud_directa',
+    'consultar_mis_ofertas',
+    'modificar_mis_ofertas',
+    'eliminar_mis_ofertas',
+    
+    // Solicitudes directas
+    'enviar_solicitud_directa',
     'recibir_solicitud_directa',
+    'consultar_mis_solicitudes',
+    'modificar_solicitud_pendiente',
+    'eliminar_solicitud_pendiente',
+    
+    // Licencias
     'pedir_licencia_ordinaria',
     'pedir_licencia_especial',
+    
+    // Calificaciones
     'calificar_usuario',
-    'ver_calificaciones',
+    'consultar_calificaciones',
   ],
   
   SUPERVISOR: [
-    // Todos los permisos de Inspector
+    // Todo lo del Inspector
     'ofertar_turno',
     'pedir_turno',
-    'solicitud_directa',
+    'consultar_mis_ofertas',
+    'modificar_mis_ofertas',
+    'eliminar_mis_ofertas',
+    'enviar_solicitud_directa',
     'recibir_solicitud_directa',
+    'consultar_mis_solicitudes',
+    'modificar_solicitud_pendiente',
+    'eliminar_solicitud_pendiente',
     'pedir_licencia_ordinaria',
     'pedir_licencia_especial',
     'calificar_usuario',
-    'ver_calificaciones',
-    // Permisos adicionales de Supervisor
+    'consultar_calificaciones',
+    
+    // Permisos adicionales del Supervisor
     'cargar_empleado',
+    'consultar_empleado',
+    'modificar_empleado',
+    'eliminar_empleado',
     'cargar_falta',
+    'consultar_falta',
+    'modificar_falta',
+    'eliminar_falta',
     'cargar_sancion',
+    'consultar_sancion',
+    'modificar_sancion',
+    'eliminar_sancion',
     'cargar_licencia_especial_otros',
   ],
   
   JEFE: [
+    // Autorizaciones (principal función)
     'ver_autorizaciones',
-    'autorizar_rechazar',
+    'autorizar_cambio',
+    'rechazar_cambio',
+    'autorizar_licencia',
+    'rechazar_licencia',
+    
+    // Ver personal (solo lectura)
     'ver_personal_solo_lectura',
+    
+    // Informes y estadísticas
     'ver_estadisticas',
+    'ver_informes',
   ],
 };
 
-// Función para verificar si un rol tiene un permiso
-export function tienePermiso(rol: Rol, permiso: Permiso): boolean {
-  return PERMISOS_POR_ROL[rol]?.includes(permiso) || false;
-}
-
-// Función para verificar múltiples permisos
-export function tieneAlgunPermiso(rol: Rol, permisos: Permiso[]): boolean {
-  return permisos.some(permiso => tienePermiso(rol, permiso));
-}
-
-// Función para verificar todos los permisos
-export function tieneTodosLosPermisos(rol: Rol, permisos: Permiso[]): boolean {
-  return permisos.every(permiso => tienePermiso(rol, permiso));
-}
-
-// Obtener todos los permisos de un rol
-export function obtenerPermisos(rol: Rol): Permiso[] {
-  return PERMISOS_POR_ROL[rol] || [];
-}
+// Helper para verificar si un permiso es de escritura
+export const esPermisoEscritura = (permiso: Permiso): boolean => {
+  return permiso.includes('cargar') || 
+         permiso.includes('modificar') || 
+         permiso.includes('eliminar') ||
+         permiso.includes('autorizar') ||
+         permiso.includes('rechazar');
+};
