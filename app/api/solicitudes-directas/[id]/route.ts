@@ -39,22 +39,22 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: Request,
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
-    
+    const { id } = params;
+
     await sql`
-      DELETE FROM solicitudes_directas 
+      DELETE FROM solicitudes_directas
       WHERE id = ${id};
     `;
 
     return NextResponse.json({ message: 'Solicitud eliminada' });
   } catch (error) {
-    console.error('Error deleting solicitud:', error);
+    console.error('Error al eliminar solicitud:', error);
     return NextResponse.json(
-      { error: 'Error al eliminar solicitud' }, 
+      { error: 'Error al eliminar solicitud' },
       { status: 500 }
     );
   }

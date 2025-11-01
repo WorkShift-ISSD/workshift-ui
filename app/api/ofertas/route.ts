@@ -1,10 +1,16 @@
 // app/api/ofertas/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import postgres from 'postgres';
+import { cookies } from 'next/headers';
+import { jwtVerify } from 'jose';
 
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
 
-// GET - Obtener todas las ofertas
+const SECRET_KEY = new TextEncoder().encode(
+  process.env.JWT_SECRET || 'Workshift25'
+);
+
+// GET - Obtener todas las ofertas (sin cambios)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -58,7 +64,6 @@ export async function GET(request: NextRequest) {
 
     const ofertas = await query;
     
-    // Transformar los datos al formato esperado por el frontend
     const ofertasFormateadas = ofertas.map((o: any) => ({
       id: o.id,
       ofertante: o.ofertante,
@@ -94,19 +99,32 @@ export async function GET(request: NextRequest) {
   }
 }
 
-
 // POST - Crear nueva oferta
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log('📥 Body recibido:', body); // Debug
+    console.log('📥 Body recibido:', body);
     
-    // TODO: Obtener userId de la sesión autenticada
-    const userId = '410544b2-4001-4271-9855-fec4b6a6442a'; // Temporal
+    // ✅ Obtener userId del token JWT
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth-token')?.value;
+
+    if (!token) {
+      return NextResponse.json(
+        { error: 'No autenticado' },
+        { status: 401 }
+      );
+    }
+
+    // Verificar y decodificar el token
+    const { payload } = await jwtVerify(token, SECRET_KEY);
+    const userId = payload.id as string;
+
+    console.log('✅ Usuario autenticado:', userId);
     
     // Verificar que el usuario existe
     const [userExists] = await sql`
-      SELECT id FROM users WHERE id = ${userId};
+      SELECT id FROM users WHERE id = ${userId}::uuid;
     `;
     
     if (!userExists) {
@@ -137,7 +155,7 @@ export async function POST(request: NextRequest) {
         valido_hasta,
         publicado
       ) VALUES (
-        ${userId},
+        ${userId}::uuid,
         ${body.tipo},
         ${body.tipo !== 'ABIERTO' ? body.fechaOfrece : null},
         ${body.tipo !== 'ABIERTO' ? body.horarioOfrece : null},

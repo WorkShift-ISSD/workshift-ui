@@ -152,6 +152,7 @@ export default function DashboardHome() {
   }
 
   return (
+    
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header de Bienvenida */}
       <div className="mb-8 flex items-center justify-between">

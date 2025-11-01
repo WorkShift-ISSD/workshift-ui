@@ -1,12 +1,19 @@
-import { useState, useEffect, useMemo } from 'react';
+import useSWR from "swr";
+import { useMemo } from "react";
 
-export type Rol = 'SUPERVISOR' | 'INSPECTOR' | 'JEFE';
-export type GrupoTurno = 'A' | 'B';
-export type TipoOferta = 'INTERCAMBIO' | 'ABIERTO';
-export type Prioridad = 'NORMAL' | 'URGENTE';
-export type EstadoOferta = 'DISPONIBLE' | 'SOLICITADO' | 'APROBADO' | 'COMPLETADO' | 'CANCELADO';
+export type Rol = "SUPERVISOR" | "INSPECTOR" | "JEFE";
+export type GrupoTurno = "A" | "B";
+export type TipoOferta = "INTERCAMBIO" | "ABIERTO";
+export type Prioridad = "NORMAL" | "URGENTE";
+export type EstadoOferta =
+  | "DISPONIBLE"
+  | "SOLICITADO"
+  | "APROBADO"
+  | "COMPLETADO"
+  | "CANCELADO";
 
 export interface Oferta {
+  destinatario: any;
   id: string;
   ofertante: {
     id: string;
@@ -36,36 +43,26 @@ export interface Oferta {
   validoHasta: string;
   publicado: string;
   estado: EstadoOferta;
-  fechaOfrece?: any;
-  fechaSolicitante?: any;
-}
-
-export interface SolicitudDirecta {
-  id: string;
-  solicitante: {
-    id: string;
-    nombre: string;
-    apellido: string;
+  motivo?: string;
+  turnoSolicitado?: {
+    fecha: string;
+    horario: string;
   };
-  destinatario: {
-    id: string;
-    nombre: string;
-    apellido: string;
+  turnoOfrecido?: {
+    grupoTurno: GrupoTurno;
+    horario: string;
+    fecha: string;
   };
-  turnoSolicitante: {
+  fechaSolicitud?: string;
+  turnoDestinatario?: {
     fecha: string;
     horario: string;
     grupoTurno: GrupoTurno;
   };
-  turnoDestinatario: {
-    fecha: string;
-    horario: string;
-    grupoTurno: GrupoTurno;
+  tomador?: {
+    id: string;
+    nombre: string;
   };
-  motivo: string;
-  prioridad: Prioridad;
-  estado: EstadoOferta;
-  fechaSolicitud: string;
 }
 
 export interface NuevaOfertaForm {
@@ -82,62 +79,31 @@ export interface NuevaOfertaForm {
   prioridad: Prioridad;
 }
 
-export interface SolicitudDirectaForm {
-  destinatarioId: string;
-  fechaSolicitante: string;
-  horarioSolicitante: string;
-  grupoSolicitante: GrupoTurno;
-  fechaDestinatario: string;
-  horarioDestinatario: string;
-  grupoDestinatario: GrupoTurno;
-  motivo: string;
-  prioridad: Prioridad;
-}
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Error al obtener ${url}`);
+  return res.json();
+};
 
 export const useOfertas = () => {
-  const [ofertas, setOfertas] = useState<Oferta[]>([]);
-  const [solicitudesDirectas, setSolicitudesDirectas] = useState<SolicitudDirecta[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: ofertas,
+    error,
+    isLoading,
+    mutate,
+  } = useSWR<Oferta[]>("/api/ofertas", fetcher, {
+    refreshInterval: 5000,
+  });
 
-  // Cargar datos al montar el componente
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      // Peticiones en paralelo
-      const [ofertasRes, solicitudesRes] = await Promise.all([
-        fetch('/api/ofertas'),
-        fetch('/api/solicitudes-directas')
-      ]);
-
-      if (!ofertasRes.ok || !solicitudesRes.ok) {
-        throw new Error('Error al cargar datos');
-      }
-
-      const ofertasData = await ofertasRes.json();
-      const solicitudesData = await solicitudesRes.json();
-
-      setOfertas(ofertasData);
-      setSolicitudesDirectas(solicitudesData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
-      console.error('Error fetching data:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const agregarOferta = async (oferta: any) => {
+  // Crear nueva oferta
+  // Crear nueva oferta
+const agregarOferta = async (oferta: NuevaOfertaForm) => {
   const token = localStorage.getItem("token");
   if (!token) throw new Error("Usuario no autenticado");
 
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/ofertas`, {
+  console.log('📤 Enviando oferta:', oferta); // ← AGREGAR ESTO
+
+  const res = await fetch("/api/ofertas", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -147,97 +113,57 @@ export const useOfertas = () => {
   });
 
   const data = await res.json();
+  console.log('📥 Respuesta del servidor:', data); // ← Y ESTO
+  
   if (!res.ok) throw new Error(data.error || "Error al crear oferta");
+
+  mutate();
   return data;
 };
 
+  // Actualizar estado de oferta
+  const actualizarEstado = async (id: string, nuevoEstado: EstadoOferta) => {
+    const res = await fetch(`/api/ofertas/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado: nuevoEstado }),
+    });
 
-  const agregarSolicitudDirecta = async (formData: SolicitudDirectaForm) => {
-    try {
-      const response = await fetch('/api/solicitudes-directas', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+    if (!res.ok) throw new Error("Error al actualizar estado");
+    const updated = await res.json();
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Error al crear solicitud');
-      }
-
-      const nuevaSolicitud = await response.json();
-      setSolicitudesDirectas(prev => [nuevaSolicitud, ...prev]);
-      return nuevaSolicitud;
-    } catch (err) {
-      console.error('Error adding solicitud:', err);
-      throw err;
-    }
+    mutate();
+    return updated;
   };
 
-  const actualizarEstadoOferta = async (id: string, nuevoEstado: EstadoOferta) => {
-    try {
-      const response = await fetch(`/api/ofertas/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ estado: nuevoEstado }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Error al actualizar estado');
-      }
-
-      const ofertaActualizada = await response.json();
-      setOfertas(prev => 
-        prev.map(o => o.id === id ? ofertaActualizada : o)
-      );
-      
-      return ofertaActualizada;
-    } catch (err) {
-      console.error('Error updating oferta:', err);
-      throw err;
-    }
-  };
-
+  // Eliminar oferta
   const eliminarOferta = async (id: string) => {
-    try {
-      const response = await fetch(`/api/ofertas/${id}`, {
-        method: 'DELETE',
-      });
+    const res = await fetch(`/api/ofertas/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Error al eliminar oferta");
 
-      if (!response.ok) {
-        throw new Error('Error al eliminar oferta');
-      }
-
-      setOfertas(prev => prev.filter(o => o.id !== id));
-    } catch (err) {
-      console.error('Error deleting oferta:', err);
-      throw err;
-    }
+    mutate();
   };
 
-  const stats = useMemo(() => ({
-    total: ofertas.length,
-    intercambios: ofertas.filter(o => o.tipo === 'INTERCAMBIO').length,
-    abiertos: ofertas.filter(o => o.tipo === 'ABIERTO').length,
-    urgentes: ofertas.filter(o => o.prioridad === 'URGENTE').length,
-  }), [ofertas]);
+  // Estadísticas
+  const stats = useMemo(() => {
+    if (!ofertas) return { total: 0, intercambios: 0, abiertos: 0, urgentes: 0 };
+    return {
+      total: ofertas.length,
+      intercambios: ofertas.filter((o) => o.tipo === "INTERCAMBIO").length,
+      abiertos: ofertas.filter((o) => o.tipo === "ABIERTO").length,
+      urgentes: ofertas.filter((o) => o.prioridad === "URGENTE").length,
+    };
+  }, [ofertas]);
 
-  return { 
-    ofertas, 
-    setOfertas, 
-    solicitudesDirectas,
-    setSolicitudesDirectas,
-    stats, 
+  return {
+    ofertas: ofertas || [],
+    stats,
     agregarOferta,
-    agregarSolicitudDirecta,
-    actualizarEstadoOferta,
+    solicitudes: ofertas?.filter(o => o.estado === "SOLICITADO") || [],
+    actualizarEstado,
     eliminarOferta,
     isLoading,
-    error,
-    refetch: fetchData,
+    error: error?.message || null,
+    refetch: mutate,
   };
 };

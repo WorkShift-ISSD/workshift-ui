@@ -3,43 +3,105 @@
 import {
   UserGroupIcon,
   HomeIcon,
-  DocumentDuplicateIcon,
+  ChartBarIcon,
+  CalendarIcon,
+  StarIcon,
+  DocumentTextIcon,
+  ShieldExclamationIcon,
+  CheckCircleIcon,
+  ClipboardDocumentListIcon,
 } from '@heroicons/react/24/outline';
+import { MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
-import { ChartLineIcon, FileClockIcon, IdCardIcon, IterationCcwIcon, Repeat, RepeatIcon, StarIcon } from 'lucide-react';
+import { usePermissions } from '@/hooks/usePermissions';
 
-// Map of links to display in the side navigation.
-// Depending on the size of the application, this would be stored in a database.
 const links = [
-  { name: 'Home', href: '/dashboard', icon: HomeIcon },
-  { name: 'Personal', href: '/dashboard/personal', icon: UserGroupIcon },
-  { name: 'Cambios',  href: '/dashboard/cambios',  icon: RepeatIcon },
-  { name: 'Licencias', href: '/dashboard/licencias', icon: FileClockIcon },
-  { name: 'Calificaciones', href: '/dashboard/calificaciones', icon: StarIcon },
-  { name: 'Estadísticas', href: '/dashboard/estadisticas', icon: ChartLineIcon },
+  { 
+    name: 'Inicio', 
+    href: '/dashboard', 
+    icon: HomeIcon,
+    roles: ['INSPECTOR', 'SUPERVISOR', 'JEFE', 'ADMINISTRADOR'],
+  },
+  {
+    name: 'Cambios',
+    href: '/dashboard/cambios',
+    icon: CalendarIcon,
+    roles: ['INSPECTOR', 'SUPERVISOR', 'ADMINISTRADOR'],
+  },
+  
+  {
+    name: 'Licencias',
+    href: '/dashboard/licencias',
+    icon: ClipboardDocumentListIcon,
+    roles: ['INSPECTOR', 'SUPERVISOR', 'ADMINISTRADOR'],
+  },
+  {
+    name: 'Calificaciones',
+    href: '/dashboard/calificaciones',
+    icon: StarIcon,
+    roles: ['INSPECTOR', 'SUPERVISOR', 'ADMINISTRADOR'],
+  },
+  {
+    name: 'Personal',
+    href: '/dashboard/personal',
+    icon: UserGroupIcon,
+    roles: ['SUPERVISOR', 'JEFE', 'ADMINISTRADOR'],
+  },
+  {
+    name: 'Faltas',
+    href: '/dashboard/faltas',
+    icon: ShieldExclamationIcon,
+    roles: ['SUPERVISOR', 'ADMINISTRADOR'],
+  },
+  {
+    name: 'Sanciones',
+    href: '/dashboard/sanciones',
+    icon: ShieldExclamationIcon,
+    roles: ['SUPERVISOR', 'ADMINISTRADOR'],
+  },
+  {
+    name: 'Autorizaciones',
+    href: '/dashboard/autorizaciones',
+    icon: CheckCircleIcon,
+    roles: ['JEFE', 'ADMINISTRADOR'],
+  },
+  {
+    name: 'Informes',
+    href: '/dashboard/informes',
+    icon: DocumentTextIcon,
+    roles: ['JEFE', 'ADMINISTRADOR'],
+  },
+  {
+    name: 'Estadísticas',
+    href: '/dashboard/estadisticas',
+    icon: ChartBarIcon,
+    roles: ['JEFE', 'ADMINISTRADOR'],
+  },
 ];
 
-interface NavLinksProps {
-  onLinkClick?: () => void;
-}
-
-export default function NavLinks({ onLinkClick }: NavLinksProps) {
+export default function NavLinks() {
   const pathname = usePathname();
+  const { userRole } = usePermissions();
+
+  // Filtrar links según rol
+  const visibleLinks = links.filter(link => 
+    link.roles.includes(userRole || '')
+  );
+
   return (
     <>
-      {links.map((link) => {
+      {visibleLinks.map((link) => {
         const LinkIcon = link.icon;
         return (
           <Link
             key={link.name}
             href={link.href}
-            onClick={onLinkClick}
             className={clsx(
-              'flex h-[48px] grow items-center justify-center gap-2 rounded-md bg-gray-50 dark:bg-gray-800 p-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-sky-100 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 md:flex-none md:justify-start md:p-2 md:px-3 transition-colors',
+              'flex h-[48px] grow items-center justify-center gap-2 rounded-md bg-gray-50 dark:bg-gray-800 p-3 text-sm font-medium hover:bg-sky-100 dark:hover:bg-sky-900 hover:text-blue-600 dark:hover:text-blue-400 md:flex-none md:justify-start md:p-2 md:px-3 transition-colors',
               {
-                'bg-sky-100 dark:bg-gray-700 text-blue-600 dark:text-blue-400': pathname === link.href,
+                'bg-sky-100 dark:bg-sky-900 text-blue-600 dark:text-blue-400': pathname === link.href,
               },
             )}
           >
