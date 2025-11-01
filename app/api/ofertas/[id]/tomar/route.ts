@@ -3,11 +3,11 @@ import { sql } from '@/app/lib/postgres';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { ofertaId: string } }
+  { params }: { params: Promise<{ id: string }> } // ← Cambiar ofertaId por id
 ) {
   try {
     const { tomadorId } = await request.json();
-    const { ofertaId } = params;
+    const { id } = await params; // ← Cambiar ofertaId por id
 
     if (!tomadorId) {
       return NextResponse.json(
@@ -19,7 +19,7 @@ export async function POST(
     // Verificar que la oferta existe y está disponible
     const [oferta] = await sql`
       SELECT * FROM ofertas 
-      WHERE id = ${ofertaId} AND estado = 'DISPONIBLE'
+      WHERE id = ${id} AND estado = 'DISPONIBLE'
     `;
 
     if (!oferta) {
@@ -36,11 +36,8 @@ export async function POST(
         tomador_id = ${tomadorId},
         estado = 'ACEPTADA',
         fecha_aceptacion = NOW()
-      WHERE id = ${ofertaId}
+      WHERE id = ${id}
     `;
-
-    // Aquí podrías crear un registro en la tabla de cambios_turnos
-    // o solicitudes_autorizacion si es necesario
 
     return NextResponse.json({
       message: 'Oferta tomada exitosamente',

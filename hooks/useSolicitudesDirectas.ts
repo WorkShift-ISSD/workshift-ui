@@ -42,8 +42,11 @@ export interface SolicitudDirectaForm {
   prioridad: Prioridad;
 }
 
+// ✅ Fetcher con credentials
 const fetcher = async (url: string) => {
-  const res = await fetch(url);
+  const res = await fetch(url, {
+    credentials: 'include', // ✅ Enviar cookies
+  });
   if (!res.ok) throw new Error(`Error al obtener ${url}`);
   return res.json();
 };
@@ -58,36 +61,33 @@ export const useSolicitudesDirectas = () => {
     refreshInterval: 5000,
   });
 
-  // Crear nueva solicitud directa
-  // En useSolicitudesDirectas.ts
-const agregarSolicitud = async (solicitud: SolicitudDirectaForm) => {
-  const token = localStorage.getItem("token");
-  if (!token) throw new Error("Usuario no autenticado");
+  // ✅ Crear nueva solicitud directa con cookies
+  const agregarSolicitud = async (solicitud: SolicitudDirectaForm) => {
+    // ❌ NO enviar solicitanteId en el body (el servidor lo obtiene del token)
+    const { solicitanteId, ...solicitudSinSolicitante } = solicitud;
 
-  // ❌ NO enviar solicitanteId en el body
-  const { solicitanteId, ...solicitudSinSolicitante } = solicitud;
+    const res = await fetch("/api/solicitudes-directas", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: 'include', // ✅ Enviar cookies automáticamente
+      body: JSON.stringify(solicitudSinSolicitante),
+    });
 
-  const res = await fetch("/api/solicitudes-directas", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(solicitudSinSolicitante), // ✅ Sin solicitanteId
-  });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Error al crear solicitud");
 
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Error al crear solicitud");
+    mutate();
+    return data;
+  };
 
-  mutate();
-  return data;
-};
-
-  // Actualizar estado
+  // ✅ Actualizar estado
   const actualizarEstado = async (id: string, nuevoEstado: EstadoOferta) => {
     const res = await fetch(`/api/solicitudes-directas/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
+      credentials: 'include', // ✅ Agregar esto
       body: JSON.stringify({ estado: nuevoEstado }),
     });
 
