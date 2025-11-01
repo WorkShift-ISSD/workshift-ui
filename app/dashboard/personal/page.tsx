@@ -25,6 +25,7 @@ import {
 import { useEmpleados } from '@/hooks/useEmpleados';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
 import { ExportData } from '@/app/components/ExportToPdf';
+import Can from '@/app/components/Can';
 
 
 // Types based on our Prisma schema
@@ -586,13 +587,15 @@ export default function DashboardPage() {
           
 
           {/* Botón Nuevo Empleado */}
-          <button
-            onClick={() => openModal('create')}
-            className="w-full flex-1 sm:flex-none px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 text-sm sm:text-base transition-colors"
-          >
-            <UserPlus className="h-4 w-4" />
-            Nuevo Empleado
-          </button>
+          <Can do="cargar_empleado">
+            <button
+              onClick={() => openModal('create')}
+              className="w-full flex-1 sm:flex-none px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 text-sm sm:text-base transition-colors"
+            >
+              <UserPlus className="h-4 w-4" />
+              Nuevo Empleado 
+            </button>
+          </Can>
         </div>
       </div>
 
@@ -714,27 +717,33 @@ export default function DashboardPage() {
 
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => openModal('view', employee)}
-                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                          title="Ver detalles"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => openModal('edit', employee)}
-                          className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 transition-colors"
-                          title="Editar"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(employee.id)}
-                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <Can do={['consultar_empleado', 'ver_personal_solo_lectura']}>
+                          <button
+                            onClick={() => openModal('view', employee)}
+                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                            title="Ver detalles"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                        </Can>
+                        <Can do="modificar_empleado">
+                          <button
+                            onClick={() => openModal('edit', employee)}
+                            className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 transition-colors"
+                            title="Editar"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                        </Can>
+                        <Can do="eliminar_empleado">
+                          <button
+                            onClick={() => handleDelete(employee.id)}
+                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </Can>
                       </div>
                     </td>
                   </tr>
@@ -785,36 +794,42 @@ export default function DashboardPage() {
 
                 {/* Derecha: acciones */}
                 <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openModal('view', emp);
-                    }}
-                    className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition"
-                    title="Ver"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openModal('edit', emp);
-                    }}
-                    className="text-yellow-600 dark:text-yellow-400 hover:text-yellow-800 dark:hover:text-yellow-300 transition"
-                    title="Editar"
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(emp.id);
-                    }}
-                    className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition"
-                    title="Eliminar"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <Can do={['consultar_empleado', 'ver_personal_solo_lectura']}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openModal('view', emp);
+                      }}
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition"
+                      title="Ver"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                  </Can>
+                  <Can do="modificar_empleado">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openModal('edit', emp);
+                      }}
+                      className="text-yellow-600 dark:text-yellow-400 hover:text-yellow-800 dark:hover:text-yellow-300 transition"
+                      title="Editar"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </button>
+                  </Can>
+                  <Can do="eliminar_empleado">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(emp.id);
+                      }}
+                      className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition"
+                      title="Eliminar"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </Can>
                 </div>
               </div>
 

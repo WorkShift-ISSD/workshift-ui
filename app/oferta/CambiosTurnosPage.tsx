@@ -1298,20 +1298,7 @@ export default function CambiosTurnosPage() {
                             : 'border-gray-300 dark:border-gray-600'
                             }`}
                         />
-                        {nuevaOfertaForm.fechaOfrece && user &&
-                          !esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno) && (
-                            <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
-                              <AlertCircle className="h-3 w-3" />
-                              Esta fecha corresponde al Grupo {calcularGrupoTrabaja(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'))}, pero tú eres del Grupo {user.grupoTurno}. Solo puedes ofrecer tus propios turnos.
-                            </p>
-                          )}
-                        {nuevaOfertaForm.fechaOfrece && user &&
-                          esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno) && (
-                            <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
-                              <Check className="h-3 w-3" />
-                              Fecha válida (tu turno del Grupo {user.grupoTurno})
-                            </p>
-                          )}
+
                       </div>
                       <div>
                         <label htmlFor="horario-ofrece" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1340,6 +1327,20 @@ export default function CambiosTurnosPage() {
                         </select>
                       </div> */}
                     </div>
+                                            {nuevaOfertaForm.fechaOfrece && user &&
+                          !esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno) && (
+                            <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3" />
+                              Esta fecha corresponde al Grupo {calcularGrupoTrabaja(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'))}, pero tú eres del Grupo {user.grupoTurno}. Solo puedes ofrecer tus propios turnos.
+                            </p>
+                          )}
+                        {nuevaOfertaForm.fechaOfrece && user &&
+                          esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno) && (
+                            <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
+                              <Check className="h-3 w-3" />
+                              Fecha válida (tu turno del Grupo {user.grupoTurno})
+                            </p>
+                          )}
                   </div>
 
                   {/* Turno que busca */}
@@ -1347,7 +1348,7 @@ export default function CambiosTurnosPage() {
                     <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">
                       Turno que Buscas
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 display: inline-flex">
                       <div>
                         <label htmlFor="fecha-busca" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Fecha
