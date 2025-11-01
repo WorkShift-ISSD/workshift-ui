@@ -193,10 +193,7 @@ async function getAllDashboardData() {
   };
 }
 
-export async function GET(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest) {
   try {
     // Obtener parámetro de query para filtrar qué datos obtener
     const { searchParams } = new URL(request.url);

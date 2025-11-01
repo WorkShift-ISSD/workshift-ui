@@ -79,8 +79,11 @@ export interface NuevaOfertaForm {
   prioridad: Prioridad;
 }
 
+// ✅ Fetcher con credentials
 const fetcher = async (url: string) => {
-  const res = await fetch(url);
+  const res = await fetch(url, {
+    credentials: 'include', // ✅ Enviar cookies
+  });
   if (!res.ok) throw new Error(`Error al obtener ${url}`);
   return res.json();
 };
@@ -95,37 +98,34 @@ export const useOfertas = () => {
     refreshInterval: 5000,
   });
 
-  // Crear nueva oferta
-  // Crear nueva oferta
-const agregarOferta = async (oferta: NuevaOfertaForm) => {
-  const token = localStorage.getItem("token");
-  if (!token) throw new Error("Usuario no autenticado");
+  // ✅ Crear nueva oferta con cookies
+  const agregarOferta = async (oferta: NuevaOfertaForm) => {
+    console.log('📤 Enviando oferta:', oferta);
 
-  console.log('📤 Enviando oferta:', oferta); // ← AGREGAR ESTO
+    const res = await fetch("/api/ofertas", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: 'include', // ✅ Enviar cookies automáticamente
+      body: JSON.stringify(oferta),
+    });
 
-  const res = await fetch("/api/ofertas", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(oferta),
-  });
+    const data = await res.json();
+    console.log('📥 Respuesta del servidor:', data);
+    
+    if (!res.ok) throw new Error(data.error || "Error al crear oferta");
 
-  const data = await res.json();
-  console.log('📥 Respuesta del servidor:', data); // ← Y ESTO
-  
-  if (!res.ok) throw new Error(data.error || "Error al crear oferta");
+    mutate();
+    return data;
+  };
 
-  mutate();
-  return data;
-};
-
-  // Actualizar estado de oferta
+  // ✅ Actualizar estado de oferta
   const actualizarEstado = async (id: string, nuevoEstado: EstadoOferta) => {
     const res = await fetch(`/api/ofertas/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
+      credentials: 'include', // ✅ Agregar esto
       body: JSON.stringify({ estado: nuevoEstado }),
     });
 
@@ -136,9 +136,12 @@ const agregarOferta = async (oferta: NuevaOfertaForm) => {
     return updated;
   };
 
-  // Eliminar oferta
+  // ✅ Eliminar oferta
   const eliminarOferta = async (id: string) => {
-    const res = await fetch(`/api/ofertas/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/ofertas/${id}`, { 
+      method: "DELETE",
+      credentials: 'include', // ✅ Agregar esto
+    });
     if (!res.ok) throw new Error("Error al eliminar oferta");
 
     mutate();

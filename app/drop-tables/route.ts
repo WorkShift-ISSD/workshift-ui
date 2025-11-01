@@ -28,10 +28,7 @@ async function showTables() {
 }
 
 
-export async function GET(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest) {
   try {
     const tablesBefore = await showTables();
     
@@ -51,6 +48,6 @@ export async function GET(
 }
 
 // También soporta POST
-export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  return GET(request, context);
+export async function POST(request: NextRequest) {
+  return GET(request);
 }
