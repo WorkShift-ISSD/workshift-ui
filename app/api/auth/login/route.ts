@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/app/lib/postgres';
 import { SignJWT } from 'jose';
 import { cookies } from 'next/headers';
+import bcrypt from 'bcrypt';
 
 const SECRET_KEY = new TextEncoder().encode(
   process.env.JWT_SECRET || 'Workshift25'
@@ -41,8 +42,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar contraseña
-    if (user.password !== password) {
+    // Verificar contraseña con bcrypt
+   const isValidPassword = user.password === password;
+
+    if (!isValidPassword) {
       return NextResponse.json(
         { error: 'Credenciales inválidas' },
         { status: 401 }
@@ -65,7 +68,7 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24,
+      maxAge: 60 * 60 * 24, // 24 horas
       path: '/',
     });
 
@@ -75,7 +78,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       message: 'Login exitoso',
       user: userData,
-      token, // ← Agregar esto para localStorage
     });
   } catch (error) {
     console.error('Error en login:', error);
@@ -85,5 +87,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-
