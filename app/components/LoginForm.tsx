@@ -12,7 +12,6 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   // Estados para recuperar contraseña
@@ -30,28 +29,15 @@ export default function LoginForm() {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, rememberMe }),
+        credentials: "include", // ✅ Importante: para enviar/recibir cookies
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        // Guardar token según "recordarme"
-        if (rememberMe) {
-          // localStorage persiste después de cerrar navegador
-          localStorage.setItem("token", data.token || "authenticated");
-          // Cookie por 30 días
-          const maxAge = 30 * 24 * 60 * 60;
-          document.cookie = `auth-token=${data.token}; path=/; max-age=${maxAge}; SameSite=Strict`;
-        } else {
-          // sessionStorage se borra al cerrar navegador
-          sessionStorage.setItem("token", data.token || "authenticated");
-          // Cookie por 1 día
-          const maxAge = 24 * 60 * 60;
-          document.cookie = `auth-token=${data.token}; path=/; max-age=${maxAge}; SameSite=Strict`;
-        }
-        
-        // Actualizar contexto de autenticación
+        // ✅ El token ya está en las cookies (httpOnly), no necesitamos guardarlo
+        // Solo actualizamos el contexto con los datos del usuario
         await login(data.user);
         
         // Redirigir con loading screen
@@ -163,18 +149,7 @@ export default function LoginForm() {
             )}
           </button>
 
-          <div className="flex items-center justify-between mt-8 text-sm">
-            <label className="flex items-center space-x-2 text-gray-700 dark:text-gray-300">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                disabled={loading}
-                className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-              />
-              <span>Recordarme</span>
-            </label>
-
+          <div className="flex items-center justify-end mt-8 text-sm">
             <button
               type="button"
               onClick={() => setShowForgotPassword(true)}

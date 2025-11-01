@@ -39,33 +39,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Verificar autenticación
   const checkAuth = async () => {
     try {
-      // Verificar si hay token en localStorage
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        setUser(null);
-        setIsLoading(false);
-        return;
-      }
-
-      // Verificar token con el servidor
+      // El token está en las cookies, no necesitamos enviarlo manualmente
       const res = await fetch('/api/auth/me', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        credentials: 'include', // Importante: envía las cookies automáticamente
       });
       
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
       } else {
-        // Token inválido, limpiar
-        localStorage.removeItem('token');
+        // Token inválido o no existe
         setUser(null);
       }
     } catch (error) {
       console.error('Error verificando autenticación:', error);
-      localStorage.removeItem('token');
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -80,18 +67,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Logout
   const logout = async () => {
     try {
-      // Llamar al endpoint de logout
+      // Llamar al endpoint de logout (eliminará la cookie en el servidor)
       await fetch('/api/auth/logout', { 
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
+        credentials: 'include', // Importante: envía las cookies
       });
     } catch (error) {
       console.error('Error en logout:', error);
     } finally {
-      // Limpiar estado y localStorage
-      localStorage.removeItem('token');
+      // Limpiar estado
       setUser(null);
     }
   };

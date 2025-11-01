@@ -2,10 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '../../lib/postgres';
 
-export async function GET(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest) {
   try {
     // En producción deberías obtener el user_id del token/sesión
     // Por ahora usamos el primer usuario
@@ -46,10 +43,7 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest) {
   try {
     const updates = await request.json();
     const userId = '410544b2-4001-4271-9855-fec4b6a6442a';

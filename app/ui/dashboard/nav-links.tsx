@@ -81,7 +81,11 @@ const links = [
   },
 ];
 
-export default function NavLinks() {
+interface NavLinksProps {
+  onLinkClick?: () => void;
+}
+
+export default function NavLinks({ onLinkClick }: NavLinksProps) {
   const pathname = usePathname();
   const { userRole } = usePermissions();
 
@@ -98,6 +102,7 @@ export default function NavLinks() {
           <Link
             key={link.name}
             href={link.href}
+            onClick={onLinkClick}
             className={clsx(
               'flex h-[48px] grow items-center justify-center gap-2 rounded-md bg-gray-50 dark:bg-gray-800 p-3 text-sm font-medium hover:bg-sky-100 dark:hover:bg-sky-900 hover:text-blue-600 dark:hover:text-blue-400 md:flex-none md:justify-start md:p-2 md:px-3 transition-colors',
               {

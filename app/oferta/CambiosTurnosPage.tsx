@@ -402,11 +402,10 @@ export default function CambiosTurnosPage() {
     const esValido = user && grupo === user.grupoTurno;
 
     return (
-      <span className={`text-xs ml-2 px-2 py-1 rounded ${
-        esValido
+      <span className={`text-xs ml-2 px-2 py-1 rounded ${esValido
           ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
           : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-      }`}>
+        }`}>
         Grupo {grupo} {esValido ? '✓' : '✗'}
       </span>
     );
@@ -1395,17 +1394,49 @@ export default function CambiosTurnosPage() {
               )}
 
               {/* Formulario para Abierto */}
+              {/* Formulario para Abierto */}
               {nuevaOfertaForm.tipo === 'ABIERTO' && (
                 <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
                   <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">
                     Rango de Fechas Disponibles
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
+                    <div>
+                      <label htmlFor="fecha-desde" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Desde
+                      </label>
+                      <input
+                        id="fecha-desde"
+                        type="date"
+                        required
+                        min={new Date().toISOString().split('T')[0]}
+                        value={nuevaOfertaForm.fechaDesde}
+                        onChange={(e) => setNuevaOfertaForm(prev => ({ ...prev, fechaDesde: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="fecha-hasta" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Hasta
+                      </label>
+                      <input
+                        id="fecha-hasta"
+                        type="date"
+                        required
+                        min={nuevaOfertaForm.fechaDesde || new Date().toISOString().split('T')[0]}
+                        value={nuevaOfertaForm.fechaHasta}
+                        onChange={(e) => setNuevaOfertaForm(prev => ({ ...prev, fechaHasta: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      />
+                    </div>
                   </div>
+                  {nuevaOfertaForm.fechaDesde && nuevaOfertaForm.fechaHasta && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                      Estás ofreciendo tu disponibilidad desde el {new Date(nuevaOfertaForm.fechaDesde).toLocaleDateString('es-AR')} hasta el {new Date(nuevaOfertaForm.fechaHasta).toLocaleDateString('es-AR')}
+                    </p>
+                  )}
                 </div>
               )}
-
               {/* Descripción */}
               <div>
                 <label htmlFor="descripcion" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

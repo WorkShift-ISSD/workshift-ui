@@ -2,10 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '../../lib/postgres';
 
-export async function GET(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest) {
   try {
     const currentMonth = new Date().toISOString().slice(0, 7);
     
@@ -40,10 +37,7 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest) {
   try {
     const updates = await request.json();
     const currentMonth = new Date().toISOString().slice(0, 7);
