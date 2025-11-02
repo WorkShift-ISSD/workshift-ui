@@ -11,6 +11,7 @@ interface User {
   apellido: string;
   rol: 'ADMINISTRADOR' | 'SUPERVISOR' | 'INSPECTOR' | 'JEFE';
   grupoTurno: 'A' | 'B';
+  horario: string;
   activo: boolean;
 }
 
