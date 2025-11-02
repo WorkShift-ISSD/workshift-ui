@@ -29,6 +29,7 @@ import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import Can from '../components/Can';
 import { calcularGrupoTrabaja, esFechaValidaParaGrupo } from '../lib/turnosUtils';
+import ModalConsultarSolicitudes from '../components/ModalConsultarSolicitudes';
 
 // Constantes
 const HORARIOS = ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '14:00-23:00'];
@@ -66,6 +67,9 @@ export default function CambiosTurnosPage() {
   const { user } = useAuth();
   const { can } = usePermissions();
 
+  // Estado para modal de consulta
+  const [isConsultarModalOpen, setIsConsultarModalOpen] = useState(false);
+
   // Hooks personalizados
   const {
     ofertas,
@@ -76,6 +80,8 @@ export default function CambiosTurnosPage() {
     isLoading: isLoadingOfertas,
     error: errorOfertas
   } = useOfertas();
+
+
 
   const {
     solicitudes: solicitudesDirectas,
@@ -403,8 +409,8 @@ export default function CambiosTurnosPage() {
 
     return (
       <span className={`text-xs ml-2 px-2 py-1 rounded ${esValido
-          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-          : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+        : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
         }`}>
         Grupo {grupo} {esValido ? '✓' : '✗'}
       </span>
@@ -421,13 +427,27 @@ export default function CambiosTurnosPage() {
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-          Ofertas de Turnos
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Gestiona tus intercambios y solicitudes de cambio de turno
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+              Ofertas de Turnos
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Gestiona tus intercambios y solicitudes de cambio de turno
+            </p>
+          </div>
+
+          {/* BOTÓN AQUÍ */}
+          <button
+            onClick={() => setIsConsultarModalOpen(true)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+          >
+            <Search className="h-5 w-5" />
+            Consultar Solicitudes
+          </button>
+        </div>
       </div>
+
 
       {/* Error Alert */}
       {error && (
@@ -439,6 +459,7 @@ export default function CambiosTurnosPage() {
           </div>
         </div>
       )}
+
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -490,6 +511,7 @@ export default function CambiosTurnosPage() {
           </div>
         </div>
       </div>
+
 
       {/* Action Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -563,6 +585,7 @@ export default function CambiosTurnosPage() {
             >
               Histórico
             </button>
+
           </div>
         </div>
 
@@ -1166,6 +1189,7 @@ export default function CambiosTurnosPage() {
                           >
                             Cancelar
                           </button>
+
                         </div>
                       )}
                     </div>
@@ -1514,6 +1538,7 @@ export default function CambiosTurnosPage() {
           </div>
         </div>
       )}
+      
 
       {/* Modal Solicitud Directa */}
       {isModalOpen && modalType === 'solicitud-directa' && (
@@ -1762,14 +1787,21 @@ export default function CambiosTurnosPage() {
                   )}
                 </button>
               </div>
-            </form>
-          </div>
+
+            </form>            
+
+          </div>                 
+
+
         </div>
       )}
+      <ModalConsultarSolicitudes
+        isOpen={isConsultarModalOpen}
+        onClose={() => setIsConsultarModalOpen(false)}
+      />
 
     </div>
 
-
-
   );
+
 }
