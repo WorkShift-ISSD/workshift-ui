@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
         password,
         rol,
         grupo_turno as "grupoTurno",
+        horario,
         activo
       FROM users 
       WHERE email = ${email} AND activo = true

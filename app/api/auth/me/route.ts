@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
         horario,
         rol,
         grupo_turno as "grupoTurno",
+        horario,
         activo
       FROM users 
       WHERE id = ${userId} AND activo = true
