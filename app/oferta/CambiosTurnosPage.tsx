@@ -1618,47 +1618,71 @@ export default function CambiosTurnosPage() {
                     <label htmlFor="fecha-solicitante" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Fecha
                     </label>
+                    {/* si el user pertence al grupo a, solo permitir elegir dias pares */}
                     <input
                       id="fecha-solicitante"
                       type="date"
                       required
                       min={new Date().toISOString().split('T')[0]}
                       value={solicitudDirectaForm.fechaSolicitante}
-                      onChange={(e) => setSolicitudDirectaForm(prev => ({ ...prev, fechaSolicitante: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      onChange={(e) => {
+                        const fecha = e.target.value;
+                        if (!fecha) return;
+                        
+                        const fechaObj = new Date(fecha + 'T00:00:00');
+                        
+                        // Solo actualizar si la fecha es válida
+                        if (user && esFechaValidaParaGrupo(fechaObj, user.grupoTurno)) {
+                          setSolicitudDirectaForm(prev => ({ ...prev, fechaSolicitante: fecha }));
+                          if (formError) setFormError('');
+                        } else {
+                        }
+                      }}
+                      className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 ${
+                        formError.includes('día') 
+                          ? 'border-red-500 dark:border-red-600'
+                          : 'border-gray-300 dark:border-gray-600'
+                      }`}
                     />
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 flex items-center gap-1">
+                      ℹ️ Solo puedes seleccionar días {user?.grupoTurno === 'A' ? 'pares (2, 4, 6, 8...)' : 'impares (1, 3, 5, 7...)'}
+                    </p>
                   </div>
                   <div>
                     <label htmlFor="horario-solicitante" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Horario
                     </label>
-                    <select
+                    <input
                       id="horario-solicitante"
-                      value={solicitudDirectaForm.horarioSolicitante}
-                      onChange={(e) => setSolicitudDirectaForm(prev => ({ ...prev, horarioSolicitante: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    >
-                      {HORARIOS.map(h => <option key={h} value={h}>{h}</option>)}
-                    </select>
+                      type="text"
+                      disabled
+                      value={user?.horario || 'no anda'}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 cursor-not-allowed"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Tu horario habitual
+                    </p>
                   </div>
                   <div>
                     <label htmlFor="grupo-solicitante" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Grupo
                     </label>
-                    <select
+                    <input
                       id="grupo-solicitante"
-                      value={solicitudDirectaForm.grupoSolicitante}
-                      onChange={(e) => setSolicitudDirectaForm(prev => ({ ...prev, grupoSolicitante: e.target.value as GrupoTurno }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    >
-                      {GRUPOS.map(g => <option key={g} value={g}>Grupo {g}</option>)}
-                    </select>
+                      type="text"
+                      disabled
+                      value={user?.grupoTurno ? `Grupo ${user.grupoTurno}` : 'Grupo A'}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 cursor-not-allowed"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Tu grupo de turno
+                    </p>
                   </div>
                 </div>
               </div>
 
               {/* Turno del compañero */}
-              <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
+             <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
                 <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
                   <RefreshCw className="h-5 w-5 text-green-600" />
                   Turno del Compañero (que solicitas)
@@ -1667,16 +1691,74 @@ export default function CambiosTurnosPage() {
                   <div>
                     <label htmlFor="fecha-destinatario" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Fecha
+                      {solicitudDirectaForm.fechaDestinatario && companeroSeleccionado && (
+                        <span className={`text-xs ml-2 px-2 py-1 rounded ${
+                          esFechaValidaParaGrupo(
+                            new Date(solicitudDirectaForm.fechaDestinatario + 'T00:00:00'), 
+                            companeroSeleccionado.grupoTurno
+                          )
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                        }`}>
+                          Grupo {calcularGrupoTrabaja(new Date(solicitudDirectaForm.fechaDestinatario + 'T00:00:00'))}
+                          {esFechaValidaParaGrupo(
+                            new Date(solicitudDirectaForm.fechaDestinatario + 'T00:00:00'), 
+                            companeroSeleccionado.grupoTurno
+                          ) ? ' ✓' : ' ✗'}
+                        </span>
+                      )}
                     </label>
                     <input
                       id="fecha-destinatario"
                       type="date"
                       required
+                      disabled={!companeroSeleccionado}
                       min={new Date().toISOString().split('T')[0]}
                       value={solicitudDirectaForm.fechaDestinatario}
-                      onChange={(e) => setSolicitudDirectaForm(prev => ({ ...prev, fechaDestinatario: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      onChange={(e) => {
+                        const fecha = e.target.value;
+                        if (!fecha || !companeroSeleccionado) return;
+                        
+                        const fechaObj = new Date(fecha + 'T00:00:00');
+                        
+                        // Solo actualizar si la fecha es válida para el grupo del compañero
+                        if (esFechaValidaParaGrupo(fechaObj, companeroSeleccionado.grupoTurno)) {
+                          setSolicitudDirectaForm(prev => ({ ...prev, fechaDestinatario: fecha }));
+                          // Limpiar error relacionado con fechas
+                          if (formError.includes('día') || formError.includes('Grupo')) {
+                            setFormError('');
+                          }
+                        } else {
+                          // Mostrar error pero no actualizar el campo
+                          setFormError(
+                            `Debes seleccionar un día ${companeroSeleccionado.grupoTurno === 'A' ? 'par' : 'impar'} que corresponda al Grupo ${companeroSeleccionado.grupoTurno} de ${companeroSeleccionado.nombre}.`
+                          );
+                        }
+                      }}
+                      className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        formError.includes('Grupo') && formError.includes(companeroSeleccionado?.nombre || '')
+                          ? 'border-red-500 dark:border-red-600'
+                          : 'border-gray-300 dark:border-gray-600'
+                      }`}
                     />
+                    {companeroSeleccionado && (
+                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 flex items-center gap-1">
+                        ℹ️ Solo días {companeroSeleccionado.grupoTurno === 'A' ? 'pares (2, 4, 6, 8...)' : 'impares (1, 3, 5, 7...)'}
+                      </p>
+                    )}
+                    {!companeroSeleccionado && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Selecciona primero un compañero
+                      </p>
+                    )}
+                    {solicitudDirectaForm.fechaDestinatario && companeroSeleccionado &&
+                      !esFechaValidaParaGrupo(new Date(solicitudDirectaForm.fechaDestinatario + 'T00:00:00'), companeroSeleccionado.grupoTurno) && (
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          Esta fecha corresponde al Grupo {calcularGrupoTrabaja(new Date(solicitudDirectaForm.fechaDestinatario + 'T00:00:00'))}.
+                          Selecciona un día {companeroSeleccionado.grupoTurno === 'A' ? 'par' : 'impar'}.
+                        </p>
+                      )}
                   </div>
                   <div>
                     <label htmlFor="horario-destinatario" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1690,9 +1772,11 @@ export default function CambiosTurnosPage() {
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 cursor-not-allowed"
                       placeholder="Se asigna automáticamente"
                     />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Horario del compañero seleccionado
-                    </p>
+                    {companeroSeleccionado && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Horario habitual: {companeroSeleccionado.horario}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label htmlFor="grupo-destinatario" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

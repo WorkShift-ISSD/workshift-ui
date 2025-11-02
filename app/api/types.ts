@@ -30,6 +30,7 @@ export interface User {
   nombre: string;
   email: string;
   rol: string;
+  horario: string;
   created_at?: string;
   updated_at?: string;
 }
