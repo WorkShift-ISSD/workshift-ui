@@ -89,7 +89,7 @@ export default function LoginForm() {
 
   return (
     <>
-      <div className="flex items-center justify-center bg-gray-100 dark:bg-gray-900 py-36 rounded-lg transition-colors">
+      <div className="flex items-center justify-center bg-gray-100 dark:bg-gray-900  rounded-lg transition-colors">
         <form
           onSubmit={handleSubmit}
           className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-md w-full max-w-sm transition-colors"
