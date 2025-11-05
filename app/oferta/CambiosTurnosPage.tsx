@@ -32,6 +32,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import Can from '../components/Can';
 import { calcularGrupoTrabaja, esFechaValidaParaGrupo } from '../lib/turnosUtils';
 import ModalConsultarSolicitudes from '../components/ModalConsultarSolicitudes';
+import { formatFechaLocal } from '../lib/utils';
 
 // Constantes
 const HORARIOS = ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '14:00-23:00'];
@@ -718,7 +719,7 @@ export default function CambiosTurnosPage() {
                               <div className="bg-blue-50 dark:bg-blue-900/10 rounded p-3 border border-blue-200 dark:border-blue-800">
                                 <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">Ofrezco:</p>
                                 <p className="text-xs text-gray-900 dark:text-gray-100">
-                                  📅 {new Date(solicitud.turnoSolicitante.fecha).toLocaleDateString('es-AR')}
+                                  📅 {formatFechaLocal(solicitud.turnoSolicitante.fecha)}
                                 </p>
                                 <p className="text-xs text-gray-700 dark:text-gray-300">
                                   🕐 {solicitud.turnoSolicitante.horario} - Grupo {solicitud.turnoSolicitante.grupoTurno}
@@ -728,7 +729,7 @@ export default function CambiosTurnosPage() {
                               <div className="bg-green-50 dark:bg-green-900/10 rounded p-3 border border-green-200 dark:border-green-800">
                                 <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-1">Por su turno:</p>
                                 <p className="text-xs text-gray-900 dark:text-gray-100">
-                                  📅 {new Date(solicitud.turnoDestinatario.fecha).toLocaleDateString('es-AR')}
+                                  📅 {formatFechaLocal(solicitud.turnoDestinatario.fecha)}
                                 </p>
                                 <p className="text-xs text-gray-700 dark:text-gray-300">
                                   🕐 {solicitud.turnoDestinatario.horario} - Grupo {solicitud.turnoDestinatario.grupoTurno}
