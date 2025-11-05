@@ -19,6 +19,8 @@ import {
   ChevronDown,
   Flame,
   Zap,
+  CheckCircle,
+  Pencil,
 } from 'lucide-react';
 import { useModal } from '@/hooks/useModal';
 import { SolicitudesTabType, useTabs } from '@/hooks/useTabs';
@@ -102,6 +104,8 @@ export default function CambiosTurnosPage() {
   const [solicitudDirectaForm, setSolicitudDirectaForm] = useState<SolicitudDirectaForm>(INITIAL_SOLICITUD_FORM);
   const [formError, setFormError] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Al inicio del componente, junto con los otros states
+  const [solicitudEditandoId, setSolicitudEditandoId] = useState<string | null>(null);
 
   // Cargar usuarios una sola vez
   useEffect(() => {
@@ -262,22 +266,45 @@ export default function CambiosTurnosPage() {
 
     setIsSubmitting(true);
     try {
-      await agregarSolicitud(solicitudDirectaForm);
+      if (solicitudEditandoId) {
+        // ✅ EDITAR solicitud existente
+        const res = await fetch(`/api/solicitudes-directas/${solicitudEditandoId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(solicitudDirectaForm),
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Error al actualizar la solicitud');
+        }
+
+        console.log('✅ Solicitud actualizada');
+      } else {
+        // ✅ CREAR nueva solicitud
+        await agregarSolicitud(solicitudDirectaForm);
+        console.log('✅ Solicitud creada');
+      }
+
       closeModal();
       setSolicitudDirectaForm(INITIAL_SOLICITUD_FORM);
+      setSolicitudEditandoId(null);
       setFormError('');
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Error al enviar la solicitud. Intenta nuevamente.');
+      console.error('Error:', error);
+      setFormError(error instanceof Error ? error.message : 'Error al procesar la solicitud');
     } finally {
       setIsSubmitting(false);
     }
-  }, [solicitudDirectaForm, validateSolicitudForm, agregarSolicitud, closeModal]);
+  }, [solicitudDirectaForm, solicitudEditandoId, validateSolicitudForm, agregarSolicitud, closeModal]);
 
   // Handler para cerrar modal y limpiar errores
   const handleCloseModal = useCallback(() => {
     closeModal();
     setFormError('');
     setIsSubmitting(false);
+    setSolicitudEditandoId(null); // ✅ Limpiar ID de edición
+    setSolicitudDirectaForm(INITIAL_SOLICITUD_FORM); // ✅ Limpiar formulario
   }, [closeModal]);
 
   // Handlers para acciones de ofertas
@@ -547,8 +574,8 @@ export default function CambiosTurnosPage() {
               <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <MessageSquare className="h-10 w-10 text-green-600 dark:text-green-400" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3 text-center">
-                Solicitud directa
+              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+                {solicitudEditandoId ? 'Editar Solicitud Directa' : 'Solicitud Directa'}
               </h3>
               <p className="text-gray-600 dark:text-gray-400 text-center max-w-sm">
                 Envía una solicitud directa de cambio a un compañero específico
@@ -679,29 +706,29 @@ export default function CambiosTurnosPage() {
                                   </p>
                                 </div>
                               </div>
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${solicitud.estado === 'SOLICITADO' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
-                                'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${solicitud.estado === 'SOLICITADO'
+                                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+                                : 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
                                 }`}>
                                 {solicitud.estado}
                               </span>
                             </div>
-                            {/* TODO: Implementar la visualización de la solicitud */}
-                            {/* TODO: Implementar la visualización de la solicitud */}
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                               <div className="bg-blue-50 dark:bg-blue-900/10 rounded p-3 border border-blue-200 dark:border-blue-800">
                                 <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">Ofrezco:</p>
                                 <p className="text-xs text-gray-900 dark:text-gray-100">
-                                  📅 {solicitud.turnoSolicitante.fecha || 'Sin fecha'}
+                                  📅 {new Date(solicitud.turnoSolicitante.fecha).toLocaleDateString('es-AR')}
                                 </p>
                                 <p className="text-xs text-gray-700 dark:text-gray-300">
-                                  🕐 {user?.horario || solicitud.turnoSolicitante.horario} - Grupo {user?.grupoTurno || solicitud.turnoSolicitante.grupoTurno}
+                                  🕐 {solicitud.turnoSolicitante.horario} - Grupo {solicitud.turnoSolicitante.grupoTurno}
                                 </p>
                               </div>
 
                               <div className="bg-green-50 dark:bg-green-900/10 rounded p-3 border border-green-200 dark:border-green-800">
                                 <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-1">Por su turno:</p>
                                 <p className="text-xs text-gray-900 dark:text-gray-100">
-                                  📅 {solicitud.turnoDestinatario.fecha || 'Sin fecha'}
+                                  📅 {new Date(solicitud.turnoDestinatario.fecha).toLocaleDateString('es-AR')}
                                 </p>
                                 <p className="text-xs text-gray-700 dark:text-gray-300">
                                   🕐 {solicitud.turnoDestinatario.horario} - Grupo {solicitud.turnoDestinatario.grupoTurno}
@@ -713,19 +740,50 @@ export default function CambiosTurnosPage() {
                               Motivo: "{solicitud.motivo}"
                             </p>
 
+                            {/* Botones de acción - Solo si está en estado SOLICITADO */}
                             {solicitud.estado === 'SOLICITADO' && (
-                              <button
-                                onClick={() => handleRechazarSolicitud(solicitud.id)}
-                                className="w-full px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
-                              >
-                                ✗ Cancelar solicitud
-                              </button>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    // Cargar datos de la solicitud en el formulario
+                                    setSolicitudDirectaForm({
+                                      solicitanteId: user?.id || '',
+                                      destinatarioId: solicitud.destinatario.id,
+                                      fechaSolicitante: solicitud.turnoSolicitante.fecha,
+                                      horarioSolicitante: solicitud.turnoSolicitante.horario,
+                                      grupoSolicitante: solicitud.turnoSolicitante.grupoTurno,
+                                      fechaDestinatario: solicitud.turnoDestinatario.fecha,
+                                      horarioDestinatario: solicitud.turnoDestinatario.horario,
+                                      grupoDestinatario: solicitud.turnoDestinatario.grupoTurno,
+                                      motivo: solicitud.motivo,
+                                      prioridad: solicitud.prioridad,
+                                    });
+                                    // Guardar el ID de la solicitud que se está editando
+                                    setSolicitudEditandoId(solicitud.id);
+                                    // Abrir modal
+                                    openModal('solicitud-directa');
+                                  }}
+                                  className="flex-1 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-500 dark:bg-blue-900/30 hover:bg-blue-800 dark:hover:bg-blue-900/50 rounded-lg transition flex items-center justify-center gap-1"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                  Editar
+                                </button>
+                                <button
+                                  onClick={() => handleRechazarSolicitud(solicitud.id)}
+                                  className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition flex items-center justify-center gap-1"
+                                >
+                                  <X className="h-3 w-3" />
+                                  Cancelar
+                                </button>
+                              </div>
                             )}
 
+                            {/* Mensaje de solicitud aprobada */}
                             {solicitud.estado === 'APROBADO' && (
                               <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded p-2">
-                                <p className="text-xs text-green-700 dark:text-green-300">
-                                  ✓ Solicitud aceptada. Pendiente de autorización del jefe.
+                                <p className="text-xs text-green-700 dark:text-green-300 flex items-center gap-1">
+                                  <CheckCircle className="h-3 w-3" />
+                                  Solicitud aceptada. Pendiente de autorización del jefe.
                                 </p>
                               </div>
                             )}
