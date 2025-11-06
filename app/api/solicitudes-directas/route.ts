@@ -28,21 +28,23 @@ export async function GET(request: NextRequest) {
           json_build_object(
             'id', us.id,
             'nombre', us.nombre,
-            'apellido', us.apellido
+            'apellido', us.apellido,
+            'horario', us.horario
           ) as solicitante,
           json_build_object(
             'id', ud.id,
             'nombre', ud.nombre,
-            'apellido', ud.apellido
+            'apellido', ud.apellido,
+            'horario', ud.horario
           ) as destinatario,
           json_build_object(
             'fecha', sd.fecha_solicitante,
-            'horario', sd.horario_solicitante,
+            'horario', us.horario,
             'grupoTurno', sd.grupo_solicitante
           ) as "turnoSolicitante",
           json_build_object(
             'fecha', sd.fecha_destinatario,
-            'horario', sd.horario_destinatario,
+            'horario', ud.horario,
             'grupoTurno', sd.grupo_destinatario
           ) as "turnoDestinatario"
         FROM solicitudes_directas sd
@@ -62,21 +64,23 @@ export async function GET(request: NextRequest) {
           json_build_object(
             'id', us.id,
             'nombre', us.nombre,
-            'apellido', us.apellido
+            'apellido', us.apellido,
+            'horario', us.horario
           ) as solicitante,
           json_build_object(
             'id', ud.id,
             'nombre', ud.nombre,
-            'apellido', ud.apellido
+            'apellido', ud.apellido,
+            'horario', ud.horario
           ) as destinatario,
           json_build_object(
             'fecha', sd.fecha_solicitante,
-            'horario', sd.horario_solicitante,
+            'horario', us.horario,
             'grupoTurno', sd.grupo_solicitante
           ) as "turnoSolicitante",
           json_build_object(
             'fecha', sd.fecha_destinatario,
-            'horario', sd.horario_destinatario,
+            'horario', ud.horario,
             'grupoTurno', sd.grupo_destinatario
           ) as "turnoDestinatario"
         FROM solicitudes_directas sd

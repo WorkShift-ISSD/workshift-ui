@@ -56,16 +56,49 @@ export async function PATCH(
         );
       }
 
-      const [solicitudActualizada] = await sql`
+      await sql`
         UPDATE solicitudes_directas 
         SET 
           estado = ${body.estado},
           updated_at = NOW()
-        WHERE id = ${id}::uuid
-        RETURNING *;
+        WHERE id = ${id}::uuid;
       `;
 
-      return NextResponse.json(solicitudActualizada);
+      // ✅ Obtener la solicitud actualizada con el formato correcto
+      const [solicitudFormateada] = await sql`
+        SELECT 
+          sd.id,
+          sd.estado,
+          sd.motivo,
+          sd.prioridad,
+          sd.fecha_solicitud as "fechaSolicitud",
+          json_build_object(
+            'id', us.id,
+            'nombre', us.nombre,
+            'apellido', us.apellido
+          ) as solicitante,
+          json_build_object(
+            'id', ud.id,
+            'nombre', ud.nombre,
+            'apellido', ud.apellido
+          ) as destinatario,
+          json_build_object(
+            'fecha', sd.fecha_solicitante,
+            'horario', sd.horario_solicitante,
+            'grupoTurno', sd.grupo_solicitante
+          ) as "turnoSolicitante",
+          json_build_object(
+            'fecha', sd.fecha_destinatario,
+            'horario', sd.horario_destinatario,
+            'grupoTurno', sd.grupo_destinatario
+          ) as "turnoDestinatario"
+        FROM solicitudes_directas sd
+        JOIN users us ON sd.solicitante_id = us.id
+        JOIN users ud ON sd.destinatario_id = ud.id
+        WHERE sd.id = ${id}::uuid;
+      `;
+
+      return NextResponse.json(solicitudFormateada);
 
     } else {
       // ✅ CASO 2: Editar campos de la solicitud (fechas, motivo, etc.)
@@ -114,7 +147,7 @@ export async function PATCH(
       }
 
       // Actualizar la solicitud
-      const [solicitudActualizada] = await sql`
+      await sql`
         UPDATE solicitudes_directas
         SET
           fecha_solicitante = ${fechaSolicitante},
@@ -126,13 +159,46 @@ export async function PATCH(
           motivo = ${motivo},
           prioridad = ${prioridad},
           updated_at = NOW()
-        WHERE id = ${id}::uuid
-        RETURNING *;
+        WHERE id = ${id}::uuid;
+      `;
+
+      // ✅ Obtener la solicitud actualizada con el formato correcto
+      const [solicitudFormateada] = await sql`
+        SELECT 
+          sd.id,
+          sd.estado,
+          sd.motivo,
+          sd.prioridad,
+          sd.fecha_solicitud as "fechaSolicitud",
+          json_build_object(
+            'id', us.id,
+            'nombre', us.nombre,
+            'apellido', us.apellido
+          ) as solicitante,
+          json_build_object(
+            'id', ud.id,
+            'nombre', ud.nombre,
+            'apellido', ud.apellido
+          ) as destinatario,
+          json_build_object(
+            'fecha', sd.fecha_solicitante,
+            'horario', sd.horario_solicitante,
+            'grupoTurno', sd.grupo_solicitante
+          ) as "turnoSolicitante",
+          json_build_object(
+            'fecha', sd.fecha_destinatario,
+            'horario', sd.horario_destinatario,
+            'grupoTurno', sd.grupo_destinatario
+          ) as "turnoDestinatario"
+        FROM solicitudes_directas sd
+        JOIN users us ON sd.solicitante_id = us.id
+        JOIN users ud ON sd.destinatario_id = ud.id
+        WHERE sd.id = ${id}::uuid;
       `;
 
       return NextResponse.json({
         message: 'Solicitud actualizada correctamente',
-        solicitud: solicitudActualizada,
+        solicitud: solicitudFormateada,
       });
     }
   } catch (error) {
