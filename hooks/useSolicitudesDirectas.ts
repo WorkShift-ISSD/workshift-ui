@@ -7,11 +7,13 @@ export interface SolicitudesDirectas {
     id: string;
     nombre: string;
     apellido: string;
+    horario: string;
   };
   destinatario: {
     id: string;
     nombre: string;
     apellido: string;
+    horario: string;
   };
   turnoSolicitante: {
     fecha: string;

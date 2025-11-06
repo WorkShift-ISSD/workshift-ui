@@ -32,7 +32,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import Can from '../components/Can';
 import { calcularGrupoTrabaja, esFechaValidaParaGrupo } from '../lib/turnosUtils';
 import ModalConsultarSolicitudes from '../components/ModalConsultarSolicitudes';
-import { formatFechaLocal } from '../lib/utils';
+import { formatFechaHoraLocal, formatFechaLocal } from '../lib/utils';
 
 // Constantes
 const HORARIOS = ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '14:00-23:00'];
@@ -657,7 +657,7 @@ export default function CambiosTurnosPage() {
                                     {oferta.tipo === "INTERCAMBIO" ? "Intercambio de turno" : "Oferta abierta"}
                                   </span>
                                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    📅 {oferta.turnoOfrece?.fecha} • {oferta.turnoOfrece?.horario}
+                                    📅 {oferta.turnoOfrece?.fecha} • {user?.horario}
                                   </p>
                                 </div>
                               </div>
@@ -702,9 +702,13 @@ export default function CambiosTurnosPage() {
                                   <span className="text-gray-900 dark:text-gray-100 font-medium text-sm">
                                     Enviada a: {solicitud.destinatario.nombre} {solicitud.destinatario.apellido}
                                   </span>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  {/* <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                     {formatearFecha(solicitud.fechaSolicitud)}
+                                  </p> */}
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    {formatFechaHoraLocal(solicitud.fechaSolicitud)}
                                   </p>
+
                                 </div>
                               </div>
                               <span className={`px-2 py-1 rounded text-xs font-medium ${solicitud.estado === 'SOLICITADO'
@@ -746,6 +750,7 @@ export default function CambiosTurnosPage() {
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => {
+
                                     // Cargar datos de la solicitud en el formulario
                                     setSolicitudDirectaForm({
                                       solicitanteId: user?.id || '',
@@ -1349,7 +1354,7 @@ export default function CambiosTurnosPage() {
                               Grupo {calcularGrupoTrabaja(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'))}
                               {user && esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno) ? ' ✓' : ' ✗'}
                             </span>
-                          )}
+                          )} Fecha
                         </label>
                         <input
                           id="fecha-ofrece"
@@ -1396,19 +1401,17 @@ export default function CambiosTurnosPage() {
                             </p>
                           )}
                       </div>
-                      <div>
+                      <div> {/**  TODO: Implementar selección de horario */}
                         <label htmlFor="horario-ofrece" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Horario
                         </label>
-                        <select
-
-                          id="horario-ofrece"
-                          value={nuevaOfertaForm.horarioOfrece}
-                          onChange={(e) => setNuevaOfertaForm(prev => ({ ...prev, horarioOfrece: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                        >
-                          {HORARIOS.map(h => <option key={h} value={h}>{h}</option>)}
-                        </select>
+                        <input
+                          id="horario-solicitante"
+                          type="text"
+                          disabled
+                          value={user?.horario || 'Cargando...'}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 cursor-not-allowed"
+                        />
                       </div>
                       {/* <div>
                         <label htmlFor="grupo-ofrece" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

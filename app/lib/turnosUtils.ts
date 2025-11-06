@@ -1,3 +1,5 @@
+import { parseFechaSinTimezone } from "./utils";
+
 export type GrupoTurno = 'A' | 'B';
 
 /**
@@ -11,10 +13,24 @@ export type GrupoTurno = 'A' | 'B';
  *   - A trabaja pares
  *   - B trabaja impares
  */
-export function calcularGrupoTrabaja(fecha: Date): GrupoTurno {
-  const dia = fecha.getDate();
-  const mes = fecha.getMonth(); // 0-11
-  const anio = fecha.getFullYear();
+export function calcularGrupoTrabaja(fecha: string | Date): GrupoTurno {
+
+  let dateObj: Date;
+
+  if (typeof fecha === 'string') {
+    // Si viene en formato YYYY-MM-DD (sin hora), parsear sin timezone
+    if (fecha.includes('-') && !fecha.includes('T')) {
+      dateObj = parseFechaSinTimezone(fecha);
+    } else {
+      dateObj = new Date(fecha);
+    }
+  } else {
+    dateObj = fecha;
+  }
+
+  const dia = dateObj.getDate();
+  const mes = dateObj.getMonth();
+  const anio = dateObj.getFullYear();
   
   // Determinar si el mes anterior tenía 31 días
   const mesAnterior = mes === 0 ? 11 : mes - 1;
