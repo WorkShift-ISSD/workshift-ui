@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/app/lib/postgres';
 
+interface Params {
+  id: string;
+}
+
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> } // ← Cambiar ofertaId por id
+  context: { params: Params }
 ) {
   try {
     const { tomadorId } = await request.json();
-    const { id } = await params; // ← Cambiar ofertaId por id
+    const id = context.params.id;
 
     if (!tomadorId) {
       return NextResponse.json(
@@ -16,7 +20,10 @@ export async function POST(
       );
     }
 
-    // Verificar que la oferta existe y está disponible
+    console.log('🟢 ID de oferta:', id);
+    console.log('🟢 ID del tomador:', tomadorId);
+
+    // Verificar que la oferta existe y esté disponible
     const [oferta] = await sql`
       SELECT * FROM ofertas 
       WHERE id = ${id} AND estado = 'DISPONIBLE'
@@ -24,28 +31,28 @@ export async function POST(
 
     if (!oferta) {
       return NextResponse.json(
-        { error: 'Oferta no disponible' },
+        { error: 'Oferta no disponible o ya tomada' },
         { status: 404 }
       );
     }
 
-    // Actualizar la oferta
+    // Actualizar la oferta (solo columnas existentes)
     await sql`
       UPDATE ofertas 
       SET 
         tomador_id = ${tomadorId},
         estado = 'ACEPTADA',
-        fecha_aceptacion = NOW()
-      WHERE id = ${id}
+        updated_at = NOW()
+      WHERE id = ${id};
     `;
 
     return NextResponse.json({
-      message: 'Oferta tomada exitosamente',
+      message: '✅ Oferta tomada exitosamente',
     });
-  } catch (error) {
-    console.error('Error al tomar oferta:', error);
+  } catch (error: any) {
+    console.error('💥 Error al tomar oferta:', error);
     return NextResponse.json(
-      { error: 'Error al procesar la solicitud' },
+      { error: 'Error al procesar la solicitud', details: error.message },
       { status: 500 }
     );
   }
