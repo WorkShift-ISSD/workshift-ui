@@ -46,23 +46,47 @@ export async function PATCH(
     }
 
     // Determinar qué tipo de actualización es
-    if (body.estado && Object.keys(body).length === 1) {
-      // ✅ CASO 1: Solo actualizar estado (aceptar/rechazar solicitud)
-      // El destinatario puede cambiar el estado
-      if (solicitudExistente.destinatario_id !== userId) {
-        return NextResponse.json(
-          { error: 'No tienes permiso para cambiar el estado de esta solicitud' },
-          { status: 403 }
-        );
-      }
+if (body.estado && Object.keys(body).length === 1) {
+  // ✅ CASO 1: Solo actualizar estado (aceptar/rechazar/cancelar solicitud)
+  
+  const nuevoEstado = body.estado;
+  
+  // Validar permisos según el rol y estado
+  if (nuevoEstado === 'CANCELADO') {
+    // El solicitante puede cancelar su propia solicitud
+    if (solicitudExistente.solicitante_id !== userId && solicitudExistente.destinatario_id !== userId) {
+      return NextResponse.json(
+        { error: 'No tienes permiso para cancelar esta solicitud' },
+        { status: 403 }
+      );
+    }
+  } else if (nuevoEstado === 'APROBADO') {
+    // Solo el destinatario puede aprobar
+    if (solicitudExistente.destinatario_id !== userId) {
+      return NextResponse.json(
+        { error: 'Solo el destinatario puede aprobar la solicitud' },
+        { status: 403 }
+      );
+    }
+  } else {
+    // Otros estados solo el destinatario
+    if (solicitudExistente.destinatario_id !== userId) {
+      return NextResponse.json(
+        { error: 'No tienes permiso para cambiar el estado de esta solicitud' },
+        { status: 403 }
+      );
+    }
+  }
 
-      await sql`
-        UPDATE solicitudes_directas 
-        SET 
-          estado = ${body.estado},
-          updated_at = NOW()
-        WHERE id = ${id}::uuid;
-      `;
+  await sql`
+    UPDATE solicitudes_directas 
+    SET 
+      estado = ${nuevoEstado},
+      updated_at = NOW()
+    WHERE id = ${id}::uuid;
+  `;
+
+  // ... resto del código (obtener solicitud formateada)
 
       // ✅ Obtener la solicitud actualizada con el formato correcto
       const [solicitudFormateada] = await sql`

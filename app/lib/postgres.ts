@@ -5,5 +5,6 @@ if (!process.env.POSTGRES_URL) {
 }
 
 export const sql = postgres(process.env.POSTGRES_URL, { 
-  ssl: 'require'
+  ssl: 'require',
+  prepare: false, // 🚫 desactiva planes preparados para evitar el error "cached plan must not change result type"
 });

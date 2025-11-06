@@ -4,7 +4,7 @@ import postgres from 'postgres';
 import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
 
-const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
+const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require', prepare: false });
 
 const SECRET_KEY = new TextEncoder().encode(
   process.env.JWT_SECRET || 'Workshift25'
