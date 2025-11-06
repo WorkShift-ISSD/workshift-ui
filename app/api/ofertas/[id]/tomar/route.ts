@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/app/lib/postgres';
 
-interface Params {
-  id: string;
-}
-
 export async function POST(
   request: NextRequest,
-  context: { params: Params }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { tomadorId } = await request.json();
-    const id = context.params.id;
+    const { id } = await params;
 
     if (!tomadorId) {
       return NextResponse.json(
