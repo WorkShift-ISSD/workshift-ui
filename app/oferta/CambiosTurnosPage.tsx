@@ -21,6 +21,7 @@ import {
   Zap,
   CheckCircle,
   Pencil,
+  Trash2,
 } from 'lucide-react';
 import { useModal } from '@/hooks/useModal';
 import { SolicitudesTabType, useTabs } from '@/hooks/useTabs';
@@ -39,7 +40,8 @@ const HORARIOS = ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '1
 const GRUPOS: GrupoTurno[] = ['A', 'B'];
 
 const INITIAL_OFERTA_FORM: NuevaOfertaForm = {
-  tipo: 'INTERCAMBIO',
+  tipo: 'OFREZCO', // 'OFREZCO' o 'BUSCO'
+  modalidadBusqueda: 'INTERCAMBIO', // 'INTERCAMBIO' o 'ABIERTO'
   fechaOfrece: '',
   horarioOfrece: '04:00-14:00',
   grupoOfrece: 'A',
@@ -50,6 +52,8 @@ const INITIAL_OFERTA_FORM: NuevaOfertaForm = {
   fechaHasta: '',
   descripcion: '',
   prioridad: 'NORMAL',
+  fechasBusca: [{ fecha: '', horario: '04:00-14:00' }], // Array para múltiples fechas que busca
+  fechasDisponibles: [{ fecha: '', horario: '04:00-14:00' }], // Array para modalidad abierta
 };
 
 const INITIAL_SOLICITUD_FORM: SolicitudDirectaForm = {
@@ -181,32 +185,65 @@ export default function CambiosTurnosPage() {
 
   // Validación de formularios
   const validateOfertaForm = useCallback((form: NuevaOfertaForm): string => {
-    if (form.tipo === 'INTERCAMBIO') {
-      if (!form.fechaOfrece || !form.fechaBusca) {
-        return 'Debes completar ambas fechas para un intercambio';
+    // Validación para modalidad INTERCAMBIO
+    if (form.modalidadBusqueda === 'INTERCAMBIO') {
+      if (!form.fechaOfrece) {
+        return 'Debes completar la fecha que ofreces';
       }
-      if (form.fechaOfrece === form.fechaBusca &&
-        form.horarioOfrece === form.horarioBusca &&
-        form.grupoOfrece === form.grupoBusca) {
-        return 'El turno que ofreces y el que buscas no pueden ser idénticos';
+
+      // Validar que al menos haya una fecha de búsqueda
+      const fechasValidas = form.fechasBusca.filter(f => f.fecha.trim() !== '');
+      if (fechasValidas.length === 0) {
+        return 'Debes agregar al menos una fecha que buscas';
+      }
+
+      // ✅ NUEVA VALIDACIÓN - Solo validar si fecha Y horario son iguales
+      const ofreceMismo = form.fechasBusca.some(
+        busca => busca.fecha === form.fechaOfrece &&
+          busca.horario === (user?.horario || form.horarioOfrece)
+      );
+
+      if (ofreceMismo) {
+        return 'No puedes ofrecer y buscar exactamente el mismo turno (misma fecha y horario)';
+      }
+
+      // ✅ VALIDACIÓN ADICIONAL - Permitir misma fecha pero diferente horario
+      // Si la fecha es la misma pero el horario es diferente, está OK
+    }
+
+    // Validación para modalidad ABIERTO
+    if (form.modalidadBusqueda === 'ABIERTO') {
+      const fechasValidas = form.fechasDisponibles.filter(f => f.fecha.trim() !== '');
+
+      if (fechasValidas.length === 0) {
+        return 'Debes agregar al menos una fecha disponible';
+      }
+
+      // Validar que las fechas sean futuras
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+
+      const hayFechaPasada = fechasValidas.some(f => {
+        const fecha = new Date(f.fecha + 'T00:00:00');
+        return fecha < hoy;
+      });
+
+      if (hayFechaPasada) {
+        return 'No puedes agregar fechas pasadas';
       }
     }
 
-    if (form.tipo === 'ABIERTO') {
-      if (!form.fechaDesde || !form.fechaHasta) {
-        return 'Debes completar el rango de fechas';
-      }
-      if (new Date(form.fechaHasta) < new Date(form.fechaDesde)) {
-        return 'La fecha "hasta" debe ser posterior a la fecha "desde"';
-      }
-    }
-
+    // Validación general de descripción
     if (!form.descripcion.trim()) {
       return 'Debes agregar una descripción';
     }
 
+    if (form.descripcion.trim().length < 10) {
+      return 'La descripción debe tener al menos 10 caracteres';
+    }
+
     return '';
-  }, []);
+  }, [user]);
 
   const validateSolicitudForm = useCallback((form: SolicitudDirectaForm): string => {
     if (!form.destinatarioId) {
@@ -507,7 +544,7 @@ export default function CambiosTurnosPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Intercambios</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{stats.intercambios}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{stats.busco}</p>
             </div>
             <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
               <RefreshCw className="h-6 w-6 text-green-600 dark:text-green-400" />
@@ -518,8 +555,8 @@ export default function CambiosTurnosPage() {
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Abiertos</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{stats.abiertos}</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Ofrezco</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{stats.ofrezco}</p>
             </div>
             <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
               <Gift className="h-6 w-6 text-purple-600 dark:text-purple-400" />
@@ -654,7 +691,12 @@ export default function CambiosTurnosPage() {
                                 ></div>
                                 <div>
                                   <span className="text-gray-900 dark:text-gray-100 font-medium text-sm">
-                                    {oferta.tipo === "INTERCAMBIO" ? "Intercambio de turno" : "Oferta abierta"}
+                                    {oferta.tipo === "OFREZCO" ? "Ofrezco guardia" : "Busco guardia"}
+                                    {oferta.modalidadBusqueda && (
+                                      <span className="text-xs ml-2 text-gray-500">
+                                        ({oferta.modalidadBusqueda === "INTERCAMBIO" ? "Intercambio" : "Abierto"})
+                                      </span>
+                                    )}
                                   </span>
                                   <p className="text-xs text-gray-500 dark:text-gray-400">
                                     📅 {oferta.turnoOfrece?.fecha} • {user?.horario}
@@ -862,7 +904,7 @@ export default function CambiosTurnosPage() {
                               title={oferta.estado === 'COMPLETADO' ? 'Completado' : 'Cancelado'}
                             ></div>
                             <span className="text-gray-900 dark:text-gray-100 font-medium text-sm">
-                              {oferta.tipo === 'INTERCAMBIO' ? 'Intercambio' : 'Oferta abierta'}
+                              {oferta.descripcion === 'INTERCAMBIO' ? 'Intercambio' : 'Oferta abierta'}
                               {' con '}
                               {oferta.ofertante.nombre} {oferta.ofertante.apellido}
                             </span>
@@ -876,7 +918,7 @@ export default function CambiosTurnosPage() {
                             </span>
                           </div>
                           <p className="text-xs text-gray-500 dark:text-gray-400 ml-5">
-                            {oferta.tipo === 'INTERCAMBIO' && oferta.turnoOfrece && oferta.turnoBusca ? (
+                            {oferta.descripcion === 'INTERCAMBIO' && oferta.turnoOfrece && oferta.turnoBusca ? (
                               <>
                                 Turno del {formatDate(oferta.turnoOfrece.fecha)} ({oferta.turnoOfrece.horario})
                                 {' '}por turno del {formatDate(oferta.turnoBusca.fecha)} ({oferta.turnoBusca.horario})
@@ -1066,7 +1108,7 @@ export default function CambiosTurnosPage() {
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <span className="text-gray-900 dark:text-gray-100 font-medium">
-                        {oferta.tipo === "INTERCAMBIO" ? "Intercambio de turno" : "Oferta abierta"}
+                        {oferta.descripcion === "INTERCAMBIO" ? "Intercambio de turno" : "Oferta abierta"}
                       </span>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         Publicado: {formatearFecha(oferta.publicado)}
@@ -1090,7 +1132,7 @@ export default function CambiosTurnosPage() {
                     </p>
                   </div>
 
-                  {oferta.tipo === 'INTERCAMBIO' && oferta.turnoSolicitado && (
+                  {oferta.descripcion === 'INTERCAMBIO' && oferta.turnoSolicitado && (
                     <div className="bg-green-50 dark:bg-green-900/10 rounded p-3 border border-green-200 dark:border-green-800 mb-3">
                       <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-1">
                         A cambio de:
@@ -1204,14 +1246,14 @@ export default function CambiosTurnosPage() {
                           <div>
                             <span className="text-gray-500 dark:text-gray-400">Tipo:</span>
                             <p className="text-gray-900 dark:text-gray-100 font-medium">
-                              {oferta.tipo === 'INTERCAMBIO' ? 'Intercambio' : 'Oferta abierta'}
+                              {oferta.descripcion === 'INTERCAMBIO' ? 'Intercambio' : 'Oferta abierta'}
                             </p>
                           </div>
                         </div>
                       </div>
 
                       {/* Si es intercambio, mostrar el turno solicitado */}
-                      {oferta.tipo === 'INTERCAMBIO' && oferta.turnoSolicitado && (
+                      {oferta.descripcion === 'INTERCAMBIO' && oferta.turnoSolicitado && (
                         <div className="bg-green-50 dark:bg-green-900/10 rounded p-4 border border-green-200 dark:border-green-800 mb-3">
                           <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-2">
                             A cambio de:
@@ -1270,6 +1312,7 @@ export default function CambiosTurnosPage() {
       {/* Modales - Nueva Oferta y Solicitud Directa sin cambios */}
       {/* ... mantén los modales tal como están ... */}
       {/* Modal Nueva Oferta */}
+      {/* TODO: Implementar modal nuevo desde  */}
       {isModalOpen && modalType === 'nueva-oferta' && (
         <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
@@ -1308,43 +1351,152 @@ export default function CambiosTurnosPage() {
                 <div className="flex gap-3">
                   <button
                     type="button"
-                    onClick={() => setNuevaOfertaForm(prev => ({ ...prev, tipo: 'INTERCAMBIO' }))}
-                    className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${nuevaOfertaForm.tipo === 'INTERCAMBIO'
+                    onClick={() => setNuevaOfertaForm(prev => ({
+                      ...prev,
+                      tipo: 'OFREZCO',
+                      modalidadBusqueda: 'INTERCAMBIO'
+                    }))}
+                    className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${nuevaOfertaForm.tipo === 'OFREZCO'
                       ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
                       : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'
                       }`}
-                    aria-pressed={nuevaOfertaForm.tipo === 'INTERCAMBIO'}
+                    aria-pressed={nuevaOfertaForm.tipo === 'OFREZCO'}
                   >
-                    <RefreshCw className="h-5 w-5 inline mr-2" />
-                    Intercambio
+                    Ofrezco Guardia
                   </button>
                   <button
                     type="button"
-                    onClick={() => setNuevaOfertaForm(prev => ({ ...prev, tipo: 'ABIERTO' }))}
-                    className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${nuevaOfertaForm.tipo === 'ABIERTO'
-                      ? 'border-green-600 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                    onClick={() => setNuevaOfertaForm(prev => ({
+                      ...prev,
+                      tipo: 'BUSCO',
+                      modalidadBusqueda: 'INTERCAMBIO'
+                    }))}
+                    className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${nuevaOfertaForm.tipo === 'BUSCO'
+                      ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
                       : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'
                       }`}
-                    aria-pressed={nuevaOfertaForm.tipo === 'ABIERTO'}
+                    aria-pressed={nuevaOfertaForm.tipo === 'BUSCO'}
                   >
-                    <Gift className="h-5 w-5 inline mr-2" />
-                    Abierto
+                    Busco Guardia
                   </button>
                 </div>
               </div>
 
-              {/* Formulario para Intercambio */}
-              {nuevaOfertaForm.tipo === 'INTERCAMBIO' && (
+              {/* Modalidad de búsqueda */}
+              <div>
+                <div className="flex items-center gap-6">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="modalidadBusqueda"
+                      value="INTERCAMBIO"
+                      checked={nuevaOfertaForm.modalidadBusqueda === 'INTERCAMBIO'}
+                      onChange={(e) => setNuevaOfertaForm(prev => ({ ...prev, modalidadBusqueda: 'INTERCAMBIO' }))}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Intercambio</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="modalidadBusqueda"
+                      value="ABIERTO"
+                      checked={nuevaOfertaForm.modalidadBusqueda === 'ABIERTO'}
+                      onChange={(e) => setNuevaOfertaForm(prev => ({ ...prev, modalidadBusqueda: 'ABIERTO' }))}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Abierto</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Formulario según tipo */}
+              {nuevaOfertaForm.tipo === 'BUSCO' && nuevaOfertaForm.modalidadBusqueda === 'INTERCAMBIO' && (
                 <>
-                  {/* Turno que ofrece */}
+                  {/* Turno que Busca */}
+                  <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                      Turno que Buscas
+                    </h3>
+                    {nuevaOfertaForm.fechasBusca.map((item, index) => (
+                      <div key={index} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 mb-3">
+                        <div>
+                          <label htmlFor={`fecha-busca-${index}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Fecha
+                          </label>
+                          <input
+                            id={`fecha-busca-${index}`}
+                            type="date"
+                            required
+                            min={new Date().toISOString().split('T')[0]}
+                            value={item.fecha}
+                            onChange={(e) => {
+                              const newFechas = [...nuevaOfertaForm.fechasBusca];
+                              newFechas[index].fecha = e.target.value;
+                              setNuevaOfertaForm(prev => ({ ...prev, fechasBusca: newFechas }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor={`horario-busca-${index}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Horario
+                          </label>
+                          <select
+                            id={`horario-busca-${index}`}
+                            value={item.horario}
+                            onChange={(e) => {
+                              const newFechas = [...nuevaOfertaForm.fechasBusca];
+                              newFechas[index].horario = e.target.value;
+                              setNuevaOfertaForm(prev => ({ ...prev, fechasBusca: newFechas }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                          >
+                            {HORARIOS.map(h => <option key={h} value={h}>{h}</option>)}
+                          </select>
+                        </div>
+                        <div className="flex items-end gap-2">
+                          {index === nuevaOfertaForm.fechasBusca.length - 1 && nuevaOfertaForm.fechasBusca.length < 4 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNuevaOfertaForm(prev => ({
+                                  ...prev,
+                                  fechasBusca: [...prev.fechasBusca, { fecha: '', horario: HORARIOS[0] }]
+                                }));
+                              }}
+                              className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                              title="Agregar fecha"
+                            >
+                              <Plus className="h-5 w-5" />
+                            </button>
+                          )}
+                          {nuevaOfertaForm.fechasBusca.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newFechas = nuevaOfertaForm.fechasBusca.filter((_, i) => i !== index);
+                                setNuevaOfertaForm(prev => ({ ...prev, fechasBusca: newFechas }));
+                              }}
+                              className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                              title="Eliminar fecha"
+                            >
+                              <Trash2 className="h-5 w-5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Turno que Ofrece */}
                   <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
                     <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">
                       Turno que Ofreces
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label htmlFor="fecha-ofrece" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          {/* Fecha que ofreces  {TODO: no olvidar este bloque de codigo */}
                           {nuevaOfertaForm.fechaOfrece && (
                             <span className={`text-xs ml-2 px-2 py-1 rounded ${nuevaOfertaForm.fechaOfrece && user &&
                               esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno)
@@ -1354,7 +1506,8 @@ export default function CambiosTurnosPage() {
                               Grupo {calcularGrupoTrabaja(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'))}
                               {user && esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno) ? ' ✓' : ' ✗'}
                             </span>
-                          )} Fecha
+                          )}
+                          Fecha
                         </label>
                         <input
                           id="fecha-ofrece"
@@ -1366,14 +1519,11 @@ export default function CambiosTurnosPage() {
                             const fecha = e.target.value;
                             setNuevaOfertaForm(prev => ({ ...prev, fechaOfrece: fecha }));
 
-                            // Validar que la fecha ofrecida sea del grupo del usuario
                             if (fecha && user) {
                               const fechaObj = new Date(fecha + 'T00:00:00');
-
                               if (!esFechaValidaParaGrupo(fechaObj, user.grupoTurno)) {
                                 setFormError(`La fecha seleccionada no corresponde al Grupo ${user.grupoTurno}. Solo puedes ofrecer turnos de tu grupo.`);
                               } else {
-                                // Limpiar error solo si no hay otros errores
                                 if (formError.includes('no corresponde al Grupo')) {
                                   setFormError('');
                                 }
@@ -1401,129 +1551,258 @@ export default function CambiosTurnosPage() {
                             </p>
                           )}
                       </div>
-                      <div> {/**  TODO: Implementar selección de horario */}
+                      <div>
                         <label htmlFor="horario-ofrece" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Horario
                         </label>
                         <input
-                          id="horario-solicitante"
+                          id="horario-ofrece"
                           type="text"
                           disabled
                           value={user?.horario || 'Cargando...'}
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 cursor-not-allowed"
                         />
                       </div>
-                      {/* <div>
-                        <label htmlFor="grupo-ofrece" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Grupo
-                        </label>
-                        <select
-                          id="grupo-ofrece"
-                          value={nuevaOfertaForm.grupoOfrece}
-                          onChange={(e) => setNuevaOfertaForm(prev => ({ ...prev, grupoOfrece: e.target.value as GrupoTurno }))}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                        >
-                          {GRUPOS.map(g => <option key={g} value={g}>Grupo {g}</option>)}
-                        </select>
-                      </div> */}
-                    </div>
-                  </div>
-
-                  {/* Turno que busca */}
-                  <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                      Turno que Buscas
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <label htmlFor="fecha-busca" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Fecha
-                        </label>
-                        <input
-                          id="fecha-busca"
-                          type="date"
-                          required
-                          min={new Date().toISOString().split('T')[0]}
-                          value={nuevaOfertaForm.fechaBusca}
-                          onChange={(e) => setNuevaOfertaForm(prev => ({ ...prev, fechaBusca: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="horario-busca" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Horario
-                        </label>
-                        <select
-                          id="horario-busca"
-                          value={nuevaOfertaForm.horarioBusca}
-                          onChange={(e) => setNuevaOfertaForm(prev => ({ ...prev, horarioBusca: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                        >
-                          {HORARIOS.map(h => <option key={h} value={h}>{h}</option>)}
-                        </select>
-                      </div>
-                      {/* <div>
-                        <label htmlFor="grupo-busca" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Grupo
-                        </label>
-                        <select
-                          id="grupo-busca"
-                          value={nuevaOfertaForm.grupoBusca}
-                          onChange={(e) => setNuevaOfertaForm(prev => ({ ...prev, grupoBusca: e.target.value as GrupoTurno }))}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                        >
-                          {GRUPOS.map(g => <option key={g} value={g}>Grupo {g}</option>)}
-                        </select>
-                      </div> */}
                     </div>
                   </div>
                 </>
               )}
 
-              {/* Formulario para Abierto */}
-              {/* Formulario para Abierto */}
-              {nuevaOfertaForm.tipo === 'ABIERTO' && (
-                <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                    Rango de Fechas Disponibles
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="fecha-desde" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Desde
-                      </label>
-                      <input
-                        id="fecha-desde"
-                        type="date"
-                        required
-                        min={new Date().toISOString().split('T')[0]}
-                        value={nuevaOfertaForm.fechaDesde}
-                        onChange={(e) => setNuevaOfertaForm(prev => ({ ...prev, fechaDesde: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="fecha-hasta" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Hasta
-                      </label>
-                      <input
-                        id="fecha-hasta"
-                        type="date"
-                        required
-                        min={nuevaOfertaForm.fechaDesde || new Date().toISOString().split('T')[0]}
-                        value={nuevaOfertaForm.fechaHasta}
-                        onChange={(e) => setNuevaOfertaForm(prev => ({ ...prev, fechaHasta: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      />
+              {nuevaOfertaForm.tipo === 'OFREZCO' && nuevaOfertaForm.modalidadBusqueda === 'INTERCAMBIO' && (
+                <>
+                  {/* Turno que Ofrece */}
+                  <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                      Turno que Ofreces
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="fecha-ofrece" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {nuevaOfertaForm.fechaOfrece && (
+                            <span className={`text-xs ml-2 px-2 py-1 rounded ${nuevaOfertaForm.fechaOfrece && user &&
+                              esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno)
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                              }`}>
+                              Grupo {calcularGrupoTrabaja(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'))}
+                              {user && esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno) ? ' ✓' : ' ✗'}
+                            </span>
+                          )}
+                          Fecha
+                        </label>
+                        <input
+                          id="fecha-ofrece"
+                          type="date"
+                          required
+                          min={new Date().toISOString().split('T')[0]}
+                          value={nuevaOfertaForm.fechaOfrece}
+                          onChange={(e) => {
+                            const fecha = e.target.value;
+                            setNuevaOfertaForm(prev => ({ ...prev, fechaOfrece: fecha }));
+
+                            if (fecha && user) {
+                              const fechaObj = new Date(fecha + 'T00:00:00');
+                              if (!esFechaValidaParaGrupo(fechaObj, user.grupoTurno)) {
+                                setFormError(`La fecha seleccionada no corresponde al Grupo ${user.grupoTurno}. Solo puedes ofrecer turnos de tu grupo.`);
+                              } else {
+                                if (formError.includes('no corresponde al Grupo')) {
+                                  setFormError('');
+                                }
+                              }
+                            }
+                          }}
+                          className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 ${nuevaOfertaForm.fechaOfrece && user &&
+                            !esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno)
+                            ? 'border-red-500 dark:border-red-600'
+                            : 'border-gray-300 dark:border-gray-600'
+                            }`}
+                        />
+                        {nuevaOfertaForm.fechaOfrece && user &&
+                          !esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno) && (
+                            <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3" />
+                              Esta fecha corresponde al Grupo {calcularGrupoTrabaja(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'))}, pero tú eres del Grupo {user.grupoTurno}. Solo puedes ofrecer tus propios turnos.
+                            </p>
+                          )}
+                        {nuevaOfertaForm.fechaOfrece && user &&
+                          esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno) && (
+                            <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
+                              <Check className="h-3 w-3" />
+                              Fecha válida (tu turno del Grupo {user.grupoTurno})
+                            </p>
+                          )}
+                      </div>
+                      <div>
+                        <label htmlFor="horario-ofrece" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Horario
+                        </label>
+                        <input
+                          id="horario-ofrece"
+                          type="text"
+                          disabled
+                          value={user?.horario || 'Cargando...'}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 cursor-not-allowed"
+                        />
+                      </div>
                     </div>
                   </div>
-                  {nuevaOfertaForm.fechaDesde && nuevaOfertaForm.fechaHasta && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                      Estás ofreciendo tu disponibilidad desde el {new Date(nuevaOfertaForm.fechaDesde).toLocaleDateString('es-AR')} hasta el {new Date(nuevaOfertaForm.fechaHasta).toLocaleDateString('es-AR')}
-                    </p>
-                  )}
+
+                  {/* Turno que Busca */}
+                  <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                      Turno que Buscas
+                    </h3>
+                    {nuevaOfertaForm.fechasBusca.map((item, index) => (
+                      <div key={index} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 mb-3">
+                        <div>
+                          <label htmlFor={`fecha-busca-${index}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Fecha
+                          </label>
+                          <input
+                            id={`fecha-busca-${index}`}
+                            type="date"
+                            required
+                            min={new Date().toISOString().split('T')[0]}
+                            value={item.fecha}
+                            onChange={(e) => {
+                              const newFechas = [...nuevaOfertaForm.fechasBusca];
+                              newFechas[index].fecha = e.target.value;
+                              setNuevaOfertaForm(prev => ({ ...prev, fechasBusca: newFechas }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor={`horario-busca-${index}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Horario
+                          </label>
+                          <select
+                            id={`horario-busca-${index}`}
+                            value={item.horario}
+                            onChange={(e) => {
+                              const newFechas = [...nuevaOfertaForm.fechasBusca];
+                              newFechas[index].horario = e.target.value;
+                              setNuevaOfertaForm(prev => ({ ...prev, fechasBusca: newFechas }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                          >
+                            {HORARIOS.map(h => <option key={h} value={h}>{h}</option>)}
+                          </select>
+                        </div>
+                        <div className="flex items-end gap-2">
+                          {index === nuevaOfertaForm.fechasBusca.length - 1 && nuevaOfertaForm.fechasBusca.length < 4 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNuevaOfertaForm(prev => ({
+                                  ...prev,
+                                  fechasBusca: [...prev.fechasBusca, { fecha: '', horario: HORARIOS[0] }]
+                                }));
+                              }}
+                              className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                              title="Agregar fecha"
+                            >
+                              <Plus className="h-5 w-5" />
+                            </button>
+                          )}
+                          {nuevaOfertaForm.fechasBusca.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newFechas = nuevaOfertaForm.fechasBusca.filter((_, i) => i !== index);
+                                setNuevaOfertaForm(prev => ({ ...prev, fechasBusca: newFechas }));
+                              }}
+                              className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                              title="Eliminar fecha"
+                            >
+                              <Trash2 className="h-5 w-5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Modalidad Abierta */}
+              {nuevaOfertaForm.modalidadBusqueda === 'ABIERTO' && (
+                <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                    Fechas Disponibles
+                  </h3>
+                  {nuevaOfertaForm.fechasDisponibles.map((item, index) => (
+                    <div key={index} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 mb-3">
+                      <div>
+                        <label htmlFor={`fecha-disp-${index}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Fecha
+                        </label>
+                        <input
+                          id={`fecha-disp-${index}`}
+                          type="date"
+                          required
+                          min={new Date().toISOString().split('T')[0]}
+                          value={item.fecha}
+                          onChange={(e) => {
+                            const newFechas = [...nuevaOfertaForm.fechasDisponibles];
+                            newFechas[index].fecha = e.target.value;
+                            setNuevaOfertaForm(prev => ({ ...prev, fechasDisponibles: newFechas }));
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor={`horario-disp-${index}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Horario
+                        </label>
+                        <select
+                          id={`horario-disp-${index}`}
+                          value={item.horario}
+                          onChange={(e) => {
+                            const newFechas = [...nuevaOfertaForm.fechasDisponibles];
+                            newFechas[index].horario = e.target.value;
+                            setNuevaOfertaForm(prev => ({ ...prev, fechasDisponibles: newFechas }));
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        >
+                          {HORARIOS.map(h => <option key={h} value={h}>{h}</option>)}
+                        </select>
+                      </div>
+                      <div className="flex items-end gap-2">
+                        {index === nuevaOfertaForm.fechasDisponibles.length - 1 && nuevaOfertaForm.fechasDisponibles.length < 4 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNuevaOfertaForm(prev => ({
+                                ...prev,
+                                fechasDisponibles: [...prev.fechasDisponibles, { fecha: '', horario: HORARIOS[0] }]
+                              }));
+                            }}
+                            className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                            title="Agregar fecha"
+                          >
+                            <Plus className="h-5 w-5" />
+                          </button>
+                        )}
+                        {nuevaOfertaForm.fechasDisponibles.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newFechas = nuevaOfertaForm.fechasDisponibles.filter((_, i) => i !== index);
+                              setNuevaOfertaForm(prev => ({ ...prev, fechasDisponibles: newFechas }));
+                            }}
+                            className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                            title="Eliminar fecha"
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
+
               {/* Descripción */}
               <div>
                 <label htmlFor="descripcion" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1539,12 +1818,8 @@ export default function CambiosTurnosPage() {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 />
               </div>
-
               {/* Prioridad */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Prioridad
-                </label>
                 <div className="flex gap-3">
                   <button
                     type="button"
@@ -1601,7 +1876,7 @@ export default function CambiosTurnosPage() {
           </div>
         </div>
       )}
-
+      {/* TODO: Hasta aca */}
 
       {/* Modal Solicitud Directa */}
       {isModalOpen && modalType === 'solicitud-directa' && (

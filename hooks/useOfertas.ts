@@ -3,7 +3,8 @@ import { useMemo } from "react";
 
 export type Rol = "SUPERVISOR" | "INSPECTOR" | "JEFE";
 export type GrupoTurno = "A" | "B";
-export type TipoOferta = "INTERCAMBIO" | "ABIERTO";
+export type TipoOferta = "OFREZCO" | "BUSCO"; // ✅ Actualizado
+export type ModalidadBusqueda = "INTERCAMBIO" | "ABIERTO"; // ✅ Nuevo
 export type Prioridad = "NORMAL" | "URGENTE";
 export type EstadoOferta =
   | "DISPONIBLE"
@@ -24,6 +25,7 @@ export interface Oferta {
     totalIntercambios: number;
   };
   tipo: TipoOferta;
+  modalidadBusqueda?: ModalidadBusqueda; // ✅ Nuevo campo opcional
   turnoOfrece: {
     fecha: string;
     horario: string;
@@ -34,10 +36,18 @@ export interface Oferta {
     horario: string;
     grupoTurno: GrupoTurno;
   } | null;
+  turnosBusca?: Array<{ // ✅ Nuevo para múltiples fechas
+    fecha: string;
+    horario: string;
+  }>;
   rangoFechas?: {
     desde: string;
     hasta: string;
   };
+  fechasDisponibles?: Array<{ // ✅ Nuevo para modalidad abierta
+    fecha: string;
+    horario: string;
+  }>;
   descripcion: string;
   prioridad: Prioridad;
   validoHasta: string;
@@ -66,7 +76,8 @@ export interface Oferta {
 }
 
 export interface NuevaOfertaForm {
-  tipo: TipoOferta;
+  tipo: TipoOferta; // ✅ Actualizado
+  modalidadBusqueda: ModalidadBusqueda; // ✅ Nuevo
   fechaOfrece: string;
   horarioOfrece: string;
   grupoOfrece: GrupoTurno;
@@ -77,6 +88,8 @@ export interface NuevaOfertaForm {
   fechaHasta: string;
   descripcion: string;
   prioridad: Prioridad;
+  fechasBusca: Array<{ fecha: string; horario: string }>; // ✅ Nuevo
+  fechasDisponibles: Array<{ fecha: string; horario: string }>; // ✅ Nuevo
 }
 
 // ✅ Fetcher con credentials
@@ -147,13 +160,13 @@ export const useOfertas = () => {
     mutate();
   };
 
-  // Estadísticas
+  // Estadísticas actualizadas
   const stats = useMemo(() => {
-    if (!ofertas) return { total: 0, intercambios: 0, abiertos: 0, urgentes: 0 };
+    if (!ofertas) return { total: 0, ofrezco: 0, busco: 0, urgentes: 0 };
     return {
       total: ofertas.length,
-      intercambios: ofertas.filter((o) => o.tipo === "INTERCAMBIO").length,
-      abiertos: ofertas.filter((o) => o.tipo === "ABIERTO").length,
+      ofrezco: ofertas.filter((o) => o.tipo === "OFREZCO").length, // ✅ Actualizado
+      busco: ofertas.filter((o) => o.tipo === "BUSCO").length, // ✅ Actualizado
       urgentes: ofertas.filter((o) => o.prioridad === "URGENTE").length,
     };
   }, [ofertas]);
