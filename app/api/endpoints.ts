@@ -29,6 +29,18 @@ export const endpoints = {
     delete: (id: string) => `${API_BASE_URL}/solicitudes-directas/${id}`,
   },
 
+  // Faltas
+  faltas: {
+    list: (fecha?: string) => fecha 
+      ? `${API_BASE_URL}/faltas?fecha=${fecha}` 
+      : `${API_BASE_URL}/faltas`,
+    byId: (id: string) => `${API_BASE_URL}/faltas/${id}`,
+    byEmpleado: (empleadoId: string) => `${API_BASE_URL}/faltas/empleado/${empleadoId}`,
+    create: () => `${API_BASE_URL}/faltas`,
+    update: (id: string) => `${API_BASE_URL}/faltas/${id}`,
+    delete: (id: string) => `${API_BASE_URL}/faltas/${id}`,
+  },
+
   // Stats
   stats: {
     get: () => `${API_BASE_URL}/stats`,
