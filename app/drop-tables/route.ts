@@ -11,6 +11,7 @@ async function dropAllTables() {
   await sql`DROP TABLE IF EXISTS cambios CASCADE`;
   await sql`DROP TABLE IF EXISTS stats CASCADE`;
   await sql`DROP TABLE IF EXISTS turnos CASCADE`;
+  await sql`DROP TABLE IF EXISTS faltas CASCADE`;
   await sql`DROP TABLE IF EXISTS users CASCADE`;
   
   console.log('✅ Todas las tablas eliminadas');

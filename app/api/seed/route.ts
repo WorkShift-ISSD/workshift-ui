@@ -186,6 +186,31 @@ async function seedCambios() {
   return insertedCambios;
 }
 
+//Crea Tablas Faltas
+async function seedFaltas() {
+  await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS faltas (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      empleado_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      fecha DATE NOT NULL,
+      causa TEXT NOT NULL,
+      observaciones TEXT,
+      justificada BOOLEAN DEFAULT false,
+      registrado_por TEXT,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+  `;
+
+  await sql`CREATE INDEX IF NOT EXISTS idx_faltas_empleado ON faltas(empleado_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_faltas_fecha ON faltas(fecha)`;
+
+  console.log("✅ Tabla faltas creada");
+  return true;
+}
+
 async function seedStats() {
   await sql`
     CREATE TABLE IF NOT EXISTS stats (
@@ -349,6 +374,7 @@ async function dropAllTables() {
   await sql`DROP TABLE IF EXISTS cambios CASCADE`;
   await sql`DROP TABLE IF EXISTS stats CASCADE`;
   await sql`DROP TABLE IF EXISTS turnos CASCADE`;
+  await sql`DROP TABLE IF EXISTS faltas CASCADE`;
   await sql`DROP TABLE IF EXISTS users CASCADE`;
 
   console.log('✅ Tablas eliminadas');
@@ -364,6 +390,9 @@ export async function GET() {
 
       await seedUsers();
       console.log('✅ Usuarios creados');
+
+      await seedFaltas();  
+      console.log('✅ Faltas creadas');
 
       await seedTurnos();
       console.log('✅ Turnos creados');
@@ -386,7 +415,8 @@ export async function GET() {
 
     return Response.json({
       message: 'Database seeded successfully',
-      tables: ['users', 'turnos', 'cambios', 'stats', 'turnos_data', 'ofertas', 'solicitudes_directas'],
+      tables: ['users', 'faltas', 'turnos', 'cambios', 'stats', 'turnos_data', 'ofertas', 'solicitudes_directas'],
+
       schema: {
         users: {
           campos: [
