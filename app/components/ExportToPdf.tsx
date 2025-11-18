@@ -83,14 +83,13 @@ const exportToPDF = async () => {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
 
-    const primary = [37, 99, 235];
+    const primary = [31, 41, 55];
     const secondary = [71, 85, 105];
     const lightGray = [241, 245, 249];
 
-    // <<< --- CAMBIAR POR TU USUARIO LOGUEADO REAL --- >>>
-    const usuarioNombre = "Nombre del Usuario";
+    const usuarioNombre = "Nombre del Usuario"; // CAMBIAR
 
-    // ======== Cargar imágenes ========
+    // ==================== CARGAR IMÁGENES ====================
     const loadImage = (src: string): Promise<string> =>
       new Promise((resolve) => {
         const img = new Image();
@@ -108,7 +107,7 @@ const exportToPDF = async () => {
     const logoMigraciones = await loadImage("/icon migra.png").catch(() => "");
     const logoWS = await loadImage("/LogoWSv4-2.png").catch(() => "");
 
-    // HEADER (repetido en cada página)
+    // ===================== HEADER ======================
     const drawHeader = () => {
       doc.setFillColor(primary[0], primary[1], primary[2]);
       doc.rect(0, 0, pageWidth, 35, "F");
@@ -118,23 +117,24 @@ const exportToPDF = async () => {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(18);
       doc.setTextColor(255, 255, 255);
-      doc.text("Migraciones - WSMS", 40, 17);
+      doc.text("Direccion Nacional de Migraciones - WSMS", pageWidth / 2, 17, { align: "center" });
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(11);
-      doc.text("Gestión de Empleados - Reporte Detallado", 40, 25);
+      doc.text("Gestión de Empleados - Reporte Detallado", pageWidth / 2, 25, { align: "center" });
 
       const now = new Date();
       const fecha = now.toLocaleDateString("es-AR");
-      const hora = now.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+      const hora = now.toLocaleTimeString("es-AR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
 
       doc.setFontSize(8);
-      doc.text(`Generado: ${fecha} ${hora}`, 40, 30);
-      doc.text(`Usuario: ${usuarioNombre}`, 100, 30);
+      doc.text(`Generado: ${fecha} ${hora} | Usuario: ${usuarioNombre}`, pageWidth / 2, 31, { align: "center" });
     };
 
-
-    // FOOTER (repetido en cada página)
+    // ===================== FOOTER ======================
     const drawFooter = (pageNumber: number, totalPages: number) => {
       doc.setDrawColor(200, 200, 200);
       doc.line(15, pageHeight - 20, pageWidth - 15, pageHeight - 20);
@@ -150,19 +150,16 @@ const exportToPDF = async () => {
         align: "right",
       });
 
-      doc.text(
-        `Total empleados: ${employees.length}`,
-        pageWidth - 15,
-        pageHeight - 7,
-        { align: "right" }
-      );
+      doc.text(`Total empleados: ${employees.length}`, pageWidth - 15, pageHeight - 7, {
+        align: "right",
+      });
     };
 
-    // ======== Comenzamos primera página ========
+    // ===================== INICIO ======================
     let y = 45;
     drawHeader();
 
-    // *** CARDS DE ESTADÍSTICAS ***
+    // ===================== CARDS ======================
     const cards = [
       { label: "Total", value: stats.total, color: [37, 99, 235] },
       { label: "Activos", value: stats.activos, color: [34, 197, 94] },
@@ -190,25 +187,37 @@ const exportToPDF = async () => {
 
     y += 30;
 
-    // ENCABEZADO DE TABLA
-    doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
-    doc.rect(15, y, pageWidth - 30, 10, "F");
+    // ===================== COLUMNAS ======================
+    const headers = ["Legajo", "Nombre y Apellido", "Rol", "Turno", "Horario", "Estado", "Teléfono"];
+    const colWidth = [15, 50, 25, 13, 25, 20, 25]; // 🔥 ALINEADO PERFECTO
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(secondary[0], secondary[1], secondary[2]);
+    // ==== función para dibujar encabezado ====
+    const drawTableHeader = () => {
+      let x = 15;
 
-    const headers = ["Legajo", "Nombre", "Rol", "Turno", "Horario", "Estado", "Teléfono"];
-    const colX = [18, 35, 90, 115, 130, 160, 180];
+      doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+      doc.rect(15, y, pageWidth - 30, 10, "F");
 
-    headers.forEach((h, i) => doc.text(h, colX[i], y + 7));
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(secondary[0], secondary[1], secondary[2]);
 
-    y += 14;
-    let page = 1;
+      headers.forEach((h, i) => {
+        doc.text(h, x + 1, y + 7);
+        x += colWidth[i];
+      });
 
-    // FILAS
-    doc.setFontSize(8);
+      y += 14;
+    };
+
+    // Dibujar encabezado inicial
+    drawTableHeader();
+
+    // ===================== FILAS ======================
     doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+
+    let page = 1;
 
     for (let emp of employees) {
       if (y > pageHeight - 30) {
@@ -217,16 +226,10 @@ const exportToPDF = async () => {
         page++;
         y = 45;
         drawHeader();
-
-        // repetir títulos en cada página
-        doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
-        doc.rect(15, y, pageWidth - 30, 10, "F");
-        headers.forEach((h, i) => doc.text(h, colX[i], y + 7));
-        y += 14;
+        drawTableHeader();
       }
 
       const estado = calcularEstado(emp);
-
       const colorEstado =
         estado === "ACTIVO"
           ? [34, 197, 94]
@@ -246,80 +249,43 @@ const exportToPDF = async () => {
         emp.telefono || "-",
       ];
 
+      let x = 15;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(0, 0, 0);
+
       row.forEach((text, i) => {
+        // Color especial del estado
         if (i === 5) {
           doc.setTextColor(colorEstado[0], colorEstado[1], colorEstado[2]);
-          doc.text(text, colX[i], y);
-          doc.setTextColor(0, 0, 0);
         } else {
-          doc.text(text, colX[i], y);
+          doc.setTextColor(0, 0, 0);
         }
+
+        doc.text(text, x + 1, y);
+        x += colWidth[i];
       });
 
       y += 9;
     }
 
-    // Footer final
+    // ===================== FOOTER FINAL ======================
     const totalPages = doc.internal.getNumberOfPages();
+
     for (let p = 1; p <= totalPages; p++) {
       doc.setPage(p);
       drawFooter(p, totalPages);
     }
 
-    doc.save("empleados.pdf");
+    const fecha = new Date().toISOString().split("T")[0];
+    doc.save(`empleados_${fecha}.pdf`);
   } catch (error) {
     console.error("Error generando PDF:", error);
     alert("Error generando PDF");
   }
 };
 
-
-  // ======== EXCEL MEJORADO ========
-  const exportToExcel = () => {
-    const data = employees.map(emp => ({
-      'Legajo': emp.legajo,
-      'Nombre': emp.nombre,
-      'Apellido': emp.apellido,
-      'Rol': emp.rol,
-      'Grupo Turno': emp.grupoTurno,
-      'Horario': emp.horario || 'No asignado',
-      'Estado': calcularEstado(emp),
-      'Email': emp.email,
-      'Teléfono': emp.telefono || 'N/A',
-      'Dirección': emp.direccion || 'N/A',
-      'Fecha Nacimiento': emp.fechaNacimiento ? new Date(emp.fechaNacimiento).toLocaleDateString('es-AR') : 'N/A',
-      'Último Login': emp.ultimoLogin ? new Date(emp.ultimoLogin).toLocaleDateString('es-AR') : 'Nunca',
-      'Activo': emp.activo ? 'Sí' : 'No'
-    }));
-
-    // Crear hoja con datos
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    
-    // Agregar hoja de resumen
-    const resumenData = [
-      { 'Estadística': 'Total Empleados', 'Valor': stats.total },
-      { 'Estadística': 'Empleados Activos', 'Valor': stats.activos },
-      { 'Estadística': 'En Licencia', 'Valor': stats.enLicencia },
-      { 'Estadística': 'Ausentes', 'Valor': stats.ausentes },
-      { 'Estadística': 'Fecha de Reporte', 'Valor': new Date().toLocaleDateString('es-AR') }
-    ];
-    const resumenSheet = XLSX.utils.json_to_sheet(resumenData);
-    
-    // Crear workbook
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, resumenSheet, "Resumen");
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Empleados");
-    
-    // Configurar anchos de columna
-    worksheet['!cols'] = [
-      { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, 
-      { wch: 12 }, { wch: 20 }, { wch: 12 }, { wch: 30 }, 
-      { wch: 15 }, { wch: 25 }, { wch: 18 }, { wch: 18 }, { wch: 8 }
-    ];
-    
-    const fileName = `empleados_workshift_${new Date().toISOString().split('T')[0]}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
-  };
 
   // ======== XML MEJORADO ========
   const exportToXML = () => {
