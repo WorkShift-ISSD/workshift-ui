@@ -104,7 +104,7 @@ const exportToPDF = async () => {
         };
       });
 
-    const logoMigraciones = await loadImage("/icon migra.png").catch(() => "");
+    const logoMigraciones = await loadImage("/icon migra bco.png").catch(() => "");
     const logoWS = await loadImage("/LogoWSv4-2.png").catch(() => "");
 
     // ===================== HEADER ======================
@@ -112,7 +112,7 @@ const exportToPDF = async () => {
       doc.setFillColor(primary[0], primary[1], primary[2]);
       doc.rect(0, 0, pageWidth, 35, "F");
 
-      if (logoMigraciones) doc.addImage(logoMigraciones, "PNG", 12, 9, 18, 18);
+      if (logoMigraciones) doc.addImage(logoMigraciones, "PNG", 12, 7, 22, 22);
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(18);
@@ -195,15 +195,16 @@ const exportToPDF = async () => {
     const drawTableHeader = () => {
       let x = 15;
 
-      doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+      doc.setFillColor(primary[0], primary[1], primary[2]);
       doc.rect(15, y, pageWidth - 30, 10, "F");
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
-      doc.setTextColor(secondary[0], secondary[1], secondary[2]);
+      doc.setTextColor(255, 255, 255);
 
       headers.forEach((h, i) => {
-        doc.text(h, x + 1, y + 7);
+        const colCenter = x + colWidth[i] / 2;
+        doc.text(h, colCenter, y + 7, { align: "center" });
         x += colWidth[i];
       });
 
@@ -221,7 +222,6 @@ const exportToPDF = async () => {
 
     for (let emp of employees) {
       if (y > pageHeight - 30) {
-        drawFooter(page, 999);
         doc.addPage();
         page++;
         y = 45;
@@ -256,14 +256,22 @@ const exportToPDF = async () => {
       doc.setTextColor(0, 0, 0);
 
       row.forEach((text, i) => {
-        // Color especial del estado
+       const colCenter = x + colWidth[i] / 2;
+
+        // Color del estado
         if (i === 5) {
           doc.setTextColor(colorEstado[0], colorEstado[1], colorEstado[2]);
         } else {
           doc.setTextColor(0, 0, 0);
         }
 
-        doc.text(text, x + 1, y);
+        // Nombre y apellido alineado a la izquierda
+        if (i === 1) {
+          doc.text(text, x + 1, y);
+        } else {
+          doc.text(text, colCenter, y, { align: "center" });
+        }
+
         x += colWidth[i];
       });
 
