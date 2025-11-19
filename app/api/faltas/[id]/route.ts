@@ -3,14 +3,13 @@
 import { sql } from '@/app/lib/postgres';
 import { NextRequest, NextResponse } from 'next/server';
 
-type RouteContext = {
-  params: { id: string }; // <-- corregido
-};
-
 // GET - Obtener una falta por id
-export async function GET(request: NextRequest, context: RouteContext) {
-  const { id } = context.params;
-
+export async function GET(
+  request: NextRequest, 
+  { params }: { params: Promise<{ id: string }> } // <-- Promise aquí
+) {
+  const { id } = await params; // <-- await aquí
+  
   try {
     const [falta] = await sql`
       SELECT 
@@ -38,8 +37,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
 }
 
 // PUT - Editar una falta
-export async function PUT(request: NextRequest, context: RouteContext) {
-  const { id } = context.params;
+export async function PUT(
+  request: NextRequest, 
+  { params }: { params: Promise<{ id: string }> } // <-- Promise aquí
+) {
+  const { id } = await params; // <-- await aquí
   const body = await request.json();
 
   try {
@@ -64,8 +66,11 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 }
 
 // DELETE - Borrar falta
-export async function DELETE(request: NextRequest, context: RouteContext) {
-  const { id } = context.params;
+export async function DELETE(
+  request: NextRequest, 
+  { params }: { params: Promise<{ id: string }> } // <-- Promise aquí
+) {
+  const { id } = await params; // <-- await aquí
 
   try {
     const [deleted] = await sql`

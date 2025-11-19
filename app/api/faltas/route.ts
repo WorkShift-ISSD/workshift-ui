@@ -17,9 +17,12 @@ export async function GET(request: NextRequest) {
     const fecha = searchParams.get('fecha');
     const empleadoId = searchParams.get('empleadoId');
 
+    console.log('Parámetros recibidos:', { fecha, empleadoId });
+
     let query;
 
     if (fecha) {
+      console.log('Ejecutando query con fecha:', fecha);
       query = sql`
         SELECT 
           f.id::text,
@@ -37,14 +40,15 @@ export async function GET(request: NextRequest) {
           f.observaciones,
           f.justificada,
           f.registrado_por as "registradoPor",
-          to_char(f.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "createdAt",
-          to_char(f.updated_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "updatedAt"
+          to_char(f.created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "createdAt",
+          to_char(f.updated_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "updatedAt"
         FROM faltas f
         JOIN users e ON f.empleado_id = e.id
         WHERE DATE(f.fecha) = ${fecha}::date
         ORDER BY f.created_at DESC;
       `;
     } else if (empleadoId) {
+      console.log('Ejecutando query con empleadoId:', empleadoId);
       query = sql`
         SELECT 
           f.id::text,
@@ -62,14 +66,15 @@ export async function GET(request: NextRequest) {
           f.observaciones,
           f.justificada,
           f.registrado_por as "registradoPor",
-          to_char(f.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "createdAt",
-          to_char(f.updated_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "updatedAt"
+          to_char(f.created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "createdAt",
+          to_char(f.updated_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "updatedAt"
         FROM faltas f
         JOIN users e ON f.empleado_id = e.id
         WHERE f.empleado_id = ${empleadoId}::uuid
         ORDER BY f.fecha DESC;
       `;
     } else {
+      console.log('Ejecutando query sin filtros');
       query = sql`
         SELECT 
           f.id::text,
@@ -87,21 +92,27 @@ export async function GET(request: NextRequest) {
           f.observaciones,
           f.justificada,
           f.registrado_por as "registradoPor",
-          to_char(f.created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "createdAt",
-          to_char(f.updated_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "updatedAt"
+          to_char(f.created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "createdAt",
+          to_char(f.updated_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "updatedAt"
         FROM faltas f
         JOIN users e ON f.empleado_id = e.id
         ORDER BY f.fecha DESC;
       `;
     }
-
+    console.log('Ejecutando query...');
     const faltas = await query;
+    console.log('Query exitosa, registros encontrados:', faltas.length);
     return NextResponse.json(faltas);
 
   } catch (error) {
     console.error('Error fetching faltas:', error);
+    console.error('=== ERROR EN GET /api/faltas ===');
+    console.error('Tipo de error:', error?.constructor?.name);
+    console.error('Mensaje:', error instanceof Error ? error.message : String(error));
+    console.error('Stack:', error instanceof Error ? error.stack : 'No stack');
+    console.error('Error completo:', error);
     return NextResponse.json(
-      { error: 'Error al obtener faltas' },
+      { error: 'Error al obtener faltas', details: String(error) },
       { status: 500 }
     );
   }
@@ -200,8 +211,8 @@ export async function POST(request: NextRequest) {
         observaciones,
         justificada,
         registrado_por as "registradoPor",
-        to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "createdAt",
-        to_char(updated_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "updatedAt";
+        to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "createdAt",
+        to_char(updated_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "updatedAt";
     `;
 
     // Agregar empleado

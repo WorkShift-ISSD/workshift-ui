@@ -271,7 +271,7 @@ const exportToPDF = async () => {
     }
 
     // ===================== FOOTER FINAL ======================
-    const totalPages = doc.internal.getNumberOfPages();
+    const totalPages = doc.getNumberOfPages();
 
     for (let p = 1; p <= totalPages; p++) {
       doc.setPage(p);
@@ -286,6 +286,26 @@ const exportToPDF = async () => {
   }
 };
 
+
+  // ======== EXCEL MEJORADO ========
+  const exportToExcel = () => {
+    const data = employees.map(emp => ({
+      Legajo: emp.legajo,
+      Nombre: emp.nombre,
+      Apellido: emp.apellido,
+      Rol: emp.rol,
+      "Grupo Turno": emp.grupoTurno,
+      Horario: emp.horario || "No asignado",
+      Estado: calcularEstado(emp),
+      Email: emp.email,
+      Teléfono: emp.telefono || "-",
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Empleados");
+    XLSX.writeFile(wb, `empleados_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
 
   // ======== XML MEJORADO ========
   const exportToXML = () => {

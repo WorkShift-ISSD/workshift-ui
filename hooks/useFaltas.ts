@@ -4,6 +4,7 @@ import { endpoints } from '@/app/api/endpoints';
 import { deleter, fetcher, poster, putter } from '@/app/api/fetcher';
 
 export interface Falta {
+  inspectorId: any;
   id: string;
   empleadoId: string;
   fecha: string;
