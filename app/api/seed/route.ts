@@ -71,7 +71,7 @@ async function seedUsers() {
           ${user.rol},
           ${user.telefono || null},
           ${user.direccion || null},
-          ${user.horario || '09:00-17:00'},
+          ${user.horario || '06:00-16:00'},
           ${user.fechaNacimiento || null},
           ${user.activo !== undefined ? user.activo : true},
           ${user.grupoTurno || 'A'},
@@ -112,10 +112,10 @@ async function seedUsers() {
     'ADMINISTRADOR',
     NULL,
     NULL,
-    '09:00-17:00',
+    '',
     NULL,
     TRUE,
-    'A',
+    'ADMIN',
     5.0,
     0
   )

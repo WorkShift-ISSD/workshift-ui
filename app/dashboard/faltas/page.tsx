@@ -15,14 +15,14 @@ import {
   Clock,
 } from "lucide-react";
 
-// Función corregida para fecha local de Argentina
+// ==== FECHA LOCAL ARGENTINA ====
 const getTodayDate = () => {
   const today = new Date();
   today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
   return today.toISOString().split("T")[0];
 };
 
-// Formato seguro de fecha
+// ==== FORMATO DE FECHA ====
 const formatDate = (dateString: string) => {
   try {
     const date = new Date(dateString.replace(/-/g, "/"));
@@ -37,6 +37,23 @@ const formatDate = (dateString: string) => {
   }
 };
 
+// ==== SISTEMA DE GUARDIAS A/B (día por medio) ====
+
+// FECHA BASE donde trabaja Guardia A
+const FECHA_BASE = "2025-11-19";
+
+// Función que determina qué grupo trabaja (A o B)
+const getGrupoDelDia = (fechaSeleccionada: string): "A" | "B" => {
+  const base = new Date(FECHA_BASE);
+  const actual = new Date(fechaSeleccionada);
+
+  const diff = Math.floor(
+    (actual.getTime() - base.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  return diff % 2 === 0 ? "A" : "B";
+};
+
 export default function FaltasPage() {
   const [selectedRole, setSelectedRole] = useState("TODOS");
   const [selectedTurno, setSelectedTurno] = useState("TODOS");
@@ -47,43 +64,56 @@ export default function FaltasPage() {
   const { empleados, isLoading: loadingEmpleados, error: errorEmpleados } = useEmpleados();
   const { faltas, isLoading: loadingFaltas, error: errorFaltas, deleteFalta: eliminarFalta, mutate } = useFaltas(selectedDate);
 
-  // Extraer roles únicos de los empleados
+  // ==== ROLES DISPONIBLES ====
   const rolesDisponibles = useMemo(() => {
     if (!empleados) return [];
     const roles = new Set(empleados.map(emp => emp.rol));
     return Array.from(roles).filter(rol => rol === 'SUPERVISOR' || rol === 'INSPECTOR').sort();
   }, [empleados]);
 
-  const horariosPorRol: Record<string, string[]> = {
-    "SUPERVISOR": ["Mañana", "Tarde", "Noche", "ADM"],
-    "INSPECTOR": ["Mañana", "Tarde", "Noche", "ADM"],
-  };
+  // ==== TURNOS DISPONIBLES SEGÚN ROL ====
+  const turnosDisponibles = useMemo(() => {
+    if (!empleados || selectedRole === "TODOS") return [];
 
-  // Reset de turno cuando cambia el rol
+    const turnos = new Set(
+      empleados
+        .filter(emp => emp.rol === selectedRole)
+        .map(emp => (emp.horario ?? "").trim())
+        .filter(h => h !== "")
+    );
+
+    return Array.from(turnos).sort();
+  }, [empleados, selectedRole]);
+
+  // Reset turno al cambiar rol
   useEffect(() => {
     setSelectedTurno("TODOS");
   }, [selectedRole]);
 
-  // Filtrar empleados por fecha, rol y turno
+  // ==== EMPLEADOS DEL DÍA (A/B + filtros) ====
   const empleadosDelDia = useMemo(() => {
     if (!selectedDate || !empleados) return [];
 
+    const grupoHoy = getGrupoDelDia(selectedDate); // 👈 NUEVO
+
     return empleados
       .filter((emp) => {
-        const fechaCoincide = emp.fechaIngreso <= selectedDate;
+        const trabajaHoy = emp.grupoTurno === grupoHoy; // 👈 NUEVO
         const rolCoincide = selectedRole === "TODOS" || emp.rol === selectedRole;
-        const turnoCoincide = selectedTurno === "TODOS" || emp.turno === selectedTurno;
-        return fechaCoincide && rolCoincide && turnoCoincide;
+        const turnoCoincide = selectedTurno === "TODOS" || emp.horario === selectedTurno;
+
+        return trabajaHoy && rolCoincide && turnoCoincide;
       })
       .sort((a, b) => a.apellido.localeCompare(b.apellido));
   }, [empleados, selectedDate, selectedRole, selectedTurno]);
 
+  // Lista de faltas del día
   const empleadosConFalta = faltas?.map((f) => f.empleadoId) || [];
 
-  // Handler eliminar falta
+  // ==== ELIMINAR FALTA ====
   const handleEliminarFalta = async (id: string) => {
     if (!confirm("¿Está seguro de eliminar esta falta?")) return;
-    
+
     try {
       await eliminarFalta(id);
       toast.success("Falta eliminada correctamente");
@@ -94,7 +124,7 @@ export default function FaltasPage() {
     }
   };
 
-  // Handler después de guardar falta
+  // ==== CUANDO GUARDA FROM DE FALTA ====
   const handleFaltaSaved = () => {
     setModalEmpleado(null);
     mutate();
@@ -122,8 +152,9 @@ export default function FaltasPage() {
         </p>
       </div>
 
-      {/* FILTROS */}
+      {/* === FILTROS === */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg mb-6 transition-colors">
+
         {/* Fecha */}
         <div>
           <label className="flex items-center gap-2 font-semibold mb-2 text-gray-700 dark:text-gray-300">
@@ -180,20 +211,18 @@ export default function FaltasPage() {
                      disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={selectedRole === "TODOS"}
           >
-            <option value="TODOS">Todos los turnos</option>
+            <option value="TODOS">Todos los Horarios</option>
             {selectedRole !== "TODOS" &&
-              horariosPorRol[selectedRole]?.map((h) => (
-                <option key={h} value={h}>
-                  {h}
-                </option>
+              turnosDisponibles.map((h) => (
+                <option key={h} value={h}>{h}</option>
               ))}
           </select>
         </div>
       </div>
 
-      {/* LISTADO */}
+      {/* === LISTADO === */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden transition-colors">
-        {/* Header de tabla */}
+        {/* Header tabla */}
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             Empleados de {formatDate(selectedDate)}
@@ -246,13 +275,15 @@ export default function FaltasPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                         {emp.apellido}, {emp.nombre}
                       </td>
+
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
                         <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs font-medium">
                           {emp.rol}
                         </span>
                       </td>
+
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                        {emp.turno}
+                        {emp.horario}
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap text-center">
