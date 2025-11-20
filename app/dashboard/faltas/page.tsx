@@ -94,18 +94,32 @@ export default function FaltasPage() {
   const empleadosDelDia = useMemo(() => {
     if (!selectedDate || !empleados) return [];
 
-    const grupoHoy = getGrupoDelDia(selectedDate); // 👈 NUEVO
+    const grupoHoy = getGrupoDelDia(selectedDate);
 
     return empleados
       .filter((emp) => {
-        const trabajaHoy = emp.grupoTurno === grupoHoy; // 👈 NUEVO
-        const rolCoincide = selectedRole === "TODOS" || emp.rol === selectedRole;
-        const turnoCoincide = selectedTurno === "TODOS" || emp.horario === selectedTurno;
+       const trabajaHoy = emp.grupoTurno === grupoHoy;
 
-        return trabajaHoy && rolCoincide && turnoCoincide;
-      })
-      .sort((a, b) => a.apellido.localeCompare(b.apellido));
+       //Solo mostrar SUPERVISORES e INSPECTORES SIEMPRE
+        const esRolPermitido = emp.rol === "SUPERVISOR" || emp.rol === "INSPECTOR";
+
+       //Si se elige TODOS → solo se muestran roles permitidos
+        const rolCoincide = selectedRole === "TODOS"
+         ? esRolPermitido
+          : emp.rol === selectedRole;
+
+       const turnoCoincide =
+         selectedTurno === "TODOS" || emp.horario === selectedTurno;
+
+       return trabajaHoy && rolCoincide && turnoCoincide;
+     })
+      .sort((a, b) => {
+        const horaA = a.horario?.split("-")[0] ?? "";
+        const horaB = b.horario?.split("-")[0] ?? "";
+        return horaA.localeCompare(horaB);
+      });
   }, [empleados, selectedDate, selectedRole, selectedTurno]);
+
 
   // Lista de faltas del día
   const empleadosConFalta = faltas?.map((f) => f.empleadoId) || [];
@@ -245,13 +259,13 @@ export default function FaltasPage() {
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    Turno
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Apellido y Nombre
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Rol
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Turno
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Estado
@@ -272,6 +286,10 @@ export default function FaltasPage() {
                       key={emp.id} 
                       className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                        {emp.horario}
+                      </td>
+
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                         {emp.apellido}, {emp.nombre}
                       </td>
@@ -280,10 +298,6 @@ export default function FaltasPage() {
                         <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs font-medium">
                           {emp.rol}
                         </span>
-                      </td>
-
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                        {emp.horario}
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap text-center">
