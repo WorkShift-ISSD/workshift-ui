@@ -14,6 +14,7 @@ import {
   Calendar,
   Clock,
 } from "lucide-react";
+import { calcularGrupoTrabaja, type GrupoTurno } from "@/app/lib/turnosUtils";
 
 // ==== FECHA LOCAL ARGENTINA ====
 const getTodayDate = () => {
@@ -64,7 +65,12 @@ export default function FaltasPage() {
   const { empleados, isLoading: loadingEmpleados, error: errorEmpleados } = useEmpleados();
   const { faltas, isLoading: loadingFaltas, error: errorFaltas, deleteFalta: eliminarFalta, mutate } = useFaltas(selectedDate);
 
-  // ==== ROLES DISPONIBLES ====
+  // Calcular qué grupo trabaja en la fecha seleccionada
+  const grupoQueTrabaja = useMemo(() => {
+    return calcularGrupoTrabaja(selectedDate);
+  }, [selectedDate]);
+
+  // Extraer roles únicos de los empleados
   const rolesDisponibles = useMemo(() => {
     if (!empleados) return [];
     const roles = new Set(empleados.map(emp => emp.rol));
@@ -90,7 +96,7 @@ export default function FaltasPage() {
     setSelectedTurno("TODOS");
   }, [selectedRole]);
 
-  // ==== EMPLEADOS DEL DÍA (A/B + filtros) ====
+  // Filtrar empleados por fecha, rol, turno y grupo
   const empleadosDelDia = useMemo(() => {
     if (!selectedDate || !empleados) return [];
 
@@ -98,27 +104,25 @@ export default function FaltasPage() {
 
     return empleados
       .filter((emp) => {
-       const trabajaHoy = emp.grupoTurno === grupoHoy;
+        // 1. Verificar que ya haya ingresado a trabajar
+        const fechaCoincide = emp.fechaIngreso <= selectedDate;
+        
+        // 2. Verificar que esté activo
+        const estaActivo = emp.activo;
+        
+        // 3. Verificar que pertenezca al grupo que trabaja hoy
+        const perteneceAlGrupo = emp.grupoTurno === grupoQueTrabaja;
+        
+        // 4. Filtrar por rol si no es "TODOS"
+        const rolCoincide = selectedRole === "TODOS" || emp.rol === selectedRole;
+        
+        // 5. Filtrar por turno/horario si no es "TODOS"
+        const turnoCoincide = selectedTurno === "TODOS" || emp.turno === selectedTurno;
 
-       //Solo mostrar SUPERVISORES e INSPECTORES SIEMPRE
-        const esRolPermitido = emp.rol === "SUPERVISOR" || emp.rol === "INSPECTOR";
-
-       //Si se elige TODOS → solo se muestran roles permitidos
-        const rolCoincide = selectedRole === "TODOS"
-         ? esRolPermitido
-          : emp.rol === selectedRole;
-
-       const turnoCoincide =
-         selectedTurno === "TODOS" || emp.horario === selectedTurno;
-
-       return trabajaHoy && rolCoincide && turnoCoincide;
-     })
-      .sort((a, b) => {
-        const horaA = a.horario?.split("-")[0] ?? "";
-        const horaB = b.horario?.split("-")[0] ?? "";
-        return horaA.localeCompare(horaB);
-      });
-  }, [empleados, selectedDate, selectedRole, selectedTurno]);
+        return fechaCoincide && estaActivo && perteneceAlGrupo && rolCoincide && turnoCoincide;
+      })
+      .sort((a, b) => a.apellido.localeCompare(b.apellido));
+  }, [empleados, selectedDate, selectedRole, selectedTurno, grupoQueTrabaja]);
 
 
   // Lista de faltas del día
@@ -166,7 +170,14 @@ export default function FaltasPage() {
         </p>
       </div>
 
-      {/* === FILTROS === */}
+      {/* Info del grupo que trabaja */}
+      <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+        <p className="text-sm text-blue-800 dark:text-blue-200">
+          <span className="font-semibold">Grupo que trabaja hoy:</span> Grupo {grupoQueTrabaja}
+        </p>
+      </div>
+
+      {/* FILTROS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg mb-6 transition-colors">
 
         {/* Fecha */}
@@ -242,7 +253,7 @@ export default function FaltasPage() {
             Empleados de {formatDate(selectedDate)}
           </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Total: {empleadosDelDia.length} empleado(s)
+            Total: {empleadosDelDia.length} empleado(s) del Grupo {grupoQueTrabaja}
           </p>
         </div>
 
@@ -251,7 +262,9 @@ export default function FaltasPage() {
           <div className="text-center text-gray-500 dark:text-gray-400 py-12">
             <UserCircle className="w-16 h-16 mx-auto mb-4 opacity-50" />
             <p className="text-lg font-medium">No hay empleados</p>
-            <p className="text-sm">Para los filtros seleccionados</p>
+            <p className="text-sm">
+              Para los filtros seleccionados (Grupo {grupoQueTrabaja})
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -266,6 +279,12 @@ export default function FaltasPage() {
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Rol
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    Turno
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    Grupo
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Estado
@@ -297,6 +316,14 @@ export default function FaltasPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
                         <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs font-medium">
                           {emp.rol}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                        {emp.turno}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full text-xs font-medium">
+                          Grupo {emp.grupoTurno}
                         </span>
                       </td>
 
