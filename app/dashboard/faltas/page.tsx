@@ -44,16 +44,16 @@ const formatDate = (dateString: string) => {
 const FECHA_BASE = "2025-11-19";
 
 // Función que determina qué grupo trabaja (A o B)
-const getGrupoDelDia = (fechaSeleccionada: string): "A" | "B" => {
-  const base = new Date(FECHA_BASE);
-  const actual = new Date(fechaSeleccionada);
+// const getGrupoDelDia = (fechaSeleccionada: string): "A" | "B" => {
+//   const base = new Date(FECHA_BASE);
+//   const actual = new Date(fechaSeleccionada);
 
-  const diff = Math.floor(
-    (actual.getTime() - base.getTime()) / (1000 * 60 * 60 * 24)
-  );
+//   const diff = Math.floor(
+//     (actual.getTime() - base.getTime()) / (1000 * 60 * 60 * 24)
+//   );
 
-  return diff % 2 === 0 ? "A" : "B";
-};
+//   return diff % 2 === 0 ? "A" : "B";
+// };
 
 export default function FaltasPage() {
   const [selectedRole, setSelectedRole] = useState("TODOS");
@@ -100,12 +100,12 @@ export default function FaltasPage() {
   const empleadosDelDia = useMemo(() => {
     if (!selectedDate || !empleados) return [];
 
-    const grupoHoy = getGrupoDelDia(selectedDate);
+    //const grupoHoy = (selectedDate);
 
     return empleados
       .filter((emp) => {
         // 1. Verificar que ya haya ingresado a trabajar
-        const fechaCoincide = emp.fechaIngreso <= selectedDate;
+        // const fechaCoincide = emp.grupoTurno <= selectedDate;
         
         // 2. Verificar que esté activo
         const estaActivo = emp.activo;
@@ -114,14 +114,20 @@ export default function FaltasPage() {
         const perteneceAlGrupo = emp.grupoTurno === grupoQueTrabaja;
         
         // 4. Filtrar por rol si no es "TODOS"
-        const rolCoincide = selectedRole === "TODOS" || emp.rol === selectedRole;
+        const rolCoincide = selectedRole === "TODOS"
+         ? (emp.rol === 'SUPERVISOR' || emp.rol === 'INSPECTOR')
+          : emp.rol === selectedRole;
         
         // 5. Filtrar por turno/horario si no es "TODOS"
-        const turnoCoincide = selectedTurno === "TODOS" || emp.turno === selectedTurno;
+        const turnoCoincide = selectedTurno === "TODOS" || emp.horario === selectedTurno;
 
-        return fechaCoincide && estaActivo && perteneceAlGrupo && rolCoincide && turnoCoincide;
+        return estaActivo && perteneceAlGrupo && rolCoincide && turnoCoincide;
       })
-      .sort((a, b) => a.apellido.localeCompare(b.apellido));
+      .sort((a, b) => {
+        const horaA = a.horario?.split("-")[0] ?? "";
+        const horaB = b.horario?.split("-")[0] ?? "";
+        return horaA.localeCompare(horaB);
+      });
   }, [empleados, selectedDate, selectedRole, selectedTurno, grupoQueTrabaja]);
 
 
@@ -240,7 +246,7 @@ export default function FaltasPage() {
             {selectedRole !== "TODOS" &&
               turnosDisponibles.map((h) => (
                 <option key={h} value={h}>{h}</option>
-              ))}
+              ))}              
           </select>
         </div>
       </div>
@@ -271,21 +277,21 @@ export default function FaltasPage() {
             <table className="w-full">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Turno
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Apellido y Nombre
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Rol
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Turno
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  </th> */}
+                  {/* <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Grupo
-                  </th>
+                  </th> */}
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Estado
                   </th>
@@ -305,27 +311,27 @@ export default function FaltasPage() {
                       key={emp.id} 
                       className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-600 dark:text-gray-400">
                         {emp.horario}
                       </td>
 
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                      <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium text-gray-900 dark:text-white">
                         {emp.apellido}, {emp.nombre}
                       </td>
 
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600 dark:text-gray-400">
                         <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs font-medium">
                           {emp.rol}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                      {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
                         {emp.turno}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                      </td> */}
+                      {/* <td className="px-6 py-4 whitespace-nowrap text-center">
                         <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full text-xs font-medium">
                           Grupo {emp.grupoTurno}
                         </span>
-                      </td>
+                      </td> */}
 
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         {enFalta ? (
@@ -385,6 +391,6 @@ export default function FaltasPage() {
           onSaved={handleFaltaSaved}
         />
       )}
-    </div>
-  );
+    </div>
+  );
 }
