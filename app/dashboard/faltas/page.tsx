@@ -38,22 +38,6 @@ const formatDate = (dateString: string) => {
   }
 };
 
-// ==== SISTEMA DE GUARDIAS A/B (día por medio) ====
-
-// FECHA BASE donde trabaja Guardia A
-const FECHA_BASE = "2025-11-19";
-
-// Función que determina qué grupo trabaja (A o B)
-// const getGrupoDelDia = (fechaSeleccionada: string): "A" | "B" => {
-//   const base = new Date(FECHA_BASE);
-//   const actual = new Date(fechaSeleccionada);
-
-//   const diff = Math.floor(
-//     (actual.getTime() - base.getTime()) / (1000 * 60 * 60 * 24)
-//   );
-
-//   return diff % 2 === 0 ? "A" : "B";
-// };
 
 export default function FaltasPage() {
   const [selectedRole, setSelectedRole] = useState("TODOS");

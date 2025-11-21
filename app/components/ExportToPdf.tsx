@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Download, FileSpreadsheet, FileText, FileCode2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 
 // Tipos
 type Rol = 'SUPERVISOR' | 'INSPECTOR' | 'JEFE' | 'ADMINISTRADOR';
@@ -62,6 +63,9 @@ export const ExportData: React.FC<ExportDataProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // ✅ SE AGREGA ACÁ: usar Auth en el nivel superior
+  const { user } = useAuth();
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -72,228 +76,226 @@ export const ExportData: React.FC<ExportDataProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // ======== PDF MEJORADO ========
+  const exportToPDF = async () => {
+    try {
+      const jsPDFModule = await import("jspdf");
+      const jsPDF = jsPDFModule.default;
 
-// ======== PDF MEJORADO ========
-const exportToPDF = async () => {
-  try {
-    const jsPDFModule = await import("jspdf");
-    const jsPDF = jsPDFModule.default;
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
 
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
+      const primary = [31, 41, 55];
+      const secondary = [71, 85, 105];
+      const lightGray = [241, 245, 249];
 
-    const primary = [31, 41, 55];
-    const secondary = [71, 85, 105];
-    const lightGray = [241, 245, 249];
+      // ✅ SE USA EL USUARIO OBTENIDO ARRIBA
+      const usuarioNombre = `${user?.nombre ?? ""} ${user?.apellido ?? ""}`;
 
-    const usuarioNombre = "Nombre del Usuario"; // CAMBIAR
+      // ==================== CARGAR IMÁGENES ====================
+      const loadImage = (src: string): Promise<string> =>
+        new Promise((resolve) => {
+          const img = new Image();
+          img.src = src;
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+            ctx!.drawImage(img, 0, 0);
+            resolve(canvas.toDataURL("image/png"));
+          };
+        });
 
-    // ==================== CARGAR IMÁGENES ====================
-    const loadImage = (src: string): Promise<string> =>
-      new Promise((resolve) => {
-        const img = new Image();
-        img.src = src;
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext("2d");
-          ctx!.drawImage(img, 0, 0);
-          resolve(canvas.toDataURL("image/png"));
-        };
-      });
+      const logoMigraciones = await loadImage("/icon migra bco.png").catch(() => "");
+      const logoWS = await loadImage("/LogoWSv4-2.png").catch(() => "");
 
-    const logoMigraciones = await loadImage("/icon migra bco.png").catch(() => "");
-    const logoWS = await loadImage("/LogoWSv4-2.png").catch(() => "");
+      // ===================== HEADER ======================
+      const drawHeader = () => {
+        doc.setFillColor(primary[0], primary[1], primary[2]);
+        doc.rect(0, 0, pageWidth, 35, "F");
 
-    // ===================== HEADER ======================
-    const drawHeader = () => {
-      doc.setFillColor(primary[0], primary[1], primary[2]);
-      doc.rect(0, 0, pageWidth, 35, "F");
+        if (logoMigraciones) doc.addImage(logoMigraciones, "PNG", 12, 7, 22, 22);
 
-      if (logoMigraciones) doc.addImage(logoMigraciones, "PNG", 12, 7, 22, 22);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(18);
+        doc.setTextColor(255, 255, 255);
+        doc.text("Direccion Nacional de Migraciones - WSMS", pageWidth / 2, 17, { align: "center" });
 
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(18);
-      doc.setTextColor(255, 255, 255);
-      doc.text("Direccion Nacional de Migraciones - WSMS", pageWidth / 2, 17, { align: "center" });
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        doc.text("Gestión de Empleados - Reporte Detallado", pageWidth / 2, 25, { align: "center" });
 
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(11);
-      doc.text("Gestión de Empleados - Reporte Detallado", pageWidth / 2, 25, { align: "center" });
+        const now = new Date();
+        const fecha = now.toLocaleDateString("es-AR");
+        const hora = now.toLocaleTimeString("es-AR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
 
-      const now = new Date();
-      const fecha = now.toLocaleDateString("es-AR");
-      const hora = now.toLocaleTimeString("es-AR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+        doc.setFontSize(8);
+        doc.text(
+          `Generado: ${fecha} ${hora} | Usuario: ${usuarioNombre}`,
+          pageWidth / 2,
+          31,
+          { align: "center" }
+        );
+      };
 
-      doc.setFontSize(8);
-      doc.text(`Generado: ${fecha} ${hora} | Usuario: ${usuarioNombre}`, pageWidth / 2, 31, { align: "center" });
-    };
+      // ===================== FOOTER ======================
+      const drawFooter = (pageNumber: number, totalPages: number) => {
+        doc.setDrawColor(200, 200, 200);
+        doc.line(15, pageHeight - 20, pageWidth - 15, pageHeight - 20);
 
-    // ===================== FOOTER ======================
-    const drawFooter = (pageNumber: number, totalPages: number) => {
-      doc.setDrawColor(200, 200, 200);
-      doc.line(15, pageHeight - 20, pageWidth - 15, pageHeight - 20);
+        if (logoWS) doc.addImage(logoWS, "PNG", 15, pageHeight - 18, 20, 8);
 
-      if (logoWS) doc.addImage(logoWS, "PNG", 15, pageHeight - 18, 20, 8);
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
 
-      doc.setFontSize(8);
-      doc.setTextColor(120, 120, 120);
+        doc.text("Migraciones - WSMS © 2025", 40, pageHeight - 12);
 
-      doc.text("Migraciones - WSMS © 2025", 40, pageHeight - 12);
+        doc.text(`Página ${pageNumber} de ${totalPages}`, pageWidth - 15, pageHeight - 12, {
+          align: "right",
+        });
 
-      doc.text(`Página ${pageNumber} de ${totalPages}`, pageWidth - 15, pageHeight - 12, {
-        align: "right",
-      });
+        doc.text(`Total empleados: ${employees.length}`, pageWidth - 15, pageHeight - 7, {
+          align: "right",
+        });
+      };
 
-      doc.text(`Total empleados: ${employees.length}`, pageWidth - 15, pageHeight - 7, {
-        align: "right",
-      });
-    };
+      // ===================== INICIO ======================
+      let y = 45;
+      drawHeader();
 
-    // ===================== INICIO ======================
-    let y = 45;
-    drawHeader();
-
-    // ===================== CARDS ======================
-    const cards = [
-      { label: "Total", value: stats.total, color: [37, 99, 235] },
-      { label: "Activos", value: stats.activos, color: [34, 197, 94] },
-      { label: "Licencia", value: stats.enLicencia, color: [234, 179, 8] },
-      { label: "Ausentes", value: stats.ausentes, color: [239, 68, 68] },
-    ];
-
-    const cardWidth = (pageWidth - 40) / 4;
-
-    cards.forEach((card, i) => {
-      const x = 15 + i * (cardWidth + 2);
-
-      doc.setFillColor(card.color[0], card.color[1], card.color[2]);
-      doc.roundedRect(x, y, cardWidth, 18, 2, 2, "F");
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(14);
-      doc.setTextColor(255, 255, 255);
-      doc.text(String(card.value), x + cardWidth / 2, y + 10, { align: "center" });
-
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "normal");
-      doc.text(card.label, x + cardWidth / 2, y + 15, { align: "center" });
-    });
-
-    y += 30;
-
-    // ===================== COLUMNAS ======================
-    const headers = ["Legajo", "Nombre y Apellido", "Rol", "Turno", "Horario", "Estado", "Teléfono"];
-    const colWidth = [15, 50, 25, 13, 25, 20, 25]; // 🔥 ALINEADO PERFECTO
-
-    // ==== función para dibujar encabezado ====
-    const drawTableHeader = () => {
-      let x = 15;
-
-      doc.setFillColor(primary[0], primary[1], primary[2]);
-      doc.rect(15, y, pageWidth - 30, 10, "F");
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(255, 255, 255);
-
-      headers.forEach((h, i) => {
-        const colCenter = x + colWidth[i] / 2;
-        doc.text(h, colCenter, y + 7, { align: "center" });
-        x += colWidth[i];
-      });
-
-      y += 14;
-    };
-
-    // Dibujar encabezado inicial
-    drawTableHeader();
-
-    // ===================== FILAS ======================
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-
-    let page = 1;
-
-    for (let emp of employees) {
-      if (y > pageHeight - 30) {
-        doc.addPage();
-        page++;
-        y = 45;
-        drawHeader();
-        drawTableHeader();
-      }
-
-      const estado = calcularEstado(emp);
-      const colorEstado =
-        estado === "ACTIVO"
-          ? [34, 197, 94]
-          : estado === "LICENCIA"
-          ? [234, 179, 8]
-          : estado === "AUSENTE"
-          ? [239, 68, 68]
-          : [156, 163, 175];
-
-      const row = [
-        emp.legajo.toString(),
-        `${emp.nombre} ${emp.apellido}`,
-        emp.rol,
-        emp.grupoTurno || "-",
-        emp.horario || "No asignado",
-        estado,
-        emp.telefono || "-",
+      // ===================== CARDS ======================
+      const cards = [
+        { label: "Total", value: stats.total, color: [37, 99, 235] },
+        { label: "Activos", value: stats.activos, color: [34, 197, 94] },
+        { label: "Licencia", value: stats.enLicencia, color: [234, 179, 8] },
+        { label: "Ausentes", value: stats.ausentes, color: [239, 68, 68] },
       ];
 
-      let x = 15;
+      const cardWidth = (pageWidth - 40) / 4;
 
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.setTextColor(0, 0, 0);
+      cards.forEach((card, i) => {
+        const x = 15 + i * (cardWidth + 2);
 
-      row.forEach((text, i) => {
-       const colCenter = x + colWidth[i] / 2;
+        doc.setFillColor(card.color[0], card.color[1], card.color[2]);
+        doc.roundedRect(x, y, cardWidth, 18, 2, 2, "F");
 
-        // Color del estado
-        if (i === 5) {
-          doc.setTextColor(colorEstado[0], colorEstado[1], colorEstado[2]);
-        } else {
-          doc.setTextColor(0, 0, 0);
-        }
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.setTextColor(255, 255, 255);
+        doc.text(String(card.value), x + cardWidth / 2, y + 10, { align: "center" });
 
-        // Nombre y apellido alineado a la izquierda
-        if (i === 1) {
-          doc.text(text, x + 1, y);
-        } else {
-          doc.text(text, colCenter, y, { align: "center" });
-        }
-
-        x += colWidth[i];
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        doc.text(card.label, x + cardWidth / 2, y + 15, { align: "center" });
       });
 
-      y += 9;
+      y += 30;
+
+      // ===================== COLUMNAS ======================
+      const headers = ["Legajo", "Nombre y Apellido", "Rol", "Turno", "Horario", "Estado", "Teléfono"];
+      const colWidth = [15, 50, 25, 13, 25, 20, 25];
+
+      const drawTableHeader = () => {
+        let x = 15;
+
+        doc.setFillColor(primary[0], primary[1], primary[2]);
+        doc.rect(15, y, pageWidth - 30, 10, "F");
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(255, 255, 255);
+
+        headers.forEach((h, i) => {
+          const colCenter = x + colWidth[i] / 2;
+          doc.text(h, colCenter, y + 7, { align: "center" });
+          x += colWidth[i];
+        });
+
+        y += 14;
+      };
+
+      drawTableHeader();
+
+      // ===================== FILAS ======================
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+
+      let page = 1;
+
+      for (let emp of employees) {
+        if (y > pageHeight - 30) {
+          doc.addPage();
+          page++;
+          y = 45;
+          drawHeader();
+          drawTableHeader();
+        }
+
+        const estado = calcularEstado(emp);
+        const colorEstado =
+          estado === "ACTIVO"
+            ? [34, 197, 94]
+            : estado === "LICENCIA"
+            ? [234, 179, 8]
+            : estado === "AUSENTE"
+            ? [239, 68, 68]
+            : [156, 163, 175];
+
+        const row = [
+          emp.legajo.toString(),
+          `${emp.nombre} ${emp.apellido}`,
+          emp.rol,
+          emp.grupoTurno || "-",
+          emp.horario || "No asignado",
+          estado,
+          emp.telefono || "-",
+        ];
+
+        let x = 15;
+
+        row.forEach((text, i) => {
+          const colCenter = x + colWidth[i] / 2;
+
+          // Color del estado
+          if (i === 5) {
+            doc.setTextColor(colorEstado[0], colorEstado[1], colorEstado[2]);
+          } else {
+            doc.setTextColor(0, 0, 0);
+          }
+
+          // Nombre y apellido alineado a la izquierda
+          if (i === 1) {
+            doc.text(text, x + 1, y);
+          } else {
+            doc.text(text, colCenter, y, { align: "center" });
+          }
+
+          x += colWidth[i];
+        });
+
+        y += 9;
+      }
+
+      // ===================== FOOTER FINAL ======================
+      const totalPages = doc.getNumberOfPages();
+
+      for (let p = 1; p <= totalPages; p++) {
+        doc.setPage(p);
+        drawFooter(p, totalPages);
+      }
+
+      const fecha = new Date().toISOString().split("T")[0];
+      doc.save(`empleados_${fecha}.pdf`);
+    } catch (error) {
+      console.error("Error generando PDF:", error);
+      alert("Error generando PDF");
     }
-
-    // ===================== FOOTER FINAL ======================
-    const totalPages = doc.getNumberOfPages();
-
-    for (let p = 1; p <= totalPages; p++) {
-      doc.setPage(p);
-      drawFooter(p, totalPages);
-    }
-
-    const fecha = new Date().toISOString().split("T")[0];
-    doc.save(`empleados_${fecha}.pdf`);
-  } catch (error) {
-    console.error("Error generando PDF:", error);
-    alert("Error generando PDF");
-  }
-};
-
+  };
 
   // ======== EXCEL MEJORADO ========
   const exportToExcel = () => {
@@ -329,7 +331,7 @@ const exportToPDF = async () => {
     xml += `    </estadisticas>\n`;
     xml += `  </metadata>\n`;
     xml += `  <empleados>\n`;
-    
+
     employees.forEach(emp => {
       const estado = calcularEstado(emp);
       xml += `    <empleado id="${emp.id}">\n`;
@@ -345,7 +347,7 @@ const exportToPDF = async () => {
       xml += `      <activo>${emp.activo}</activo>\n`;
       xml += `    </empleado>\n`;
     });
-    
+
     xml += `  </empleados>\n`;
     xml += `</workshift>`;
 
@@ -395,7 +397,7 @@ const exportToPDF = async () => {
                   <div className="text-xs text-gray-500 dark:text-gray-400">Documento con diseño</div>
                 </div>
               </button>
-              
+
               <button
                 onClick={() => handleExport('excel')}
                 className="flex items-center w-full gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors group"
@@ -406,7 +408,7 @@ const exportToPDF = async () => {
                   <div className="text-xs text-gray-500 dark:text-gray-400">Hoja de cálculo (.xlsx)</div>
                 </div>
               </button>
-              
+
               <button
                 onClick={() => handleExport('xml')}
                 className="flex items-center w-full gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors group"
