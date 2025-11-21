@@ -166,16 +166,18 @@ export default function FaltasPage() {
             Consultar Faltas
           </button>
 
-          
           <ExportData
-            employees={empleadosDelDia}
+            employees={empleados || []}
             stats={{
               total: empleadosDelDia.length,
               activos: empleadosDelDia.filter(emp => !empleadosConFalta.includes(emp.id)).length,
               ausentes: empleadosConFalta.length,
               enLicencia: 0,
             }}
-            faltasDelDia={faltas?.map(f => ({ ...f, motivo: f.motivo || '', observaciones: f.observaciones ?? undefined })) || []}
+            faltasDelDia={(faltas ?? []).map(f => ({
+              ...f,
+              observaciones: f.observaciones ?? undefined
+            }))}
             fechaSeleccionada={selectedDate}
             calcularEstado={(empleado) => {
               return empleadosConFalta.includes(empleado.id) ? 'ausente' : 'presente';
