@@ -28,7 +28,7 @@ import { ExportData } from '@/app/components/ExportToPdf';
 
 
 // Types based on our Prisma schema
-type Rol = 'SUPERVISOR' | 'INSPECTOR' | 'JEFE';
+type Rol = 'SUPERVISOR' | 'INSPECTOR' | 'JEFE' | 'ADMINISTRADOR';
 type GrupoTurno = 'A' | 'B';
 type EstadoEmpleado = 'ACTIVO' | 'LICENCIA' | 'AUSENTE' | 'INACTIVO';
 
@@ -87,6 +87,7 @@ export default function DashboardPage() {
     INSPECTOR: ["04:00-14:00", "06:00-16:00", "10:00-20:00", "13:00-23:00", "19:00-05:00"],
     SUPERVISOR: ["05:00-14:00", "14:00-23:00", "23:00-05:00"],
     JEFE: ["05:00-17:00", "17:00-05:00"],
+    ADMINISTRADOR: ["05:00-17:00", "17:00-05:00"],
   };
 
   // Calcular estado del empleado
@@ -330,24 +331,28 @@ export default function DashboardPage() {
         const confirmCreate = window.confirm('¿Seguro que quiere crear un nuevo empleado?');
         if (!confirmCreate) return;
 
+        const validRol = (formData.rol || 'INSPECTOR') as Exclude<Rol, 'ADMINISTRADOR'>;
         await createEmpleado({
           legajo: formData.legajo!,
           email: formData.email!,
           nombre: formData.nombre!,
           apellido: formData.apellido!,
-          rol: formData.rol || 'INSPECTOR',
+          rol: validRol,
           telefono: formData.telefono || null,
           direccion: formData.direccion || null,
           horario: formData.horario || null,
           fechaNacimiento: formData.fechaNacimiento || null,
           activo: formData.activo !== undefined ? formData.activo : true,
           grupoTurno: formData.grupoTurno || 'A',
+          turno: '',
+          fechaIngreso: ''
         });
       } else if (modalMode === 'edit' && selectedEmployee) {
         const confirmEdit = window.confirm('¿Seguro quiere modificar los datos del empleado?');
         if (!confirmEdit) return;
 
-        await updateEmpleado(selectedEmployee.id, formData);
+        const validRol = (formData.rol || 'INSPECTOR') as Exclude<Rol, 'ADMINISTRADOR'>;
+        await updateEmpleado(selectedEmployee.id, { ...formData, rol: validRol });
       }
       closeModal();
     } catch (error) {
@@ -373,6 +378,7 @@ export default function DashboardPage() {
       JEFE: 'bg-red-100 text-red-800',
       SUPERVISOR: 'bg-orange-100 text-orange-800',
       INSPECTOR: 'bg-blue-100 text-blue-800',
+      ADMINISTRADOR: 'bg-purple-100 text-purple-800',
     };
     return colors[rol];
   };
@@ -460,19 +466,19 @@ export default function DashboardPage() {
       </div>
       <div className="flex justify-end mb-4 mt-4">
         {/* Botón Exportar */}
-          
-          <ExportData
-            employees={filteredEmployees}
-            stats={stats}
-            filters={{
-              searchTerm,
-              selectedRole,
-              selectedShift,
-              selectedHorario
-            }}
-            calcularEstado={calcularEstado}
-            
-          />
+
+        <ExportData
+          employees={filteredEmployees}
+          stats={stats}
+          filters={{
+            searchTerm,
+            selectedRole,
+            selectedShift,
+            selectedHorario
+          }}
+          calcularEstado={calcularEstado}
+          mode="personal" // <-- Modo personal
+        />
       </div>
 
       {/* Stats Cards */}
@@ -583,7 +589,7 @@ export default function DashboardPage() {
               ))}
           </select>
 
-          
+
 
           {/* Botón Nuevo Empleado */}
           <button

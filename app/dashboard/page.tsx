@@ -21,6 +21,7 @@ import { useStats } from '@/hooks/useStats';
 import { useTurnosData } from '@/hooks/useTurnosData';
 import { Cambio as TipoCambio } from '../api/types';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
+import { useAuth } from '../context/AuthContext';
 
 
 export default function DashboardHome() {
@@ -51,6 +52,8 @@ export default function DashboardHome() {
     destinatario: '',
     estado: 'PENDIENTE' as 'PENDIENTE' | 'APROBADO' | 'RECHAZADO'
   });
+
+  const { user } = useAuth();
 
   // Calcular porcentaje cubierto
   const porcentajeCubierto = (() => {
@@ -157,16 +160,16 @@ export default function DashboardHome() {
       {/* Header de Bienvenida */}
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Bienvenido, {userName}</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Bienvenid@, {user?.nombre} {user?.apellido}</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">Aquí está el resumen de tu actividad en WorkShift</p>
         </div>
-        <button
+        {/* <button
           onClick={() => setShowCreateForm(!showCreateForm)}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Plus className="h-5 w-5" />
           Nuevo Cambio
-        </button>
+        </button> */}
       </div>
 
       {/* Formulario de creación */}

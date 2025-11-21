@@ -100,10 +100,13 @@ export async function GET(request: NextRequest) {
 }
 
 // POST - Crear nueva oferta
+// POST - Crear nueva oferta
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     console.log('📥 Body recibido:', body);
+    console.log('🔍 Tipo:', body.tipo);
+    console.log('🔍 Modalidad:', body.modalidadBusqueda);
     
     // ✅ Obtener userId del token JWT
     const cookieStore = await cookies();
@@ -137,6 +140,57 @@ export async function POST(request: NextRequest) {
     
     console.log('✅ Usuario encontrado:', userExists);
     
+    // Determinar qué campos usar según el tipo y modalidad
+    let fechaOfrece = null;
+    let horarioOfrece = null;
+    let grupoOfrece = null;
+    let fechaBusca = null;
+    let horarioBusca = null;
+    let grupoBusca = null;
+    let fechaDesde = null;
+    let fechaHasta = null;
+
+    if (body.modalidadBusqueda === 'INTERCAMBIO') {
+      // Para intercambio, usar fechaOfrece y fechasBusca
+      if (body.tipo === 'OFREZCO') {
+        fechaOfrece = body.fechaOfrece;
+        horarioOfrece = body.horarioOfrece;
+        grupoOfrece = body.grupoOfrece;
+        // Por ahora, tomar la primera fecha que busca
+        if (body.fechasBusca && body.fechasBusca[0]) {
+          fechaBusca = body.fechasBusca[0].fecha;
+          horarioBusca = body.fechasBusca[0].horario;
+        }
+      } else if (body.tipo === 'BUSCO') {
+        fechaOfrece = body.fechaOfrece;
+        horarioOfrece = body.horarioOfrece;
+        grupoOfrece = body.grupoOfrece;
+        if (body.fechasBusca && body.fechasBusca[0]) {
+          fechaBusca = body.fechasBusca[0].fecha;
+          horarioBusca = body.fechasBusca[0].horario;
+        }
+      }
+    } else if (body.modalidadBusqueda === 'ABIERTO') {
+      // Para abierto, usar fechasDisponibles
+      if (body.fechasDisponibles && body.fechasDisponibles.length > 0) {
+        // Tomar la primera y última fecha del array
+        const fechas = body.fechasDisponibles.map((f: any) => f.fecha).sort();
+        fechaDesde = fechas[0];
+        fechaHasta = fechas[fechas.length - 1];
+      }
+    }
+
+    console.log('📅 Fechas procesadas:', {
+      fechaOfrece,
+      horarioOfrece,
+      grupoOfrece,
+      fechaBusca,
+      horarioBusca,
+      grupoBusca,
+      fechaDesde,
+      fechaHasta
+    });
+    
     const [oferta] = await sql`
       INSERT INTO ofertas (
         ofertante_id,
@@ -157,14 +211,14 @@ export async function POST(request: NextRequest) {
       ) VALUES (
         ${userId}::uuid,
         ${body.tipo},
-        ${body.tipo !== 'ABIERTO' ? body.fechaOfrece : null},
-        ${body.tipo !== 'ABIERTO' ? body.horarioOfrece : null},
-        ${body.tipo !== 'ABIERTO' ? body.grupoOfrece : null},
-        ${body.tipo === 'INTERCAMBIO' ? body.fechaBusca : null},
-        ${body.tipo === 'INTERCAMBIO' ? body.horarioBusca : null},
-        ${body.tipo === 'INTERCAMBIO' ? body.grupoBusca : null},
-        ${body.tipo === 'ABIERTO' ? body.fechaDesde : null},
-        ${body.tipo === 'ABIERTO' ? body.fechaHasta : null},
+        ${fechaOfrece},
+        ${horarioOfrece},
+        ${grupoOfrece},
+        ${fechaBusca},
+        ${horarioBusca},
+        ${grupoBusca},
+        ${fechaDesde},
+        ${fechaHasta},
         ${body.descripcion},
         ${body.prioridad},
         'DISPONIBLE',
@@ -212,7 +266,7 @@ export async function POST(request: NextRequest) {
         horario: ofertaCompleta.horario_busca,
         grupoTurno: ofertaCompleta.grupo_busca,
       } : null,
-      rangoFechas: ofertaCompleta.tipo === 'ABIERTO' ? {
+      rangoFechas: ofertaCompleta.fecha_desde && ofertaCompleta.fecha_hasta ? {
         desde: ofertaCompleta.fecha_desde,
         hasta: ofertaCompleta.fecha_hasta,
       } : undefined,
