@@ -466,19 +466,19 @@ export default function DashboardPage() {
       </div>
       <div className="flex justify-end mb-4 mt-4">
         {/* Botón Exportar */}
-          
-          <ExportData
-            employees={filteredEmployees}
-            stats={stats}
-            filters={{
-              searchTerm,
-              selectedRole,
-              selectedShift,
-              selectedHorario
-            }}
-            calcularEstado={calcularEstado}
-            
-          />
+
+        <ExportData
+          employees={filteredEmployees}
+          stats={stats}
+          filters={{
+            searchTerm,
+            selectedRole,
+            selectedShift,
+            selectedHorario
+          }}
+          calcularEstado={calcularEstado}
+          mode="personal" // <-- Modo personal
+        />
       </div>
 
       {/* Stats Cards */}
@@ -589,7 +589,7 @@ export default function DashboardPage() {
               ))}
           </select>
 
-          
+
 
           {/* Botón Nuevo Empleado */}
           <button

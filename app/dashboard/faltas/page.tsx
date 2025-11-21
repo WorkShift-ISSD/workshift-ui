@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useFaltas } from "@/hooks/useFaltas";
+import { useFaltas, useTodasLasFaltas } from "@/hooks/useFaltas";
 import { useEmpleados } from "@/hooks/useEmpleados";
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
 import ModalFalta from '@/app/components/ModalFalta';
+import ModalConsultaFaltas from '@/app/components/ModalConsultaFaltas';
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {
@@ -13,8 +14,10 @@ import {
   CheckCircle,
   Calendar,
   Clock,
+  FileSearch,
 } from "lucide-react";
 import { calcularGrupoTrabaja, type GrupoTurno } from "@/app/lib/turnosUtils";
+import { ExportData } from "@/app/components/ExportToPdf";
 
 // ==== FECHA LOCAL ARGENTINA ====
 const getTodayDate = () => {
@@ -38,32 +41,17 @@ const formatDate = (dateString: string) => {
   }
 };
 
-// ==== SISTEMA DE GUARDIAS A/B (día por medio) ====
-
-// FECHA BASE donde trabaja Guardia A
-const FECHA_BASE = "2025-11-19";
-
-// Función que determina qué grupo trabaja (A o B)
-// const getGrupoDelDia = (fechaSeleccionada: string): "A" | "B" => {
-//   const base = new Date(FECHA_BASE);
-//   const actual = new Date(fechaSeleccionada);
-
-//   const diff = Math.floor(
-//     (actual.getTime() - base.getTime()) / (1000 * 60 * 60 * 24)
-//   );
-
-//   return diff % 2 === 0 ? "A" : "B";
-// };
-
 export default function FaltasPage() {
   const [selectedRole, setSelectedRole] = useState("TODOS");
   const [selectedTurno, setSelectedTurno] = useState("TODOS");
   const today = getTodayDate();
   const [selectedDate, setSelectedDate] = useState(today);
   const [modalEmpleado, setModalEmpleado] = useState<any>(null);
+  const [modalConsultaOpen, setModalConsultaOpen] = useState(false);
 
   const { empleados, isLoading: loadingEmpleados, error: errorEmpleados } = useEmpleados();
   const { faltas, isLoading: loadingFaltas, error: errorFaltas, deleteFalta: eliminarFalta, mutate } = useFaltas(selectedDate);
+  const { faltas: todasLasFaltas } = useTodasLasFaltas();
 
   // Calcular qué grupo trabaja en la fecha seleccionada
   const grupoQueTrabaja = useMemo(() => {
@@ -100,25 +88,13 @@ export default function FaltasPage() {
   const empleadosDelDia = useMemo(() => {
     if (!selectedDate || !empleados) return [];
 
-    //const grupoHoy = (selectedDate);
-
     return empleados
       .filter((emp) => {
-        // 1. Verificar que ya haya ingresado a trabajar
-        // const fechaCoincide = emp.grupoTurno <= selectedDate;
-        
-        // 2. Verificar que esté activo
         const estaActivo = emp.activo;
-        
-        // 3. Verificar que pertenezca al grupo que trabaja hoy
         const perteneceAlGrupo = emp.grupoTurno === grupoQueTrabaja;
-        
-        // 4. Filtrar por rol si no es "TODOS"
         const rolCoincide = selectedRole === "TODOS"
-         ? (emp.rol === 'SUPERVISOR' || emp.rol === 'INSPECTOR')
+          ? (emp.rol === 'SUPERVISOR' || emp.rol === 'INSPECTOR')
           : emp.rol === selectedRole;
-        
-        // 5. Filtrar por turno/horario si no es "TODOS"
         const turnoCoincide = selectedTurno === "TODOS" || emp.horario === selectedTurno;
 
         return estaActivo && perteneceAlGrupo && rolCoincide && turnoCoincide;
@@ -130,9 +106,8 @@ export default function FaltasPage() {
       });
   }, [empleados, selectedDate, selectedRole, selectedTurno, grupoQueTrabaja]);
 
-
   // Lista de faltas del día
-  const empleadosConFalta = faltas?.map((f) => f.empleadoId) || [];
+  const empleadosConFalta = (faltas || []).map((f) => f.empleadoId);
 
   // ==== ELIMINAR FALTA ====
   const handleEliminarFalta = async (id: string) => {
@@ -148,7 +123,7 @@ export default function FaltasPage() {
     }
   };
 
-  // ==== CUANDO GUARDA FROM DE FALTA ====
+  // ==== CUANDO GUARDA FORM DE FALTA ====
   const handleFaltaSaved = () => {
     setModalEmpleado(null);
     mutate();
@@ -166,14 +141,48 @@ export default function FaltasPage() {
     <div className="container mx-auto p-6">
       <ToastContainer theme="colored" />
 
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Control de Faltas
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Gestiona las faltas e inasistencias del personal
-        </p>
+
+      {/* Header con botón de consultas */}
+      <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            Control de Faltas
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Gestiona las faltas e inasistencias del personal
+          </p>
+        </div>
+
+        {/* Botones agrupados */}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setModalConsultaOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700
+               dark:bg-blue-500 dark:hover:bg-blue-600
+               text-white rounded-lg font-medium transition-colors shadow-lg
+               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            <FileSearch className="w-5 h-5" />
+            Consultar Faltas
+          </button>
+
+          
+          <ExportData
+            employees={empleadosDelDia}
+            stats={{
+              total: empleadosDelDia.length,
+              activos: empleadosDelDia.filter(emp => !empleadosConFalta.includes(emp.id)).length,
+              ausentes: empleadosConFalta.length,
+              enLicencia: 0,
+            }}
+            faltasDelDia={faltas?.map(f => ({ ...f, motivo: f.motivo || '', observaciones: f.observaciones ?? undefined })) || []}
+            fechaSeleccionada={selectedDate}
+            calcularEstado={(empleado) => {
+              return empleadosConFalta.includes(empleado.id) ? 'ausente' : 'presente';
+            }}
+            mode="faltas"
+          />
+        </div>
       </div>
 
       {/* Info del grupo que trabaja */}
@@ -185,7 +194,6 @@ export default function FaltasPage() {
 
       {/* FILTROS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg mb-6 transition-colors">
-
         {/* Fecha */}
         <div>
           <label className="flex items-center gap-2 font-semibold mb-2 text-gray-700 dark:text-gray-300">
@@ -246,7 +254,7 @@ export default function FaltasPage() {
             {selectedRole !== "TODOS" &&
               turnosDisponibles.map((h) => (
                 <option key={h} value={h}>{h}</option>
-              ))}              
+              ))}
           </select>
         </div>
       </div>
@@ -261,7 +269,10 @@ export default function FaltasPage() {
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             Total: {empleadosDelDia.length} empleado(s) del Grupo {grupoQueTrabaja}
           </p>
+
         </div>
+
+
 
         {/* Contenido */}
         {empleadosDelDia.length === 0 ? (
@@ -286,12 +297,6 @@ export default function FaltasPage() {
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Rol
                   </th>
-                  {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Turno
-                  </th> */}
-                  {/* <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Grupo
-                  </th> */}
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                     Estado
                   </th>
@@ -307,8 +312,8 @@ export default function FaltasPage() {
                   const enFalta = !!falta;
 
                   return (
-                    <tr 
-                      key={emp.id} 
+                    <tr
+                      key={emp.id}
                       className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-600 dark:text-gray-400">
@@ -324,14 +329,6 @@ export default function FaltasPage() {
                           {emp.rol}
                         </span>
                       </td>
-                      {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                        {emp.turno}
-                      </td> */}
-                      {/* <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full text-xs font-medium">
-                          Grupo {emp.grupoTurno}
-                        </span>
-                      </td> */}
 
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         {enFalta ? (
@@ -381,7 +378,7 @@ export default function FaltasPage() {
         )}
       </div>
 
-      {/* Modal */}
+      {/* Modal Registrar Falta */}
       {modalEmpleado && (
         <ModalFalta
           empleado={modalEmpleado}
@@ -391,6 +388,14 @@ export default function FaltasPage() {
           onSaved={handleFaltaSaved}
         />
       )}
-    </div>
-  );
+
+      {/* Modal Consultar Historial */}
+      <ModalConsultaFaltas
+        open={modalConsultaOpen}
+        onClose={() => setModalConsultaOpen(false)}
+        faltas={todasLasFaltas}
+        empleados={empleados || []}
+      />
+    </div>
+  );
 }
