@@ -43,9 +43,9 @@ export function calcularGrupoTrabaja(fecha: string | Date): GrupoTurno {
   const esImpar = dia % 2 !== 0;
   
   if (seInvierte) {
-    return esImpar ? 'B' : 'A';
-  } else {
     return esImpar ? 'A' : 'B';
+  } else {
+    return esImpar ? 'B' : 'A';
   }
 }
 

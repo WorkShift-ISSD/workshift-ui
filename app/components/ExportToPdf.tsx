@@ -81,6 +81,8 @@ export const ExportData: React.FC<ExportDataProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
+  
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -422,7 +424,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
     xml += `    </estadisticas>\n`;
     xml += `  </metadata>\n`;
     xml += `  <empleados>\n`;
-    
+
     employees.forEach(emp => {
       const estado = calcularEstado(emp);
       xml += `    <empleado id="${emp.id}">\n`;
@@ -451,7 +453,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
       
       xml += `    </empleado>\n`;
     });
-    
+
     xml += `  </empleados>\n`;
     xml += `</workshift>`;
 
@@ -518,7 +520,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
                   <div className="text-xs text-gray-500 dark:text-gray-400">Documento con diseño</div>
                 </div>
               </button>
-              
+
               <button
                 onClick={() => handleExport('excel')}
                 className="flex items-center w-full gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors group"
@@ -529,7 +531,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
                   <div className="text-xs text-gray-500 dark:text-gray-400">Hoja de cálculo (.xlsx)</div>
                 </div>
               </button>
-              
+
               <button
                 onClick={() => handleExport('xml')}
                 className="flex items-center w-full gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors group"
