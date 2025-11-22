@@ -81,7 +81,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
-  
+
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -174,7 +174,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
           doc.setFont("helvetica", "normal");
           doc.text(card.label, x + cardWidth / 2, y + 15, { align: "center" });
         });
-        
+
         y += 30;
       } else {
         // Cards para modo faltas
@@ -260,6 +260,14 @@ export const ExportData: React.FC<ExportDataProps> = ({
 
       let page = 1;
 
+      if (mode === 'faltas') {
+        employees = [...employees].sort((a, b) => {
+          const horaA = a.horario?.slice(0, 5) || "99:99";
+          const horaB = b.horario?.slice(0, 5) || "99:99";
+          return horaA.localeCompare(horaB);
+        });
+      }
+
       for (let emp of employees) {
         if (y > pageHeight - 30) {
           doc.addPage();
@@ -274,10 +282,10 @@ export const ExportData: React.FC<ExportDataProps> = ({
           estado === "ACTIVO" || estado === "presente"
             ? [34, 197, 94]
             : estado === "LICENCIA"
-            ? [234, 179, 8]
-            : estado === "AUSENTE" || estado === "ausente"
-            ? [239, 68, 68]
-            : [156, 163, 175];
+              ? [234, 179, 8]
+              : estado === "AUSENTE" || estado === "ausente"
+                ? [239, 68, 68]
+                : [156, 163, 175];
 
         let row: string[];
         if (mode === 'personal') {
@@ -354,7 +362,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
   // ======== EXCEL MEJORADO ========
   const exportToExcel = () => {
     let data;
-    
+
     if (mode === 'personal') {
       data = employees.map(emp => ({
         Legajo: emp.legajo,
@@ -390,7 +398,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
     const wb = XLSX.utils.book_new();
     const sheetName = mode === 'faltas' ? 'Faltas' : 'Empleados';
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    
+
     const fecha = new Date().toISOString().split('T')[0];
     const nombreArchivo = mode === 'faltas' ? `faltas_${fecha}.xlsx` : `empleados_${fecha}.xlsx`;
     XLSX.writeFile(wb, nombreArchivo);
@@ -403,14 +411,14 @@ export const ExportData: React.FC<ExportDataProps> = ({
     xml += `  <metadata>\n`;
     xml += `    <fecha_generacion>${new Date().toISOString()}</fecha_generacion>\n`;
     xml += `    <tipo_reporte>${mode === 'faltas' ? 'control_faltas' : 'gestion_empleados'}</tipo_reporte>\n`;
-    
+
     if (mode === 'faltas' && fechaSeleccionada) {
       xml += `    <fecha_consulta>${fechaSeleccionada}</fecha_consulta>\n`;
     }
-    
+
     xml += `    <total_empleados>${employees.length}</total_empleados>\n`;
     xml += `    <estadisticas>\n`;
-    
+
     if (mode === 'personal') {
       xml += `      <activos>${stats.activos}</activos>\n`;
       xml += `      <en_licencia>${stats.enLicencia}</en_licencia>\n`;
@@ -420,7 +428,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
       xml += `      <presentes>${presentes}</presentes>\n`;
       xml += `      <faltas>${faltasDelDia?.length || 0}</faltas>\n`;
     }
-    
+
     xml += `    </estadisticas>\n`;
     xml += `  </metadata>\n`;
     xml += `  <empleados>\n`;
@@ -435,7 +443,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
       xml += `      <grupo_turno>${emp.grupoTurno}</grupo_turno>\n`;
       xml += `      <horario>${emp.horario || 'No asignado'}</horario>\n`;
       xml += `      <estado>${estado}</estado>\n`;
-      
+
       if (mode === 'faltas') {
         const falta = faltasDelDia?.find(f => f.empleadoId === emp.id);
         if (falta) {
@@ -450,7 +458,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
         xml += `      <telefono>${emp.telefono || ''}</telefono>\n`;
         xml += `      <activo>${emp.activo}</activo>\n`;
       }
-      
+
       xml += `    </empleado>\n`;
     });
 
