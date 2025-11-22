@@ -17,12 +17,13 @@ export async function GET(request: NextRequest) {
     const fecha = searchParams.get('fecha');
     const empleadoId = searchParams.get('empleadoId');
 
-    console.log('Parámetros recibidos:', { fecha, empleadoId });
+    console.log('📅 Parámetros recibidos:', { fecha, empleadoId });
 
     let query;
 
     if (fecha) {
-      console.log('Ejecutando query con fecha:', fecha);
+      console.log('🔍 Filtrando por fecha:', fecha);
+      // IMPORTANTE: Usar la fecha directamente sin conversión
       query = sql`
         SELECT 
           f.id::text,
@@ -35,20 +36,20 @@ export async function GET(request: NextRequest) {
             'horario', e.horario,
             'rol', e.rol
           ) as empleado,
-          to_char(f.fecha, 'YYYY-MM-DD') as fecha,
-          f.causa,
+          f.fecha::text as fecha,
+          f.causa as motivo,
           f.observaciones,
           f.justificada,
           f.registrado_por as "registradoPor",
-          to_char(f.created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "createdAt",
-          to_char(f.updated_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "updatedAt"
+          f.created_at::text as "createdAt",
+          f.updated_at::text as "updatedAt"
         FROM faltas f
         JOIN users e ON f.empleado_id = e.id
-        WHERE DATE(f.fecha) = ${fecha}::date
+        WHERE f.fecha = ${fecha}::date
         ORDER BY f.created_at DESC;
       `;
     } else if (empleadoId) {
-      console.log('Ejecutando query con empleadoId:', empleadoId);
+      console.log('👤 Filtrando por empleado:', empleadoId);
       query = sql`
         SELECT 
           f.id::text,
@@ -61,20 +62,20 @@ export async function GET(request: NextRequest) {
             'horario', e.horario,
             'rol', e.rol
           ) as empleado,
-          to_char(f.fecha, 'YYYY-MM-DD') as fecha,
-          f.causa,
+          f.fecha::text as fecha,
+          f.causa as motivo,
           f.observaciones,
           f.justificada,
           f.registrado_por as "registradoPor",
-          to_char(f.created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "createdAt",
-          to_char(f.updated_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "updatedAt"
+          f.created_at::text as "createdAt",
+          f.updated_at::text as "updatedAt"
         FROM faltas f
         JOIN users e ON f.empleado_id = e.id
         WHERE f.empleado_id = ${empleadoId}::uuid
         ORDER BY f.fecha DESC;
       `;
     } else {
-      console.log('Ejecutando query sin filtros');
+      console.log('📋 Obteniendo todas las faltas');
       query = sql`
         SELECT 
           f.id::text,
@@ -87,30 +88,33 @@ export async function GET(request: NextRequest) {
             'horario', e.horario,
             'rol', e.rol
           ) as empleado,
-          to_char(f.fecha, 'YYYY-MM-DD') as fecha,
-          f.causa,
+          f.fecha::text as fecha,
+          f.causa as motivo,
           f.observaciones,
           f.justificada,
           f.registrado_por as "registradoPor",
-          to_char(f.created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "createdAt",
-          to_char(f.updated_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "updatedAt"
+          f.created_at::text as "createdAt",
+          f.updated_at::text as "updatedAt"
         FROM faltas f
         JOIN users e ON f.empleado_id = e.id
         ORDER BY f.fecha DESC;
       `;
     }
-    console.log('Ejecutando query...');
+    
     const faltas = await query;
-    console.log('Query exitosa, registros encontrados:', faltas.length);
-    return NextResponse.json(faltas);
+    console.log(`✅ Faltas encontradas: ${faltas.length}`);
+    
+    // Normalizar fechas en el resultado
+    const faltasNormalizadas = faltas.map(falta => ({
+      ...falta,
+      // Asegurar que la fecha sea YYYY-MM-DD sin timestamp
+      fecha: falta.fecha.split('T')[0]
+    }));
+    
+    return NextResponse.json(faltasNormalizadas);
 
   } catch (error) {
-    console.error('Error fetching faltas:', error);
-    console.error('=== ERROR EN GET /api/faltas ===');
-    console.error('Tipo de error:', error?.constructor?.name);
-    console.error('Mensaje:', error instanceof Error ? error.message : String(error));
-    console.error('Stack:', error instanceof Error ? error.stack : 'No stack');
-    console.error('Error completo:', error);
+    console.error('❌ Error en GET /api/faltas:', error);
     return NextResponse.json(
       { error: 'Error al obtener faltas', details: String(error) },
       { status: 500 }
@@ -125,12 +129,21 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    if (!body.empleadoId || !body.fecha || !body.causa) {
+    console.log('📝 Creando falta:', body);
+
+    // Soportar tanto 'motivo' como 'causa' para compatibilidad
+    const motivo = body.motivo || body.causa;
+
+    if (!body.empleadoId || !body.fecha || !motivo) {
       return NextResponse.json(
-        { error: 'Faltan campos obligatorios: empleadoId, fecha, causa' },
+        { error: 'Faltan campos obligatorios: empleadoId, fecha, motivo' },
         { status: 400 }
       );
     }
+
+    // Normalizar fecha (solo YYYY-MM-DD)
+    const fechaNormalizada = body.fecha.split('T')[0];
+    console.log('📅 Fecha normalizada:', fechaNormalizada);
 
     // Obtener usuario que registra la falta
     const cookieStore = await cookies();
@@ -169,7 +182,7 @@ export async function POST(request: NextRequest) {
       SELECT id
       FROM faltas
       WHERE empleado_id = ${body.empleadoId}::uuid
-      AND DATE(fecha) = ${body.fecha}::date;
+      AND fecha = ${fechaNormalizada}::date;
     `;
 
     if (faltaExistente) {
@@ -195,8 +208,8 @@ export async function POST(request: NextRequest) {
       VALUES (
         gen_random_uuid(),
         ${body.empleadoId}::uuid,
-        ${body.fecha}::date,
-        ${body.causa},
+        ${fechaNormalizada}::date,
+        ${body.motivo},
         ${body.observaciones || null},
         ${body.justificada || false},
         ${registradoPor},
@@ -206,18 +219,19 @@ export async function POST(request: NextRequest) {
       RETURNING 
         id::text,
         empleado_id::text as "empleadoId",
-        to_char(fecha, 'YYYY-MM-DD') as fecha,
-        causa,
+        fecha::text as fecha,
+        causa as motivo,
         observaciones,
         justificada,
         registrado_por as "registradoPor",
-        to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "createdAt",
-        to_char(updated_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "updatedAt";
+        created_at::text as "createdAt",
+        updated_at::text as "updatedAt";
     `;
 
-    // Agregar empleado
+    // Normalizar fecha en respuesta
     const faltaCompleta = {
       ...falta,
+      fecha: falta.fecha.split('T')[0],
       empleado: {
         id: empleado.id.toString(),
         nombre: empleado.nombre,
@@ -228,10 +242,12 @@ export async function POST(request: NextRequest) {
       }
     };
 
+    console.log('✅ Falta creada:', faltaCompleta);
+
     return NextResponse.json(faltaCompleta, { status: 201 });
 
   } catch (error) {
-    console.error("Error creating falta:", error);
+    console.error("❌ Error al crear falta:", error);
     return NextResponse.json(
       { error: 'Error al crear falta', details: String(error) },
       { status: 500 }
