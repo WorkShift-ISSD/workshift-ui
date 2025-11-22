@@ -24,7 +24,7 @@ async function seedUsers() {
       horario VARCHAR(50),
       fecha_nacimiento DATE,
       activo BOOLEAN DEFAULT true,
-      grupo_turno VARCHAR(1) NOT NULL DEFAULT 'A' CHECK (grupo_turno IN ('A', 'B')),
+      grupo_turno VARCHAR(10) NOT NULL DEFAULT 'A' CHECK (grupo_turno IN ('A', 'B', 'ADMIN')),
       foto_perfil TEXT,
       ultimo_login TIMESTAMP,
       calificacion DECIMAL(3,2) DEFAULT 4.5,
@@ -40,7 +40,122 @@ async function seedUsers() {
   await sql`CREATE INDEX IF NOT EXISTS idx_users_rol ON users(rol)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_users_activo ON users(activo)`;
 
-  const insertedUsers = await Promise.all(
+  // 🔹 Crear usuarios del sistema
+  const systemUsers = [
+    {
+      legajo: 300001,
+      email: 'admin@workshift.com',
+      nombre: 'Admin',
+      apellido: 'General',
+      password: 'Workshift25',
+      rol: 'ADMINISTRADOR',
+      grupoTurno: 'ADMIN',
+      horario: '00:00-23:59'
+    },
+    {
+      legajo: 300002,
+      email: 'jefe3@workshift.com',
+      nombre: 'Jefe',
+      apellido: 'Principal',
+      password: 'Password.666!',
+      rol: 'JEFE',
+      grupoTurno: 'A',
+      horario: '05:00-17:00'
+    },
+    {
+      legajo: 300003,
+      email: 'supervisor3@workshift.com',
+      nombre: 'Supervisor',
+      apellido: 'Uno',
+      password: 'Password.1234',
+      rol: 'SUPERVISOR',
+      grupoTurno: 'A',
+      horario: '23:00-05:00'
+    },
+    {
+      legajo: 300004,
+      email: 'maria.lopez@workshift.com',
+      nombre: 'Maria',
+      apellido: 'Lopez',
+      password: 'familia100%!',
+      rol: 'SUPERVISOR',
+      grupoTurno: 'B',
+      horario: '05:00-14:00'
+    },
+    {
+      legajo: 300005,
+      email: 'emanuel@workshift.com',
+      nombre: 'Emanuel',
+      apellido: 'Rodriguez',
+      password: 'elcrackDelTrabajo!!',
+      rol: 'INSPECTOR',
+      grupoTurno: 'A',
+      horario: '19:00-05:00'
+    },
+    {
+      legajo: 300006,
+      email: 'juan.garcia@workshift.com',
+      nombre: 'Juan',
+      apellido: 'Garcia',
+      password: 'Gorreadisimo!!!',
+      rol: 'INSPECTOR',
+      grupoTurno: 'B',
+      horario: '14:00-23:00'
+    }
+  ];
+
+  // Insertar usuarios del sistema
+  await Promise.all(
+    systemUsers.map(async (user) => {
+      const hashedPassword = await bcrypt.hash(user.password, 10);
+      return sql`
+        INSERT INTO users (
+          id,
+          legajo,
+          email,
+          nombre,
+          apellido,
+          password,
+          rol,
+          telefono,
+          direccion,
+          horario,
+          fecha_nacimiento,
+          activo,
+          grupo_turno,
+          calificacion,
+          total_intercambios
+        )
+        VALUES (
+          uuid_generate_v4(),
+          ${user.legajo},
+          ${user.email},
+          ${user.nombre},
+          ${user.apellido},
+          ${hashedPassword},
+          ${user.rol},
+          NULL,
+          NULL,
+          ${user.horario || '06:00-16:00'},
+          NULL,
+          TRUE,
+          ${user.grupoTurno},
+          5.0,
+          0
+        )
+        ON CONFLICT (email) DO UPDATE SET
+          password = EXCLUDED.password,
+          rol = EXCLUDED.rol,
+          grupo_turno = EXCLUDED.grupo_turno,
+          updated_at = NOW();
+      `;
+    })
+  );
+
+  console.log('✅ Usuarios del sistema creados');
+
+  // Insertar usuarios de placeholder-data
+    const insertedUsers = await Promise.all(
     users.map(async (user) => {
       const hashedPassword = await bcrypt.hash(user.legajo?.toString() || 'password123', 10);
       return sql`
@@ -78,49 +193,10 @@ async function seedUsers() {
           ${4.5},
           ${0}
         )
-        ON CONFLICT (id) DO NOTHING;
+        ON CONFLICT (email) DO NOTHING;
       `;
     }),
   );
-  // 🔹 Crear usuario administrador
-  const hashedAdminPassword = await bcrypt.hash('Workshift25', 10);
-  await sql`
-  INSERT INTO users (
-    id,
-    legajo,
-    email,
-    nombre,
-    apellido,
-    password,
-    rol,
-    telefono,
-    direccion,
-    horario,
-    fecha_nacimiento,
-    activo,
-    grupo_turno,
-    calificacion,
-    total_intercambios
-  )
-  VALUES (
-    uuid_generate_v4(),
-    300001,
-    'admin@workshift.com',
-    'Admin',
-    'General',
-    ${hashedAdminPassword},
-    'ADMINISTRADOR',
-    NULL,
-    NULL,
-    '',
-    NULL,
-    TRUE,
-    'ADMIN',
-    5.0,
-    0
-  )
-  ON CONFLICT (email) DO NOTHING;
-`;
 
   return insertedUsers;
 }
@@ -258,7 +334,16 @@ async function seedTurnosData() {
   `;
 
   const currentMonth = new Date().toISOString().slice(0, 7);
-  const firstUser = users[0];
+
+  // ✅ Buscar un usuario que realmente existe en la DB
+  const [existingUser] = await sql`
+    SELECT id FROM users WHERE email = 'admin@workshift.com' LIMIT 1
+  `;
+
+  if (!existingUser) {
+    console.log('⚠️  No hay usuarios para crear turnos_data');
+    return true;
+  }
 
   await sql`
     INSERT INTO turnos_data (
@@ -270,7 +355,7 @@ async function seedTurnosData() {
       mes
     )
     VALUES (
-      ${firstUser.id}, 
+      ${existingUser.id}, 
       ${turnosData.misGuardias}, 
       ${turnosData.guardiasCubiertas}, 
       ${turnosData.guardiasQueMeCubrieron}, 
@@ -285,6 +370,7 @@ async function seedTurnosData() {
       updated_at = NOW();
   `;
 
+  console.log('✅ Datos de turnos creados para usuario:', existingUser.id);
   return true;
 }
 
@@ -292,24 +378,23 @@ async function seedTurnosData() {
 async function seedOfertas() {
   await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
 
-  // Crear tabla ofertas
+  // Eliminar tabla anterior si existe
+  await sql`DROP TABLE IF EXISTS ofertas CASCADE`;
+
+  // Crear tabla ofertas con JSONB
   await sql`
     CREATE TABLE IF NOT EXISTS ofertas (
       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
       ofertante_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('INTERCAMBIO', 'ABIERTO')),
-      fecha_ofrece DATE,
-      horario_ofrece VARCHAR(20),
-      grupo_ofrece VARCHAR(1) CHECK (grupo_ofrece IN ('A', 'B')),
-      fecha_busca DATE,
-      horario_busca VARCHAR(20),
-      grupo_busca VARCHAR(1) CHECK (grupo_busca IN ('A', 'B')),
-      fecha_desde DATE,
-      fecha_hasta DATE,
+      tomador_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('OFREZCO', 'BUSCO')),
+      modalidad_busqueda VARCHAR(20) NOT NULL CHECK (modalidad_busqueda IN ('INTERCAMBIO', 'ABIERTO')),
+      turno_ofrece JSONB,
+      turnos_busca JSONB,
+      fechas_disponibles JSONB,
       descripcion TEXT NOT NULL,
       prioridad VARCHAR(20) NOT NULL CHECK (prioridad IN ('NORMAL', 'URGENTE')),
       estado VARCHAR(20) NOT NULL DEFAULT 'DISPONIBLE' CHECK (estado IN ('DISPONIBLE', 'SOLICITADO', 'APROBADO', 'COMPLETADO', 'CANCELADO')),
-      valido_hasta TIMESTAMP NOT NULL,
       publicado TIMESTAMP NOT NULL DEFAULT NOW(),
       created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMP NOT NULL DEFAULT NOW()
@@ -318,10 +403,17 @@ async function seedOfertas() {
 
   // Crear índices para ofertas
   await sql`CREATE INDEX IF NOT EXISTS idx_ofertas_ofertante ON ofertas(ofertante_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_ofertas_tomador ON ofertas(tomador_id)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_ofertas_estado ON ofertas(estado)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_ofertas_tipo ON ofertas(tipo)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_ofertas_modalidad ON ofertas(modalidad_busqueda)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_ofertas_publicado ON ofertas(publicado DESC)`;
+  
+  // Índices GIN para búsquedas en JSONB (opcional pero recomendado)
+  await sql`CREATE INDEX IF NOT EXISTS idx_ofertas_turno_ofrece_gin ON ofertas USING GIN (turno_ofrece)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_ofertas_turnos_busca_gin ON ofertas USING GIN (turnos_busca)`;
 
-  console.log('✅ Tabla ofertas creada');
+  console.log('✅ Tabla ofertas creada con JSONB');
   return true;
 }
 
@@ -329,18 +421,17 @@ async function seedOfertas() {
 async function seedSolicitudesDirectas() {
   await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
 
-  // Crear tabla solicitudes_directas
+  // Eliminar tabla anterior si existe
+  await sql`DROP TABLE IF EXISTS solicitudes_directas CASCADE`;
+
+  // Crear tabla solicitudes_directas con JSONB para turnos
   await sql`
     CREATE TABLE IF NOT EXISTS solicitudes_directas (
       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
       solicitante_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       destinatario_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      fecha_solicitante DATE NOT NULL,
-      horario_solicitante VARCHAR(20) NOT NULL,
-      grupo_solicitante VARCHAR(1) NOT NULL CHECK (grupo_solicitante IN ('A', 'B')),
-      fecha_destinatario DATE NOT NULL,
-      horario_destinatario VARCHAR(20) NOT NULL,
-      grupo_destinatario VARCHAR(1) NOT NULL CHECK (grupo_destinatario IN ('A', 'B')),
+      turno_solicitante JSONB NOT NULL,
+      turno_destinatario JSONB NOT NULL,
       motivo TEXT NOT NULL,
       prioridad VARCHAR(20) NOT NULL CHECK (prioridad IN ('NORMAL', 'URGENTE')),
       estado VARCHAR(20) NOT NULL DEFAULT 'SOLICITADO' CHECK (estado IN ('SOLICITADO', 'APROBADO', 'COMPLETADO', 'CANCELADO')),
@@ -356,7 +447,7 @@ async function seedSolicitudesDirectas() {
   await sql`CREATE INDEX IF NOT EXISTS idx_solicitudes_estado ON solicitudes_directas(estado)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_solicitudes_fecha ON solicitudes_directas(fecha_solicitud DESC)`;
 
-  console.log('✅ Tabla solicitudes_directas creada');
+  console.log('✅ Tabla solicitudes_directas creada con JSONB');
   return true;
 }
 

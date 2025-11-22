@@ -1,5 +1,5 @@
+import { EstadoOferta, GrupoTurno, Prioridad } from "@/app/api/types";
 import useSWR from "swr";
-import { GrupoTurno, Prioridad, EstadoOferta } from "./useOfertas";
 
 export interface SolicitudesDirectas {
   id: string;
@@ -32,7 +32,7 @@ export interface SolicitudesDirectas {
 }
 
 export interface SolicitudDirectaForm {
-  solicitanteId: string;
+  solicitanteId?: string;
   destinatarioId: string;
   fechaSolicitante: string;
   horarioSolicitante: string;
@@ -65,18 +65,15 @@ export const useSolicitudesDirectas = () => {
 
   // ✅ Crear nueva solicitud directa con cookies
   const agregarSolicitud = async (solicitud: SolicitudDirectaForm) => {
-    // ❌ NO enviar solicitanteId en el body (el servidor lo obtiene del token)
-    const { solicitanteId, ...solicitudSinSolicitante } = solicitud;
-
     const res = await fetch("/api/solicitudes-directas", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      credentials: 'include', // ✅ Enviar cookies automáticamente
-      body: JSON.stringify(solicitudSinSolicitante),
+      credentials: 'include',
+      body: JSON.stringify(solicitud),
     });
-
+    
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Error al crear solicitud");
 

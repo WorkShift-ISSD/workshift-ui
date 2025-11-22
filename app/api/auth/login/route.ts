@@ -43,8 +43,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar contraseña con bcrypt
-   const isValidPassword = user.password === password;
+    // ✅ Verificar contraseña con bcrypt
+    const isValidPassword = await bcrypt.compare(password, user.password);
 
     if (!isValidPassword) {
       return NextResponse.json(

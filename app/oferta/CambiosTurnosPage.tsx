@@ -26,7 +26,7 @@ import {
 import { useModal } from '@/hooks/useModal';
 import { SolicitudesTabType, useTabs } from '@/hooks/useTabs';
 import { useFormatters } from '@/hooks/useFormatters';
-import { GrupoTurno, NuevaOfertaForm, useOfertas } from '@/hooks/useOfertas';
+import { useOfertas } from '@/hooks/useOfertas';
 import { SolicitudDirectaForm, useSolicitudesDirectas } from '@/hooks/useSolicitudesDirectas';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -34,10 +34,11 @@ import Can from '../components/Can';
 import { calcularGrupoTrabaja, esFechaValidaParaGrupo } from '../lib/turnosUtils';
 import ModalConsultarSolicitudes from '../components/ModalConsultarSolicitudes';
 import { formatFechaHoraLocal, formatFechaLocal } from '../lib/utils';
+import { EstadoSolicitud, NuevaOfertaForm } from '../api/types';
 
 // Constantes
 const HORARIOS = ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '14:00-23:00'];
-const GRUPOS: GrupoTurno[] = ['A', 'B'];
+const GRUPOS: string[] = ['A', 'B'];
 
 const INITIAL_OFERTA_FORM: NuevaOfertaForm = {
   tipo: 'OFREZCO', // 'OFREZCO' o 'BUSCO'
@@ -45,15 +46,10 @@ const INITIAL_OFERTA_FORM: NuevaOfertaForm = {
   fechaOfrece: '',
   horarioOfrece: '04:00-14:00',
   grupoOfrece: 'A',
-  fechaBusca: '',
-  horarioBusca: '04:00-14:00',
-  grupoBusca: 'A',
-  fechaDesde: '',
-  fechaHasta: '',
   descripcion: '',
   prioridad: 'NORMAL',
   fechasBusca: [{ fecha: '', horario: '04:00-14:00' }], // Array para múltiples fechas que busca
-  fechasDisponibles: [{ fecha: '', horario: '04:00-14:00' }], // Array para modalidad abierta
+  fechasDisponibles: [{ fecha: '', horario: '04:00-14:00' }],  // Array para modalidad abierta
 };
 
 const INITIAL_SOLICITUD_FORM: SolicitudDirectaForm = {
@@ -68,6 +64,8 @@ const INITIAL_SOLICITUD_FORM: SolicitudDirectaForm = {
   motivo: '',
   prioridad: 'NORMAL',
 };
+
+
 
 export default function CambiosTurnosPage() {
   // Auth y permisos
@@ -111,6 +109,9 @@ export default function CambiosTurnosPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Al inicio del componente, junto con los otros states
   const [solicitudEditandoId, setSolicitudEditandoId] = useState<string | null>(null);
+
+  type MainTab = 'mis-solicitudes' | 'historico' | 'recibidas' | 'ofertas-disponibles';
+  const [activeMainTab, setActiveMainTab] = useState<MainTab>('mis-solicitudes');
 
   // Cargar usuarios una sola vez
   useEffect(() => {
@@ -179,25 +180,39 @@ export default function CambiosTurnosPage() {
 
   const solicitudesRecibidas = useMemo(() => {
     return solicitudesDirectas.filter(
-      s => s.destinatario.id === user?.id && s.estado === 'SOLICITADO'
+      s => s.destinatario.id === user?.id && s.estado === 'DISPONIBLE'
     );
   }, [solicitudesDirectas, user?.id]);
 
   // Validación de formularios
   const validateOfertaForm = useCallback((form: NuevaOfertaForm): string => {
-    // Validación para modalidad INTERCAMBIO
+  console.log('🔍 Validando formulario:', form);
+  console.log('📅 fechaOfrece:', form.fechaOfrece);
+  console.log('📅 fechasBusca:', form.fechasBusca);
+  
+    console.log('🔍 Validando formulario de oferta:', form);
+    
     if (form.modalidadBusqueda === 'INTERCAMBIO') {
-      if (!form.fechaOfrece) {
+      // ✅ Validar fecha que ofrece (siempre requerida en INTERCAMBIO)
+      if (!form.fechaOfrece || form.fechaOfrece.trim() === '') {
         return 'Debes completar la fecha que ofreces';
       }
 
-      // Validar que al menos haya una fecha de búsqueda
+      // ✅ Validar que la fecha ofrecida sea del grupo del usuario
+      if (user && form.fechaOfrece) {
+        const fechaObj = new Date(form.fechaOfrece + 'T00:00:00');
+        if (!esFechaValidaParaGrupo(fechaObj, user.grupoTurno)) {
+          return `La fecha que ofreces no corresponde a tu Grupo ${user.grupoTurno}. Solo puedes ofrecer turnos de tu grupo.`;
+        }
+      }
+
+      // ✅ Validar que al menos haya una fecha de búsqueda
       const fechasValidas = form.fechasBusca.filter(f => f.fecha.trim() !== '');
       if (fechasValidas.length === 0) {
         return 'Debes agregar al menos una fecha que buscas';
       }
 
-      // ✅ NUEVA VALIDACIÓN - Solo validar si fecha Y horario son iguales
+      // ✅ Validar que no sean exactamente iguales (misma fecha Y mismo horario)
       const ofreceMismo = form.fechasBusca.some(
         busca => busca.fecha === form.fechaOfrece &&
           busca.horario === (user?.horario || form.horarioOfrece)
@@ -206,9 +221,6 @@ export default function CambiosTurnosPage() {
       if (ofreceMismo) {
         return 'No puedes ofrecer y buscar exactamente el mismo turno (misma fecha y horario)';
       }
-
-      // ✅ VALIDACIÓN ADICIONAL - Permitir misma fecha pero diferente horario
-      // Si la fecha es la misma pero el horario es diferente, está OK
     }
 
     // Validación para modalidad ABIERTO
@@ -234,7 +246,7 @@ export default function CambiosTurnosPage() {
     }
 
     // Validación general de descripción
-    if (!form.descripcion.trim()) {
+    if (!form.descripcion || form.descripcion.trim() === '') {
       return 'Debes agregar una descripción';
     }
 
@@ -254,11 +266,14 @@ export default function CambiosTurnosPage() {
       return 'Debes completar ambas fechas';
     }
 
+    
+
     if (form.fechaSolicitante === form.fechaDestinatario &&
       form.horarioSolicitante === form.horarioDestinatario &&
       form.grupoSolicitante === form.grupoDestinatario) {
       return 'Los turnos no pueden ser idénticos';
     }
+
 
     if (!form.motivo.trim()) {
       return 'Debes explicar el motivo de tu solicitud';
@@ -272,19 +287,28 @@ export default function CambiosTurnosPage() {
     e.preventDefault();
     setFormError('');
 
+    console.log('📋 Estado actual del formulario:', nuevaOfertaForm);
+    
     const error = validateOfertaForm(nuevaOfertaForm);
     if (error) {
+      console.log('❌ Error de validación:', error);
       setFormError(error);
       return;
     }
 
     setIsSubmitting(true);
     try {
+      console.log('✅ Validación exitosa, enviando...');
+      
+      // ✅ Pasar directamente el formulario, agregarOferta se encarga del resto
       await agregarOferta(nuevaOfertaForm);
+      
+      console.log('✅ Oferta publicada exitosamente');
       closeModal();
       setNuevaOfertaForm(INITIAL_OFERTA_FORM);
       setFormError('');
     } catch (error) {
+      console.error('❌ Error al publicar:', error);
       setFormError(error instanceof Error ? error.message : 'Error al publicar la oferta. Intenta nuevamente.');
     } finally {
       setIsSubmitting(false);
@@ -339,10 +363,11 @@ export default function CambiosTurnosPage() {
   // Handler para cerrar modal y limpiar errores
   const handleCloseModal = useCallback(() => {
     closeModal();
-    setFormError('');
+    setFormError(''); // ✅ Limpiar errores
     setIsSubmitting(false);
-    setSolicitudEditandoId(null); // ✅ Limpiar ID de edición
-    setSolicitudDirectaForm(INITIAL_SOLICITUD_FORM); // ✅ Limpiar formulario
+    setSolicitudEditandoId(null);
+    setSolicitudDirectaForm(INITIAL_SOLICITUD_FORM);
+    setNuevaOfertaForm(INITIAL_OFERTA_FORM); // ✅ AGREGAR ESTO
   }, [closeModal]);
 
   // Handlers para acciones de ofertas
@@ -364,29 +389,46 @@ export default function CambiosTurnosPage() {
     }
   }, [eliminarOferta]);
 
-  const handleTomarOferta = useCallback(async (ofertaId: string) => {
-    try {
-      if (!confirm('¿Estás seguro de que quieres tomar esta oferta?')) {
-        return;
-      }
-
-      const res = await fetch(`/api/ofertas/${ofertaId}/tomar`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tomadorId: user?.id }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Error al tomar la oferta');
-      }
-
-      alert('¡Oferta tomada exitosamente! Pendiente de autorización.');
-    } catch (error) {
-      console.error('Error al tomar oferta:', error);
-      alert('Error al tomar la oferta. Intenta nuevamente.');
+const handleTomarOferta = useCallback(async (ofertaId: string) => {
+  try {
+    if (!user?.id) {
+      alert('Debes estar autenticado para tomar una oferta');
+      return;
     }
-  }, [user?.id]);
+
+    if (!confirm('¿Estás seguro de que quieres tomar esta oferta?')) {
+      return;
+    }
+
+    console.log('🔵 Tomando oferta:', { ofertaId, tomadorId: user.id });
+
+    const res = await fetch(`/api/ofertas/${ofertaId}/tomar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tomadorId: user.id }),
+    });
+
+    console.log('📥 Respuesta status:', res.status);
+
+    if (!res.ok) {
+      const data = await res.json();
+      console.error('❌ Error del servidor:', data);
+      throw new Error(data.error || 'Error al tomar la oferta');
+    }
+
+    const data = await res.json();
+    console.log('✅ Respuesta exitosa:', data);
+
+    alert('¡Oferta tomada exitosamente! Pendiente de autorización del jefe.');
+    
+    // ✅ Recargar la página para ver los cambios
+    window.location.reload();
+    
+  } catch (error) {
+    console.error('❌ Error al tomar oferta:', error);
+    alert(error instanceof Error ? error.message : 'Error al tomar la oferta. Intenta nuevamente.');
+  }
+}, [user?.id]);
 
   // Handlers para solicitudes
   const handleAceptarSolicitud = useCallback(async (id: string) => {
@@ -623,48 +665,137 @@ export default function CambiosTurnosPage() {
         </Can>
       </div>
 
-      {/* Mis Ofertas y Solicitudes */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-400 dark:border-gray-700">
-        {/* Header con tabs */}
-        <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-          <div className="flex items-center gap-6" role="tablist">
-            <button
-              onClick={() => setSolicitudesTab('estado')}
-              role="tab"
-              aria-selected={solicitudesTab === 'estado'}
-              className={`font-semibold text-base pb-1 transition-colors ${solicitudesTab === 'estado'
-                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
-                }`}
-            >
-              Mis Solicitudes Activas
-            </button>
-            <button
-              onClick={() => setSolicitudesTab('historico')}
-              role="tab"
-              aria-selected={solicitudesTab === 'historico'}
-              className={`font-semibold text-base pb-1 transition-colors ${solicitudesTab === 'historico'
-                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
-                }`}
-            >
-              Histórico
-            </button>
-
-          </div>
+{/* Sistema de Tabs Principal */}
+<div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-400 dark:border-gray-700">
+  {/* Tabs Header - Fijo */}
+  <div className="border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
+    <div className="flex overflow-x-auto">
+      {/* Tab: Mis Solicitudes Activas */}
+      <button
+        onClick={() => setActiveMainTab('mis-solicitudes')}
+        className={`flex-1 min-w-[160px] px-6 py-4 font-semibold text-sm transition-colors relative ${
+          activeMainTab === 'mis-solicitudes'
+            ? 'text-blue-600 dark:text-blue-400'
+            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+        }`}
+      >
+        <div className="flex items-center justify-center gap-2">
+          <Clock className="h-4 w-4" />
+          <span>Mis Solicitudes</span>
+          {(misOfertas.length + solicitudesEnviadas.filter(s => ['SOLICITADO', 'APROBADO'].includes(s.estado)).length) > 0 && (
+            <span className="ml-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium">
+              {misOfertas.length + solicitudesEnviadas.filter(s => ['SOLICITADO', 'APROBADO'].includes(s.estado)).length}
+            </span>
+          )}
         </div>
+        {activeMainTab === 'mis-solicitudes' && (
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+        )}
+      </button>
 
-        {/* Tab: Estado */}
-        {solicitudesTab === 'estado' && (
-          <div className="p-6" role="tabpanel">
-            <div className="space-y-6">
-              {/* {misOfertas.length === 0 && solicitudesEnviadas.length === 0 ? (
-                <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-                  No tienes solicitudes u ofertas activas.
-                </p>
-              ) : ( */}
-              <>
-                {/* MIS OFERTAS */}
+      {/* Tab: Histórico */}
+      <button
+        onClick={() => setActiveMainTab('historico')}
+        className={`flex-1 min-w-[160px] px-6 py-4 font-semibold text-sm transition-colors relative ${
+          activeMainTab === 'historico'
+            ? 'text-blue-600 dark:text-blue-400'
+            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+        }`}
+      >
+        <div className="flex items-center justify-center gap-2">
+          <Star className="h-4 w-4" />
+          <span>Histórico</span>
+          {(() => {
+          const ofertasHistorico = ofertas.filter(
+            o => (o.ofertante?.id === user?.id || o.tomador?.id === user?.id) &&
+              (o.estado === 'COMPLETADO' || o.estado === 'CANCELADO' || o.estado === 'SOLICITADO' )
+          );
+          const solicitudesHistorico = solicitudesDirectas.filter(
+            s => s.estado === 'COMPLETADO' || s.estado === 'CANCELADO'
+          );
+          const total = ofertasHistorico.length + solicitudesHistorico.length;
+          return total > 0 ? (
+            <span className="ml-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-xs font-medium">
+              {total}
+            </span>
+          ) : null;
+        })()}
+        </div>
+        {activeMainTab === 'historico' && (
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+        )}
+      </button>
+
+      {/* Tab: Solicitudes Recibidas */}
+      <Can do="recibir_solicitud_directa">
+        <button
+          onClick={() => setActiveMainTab('recibidas')}
+          className={`flex-1 min-w-[160px] px-6 py-4 font-semibold text-sm transition-colors relative ${
+            activeMainTab === 'recibidas'
+              ? 'text-blue-600 dark:text-blue-400'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            <span>Recibidas</span>
+            {solicitudesRecibidas.length > 0 && (
+              <span className="ml-1 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-medium">
+                {solicitudesRecibidas.length}
+              </span>
+            )}
+          </div>
+          {activeMainTab === 'recibidas' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+          )}
+        </button>
+      </Can>
+
+      {/* Tab: Ofertas Disponibles */}
+      <Can do="pedir_turno">
+        <button
+          onClick={() => setActiveMainTab('ofertas-disponibles')}
+          className={`flex-1 min-w-[160px] px-6 py-4 font-semibold text-sm transition-colors relative ${
+            activeMainTab === 'ofertas-disponibles'
+              ? 'text-blue-600 dark:text-blue-400'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <Gift className="h-4 w-4" />
+            <span>Disponibles</span>
+            {ofertasDisponibles.filter(o => o.ofertante?.id !== user?.id).length > 0 && (
+              <span className="ml-1 px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium">
+                {ofertasDisponibles.filter(o => o.ofertante?.id !== user?.id).length}
+              </span>
+            )}
+          </div>
+          {activeMainTab === 'ofertas-disponibles' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+          )}
+        </button>
+      </Can>
+    </div>
+  </div>
+
+  {/* Content Area */}
+  <div className="p-6">
+    {/* Tab Content: Mis Solicitudes Activas */}
+    {activeMainTab === 'mis-solicitudes' && (
+      <div className="space-y-6">
+        {misOfertas.length === 0 && solicitudesEnviadas.filter(s => ['SOLICITADO', 'APROBADO'].includes(s.estado)).length === 0 ? (
+          <div className="text-center py-12">
+            <Clock className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+            <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-2">
+              Sin Solicitudes Activas
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              No tienes solicitudes u ofertas activas en este momento
+            </p>
+          </div>
+        ) : (
+          <>
+                {/* MIS OFERTAS - Con mejor distinción entre Abierta e Intercambio */}
                 {misOfertas.length > 0 && (
                   <div>
                     <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
@@ -678,44 +809,109 @@ export default function CambiosTurnosPage() {
                           year: "numeric",
                         });
 
+                        const esIntercambio = oferta.modalidadBusqueda === 'INTERCAMBIO';
+                        const esAbierto = oferta.modalidadBusqueda === 'ABIERTO';
+
                         return (
                           <div
                             key={oferta.id}
-                            className="flex flex-col md:flex-row items-start md:items-center justify-between py-4 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 px-4 rounded-lg transition-colors gap-2"
+                            className="border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 px-4 py-4 rounded-lg transition-colors"
                           >
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3">
+                            {/* Header */}
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-center gap-3 flex-1">
                                 <div
-                                  className={`w-2 h-2 rounded-full flex-shrink-0 ${oferta.prioridad === "URGENTE" ? "bg-red-500" : "bg-blue-500"
-                                    }`}
+                                  className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                    oferta.prioridad === "URGENTE" ? "bg-red-500" : "bg-blue-500"
+                                  }`}
                                 ></div>
-                                <div>
-                                  <span className="text-gray-900 dark:text-gray-100 font-medium text-sm">
-                                    {oferta.tipo === "OFREZCO" ? "Ofrezco guardia" : "Busco guardia"}
-                                    {oferta.modalidadBusqueda && (
-                                      <span className="text-xs ml-2 text-gray-500">
-                                        ({oferta.modalidadBusqueda === "INTERCAMBIO" ? "Intercambio" : "Abierto"})
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-gray-900 dark:text-gray-100 font-medium text-sm">
+                                      {oferta.tipo === "OFREZCO" ? "Ofrezco guardia" : "Busco guardia"}
+                                    </span>
+                                    {/* Badge de modalidad */}
+                                    {esIntercambio && (
+                                      <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-medium rounded">
+                                        <RefreshCw className="h-3 w-3 inline mr-1" />
+                                        Intercambio
                                       </span>
                                     )}
-                                  </span>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    📅 {oferta.turnoOfrece?.fecha} • {user?.horario}
+                                    {esAbierto && (
+                                      <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs font-medium rounded">
+                                        <Gift className="h-3 w-3 inline mr-1" />
+                                        Abierto
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    Publicado: {fechaFormateada}
                                   </p>
                                 </div>
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-3">
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {fechaFormateada}
+                            {/* Detalles según tipo */}
+                            <div className="space-y-2 mb-3">
+                              {/* Turno que ofrece */}
+                              <div className="bg-blue-50 dark:bg-blue-900/10 rounded p-3 border border-blue-200 dark:border-blue-800">
+                                <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">
+                                  {oferta.tipo === "OFREZCO" ? "Turno disponible:" : "Turno que busco:"}
+                                </p>
+                                <p className="text-xs text-gray-900 dark:text-gray-100">
+                                  📅 {oferta.turnoOfrece?.fecha || 'N/A'} • 
+                                  🕐 {oferta.turnoOfrece?.horario || user?.horario || 'N/A'} • 
+                                  Grupo {oferta.turnoOfrece?.grupoTurno || user?.grupoTurno || 'N/A'}
+                                </p>
                               </div>
-                              <button
-                                onClick={() => handleCancelarOferta(oferta.id)}
-                                className="px-3 py-1 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
-                              >
-                                Cancelar
-                              </button>
+
+                              {/* Si es intercambio, mostrar lo que busca */}
+                              {esIntercambio && oferta.turnosBusca && Array.isArray(oferta.turnosBusca) && oferta.turnosBusca.length > 0 && (
+                                <div className="bg-green-50 dark:bg-green-900/10 rounded p-3 border border-green-200 dark:border-green-800">
+                                  <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-1">
+                                    {oferta.tipo === "OFREZCO" ? "A cambio de:" : "Ofrezco a cambio:"}
+                                  </p>
+                                  <div className="space-y-1">
+                                    {oferta.turnosBusca.map((turno: any, idx: number) => (
+                                      <p key={idx} className="text-xs text-gray-900 dark:text-gray-100">
+                                        📅 {turno.fecha} • 🕐 {turno.horario}
+                                      </p>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Si es abierto, mostrar fechas disponibles */}
+                              {esAbierto && oferta.fechasDisponibles && Array.isArray(oferta.fechasDisponibles) && oferta.fechasDisponibles.length > 0 && (
+                                <div className="bg-purple-50 dark:bg-purple-900/10 rounded p-3 border border-purple-200 dark:border-purple-800">
+                                  <p className="text-xs font-medium text-purple-600 dark:text-purple-400 mb-1">
+                                    Fechas disponibles:
+                                  </p>
+                                  <div className="space-y-1">
+                                    {oferta.fechasDisponibles.map((fecha: any, idx: number) => (
+                                      <p key={idx} className="text-xs text-gray-900 dark:text-gray-100">
+                                        📅 {fecha.fecha} • 🕐 {fecha.horario}
+                                      </p>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
+
+                            {/* Descripción */}
+                            {oferta.descripcion && (
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 italic">
+                                "{oferta.descripcion}"
+                              </p>
+                            )}
+
+                            {/* Botón cancelar */}
+                            <button
+                              onClick={() => handleCancelarOferta(oferta.id)}
+                              className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+                            >
+                              ✗ Cancelar Oferta
+                            </button>
                           </div>
                         );
                       })}
@@ -723,594 +919,574 @@ export default function CambiosTurnosPage() {
                   </div>
                 )}
 
-                {/* MIS SOLICITUDES DIRECTAS */}
-                {solicitudesEnviadas.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                      Solicitudes Directas Enviadas
-                    </h3>
-                    <div className="space-y-3">
-                      {solicitudesEnviadas
-                        .filter(s => ['SOLICITADO', 'APROBADO'].includes(s.estado))
-                        .map((solicitud) => (
-                          <div
-                            key={solicitud.id}
-                            className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
-                          >
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="flex items-center gap-3">
-                                <div className={`w-2 h-2 rounded-full ${solicitud.prioridad === "URGENTE" ? "bg-red-500" : "bg-blue-500"}`}></div>
-                                <div>
-                                  <span className="text-gray-900 dark:text-gray-100 font-medium text-sm">
-                                    Enviada a: {solicitud.destinatario.nombre} {solicitud.destinatario.apellido}
-                                  </span>
-                                  {/* <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    {formatearFecha(solicitud.fechaSolicitud)}
-                                  </p> */}
-                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    {formatFechaHoraLocal(solicitud.fechaSolicitud)}
-                                  </p>
-
-                                </div>
-                              </div>
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${solicitud.estado === 'SOLICITADO'
-                                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
-                                : 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                                }`}>
-                                {solicitud.estado}
-                              </span>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                              <div className="bg-blue-50 dark:bg-blue-900/10 rounded p-3 border border-blue-200 dark:border-blue-800">
-                                <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">Ofrezco:</p>
-                                <p className="text-xs text-gray-900 dark:text-gray-100">
-                                  📅 {formatFechaLocal(solicitud.turnoSolicitante.fecha)}
-                                </p>
-                                <p className="text-xs text-gray-700 dark:text-gray-300">
-                                  🕐 {solicitud.turnoSolicitante.horario} - Grupo {solicitud.turnoSolicitante.grupoTurno}
-                                </p>
-                              </div>
-
-                              <div className="bg-green-50 dark:bg-green-900/10 rounded p-3 border border-green-200 dark:border-green-800">
-                                <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-1">Por su turno:</p>
-                                <p className="text-xs text-gray-900 dark:text-gray-100">
-                                  📅 {formatFechaLocal(solicitud.turnoDestinatario.fecha)}
-                                </p>
-                                <p className="text-xs text-gray-700 dark:text-gray-300">
-                                  🕐 {solicitud.turnoDestinatario.horario} - Grupo {solicitud.turnoDestinatario.grupoTurno}
-                                </p>
-                              </div>
-                            </div>
-
-                            <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 italic">
-                              Motivo: "{solicitud.motivo}"
-                            </p>
-
-                            {/* Botones de acción - Solo si está en estado SOLICITADO */}
-                            {solicitud.estado === 'SOLICITADO' && (
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => {
-
-                                    // Cargar datos de la solicitud en el formulario
-                                    setSolicitudDirectaForm({
-                                      solicitanteId: user?.id || '',
-                                      destinatarioId: solicitud.destinatario.id,
-                                      fechaSolicitante: solicitud.turnoSolicitante.fecha,
-                                      horarioSolicitante: solicitud.turnoSolicitante.horario,
-                                      grupoSolicitante: solicitud.turnoSolicitante.grupoTurno,
-                                      fechaDestinatario: solicitud.turnoDestinatario.fecha,
-                                      horarioDestinatario: solicitud.turnoDestinatario.horario,
-                                      grupoDestinatario: solicitud.turnoDestinatario.grupoTurno,
-                                      motivo: solicitud.motivo,
-                                      prioridad: solicitud.prioridad,
-                                    });
-                                    // Guardar el ID de la solicitud que se está editando
-                                    setSolicitudEditandoId(solicitud.id);
-                                    // Abrir modal
-                                    openModal('solicitud-directa');
-                                  }}
-                                  className="flex-1 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-500 dark:bg-blue-900/30 hover:bg-blue-800 dark:hover:bg-blue-900/50 rounded-lg transition flex items-center justify-center gap-1"
-                                >
-                                  <Pencil className="h-3 w-3" />
-                                  Editar
-                                </button>
-                                <button
-                                  onClick={() => handleRechazarSolicitud(solicitud.id)}
-                                  className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition flex items-center justify-center gap-1"
-                                >
-                                  <X className="h-3 w-3" />
-                                  Cancelar
-                                </button>
-                              </div>
-                            )}
-
-                            {/* Mensaje de solicitud aprobada */}
-                            {solicitud.estado === 'APROBADO' && (
-                              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded p-2">
-                                <p className="text-xs text-green-700 dark:text-green-300 flex items-center gap-1">
-                                  <CheckCircle className="h-3 w-3" />
-                                  Solicitud aceptada. Pendiente de autorización del jefe.
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-              </>
-
-            </div>
-          </div>
-        )}
-
-        {/* Content Area - Histórico */}
-        {solicitudesTab === 'historico' && (
-          <div className="p-6" role="tabpanel">
-            {(() => {
-              // Combinar ofertas completadas/canceladas
-              const ofertasHistorico = ofertas.filter(
-                o => (o.ofertante?.id === user?.id || o.tomador?.id === user?.id) &&
-                  (o.estado === 'COMPLETADO' || o.estado === 'CANCELADO')
-              );
-
-              // Combinar solicitudes directas completadas/canceladas
-              const solicitudesHistorico = solicitudesDirectas.filter(
-                s => s.estado === 'COMPLETADO' || s.estado === 'CANCELADO'
-              );
-
-              const totalHistorico = ofertasHistorico.length + solicitudesHistorico.length;
-
-              if (totalHistorico === 0) {
-                return (
-                  <div className="text-center py-12">
-                    <Clock className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                    <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-2">
-                      Sin Historial
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Aún no tienes cambios de turno completados o cancelados
-                    </p>
-                  </div>
-                );
-              }
-
-              return (
-                <div className="space-y-3 max-w-4xl mx-auto">
-                  <div className="mb-4">
-                    <h3 className="text-base font-medium text-gray-900 dark:text-gray-100">
-                      Historial de Cambios
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {totalHistorico} {totalHistorico === 1 ? 'cambio realizado' : 'cambios realizados'}
-                    </p>
-                  </div>
-
-                  {/* Ofertas completadas/canceladas */}
-                  {ofertasHistorico
-                    .sort((a, b) => new Date(b.publicado).getTime() - new Date(a.publicado).getTime())
-                    .map((oferta) => (
-                      <div
-                        key={oferta.id}
-                        className="flex flex-col md:flex-row items-start md:items-center justify-between py-4 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 px-4 rounded-lg transition-colors gap-2"
-                      >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-1">
-                            <div
-                              className={`w-2 h-2 rounded-full flex-shrink-0 ${oferta.estado === 'COMPLETADO' ? 'bg-green-500' : 'bg-gray-400'
-                                }`}
-                              title={oferta.estado === 'COMPLETADO' ? 'Completado' : 'Cancelado'}
-                            ></div>
-                            <span className="text-gray-900 dark:text-gray-100 font-medium text-sm">
-                              {oferta.descripcion === 'INTERCAMBIO' ? 'Intercambio' : 'Oferta abierta'}
-                              {' con '}
-                              {oferta.ofertante.nombre} {oferta.ofertante.apellido}
-                            </span>
-                            <span
-                              className={`text-xs px-2 py-0.5 rounded ${oferta.estado === 'COMPLETADO'
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                                : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
-                                }`}
-                            >
-                              {oferta.estado === 'COMPLETADO' ? 'Completado' : 'Cancelado'}
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 ml-5">
-                            {oferta.descripcion === 'INTERCAMBIO' && oferta.turnoOfrece && oferta.turnoBusca ? (
-                              <>
-                                Turno del {formatDate(oferta.turnoOfrece.fecha)} ({oferta.turnoOfrece.horario})
-                                {' '}por turno del {formatDate(oferta.turnoBusca.fecha)} ({oferta.turnoBusca.horario})
-                              </>
-                            ) : oferta.rangoFechas ? (
-                              <>
-                                Disponible desde {formatDate(oferta.rangoFechas.desde)}
-                                {' '}hasta {formatDate(oferta.rangoFechas.hasta)}
-                              </>
-                            ) : (
-                              'Información no disponible'
-                            )}
-                          </p>
-                        </div>
-                        <time
-                          className="text-xs text-gray-500 dark:text-gray-400 md:ml-5"
-                          dateTime={oferta.publicado}
-                        >
-                          {oferta.publicado ? formatTimeAgo(oferta.publicado) : 'Fecha no disponible'}
-                        </time>
-                      </div>
-                    ))}
-
-                  {/* Solicitudes directas completadas/canceladas */}
-                  {solicitudesHistorico
-                    .sort((a, b) => (b.fechaSolicitud ? new Date(b.fechaSolicitud).getTime() : 0) - (a.fechaSolicitud ? new Date(a.fechaSolicitud).getTime() : 0))
+            {/* MIS SOLICITUDES DIRECTAS */}
+            {solicitudesEnviadas.filter(s => ['SOLICITADO', 'APROBADO'].includes(s.estado)).length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                  Solicitudes Directas Enviadas
+                </h3>
+                <div className="space-y-3">
+                  {solicitudesEnviadas
+                    .filter(s => ['SOLICITADO', 'APROBADO'].includes(s.estado))
                     .map((solicitud) => (
                       <div
                         key={solicitud.id}
-                        className="flex flex-col md:flex-row items-start md:items-center justify-between py-4 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 px-4 rounded-lg transition-colors gap-2"
+                        className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
                       >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-1">
-                            <div
-                              className={`w-2 h-2 rounded-full flex-shrink-0 ${solicitud.estado === 'COMPLETADO' ? 'bg-green-500' : 'bg-gray-400'
-                                }`}
-                              title={solicitud.estado === 'COMPLETADO' ? 'Completado' : 'Cancelado'}
-                            ></div>
-                            <span className="text-gray-900 dark:text-gray-100 font-medium text-sm">
-                              Solicitud directa con {solicitud.destinatario.nombre} {solicitud.destinatario.apellido}
-                            </span>
-                            <span
-                              className={`text-xs px-2 py-0.5 rounded ${solicitud.estado === 'COMPLETADO'
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                                : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
-                                }`}
-                            >
-                              {solicitud.estado === 'COMPLETADO' ? 'Completado' : 'Cancelado'}
-                            </span>
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-2 h-2 rounded-full ${solicitud.prioridad === "URGENTE" ? "bg-red-500" : "bg-blue-500"}`}></div>
+                            <div>
+                              <span className="text-gray-900 dark:text-gray-100 font-medium text-sm">
+                                Enviada a: {solicitud.destinatario.nombre} {solicitud.destinatario.apellido}
+                              </span>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                {formatFechaHoraLocal(solicitud.fechaSolicitud)}
+                              </p>
+                            </div>
                           </div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 ml-5">
-                            Tu turno: {solicitud.turnoSolicitante ? (
-                              <>
-                                {formatDate(solicitud.turnoSolicitante.fecha)} ({solicitud.turnoSolicitante.horario})
-                              </>
-                            ) : (
-                              'Información no disponible'
-                            )}
-                            {' - '}
-                            Turno recibido: {solicitud.turnoDestinatario ? (
-                              <>
-                                {formatDate(solicitud.turnoDestinatario.fecha)} ({solicitud.turnoDestinatario.horario})
-                              </>
-                            ) : (
-                              'Información no disponible'
-                            )}
-                          </p>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            solicitud.estado === 'SOLICITADO' as EstadoSolicitud
+                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+                              : 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                          }`}>
+                            {solicitud.estado}
+                          </span>
                         </div>
-                        <time
-                          className="text-xs text-gray-500 dark:text-gray-400 md:ml-5"
-                          dateTime={solicitud.fechaSolicitud}
-                        >
-                          {solicitud.fechaSolicitud ? formatTimeAgo(solicitud.fechaSolicitud) : 'Fecha no disponible'}
-                        </time>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                          <div className="bg-blue-50 dark:bg-blue-900/10 rounded p-3 border border-blue-200 dark:border-blue-800">
+                            <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">Ofrezco:</p>
+                            <p className="text-xs text-gray-900 dark:text-gray-100">
+                              📅 {formatFechaLocal(solicitud.turnoSolicitante.fecha)}
+                            </p>
+                            <p className="text-xs text-gray-700 dark:text-gray-300">
+                              🕐 {solicitud.turnoSolicitante.horario} - Grupo {solicitud.turnoSolicitante.grupoTurno}
+                            </p>
+                          </div>
+
+                          <div className="bg-green-50 dark:bg-green-900/10 rounded p-3 border border-green-200 dark:border-green-800">
+                            <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-1">Por su turno:</p>
+                            <p className="text-xs text-gray-900 dark:text-gray-100">
+                              📅 {formatFechaLocal(solicitud.turnoDestinatario.fecha)}
+                            </p>
+                            <p className="text-xs text-gray-700 dark:text-gray-300">
+                              🕐 {solicitud.turnoDestinatario.horario} - Grupo {solicitud.turnoDestinatario.grupoTurno}
+                            </p>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 italic">
+                          Motivo: "{solicitud.motivo}"
+                        </p>
+
+                        {solicitud.estado === 'SOLICITADO' as any && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setSolicitudDirectaForm({
+                                  solicitanteId: user?.id || '',
+                                  destinatarioId: solicitud.destinatario.id,
+                                  fechaSolicitante: solicitud.turnoSolicitante.fecha,
+                                  horarioSolicitante: solicitud.turnoSolicitante.horario,
+                                  grupoSolicitante: solicitud.turnoSolicitante.grupoTurno,
+                                  fechaDestinatario: solicitud.turnoDestinatario.fecha,
+                                  horarioDestinatario: solicitud.turnoDestinatario.horario,
+                                  grupoDestinatario: solicitud.turnoDestinatario.grupoTurno,
+                                  motivo: solicitud.motivo,
+                                  prioridad: solicitud.prioridad,
+                                });
+                                setSolicitudEditandoId(solicitud.id);
+                                openModal('solicitud-directa');
+                              }}
+                              className="flex-1 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg transition flex items-center justify-center gap-1"
+                            >
+                              <Pencil className="h-3 w-3" />
+                              Editar
+                            </button>
+                            <button
+                              onClick={() => handleRechazarSolicitud(solicitud.id)}
+                              className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition flex items-center justify-center gap-1"
+                            >
+                              <X className="h-3 w-3" />
+                              Cancelar
+                            </button>
+                          </div>
+                        )}
+
+                        {solicitud.estado === 'APROBADO' as any && (
+                          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded p-2">
+                            <p className="text-xs text-green-700 dark:text-green-300 flex items-center gap-1">
+                              <CheckCircle className="h-3 w-3" />
+                              Solicitud aceptada. Pendiente de autorización del jefe.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     ))}
                 </div>
-              );
-            })()}
-          </div>
+              </div>
+            )}
+          </>
         )}
       </div>
+    )}
 
-      {/* SOLICITUDES RECIBIDAS */}
+    {/* Tab Content: Histórico */}
+    {activeMainTab === 'historico' && (
+      <div>
+        {(() => {
+          // Filtrar ofertas para el histórico
+          const ofertasHistorico = ofertas.filter(
+            o => (o.ofertante?.id === user?.id || o.tomador?.id === user?.id) &&
+              (o.estado === 'COMPLETADO' || o.estado === 'CANCELADO' || o.estado === 'SOLICITADO')
+              
+          );
+
+          // Filtrar solicitudes para el histórico
+          const solicitudesHistorico = solicitudesDirectas.filter(
+            s => (s.solicitante.id === user?.id || s.destinatario.id === user?.id) &&
+              (s.estado === 'COMPLETADO' || s.estado === 'CANCELADO')
+          );
+
+          const totalHistorico = ofertasHistorico.length + solicitudesHistorico.length;
+
+          console.log('📊 Histórico:', {
+            ofertas: ofertasHistorico,
+            solicitudes: solicitudesHistorico,
+            total: totalHistorico
+          });
+
+          if (totalHistorico === 0) {
+            return (
+              <div className="text-center py-12">
+                <Clock className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-2">
+                  Sin Historial
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Aún no tienes cambios de turno completados o cancelados
+                </p>
+              </div>
+            );
+          }
+
+          return (
+            <div className="space-y-3 max-w-4xl mx-auto">
+              <div className="mb-4">
+                <h3 className="text-base font-medium text-gray-900 dark:text-gray-100">
+                  Historial de Cambios
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {totalHistorico} {totalHistorico === 1 ? 'cambio realizado' : 'cambios realizados'}
+                </p>
+              </div>
+
+              {/* OFERTAS en histórico */}
+              {ofertasHistorico
+                .sort((a, b) => new Date(b.publicado).getTime() - new Date(a.publicado).getTime())
+                .map((oferta) => {
+                  const esIntercambio = oferta.modalidadBusqueda === 'INTERCAMBIO';
+                  
+                  // Determinar quién es quién en la transacción
+                  const soyOfertante = oferta.ofertante?.id === user?.id;
+                  const nombreOtraParte = soyOfertante 
+                    ? `${oferta.tomador?.nombre || 'Usuario'} ${oferta.tomador?.apellido || ''}` 
+                    : `${oferta.ofertante?.nombre} ${oferta.ofertante?.apellido}`;
+
+                  return (
+                    <div
+                      key={oferta.id}
+                      className="border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 px-4 py-4 rounded-lg transition-colors"
+                    >
+                      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2 mb-3">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div
+                            className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                              oferta.estado === 'COMPLETADO' 
+                                ? 'bg-green-500' 
+                                : oferta.estado === 'SOLICITADO'
+                                ? 'bg-yellow-500'
+                                : 'bg-gray-400'
+                            }`}
+                          ></div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-gray-900 dark:text-gray-100 font-medium text-sm">
+                                {esIntercambio ? 'Intercambio' : 'Oferta abierta'} con {nombreOtraParte}
+                              </span>
+                              <span
+                                className={`text-xs px-2 py-0.5 rounded ${
+                                  oferta.estado === 'COMPLETADO'
+                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                    : oferta.estado === 'SOLICITADO'
+                                    ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
+                                    : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
+                                }`}
+                              >
+                                {oferta.estado === 'COMPLETADO' 
+                                  ? 'Completado' 
+                                  : oferta.estado === 'SOLICITADO'
+                                  ? 'Pendiente autorización'
+                                  : 'Cancelado'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              {esIntercambio && oferta.turnoOfrece && oferta.turnosBusca && Array.isArray(oferta.turnosBusca) && oferta.turnosBusca.length > 0 ? (
+                                <>
+                                  Turno del {formatDate(oferta.turnoOfrece.fecha)} ({oferta.turnoOfrece.horario})
+                                  {' '}por {oferta.turnosBusca.length === 1 ? 'turno del' : 'turnos:'}{' '}
+                                  {oferta.turnosBusca.map((t: any, i: number) => (
+                                    <span key={i}>
+                                      {i > 0 && ', '}
+                                      {formatDate(t.fecha)} ({t.horario})
+                                    </span>
+                                  ))}
+                                </>
+                              ) : oferta.fechasDisponibles && Array.isArray(oferta.fechasDisponibles) && oferta.fechasDisponibles.length > 0 ? (
+                                <>
+                                  Fechas disponibles: {oferta.fechasDisponibles.map((f: any, i: number) => (
+                                    <span key={i}>
+                                      {i > 0 && ', '}
+                                      {formatDate(f.fecha)} ({f.horario})
+                                    </span>
+                                  ))}
+                                </>
+                              ) : (
+                                'Información no disponible'
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        <time className="text-xs text-gray-500 dark:text-gray-400 md:ml-5">
+                          {formatTimeAgo(oferta.publicado)}
+                        </time>
+                      </div>
+
+                      {/* Descripción */}
+                      {oferta.descripcion && (
+                        <p className="text-xs text-gray-600 dark:text-gray-400 ml-5 italic">
+                          "{oferta.descripcion}"
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+
+              {/* SOLICITUDES DIRECTAS en histórico */}
+              {solicitudesHistorico
+                .sort((a, b) => new Date(b.fechaSolicitud).getTime() - new Date(a.fechaSolicitud).getTime())
+                .map((solicitud) => {
+                  const soyElSolicitante = solicitud.solicitante.id === user?.id;
+                  const nombreOtraParte = soyElSolicitante
+                    ? `${solicitud.destinatario.nombre} ${solicitud.destinatario.apellido}`
+                    : `${solicitud.solicitante.nombre} ${solicitud.solicitante.apellido}`;
+
+                  return (
+                    <div
+                      key={solicitud.id}
+                      className="border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 px-4 py-4 rounded-lg transition-colors"
+                    >
+                      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div
+                            className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                              solicitud.estado === 'COMPLETADO' ? 'bg-green-500' : 'bg-gray-400'
+                            }`}
+                          ></div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-gray-900 dark:text-gray-100 font-medium text-sm">
+                                Solicitud directa con {nombreOtraParte}
+                              </span>
+                              <span
+                                className={`text-xs px-2 py-0.5 rounded ${
+                                  solicitud.estado === 'COMPLETADO'
+                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                    : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
+                                }`}
+                              >
+                                {solicitud.estado === 'COMPLETADO' ? 'Completado' : 'Cancelado'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              Tu turno: {formatDate(solicitud.turnoSolicitante.fecha)} ({solicitud.turnoSolicitante.horario})
+                              {' - '}
+                              Turno recibido: {formatDate(solicitud.turnoDestinatario.fecha)} ({solicitud.turnoDestinatario.horario})
+                            </p>
+                          </div>
+                        </div>
+                        <time className="text-xs text-gray-500 dark:text-gray-400 md:ml-5">
+                          {formatTimeAgo(solicitud.fechaSolicitud)}
+                        </time>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          );
+        })()}
+      </div>
+    )}
+
+    {/* Tab Content: Solicitudes Recibidas */}
+    {activeMainTab === 'recibidas' && (
       <Can do="recibir_solicitud_directa">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-400 dark:border-gray-700">
-          <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+        <div>
+          <div className="mb-4">
+            <h3 className="text-base font-medium text-gray-900 dark:text-gray-100">
               Solicitudes Recibidas
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Cambios que otros compañeros te han solicitado
             </p>
           </div>
 
-          <div className="p-6">
-            {solicitudesRecibidas.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-                No tienes solicitudes pendientes
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {solicitudesRecibidas.map(solicitud => (
-                  <div key={solicitud.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <p className="font-semibold text-gray-900 dark:text-gray-100">
-                          {solicitud.solicitante.nombre} {solicitud.solicitante.apellido}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {formatearFecha(solicitud.fechaSolicitud)}
-                        </p>
-                      </div>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${solicitud.prioridad === 'URGENTE'
-                        ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-                        }`}>
-                        {solicitud.prioridad}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                      <div className="bg-blue-50 dark:bg-blue-900/10 rounded p-3 border border-blue-200 dark:border-blue-800">
-                        <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">Te ofrece:</p>
-                        <p className="text-xs text-gray-900 dark:text-gray-100">
-                          📅 {new Date(solicitud.turnoSolicitante.fecha).toLocaleDateString('es-AR')}
-                        </p>
-                        <p className="text-xs text-gray-700 dark:text-gray-300">
-                          🕐 {solicitud.turnoSolicitante.horario} - Grupo {solicitud.turnoSolicitante.grupoTurno}
-                        </p>
-                      </div>
-
-                      <div className="bg-green-50 dark:bg-green-900/10 rounded p-3 border border-green-200 dark:border-green-800">
-                        <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-1">Por tu turno:</p>
-                        <p className="text-xs text-gray-900 dark:text-gray-100">
-                          📅 {new Date(solicitud.turnoDestinatario.fecha).toLocaleDateString('es-AR')}
-                        </p>
-                        <p className="text-xs text-gray-700 dark:text-gray-300">
-                          🕐 {solicitud.turnoDestinatario.horario} - Grupo {solicitud.turnoDestinatario.grupoTurno}
-                        </p>
-                      </div>
-                    </div>
-
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 italic">
-                      Motivo: "{solicitud.motivo}"
-                    </p>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleAceptarSolicitud(solicitud.id)}
-                        className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
-                      >
-                        ✓ Aceptar
-                      </button>
-                      <button
-                        onClick={() => handleRechazarSolicitud(solicitud.id)}
-                        className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
-                      >
-                        ✗ Rechazar
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </Can>
-      {/* MIS OFERTAS PUBLICADAS */}
-
-      {/* MIS OFERTAS PUBLICADAS */}
-      <Can do="ofertar_turno">
-        {misOfertas.length > 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-400 dark:border-gray-700">
-            <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                Mis Ofertas Publicadas
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {misOfertas.length} {misOfertas.length === 1 ? 'oferta activa' : 'ofertas activas'}
+          {solicitudesRecibidas.length === 0 ? (
+            <div className="text-center py-12">
+              <MessageSquare className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+              <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-2">
+                Sin Solicitudes Pendientes
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                No tienes solicitudes pendientes en este momento
               </p>
             </div>
-
-            <div className="p-6 space-y-4">
-              {misOfertas.map(oferta => (
-                <div key={oferta.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-sm transition-shadow">
+          ) : (
+            <div className="space-y-4">
+              {solicitudesRecibidas.map(solicitud => (
+                <div key={solicitud.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <span className="text-gray-900 dark:text-gray-100 font-medium">
-                        {oferta.descripcion === "INTERCAMBIO" ? "Intercambio de turno" : "Oferta abierta"}
-                      </span>
+                      <p className="font-semibold text-gray-900 dark:text-gray-100">
+                        {solicitud.solicitante.nombre} {solicitud.solicitante.apellido}
+                      </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Publicado: {formatearFecha(oferta.publicado)}
+                        {formatearFecha(solicitud.fechaSolicitud)}
                       </p>
                     </div>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${oferta.prioridad === 'URGENTE'
-                      ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                      : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-                      }`}>
-                      {oferta.prioridad}
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      solicitud.prioridad === 'URGENTE'
+                        ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                    }`}>
+                      {solicitud.prioridad}
                     </span>
                   </div>
 
-                  <div className="bg-blue-50 dark:bg-blue-900/10 rounded p-3 border border-blue-200 dark:border-blue-800 mb-3">
-                    <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">
-                      Turno ofrecido:
-                    </p>
-                    <p className="text-xs text-gray-900 dark:text-gray-100">
-                      📅 {oferta.turnoOfrecido?.fecha} • {oferta.turnoOfrecido?.horario}
-                      {oferta.turnoOfrecido?.grupoTurno && ` • Grupo ${oferta.turnoOfrecido.grupoTurno}`}
-                    </p>
-                  </div>
-
-                  {oferta.descripcion === 'INTERCAMBIO' && oferta.turnoSolicitado && (
-                    <div className="bg-green-50 dark:bg-green-900/10 rounded p-3 border border-green-200 dark:border-green-800 mb-3">
-                      <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-1">
-                        A cambio de:
-                      </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                    <div className="bg-blue-50 dark:bg-blue-900/10 rounded p-3 border border-blue-200 dark:border-blue-800">
+                      <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">Te ofrece:</p>
                       <p className="text-xs text-gray-900 dark:text-gray-100">
-                        📅 {oferta.turnoSolicitado.fecha} • {oferta.turnoSolicitado.horario}
+                        📅 {new Date(solicitud.turnoSolicitante.fecha).toLocaleDateString('es-AR')}
+                      </p>
+                      <p className="text-xs text-gray-700 dark:text-gray-300">
+                        🕐 {solicitud.turnoSolicitante.horario} - Grupo {solicitud.turnoSolicitante.grupoTurno}
                       </p>
                     </div>
-                  )}
 
-                  {oferta.motivo && (
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 italic">
-                      Motivo: "{oferta.motivo}"
-                    </p>
-                  )}
+                    <div className="bg-green-50 dark:bg-green-900/10 rounded p-3 border border-green-200 dark:border-green-800">
+                      <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-1">Por tu turno:</p>
+                      <p className="text-xs text-gray-900 dark:text-gray-100">
+                        📅 {new Date(solicitud.turnoDestinatario.fecha).toLocaleDateString('es-AR')}
+                      </p>
+                      <p className="text-xs text-gray-700 dark:text-gray-300">
+                        🕐 {solicitud.turnoDestinatario.horario} - Grupo {solicitud.turnoDestinatario.grupoTurno}
+                      </p>
+                    </div>
+                  </div>
 
-                  {/* ✅ Solo botón CANCELAR para mis propias ofertas */}
-                  {oferta.ofertante?.id === user?.id && (
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 italic">
+                    Motivo: "{solicitud.motivo}"
+                  </p>
+
+                  <div className="flex gap-2">
                     <button
-                      onClick={() => handleCancelarOferta(oferta.id)}
-                      className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+                      onClick={() => handleAceptarSolicitud(solicitud.id)}
+                      className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
                     >
-                      ✗ Cancelar Oferta
+                      ✓ Aceptar
                     </button>
-                  )}
+                    <button
+                      onClick={() => handleRechazarSolicitud(solicitud.id)}
+                      className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      ✗ Rechazar
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </Can>
+    )}
 
-
-      {/* OFERTAS DISPONIBLES DE OTROS USUARIOS */}
+    {/* Tab Content: Ofertas Disponibles */}
+    {activeMainTab === 'ofertas-disponibles' && (
       <Can do="pedir_turno">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-400 dark:border-gray-700">
-          <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                  Ofertas Disponibles
-                </h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  {ofertasDisponibles.filter(o => o.ofertante?.id !== user?.id).length} {ofertasDisponibles.filter(o => o.ofertante?.id !== user?.id).length === 1 ? 'oferta disponible' : 'ofertas disponibles'}
-                </p>
-              </div>
-              <Gift className="h-8 w-8 text-gray-400" />
-            </div>
+        <div>
+          <div className="mb-4">
+            <h3 className="text-base font-medium text-gray-900 dark:text-gray-100">
+              Ofertas Disponibles
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {ofertasDisponibles.filter(o => o.ofertante?.id !== user?.id).length}{' '}
+              {ofertasDisponibles.filter(o => o.ofertante?.id !== user?.id).length === 1
+                ? 'oferta disponible'
+                : 'ofertas disponibles'}
+            </p>
           </div>
 
-          <div className="p-6">
-            {ofertasDisponibles.filter(o => o.ofertante?.id !== user?.id).length === 0 ? (
-              <div className="text-center py-12">
-                <Gift className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-2">
-                  No hay ofertas disponibles
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Cuando alguien publique una oferta, aparecerá aquí
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {ofertasDisponibles
-                  .filter(oferta => oferta.ofertante?.id !== user?.id) // ✅ solo las de otros
-                  .map(oferta => (
-                    <div key={oferta.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <p className="font-semibold text-gray-900 dark:text-gray-100">
-                            {oferta.ofertante?.nombre} {oferta.ofertante?.apellido}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            Publicado: {formatearFecha(oferta.publicado)}
-                          </p>
-                        </div>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${oferta.prioridad === 'URGENTE'
+          {ofertasDisponibles.filter(o => o.ofertante?.id !== user?.id).length === 0 ? (
+            <div className="text-center py-12">
+              <Gift className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+              <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-2">
+                No hay ofertas disponibles
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Cuando alguien publique una oferta, aparecerá aquí
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {ofertasDisponibles
+                .filter(oferta => oferta.ofertante?.id !== user?.id)
+                .map(oferta => (
+                  <div key={oferta.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <p className="font-semibold text-gray-900 dark:text-gray-100">
+                          {oferta.ofertante?.nombre} {oferta.ofertante?.apellido}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          Publicado: {formatearFecha(oferta.publicado)}
+                        </p>
+                      </div>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        oferta.prioridad === 'URGENTE'
                           ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
                           : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-                          }`}>
-                          {oferta.prioridad}
-                        </span>
-                      </div>
+                      }`}>
+                        {oferta.prioridad}
+                      </span>
+                    </div>
 
-                      {/* Detalles del turno */}
-                      <div className="bg-blue-50 dark:bg-blue-900/10 rounded p-4 border border-blue-200 dark:border-blue-800 mb-3">
-                        <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-2">
-                          Turno disponible:
-                        </p>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="bg-blue-50 dark:bg-blue-900/10 rounded p-4 border border-blue-200 dark:border-blue-800 mb-3">
+                      <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-2">
+                        Turno disponible:
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-gray-500 dark:text-gray-400">Fecha:</span>
+                          <p className="text-gray-900 dark:text-gray-100 font-medium">
+                            {oferta.turnoOfrece?.fecha}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 dark:text-gray-400">Horario:</span>
+                          <p className="text-gray-900 dark:text-gray-100 font-medium">
+                            {oferta.turnoOfrece?.horario}
+                          </p>
+                        </div>
+                        {oferta.turnoOfrece?.grupoTurno && (
                           <div>
-                            <span className="text-gray-500 dark:text-gray-400">Fecha:</span>
+                            <span className="text-gray-500 dark:text-gray-400">Grupo:</span>
                             <p className="text-gray-900 dark:text-gray-100 font-medium">
-                              {oferta.turnoOfrecido?.fecha}
+                              {oferta.turnoOfrece.grupoTurno}
                             </p>
                           </div>
-                          <div>
-                            <span className="text-gray-500 dark:text-gray-400">Horario:</span>
-                            <p className="text-gray-900 dark:text-gray-100 font-medium">
-                              {oferta.turnoOfrecido?.horario}
-                            </p>
-                          </div>
-                          {oferta.turnoOfrecido?.grupoTurno && (
-                            <div>
-                              <span className="text-gray-500 dark:text-gray-400">Grupo:</span>
-                              <p className="text-gray-900 dark:text-gray-100 font-medium">
-                                {oferta.turnoOfrecido.grupoTurno}
-                              </p>
-                            </div>
-                          )}
-                          <div>
-                            <span className="text-gray-500 dark:text-gray-400">Tipo:</span>
-                            <p className="text-gray-900 dark:text-gray-100 font-medium">
-                              {oferta.descripcion === 'INTERCAMBIO' ? 'Intercambio' : 'Oferta abierta'}
-                            </p>
-                          </div>
+                        )}
+                        <div>
+                          <span className="text-gray-500 dark:text-gray-400">Tipo:</span>
+                          <p className="text-gray-900 dark:text-gray-100 font-medium">
+                            {oferta.modalidadBusqueda  === 'INTERCAMBIO' ? 'Intercambio' : 'Oferta abierta'}
+                          </p>
                         </div>
                       </div>
+                    </div>
 
-                      {/* Si es intercambio, mostrar el turno solicitado */}
-                      {oferta.descripcion === 'INTERCAMBIO' && oferta.turnoSolicitado && (
+                    {oferta.modalidadBusqueda === 'INTERCAMBIO' && oferta.turnosBusca && Array.isArray(oferta.turnosBusca) && oferta.turnosBusca.length > 0 && (
                         <div className="bg-green-50 dark:bg-green-900/10 rounded p-4 border border-green-200 dark:border-green-800 mb-3">
                           <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-2">
                             A cambio de:
                           </p>
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            <div>
-                              <span className="text-gray-500 dark:text-gray-400">Fecha:</span>
-                              <p className="text-gray-900 dark:text-gray-100 font-medium">
-                                {oferta.turnoSolicitado.fecha}
-                              </p>
-                            </div>
-                            <div>
-                              <span className="text-gray-500 dark:text-gray-400">Horario:</span>
-                              <p className="text-gray-900 dark:text-gray-100 font-medium">
-                                {oferta.turnoSolicitado.horario}
-                              </p>
-                            </div>
+                          <div className="space-y-2">
+                            {oferta.turnosBusca.map((turno: any, idx: number) => (
+                              <div key={idx} className="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                  <span className="text-gray-500 dark:text-gray-400">Fecha:</span>
+                                  <p className="text-gray-900 dark:text-gray-100 font-medium">
+                                    {turno.fecha}
+                                  </p>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 dark:text-gray-400">Horario:</span>
+                                  <p className="text-gray-900 dark:text-gray-100 font-medium">
+                                    {turno.horario}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       )}
 
-                      {oferta.motivo && (
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 italic">
-                          Motivo: "{oferta.motivo}"
-                        </p>
-                      )}
-
-                      {/* ✅ Botones TOMAR e IGNORAR solo para ofertas de otros */}
-                      {oferta.ofertante?.id !== user?.id && (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleTomarOferta(oferta.id)}
-                            className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
-                          >
-                            ✓ Tomar Oferta
-                          </button>
-                          <button
-                            onClick={() => handleCancelarOferta(oferta.id)}
-                            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors"
-                          >
-                            Cancelar
-                          </button>
-
+                      {oferta.modalidadBusqueda === 'ABIERTO' && oferta.fechasDisponibles && Array.isArray(oferta.fechasDisponibles) && oferta.fechasDisponibles.length > 0 && (
+                        <div className="bg-purple-50 dark:bg-purple-900/10 rounded p-4 border border-purple-200 dark:border-purple-800 mb-3">
+                          <p className="text-xs font-medium text-purple-600 dark:text-purple-400 mb-2">
+                            Fechas disponibles:
+                          </p>
+                          <div className="space-y-2">
+                            {oferta.fechasDisponibles.map((fecha: any, idx: number) => (
+                              <div key={idx} className="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                  <span className="text-gray-500 dark:text-gray-400">Fecha:</span>
+                                  <p className="text-gray-900 dark:text-gray-100 font-medium">
+                                    {fecha.fecha}
+                                  </p>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500 dark:text-gray-400">Horario:</span>
+                                  <p className="text-gray-900 dark:text-gray-100 font-medium">
+                                    {fecha.horario}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
+
+                    {oferta.descripcion && (
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 italic">
+                        Motivo: "{oferta.descripcion}"
+                      </p>
+                    )}
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleTomarOferta(oferta.id)}
+                        className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+                      >
+                        ✓ Tomar Oferta
+                      </button>
+                      <button
+                        onClick={() => handleCancelarOferta(oferta.id)}
+                        className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors"
+                      >
+                        Ignorar
+                      </button>
                     </div>
-                  ))}
-              </div>
-            )}
-          </div>
+                  </div>
+                ))}
+            </div>
+          )}
         </div>
       </Can>
-
-
-
-      {/* Modales - Nueva Oferta y Solicitud Directa sin cambios */}
-      {/* ... mantén los modales tal como están ... */}
+    )}
+  </div>
+</div>
       {/* Modal Nueva Oferta */}
       {/* TODO: Implementar modal nuevo desde  */}
       {isModalOpen && modalType === 'nueva-oferta' && (
@@ -1518,6 +1694,10 @@ export default function CambiosTurnosPage() {
                           onChange={(e) => {
                             const fecha = e.target.value;
                             setNuevaOfertaForm(prev => ({ ...prev, fechaOfrece: fecha }));
+
+                            if (formError) {
+                              setFormError('');
+                            }
 
                             if (fecha && user) {
                               const fechaObj = new Date(fecha + 'T00:00:00');

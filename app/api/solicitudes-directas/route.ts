@@ -13,90 +13,79 @@ const SECRET_KEY = new TextEncoder().encode(
 // GET - Obtener solicitudes directas
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const estado = searchParams.get('estado');
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth-token')?.value;
 
-    let query;
-    if (estado) {
-      query = sql`
-        SELECT 
-          sd.id,
-          sd.estado,
-          sd.motivo,
-          sd.prioridad,
-          sd.fecha_solicitud as "fechaSolicitud",
-          json_build_object(
-            'id', us.id,
-            'nombre', us.nombre,
-            'apellido', us.apellido,
-            'horario', us.horario
-          ) as solicitante,
-          json_build_object(
-            'id', ud.id,
-            'nombre', ud.nombre,
-            'apellido', ud.apellido,
-            'horario', ud.horario
-          ) as destinatario,
-          json_build_object(
-            'fecha', sd.fecha_solicitante,
-            'horario', us.horario,
-            'grupoTurno', sd.grupo_solicitante
-          ) as "turnoSolicitante",
-          json_build_object(
-            'fecha', sd.fecha_destinatario,
-            'horario', ud.horario,
-            'grupoTurno', sd.grupo_destinatario
-          ) as "turnoDestinatario"
-        FROM solicitudes_directas sd
-        JOIN users us ON sd.solicitante_id = us.id
-        JOIN users ud ON sd.destinatario_id = ud.id
-        WHERE sd.estado = ${estado}
-        ORDER BY sd.fecha_solicitud DESC;
-      `;
-    } else {
-      query = sql`
-        SELECT 
-          sd.id,
-          sd.estado,
-          sd.motivo,
-          sd.prioridad,
-          sd.fecha_solicitud as "fechaSolicitud",
-          json_build_object(
-            'id', us.id,
-            'nombre', us.nombre,
-            'apellido', us.apellido,
-            'horario', us.horario
-          ) as solicitante,
-          json_build_object(
-            'id', ud.id,
-            'nombre', ud.nombre,
-            'apellido', ud.apellido,
-            'horario', ud.horario
-          ) as destinatario,
-          json_build_object(
-            'fecha', sd.fecha_solicitante,
-            'horario', us.horario,
-            'grupoTurno', sd.grupo_solicitante
-          ) as "turnoSolicitante",
-          json_build_object(
-            'fecha', sd.fecha_destinatario,
-            'horario', ud.horario,
-            'grupoTurno', sd.grupo_destinatario
-          ) as "turnoDestinatario"
-        FROM solicitudes_directas sd
-        JOIN users us ON sd.solicitante_id = us.id
-        JOIN users ud ON sd.destinatario_id = ud.id
-        ORDER BY sd.fecha_solicitud DESC;
-      `;
+    if (!token) {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
     }
 
-    const solicitudes = await query;
+    const { payload } = await jwtVerify(token, SECRET_KEY);
+    const userId = payload.id as string;
 
-    return NextResponse.json(solicitudes);
+    // ✅ Obtener solicitudes con JSONB
+    const solicitudes = await sql`
+      SELECT 
+        sd.id,
+        sd.solicitante_id,
+        sd.destinatario_id,
+        sd.turno_solicitante,
+        sd.turno_destinatario,
+        sd.motivo,
+        sd.prioridad,
+        sd.estado,
+        sd.fecha_solicitud,
+        sd.created_at,
+        sd.updated_at,
+        -- Datos del solicitante
+        u1.nombre as solicitante_nombre,
+        u1.apellido as solicitante_apellido,
+        u1.rol as solicitante_rol,
+        -- Datos del destinatario
+        u2.nombre as destinatario_nombre,
+        u2.apellido as destinatario_apellido,
+        u2.rol as destinatario_rol
+      FROM solicitudes_directas sd
+      INNER JOIN users u1 ON sd.solicitante_id = u1.id
+      INNER JOIN users u2 ON sd.destinatario_id = u2.id
+      WHERE sd.solicitante_id = ${userId}::uuid 
+         OR sd.destinatario_id = ${userId}::uuid
+      ORDER BY sd.fecha_solicitud DESC;
+    `;
+
+    // ✅ Formatear respuesta
+    const formattedSolicitudes = solicitudes.map(s => ({
+      id: s.id,
+      solicitante: {
+        id: s.solicitante_id,
+        nombre: s.solicitante_nombre,
+        apellido: s.solicitante_apellido,
+        rol: s.solicitante_rol
+      },
+      destinatario: {
+        id: s.destinatario_id,
+        nombre: s.destinatario_nombre,
+        apellido: s.destinatario_apellido,
+        rol: s.destinatario_rol
+      },
+      turnoSolicitante: s.turno_solicitante,
+      turnoDestinatario: s.turno_destinatario,
+      motivo: s.motivo,
+      prioridad: s.prioridad,
+      estado: s.estado,
+      fechaSolicitud: s.fecha_solicitud,
+      createdAt: s.created_at,
+      updatedAt: s.updated_at
+    }));
+
+    return NextResponse.json(formattedSolicitudes);
   } catch (error) {
-    console.error('Error fetching solicitudes:', error);
+    console.error('❌ Error en GET /api/solicitudes-directas:', error);
     return NextResponse.json(
-      { error: 'Error al obtener solicitudes' },
+      { 
+        error: 'Error al obtener solicitudes',
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     );
   }
@@ -119,7 +108,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar y decodificar el token
     const { payload } = await jwtVerify(token, SECRET_KEY);
     const solicitanteId = payload.id as string;
 
@@ -181,17 +169,26 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Usuarios validados');
 
-    // Insertar la solicitud
+    // ✅ Crear objetos JSONB para los turnos
+    const turnoSolicitante = {
+      fecha: fechaSolicitante,
+      horario: horarioSolicitante,
+      grupoTurno: grupoSolicitante
+    };
+
+    const turnoDestinatario = {
+      fecha: fechaDestinatario,
+      horario: horarioDestinatario,
+      grupoTurno: grupoDestinatario
+    };
+
+    // ✅ Insertar la solicitud usando JSONB
     const [nuevaSolicitud] = await sql`
       INSERT INTO solicitudes_directas (
         solicitante_id,
         destinatario_id,
-        fecha_solicitante,
-        horario_solicitante,
-        grupo_solicitante,
-        fecha_destinatario,
-        horario_destinatario,
-        grupo_destinatario,
+        turno_solicitante,
+        turno_destinatario,
         motivo,
         prioridad,
         estado,
@@ -199,12 +196,8 @@ export async function POST(request: NextRequest) {
       ) VALUES (
         ${solicitanteId}::uuid,
         ${destinatarioId}::uuid,
-        ${fechaSolicitante},
-        ${horarioSolicitante},
-        ${grupoSolicitante},
-        ${fechaDestinatario},
-        ${horarioDestinatario},
-        ${grupoDestinatario},
+        ${JSON.stringify(turnoSolicitante)}::jsonb,
+        ${JSON.stringify(turnoDestinatario)}::jsonb,
         ${motivo},
         ${prioridad},
         'SOLICITADO',
