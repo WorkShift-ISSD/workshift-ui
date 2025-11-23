@@ -9,31 +9,49 @@ interface ModalFaltaProps {
   onClose: () => void;
   onSaved: () => void;
   falta?: any;
-  empleado: any; // ✅ Cambiado de string a any para recibir el objeto completo
+  empleado: any;
   fecha?: string;
 }
 
-export default function ModalFalta({ open, onClose, onSaved, falta, empleado, fecha }: ModalFaltaProps) {
-  const { register, handleSubmit, reset } = useForm({
+export default function ModalFalta({ 
+  open, 
+  onClose, 
+  onSaved, 
+  falta, 
+  empleado, 
+  fecha 
+}: ModalFaltaProps) {
+  const { register, handleSubmit, reset, watch } = useForm({
     defaultValues: {
-      causa: "", // ✅ Cambiado de 'tipo' a 'causa' para coincidir con la API
-      observaciones: "", // ✅ Cambiado de 'descripcion'
-      fecha: fecha || "", // ✅ Usa la fecha pasada por prop
+      motivo: "",
+      observaciones: "",
+      fecha: fecha || "",
       justificada: false,
     },
   });
 
+  // Obtener la fecha actual en formato YYYY-MM-DD
+  const getTodayDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const today = getTodayDate();
+
   useEffect(() => {
     if (falta) {
       reset({
-        causa: falta.causa,
-        observaciones: falta.observaciones,
-        fecha: falta.fecha?.slice(0, 10),
+        motivo: falta.motivo || falta.causa || "", // Soportar ambos nombres
+        observaciones: falta.observaciones || "",
+        fecha: falta.fecha?.split('T')[0] || fecha || "",
         justificada: falta.justificada || false,
       });
     } else {
       reset({
-        causa: "",
+        motivo: "",
         observaciones: "",
         fecha: fecha || "",
         justificada: false,
@@ -45,16 +63,27 @@ export default function ModalFalta({ open, onClose, onSaved, falta, empleado, fe
 
   const guardar = async (data: any) => {
     try {
-      const url = falta
-        ? `/api/faltas/${falta.id}`
-        : `/api/faltas`;
+      // Validar que la fecha no sea futura
+      if (data.fecha > today) {
+        toast.error("No se puede registrar una falta en una fecha futura");
+        return;
+      }
 
+      const url = falta ? `/api/faltas/${falta.id}` : `/api/faltas`;
       const method = falta ? "PUT" : "POST";
 
+      // Normalizar la fecha (solo YYYY-MM-DD)
+      const fechaNormalizada = data.fecha.split('T')[0];
+
       const payload = {
-        ...data,
-        empleadoId: empleado.id, // ✅ Agrega el ID del empleado
+        empleadoId: empleado.id,
+        fecha: fechaNormalizada,
+        motivo: data.motivo,
+        observaciones: data.observaciones || null,
+        justificada: data.justificada,
       };
+
+      console.log("📤 Enviando falta:", payload);
 
       const res = await fetch(url, {
         method,
@@ -67,78 +96,123 @@ export default function ModalFalta({ open, onClose, onSaved, falta, empleado, fe
         throw new Error(error.error || "Error al guardar");
       }
 
+      const resultado = await res.json();
+      console.log("✅ Falta guardada:", resultado);
+
       toast.success("Falta guardada correctamente");
-      onSaved(); // ✅ Llama al callback sin parámetros
+      onSaved();
       onClose();
+      reset();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error al guardar la falta";
+      console.error("❌ Error:", err);
       toast.error(message);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-white p-6 rounded-lg w-96 shadow-lg">
-
-        <h2 className="text-xl font-bold mb-4">
-          {falta ? "Editar Falta" : `Registrar Falta - ${empleado.apellido}, ${empleado.nombre}`}
+    <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex justify-center items-center z-50">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-md shadow-xl">
+        <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">
+          {falta 
+            ? "Editar Falta" 
+            : `Registrar Falta - ${empleado.apellido}, ${empleado.nombre}`
+          }
         </h2>
 
         <form onSubmit={handleSubmit(guardar)} className="flex flex-col gap-4">
+          {/* Motivo/Causa */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Motivo de la falta <span className="text-red-500">*</span>
+            </label>
+            <select
+              {...register("motivo")}
+              className="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-lg
+                       bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                       focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
+            >
+              <option value="">Seleccionar motivo</option>
+              <option value="Inasistencia">Inasistencia</option>
+              <option value="Llegada tarde">Llegada tarde</option>
+              <option value="Incumplimiento">Incumplimiento</option>
+              <option value="Licencia sin aviso">Licencia sin aviso</option>
+              <option value="Enfermedad">Enfermedad</option>
+              <option value="Asunto personal">Asunto personal</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
 
-          <select
-            {...register("causa")}
-            className="border p-2 rounded"
-            required
-          >
-            <option value="">Seleccionar causa</option>
-            <option value="Inasistencia">Inasistencia</option>
-            <option value="Llegada tarde">Llegada tarde</option>
-            <option value="Incumplimiento">Incumplimiento</option>
-            <option value="Licencia sin aviso">Licencia sin aviso</option>
-            <option value="Otro">Otro</option>
-          </select>
+          {/* Fecha */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Fecha <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              {...register("fecha")}
+              max={today}
+              className="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-lg
+                       bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                       focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
+            />
+          </div>
 
-          <input
-            type="date"
-            {...register("fecha")}
-            className="border p-2 rounded"
-            required
-          />
+          {/* Observaciones */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Observaciones
+            </label>
+            <textarea
+              {...register("observaciones")}
+              placeholder="Detalles adicionales (opcional)"
+              className="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-lg
+                       bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                       placeholder-gray-400 dark:placeholder-gray-500
+                       focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              rows={3}
+            />
+          </div>
 
-          <textarea
-            {...register("observaciones")}
-            placeholder="Observaciones (opcional)"
-            className="border p-2 rounded"
-            rows={3}
-          />
-
-          <label className="flex items-center gap-2">
+          {/* Justificada */}
+          <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
               {...register("justificada")}
-              className="w-4 h-4"
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded 
+                       focus:ring-2 focus:ring-blue-500"
             />
-            <span>Falta justificada</span>
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              Falta justificada (con certificado o aviso previo)
+            </span>
           </label>
 
-          <div className="flex justify-end gap-3">
+          {/* Botones */}
+          <div className="flex justify-end gap-3 mt-2">
             <button
               type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+              onClick={() => {
+                onClose();
+                reset();
+              }}
+              className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 
+                       rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 
+                       transition-colors font-medium"
             >
               Cancelar
             </button>
 
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg 
+                       hover:bg-blue-700 dark:hover:bg-blue-600 
+                       transition-colors font-medium"
             >
-              Guardar
+              {falta ? "Actualizar" : "Guardar"}
             </button>
           </div>
-
         </form>
       </div>
     </div>

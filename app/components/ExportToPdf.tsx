@@ -1,7 +1,7 @@
 // src/components/ExportData.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, FileSpreadsheet, FileText, FileCode2 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 
@@ -81,7 +81,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
-  
+
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -174,7 +174,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
           doc.setFont("helvetica", "normal");
           doc.text(card.label, x + cardWidth / 2, y + 15, { align: "center" });
         });
-        
+
         y += 30;
       } else {
         // Cards para modo faltas
@@ -260,6 +260,14 @@ export const ExportData: React.FC<ExportDataProps> = ({
 
       let page = 1;
 
+      if (mode === 'faltas') {
+        employees = [...employees].sort((a, b) => {
+          const horaA = a.horario?.slice(0, 5) || "99:99";
+          const horaB = b.horario?.slice(0, 5) || "99:99";
+          return horaA.localeCompare(horaB);
+        });
+      }
+
       for (let emp of employees) {
         if (y > pageHeight - 30) {
           doc.addPage();
@@ -274,10 +282,10 @@ export const ExportData: React.FC<ExportDataProps> = ({
           estado === "ACTIVO" || estado === "presente"
             ? [34, 197, 94]
             : estado === "LICENCIA"
-            ? [234, 179, 8]
-            : estado === "AUSENTE" || estado === "ausente"
-            ? [239, 68, 68]
-            : [156, 163, 175];
+              ? [234, 179, 8]
+              : estado === "AUSENTE" || estado === "ausente"
+                ? [239, 68, 68]
+                : [156, 163, 175];
 
         let row: string[];
         if (mode === 'personal') {
@@ -353,46 +361,305 @@ export const ExportData: React.FC<ExportDataProps> = ({
 
   // ======== EXCEL MEJORADO ========
   const exportToExcel = () => {
-    let data;
-    
-    if (mode === 'personal') {
-      data = employees.map(emp => ({
-        Legajo: emp.legajo,
-        Nombre: emp.nombre,
-        Apellido: emp.apellido,
-        Rol: emp.rol,
-        "Grupo Turno": emp.grupoTurno,
-        Horario: emp.horario || "No asignado",
-        Estado: calcularEstado(emp),
-        Email: emp.email,
-        Teléfono: emp.telefono || "-",
-      }));
-    } else {
-      data = employees.map(emp => {
-        const estado = calcularEstado(emp);
-        const falta = faltasDelDia?.find(f => f.empleadoId === emp.id);
-        return {
-          Legajo: emp.legajo,
-          Apellido: emp.apellido,
-          Nombre: emp.nombre,
-          Rol: emp.rol,
-          Turno: emp.grupoTurno,
-          Horario: emp.horario || "No asignado",
-          Estado: estado === 'presente' ? 'PRESENTE' : 'FALTA',
-          Motivo: falta?.motivo || '-',
-          Justificada: falta ? (falta.justificada ? 'SÍ' : 'NO') : '-',
-          Observaciones: falta?.observaciones || '-',
-        };
-      });
-    }
-
-    const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     const sheetName = mode === 'faltas' ? 'Faltas' : 'Empleados';
+
+    const wsData: (string | number)[][] = [];
+
+    // ===== ENCABEZADO =====
+    wsData.push(['DIRECCIÓN NACIONAL DE MIGRACIONES - WSMS']);
+    wsData.push([mode === 'faltas' ? 'CONTROL DE FALTAS - REPORTE DETALLADO' : 'GESTIÓN DE EMPLEADOS - REPORTE DETALLADO']);
+
+    const now = new Date();
+    const fechaGen = now.toLocaleDateString("es-AR");
+    const horaGen = now.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+    wsData.push([`Generado: ${fechaGen} ${horaGen} | Usuario: ${usuarioNombre}`]);
+    wsData.push([]);
+
+    // ===== ESTADÍSTICAS =====
+    if (mode === 'personal') {
+      wsData.push(['', '', '', 'TOTAL', 'ACTIVOS', 'EN LICENCIA', 'AUSENTES']);
+      wsData.push(['', '', '', stats.total, stats.activos, stats.enLicencia, stats.ausentes]);
+    } else {
+      const presentes = employees.length - (faltasDelDia?.length || 0);
+      wsData.push(['', '', '', 'TOTAL', 'PRESENTES', 'FALTAS']);
+      wsData.push(['', '', '', employees.length, presentes, faltasDelDia?.length || 0]);
+    }
+    wsData.push([]);
+
+    // ===== FECHA (solo modo faltas) =====
+    if (mode === 'faltas' && fechaSeleccionada) {
+      const fechaObj = new Date(fechaSeleccionada + 'T00:00:00');
+      const fechaFormateada = fechaObj.toLocaleDateString("es-AR", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      wsData.push([`Fecha: ${fechaFormateada}`]);
+      wsData.push([]);
+    }
+
+    // ===== ENCABEZADOS DE TABLA =====
+    const headerRowIndex = wsData.length;
+    if (mode === 'personal') {
+      wsData.push(['LEGAJO', 'APELLIDO', 'NOMBRE', 'ROL', 'TURNO', 'HORARIO', 'ESTADO', 'EMAIL', 'TELÉFONO']);
+    } else {
+      wsData.push(['LEGAJO', 'APELLIDO', 'NOMBRE', 'ROL', 'TURNO', 'HORARIO', 'ESTADO', 'MOTIVO', 'JUSTIFICADA', 'OBSERVACIONES']);
+    }
+
+    // ===== DATOS =====
+    const dataStartRow = wsData.length;
+    employees.forEach(emp => {
+      const estado = calcularEstado(emp);
+
+      if (mode === 'personal') {
+        wsData.push([
+          emp.legajo,
+          emp.apellido,
+          emp.nombre,
+          emp.rol,
+          emp.grupoTurno,
+          emp.horario || "No asignado",
+          String(estado).toUpperCase(),
+          emp.email,
+          emp.telefono || "-",
+        ]);
+      } else {
+        const falta = faltasDelDia?.find(f => f.empleadoId === emp.id);
+        wsData.push([
+          emp.legajo,
+          emp.apellido,
+          emp.nombre,
+          emp.rol,
+          emp.grupoTurno,
+          emp.horario || "No asignado",
+          estado === 'presente' ? 'PRESENTE' : 'FALTA',
+          falta?.motivo || '-',
+          falta ? (falta.justificada ? 'SÍ' : 'NO') : '-',
+          falta?.observaciones || '-',
+        ]);
+      }
+    });
+
+    wsData.push([]);
+
+    // ===== FOOTER =====
+    wsData.push([`Migraciones - WSMS © 2025`]);
+    wsData.push([`Total empleados: ${employees.length}`]);
+
+    // Crear hoja
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // ===== ANCHOS DE COLUMNA =====
+    if (mode === 'personal') {
+      ws['!cols'] = [
+        { wch: 10 },  // Legajo
+        { wch: 15 },  // Apellido
+        { wch: 15 },  // Nombre
+        { wch: 20 },  // Rol
+        { wch: 10 },  // Turno
+        { wch: 15 },  // Horario
+        { wch: 10 },  // Estado
+        { wch: 30 },  // Email
+        { wch: 15 },  // Teléfono
+      ];
+    } else {
+      ws['!cols'] = [
+        { wch: 10 },  // Legajo
+        { wch: 15 },  // Apellido
+        { wch: 15 },  // Nombre
+        { wch: 20 },  // Rol
+        { wch: 10 },  // Turno
+        { wch: 15 },  // Horario
+        { wch: 10 },  // Estado
+        { wch: 15 },  // Motivo
+        { wch: 12 },  // Justificada
+        { wch: 20 },  // Observaciones
+      ];
+    }
+
+    // ===== ESTILOS =====
+    const colCount = mode === 'personal' ? 9 : 10;
+
+    // Estilo para título (fila 1) - Negrita, centrado y fondo azul oscuro
+    const titleStyle = {
+      font: { bold: true, sz: 14, color: { rgb: 'FFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      fill: { fgColor: { rgb: '1F2937' } }
+    };
+
+    // Estilo para subtítulo (fila 2) - Negrita, centrado y fondo azul oscuro
+    const subtitleStyle = {
+      font: { bold: true, sz: 12, color: { rgb: 'FFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      fill: { fgColor: { rgb: '1F2937' } }
+    };
+
+    // Estilo para "Generado por" (fila 3) - Centrado y fondo azul oscuro
+    const infoStyle = {
+      font: { color: { rgb: 'FFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      fill: { fgColor: { rgb: '1F2937' } }
+    };
+
+    // Estilo para encabezados de tabla - Negrita, centrado y fondo azul oscuro
+    const headerStyle = {
+      font: { bold: true, color: { rgb: 'FFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      fill: { fgColor: { rgb: '1F2937' } }
+    };
+
+    // Estilo para datos - Centrado con borde inferior
+    const dataStyle = {
+      alignment: { horizontal: 'center', vertical: 'center' },
+      fill: { fgColor: { rgb: 'FFFFFF' } },
+      border: {
+        bottom: { style: 'thin', color: { rgb: '1F2937' } }
+      }
+    };
+
+    // Aplicar estilo a título (fila 1)
+    if (ws['A1']) ws['A1'].s = titleStyle;
+
+    // Aplicar estilo a subtítulo (fila 2)
+    if (ws['A2']) ws['A2'].s = subtitleStyle;
+
+    // Aplicar estilo a "Generado por" (fila 3)
+    if (ws['A3']) ws['A3'].s = infoStyle;
+
+    // Estilos para estadísticas con colores
+    const statsTotalStyle = {
+      font: { bold: true, color: { rgb: 'FFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      fill: { fgColor: { rgb: '2563EB' } }  // Azul
+    };
+    const statsActivosStyle = {
+      font: { bold: true, color: { rgb: 'FFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      fill: { fgColor: { rgb: '22C55E' } }  // Verde
+    };
+    const statsLicenciaStyle = {
+      font: { bold: true, color: { rgb: 'FFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      fill: { fgColor: { rgb: 'EAB308' } }  // Amarillo
+    };
+    const statsAusentesStyle = {
+      font: { bold: true, color: { rgb: 'FFFFFF' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      fill: { fgColor: { rgb: 'EF4444' } }  // Rojo
+    };
+
+    // Aplicar estilos a estadísticas (fila 5 y 6)
+    if (ws['D5']) ws['D5'].s = statsTotalStyle;
+    if (ws['E5']) ws['E5'].s = statsActivosStyle;
+    if (ws['F5']) ws['F5'].s = statsLicenciaStyle;
+    if (ws['G5']) ws['G5'].s = statsAusentesStyle;
+
+    if (ws['D6']) ws['D6'].s = statsTotalStyle;
+    if (ws['E6']) ws['E6'].s = statsActivosStyle;
+    if (ws['F6']) ws['F6'].s = statsLicenciaStyle;
+    if (ws['G6']) ws['G6'].s = statsAusentesStyle;
+
+    // Aplicar estilos a encabezados de tabla
+    const cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+    for (let i = 0; i < colCount; i++) {
+      const cellRef = `${cols[i]}${headerRowIndex + 1}`;
+      if (ws[cellRef]) ws[cellRef].s = headerStyle;
+    }
+
+    // Estilos para estado
+    const estadoActivoStyle = {
+      font: { bold: true, color: { rgb: '22C55E' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      fill: { fgColor: { rgb: 'FFFFFF' } },
+      border: {
+        bottom: { style: 'thin', color: { rgb: '1F2937' } }
+      }
+    };
+    const estadoInactivoStyle = {
+      font: { bold: true, color: { rgb: 'A2A7B3' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      fill: { fgColor: { rgb: 'FFFFFF' } },
+      border: {
+        bottom: { style: 'thin', color: { rgb: '1F2937' } }
+      }
+    };
+
+    // Estilo para celdas vacías - Fondo blanco
+    const emptyStyle = {
+      fill: { fgColor: { rgb: 'FFFFFF' } }
+    };
+
+    // Aplicar estilo centrado a todas las celdas de datos
+    const estadoColIndex = 6;  // Columna G (índice 6) = Estado
+    for (let row = dataStartRow; row < wsData.length - 2; row++) {
+      for (let col = 0; col < colCount; col++) {
+        const cellRef = `${cols[col]}${row + 1}`;
+        if (ws[cellRef]) {
+          if (col === estadoColIndex) {
+            const valor = String(ws[cellRef].v).trim().toUpperCase();
+            if (valor.includes('ACTIVO') && !valor.includes('INACTIVO')) {
+              ws[cellRef].s = estadoActivoStyle;
+            } else if (valor.includes('INACTIVO') || valor.includes('AUSENTE') || valor.includes('LICENCIA')) {
+              ws[cellRef].s = estadoInactivoStyle;
+            } else {
+              ws[cellRef].s = dataStyle;
+            }
+          } else {
+            ws[cellRef].s = dataStyle;
+          }
+        }
+      }
+    }
+
+    // Aplicar fondo blanco a celdas vacías entre A1 e I136
+    const lastRow = wsData.length;
+    for (let row = 0; row < lastRow; row++) {
+      for (let col = 0; col < 9; col++) {  // Columnas A-I (0-8)
+        const cellRef = `${cols[col]}${row + 1}`;
+        if (!ws[cellRef]) {
+          ws[cellRef] = { v: '', s: emptyStyle };
+        } else if (!ws[cellRef].s) {
+          ws[cellRef].s = emptyStyle;
+        }
+      }
+    }
+
+    // Estilo para footer - Alineado a la izquierda con sangría
+    const footerStyle = {
+      alignment: { horizontal: 'left', vertical: 'center', indent: 2 },
+      fill: { fgColor: { rgb: 'FFFFFF' } }
+    };
+
+    // Aplicar estilo al footer
+    const footerRow1 = wsData.length - 1;  // "Migraciones - WSMS © 2025"
+    const footerRow2 = wsData.length;      // "Total empleados: X"
+
+    if (ws[`A${footerRow1}`]) ws[`A${footerRow1}`].s = footerStyle;
+    if (ws[`A${footerRow2}`]) ws[`A${footerRow2}`].s = footerStyle;
+
+    // ===== MERGE CELDAS (A hasta I) =====
+    const lastCol = 8;
+    const footerMergeRow1 = wsData.length - 2;  // índice base 0
+    const footerMergeRow2 = wsData.length - 1;
+
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: lastCol } },  // Título
+      { s: { r: 1, c: 0 }, e: { r: 1, c: lastCol } },  // Subtítulo
+      { s: { r: 2, c: 0 }, e: { r: 2, c: lastCol } },  // Generado por
+      { s: { r: footerMergeRow1, c: 0 }, e: { r: footerMergeRow1, c: 2 } },  // Footer 1 (A hasta C)
+      { s: { r: footerMergeRow2, c: 0 }, e: { r: footerMergeRow2, c: 2 } },  // Footer 2 (A hasta C)
+    ];
+
+    if (mode === 'faltas' && fechaSeleccionada) {
+      ws['!merges'].push({ s: { r: 8, c: 0 }, e: { r: 8, c: lastCol } });
+    }
+
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    
-    const fecha = new Date().toISOString().split('T')[0];
-    const nombreArchivo = mode === 'faltas' ? `faltas_${fecha}.xlsx` : `empleados_${fecha}.xlsx`;
+
+    const fechaArchivo = new Date().toLocaleDateString('es-AR').replace(/\//g, '-');
+    const nombreArchivo = mode === 'faltas' ? `Reporte_Faltas_${fechaArchivo}.xlsx` : `Listado_Empleados_${fechaArchivo}.xlsx`;
     XLSX.writeFile(wb, nombreArchivo);
   };
 
@@ -403,14 +670,14 @@ export const ExportData: React.FC<ExportDataProps> = ({
     xml += `  <metadata>\n`;
     xml += `    <fecha_generacion>${new Date().toISOString()}</fecha_generacion>\n`;
     xml += `    <tipo_reporte>${mode === 'faltas' ? 'control_faltas' : 'gestion_empleados'}</tipo_reporte>\n`;
-    
+
     if (mode === 'faltas' && fechaSeleccionada) {
       xml += `    <fecha_consulta>${fechaSeleccionada}</fecha_consulta>\n`;
     }
-    
+
     xml += `    <total_empleados>${employees.length}</total_empleados>\n`;
     xml += `    <estadisticas>\n`;
-    
+
     if (mode === 'personal') {
       xml += `      <activos>${stats.activos}</activos>\n`;
       xml += `      <en_licencia>${stats.enLicencia}</en_licencia>\n`;
@@ -420,7 +687,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
       xml += `      <presentes>${presentes}</presentes>\n`;
       xml += `      <faltas>${faltasDelDia?.length || 0}</faltas>\n`;
     }
-    
+
     xml += `    </estadisticas>\n`;
     xml += `  </metadata>\n`;
     xml += `  <empleados>\n`;
@@ -435,7 +702,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
       xml += `      <grupo_turno>${emp.grupoTurno}</grupo_turno>\n`;
       xml += `      <horario>${emp.horario || 'No asignado'}</horario>\n`;
       xml += `      <estado>${estado}</estado>\n`;
-      
+
       if (mode === 'faltas') {
         const falta = faltasDelDia?.find(f => f.empleadoId === emp.id);
         if (falta) {
@@ -450,7 +717,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
         xml += `      <telefono>${emp.telefono || ''}</telefono>\n`;
         xml += `      <activo>${emp.activo}</activo>\n`;
       }
-      
+
       xml += `    </empleado>\n`;
     });
 

@@ -10,7 +10,7 @@ const SECRET_KEY = new TextEncoder().encode(
   process.env.JWT_SECRET || 'Workshift25'
 );
 
-// GET - Obtener todas las ofertas (sin cambios)
+// GET - Obtener todas las ofertas
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -20,44 +20,76 @@ export async function GET(request: NextRequest) {
     if (estado) {
       query = sql`
         SELECT 
-          o.*,
+          o.id,
+          o.ofertante_id,
+          o.tipo,
+          o.modalidad_busqueda,
+          o.turno_ofrece,
+          o.turnos_busca,
+          o.fechas_disponibles,
+          o.descripcion,
+          o.prioridad,
+          o.estado,
+          o.publicado,
+          o.tomador_id,
           json_build_object(
             'id', u.id,
             'nombre', u.nombre,
             'apellido', u.apellido,
             'rol', u.rol,
             'calificacion', COALESCE(u.calificacion, 4.5),
-            'total_intercambios', COALESCE(u.total_intercambios, 0)
+            'totalIntercambios', COALESCE(u.total_intercambios, 0)
           ) as ofertante,
-          to_char(o.fecha_ofrece, 'YYYY-MM-DD') as fecha_ofrece,
-          to_char(o.fecha_busca, 'YYYY-MM-DD') as fecha_busca,
-          to_char(o.fecha_desde, 'YYYY-MM-DD') as fecha_desde,
-          to_char(o.fecha_hasta, 'YYYY-MM-DD') as fecha_hasta,
-          to_char(o.publicado, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as publicado
+          CASE 
+            WHEN o.tomador_id IS NOT NULL THEN
+              json_build_object(
+                'id', t.id,
+                'nombre', t.nombre,
+                'apellido', t.apellido
+              )
+            ELSE NULL
+          END as tomador
         FROM ofertas o
         JOIN users u ON o.ofertante_id = u.id
+        LEFT JOIN users t ON o.tomador_id = t.id
         WHERE o.estado = ${estado}
         ORDER BY o.publicado DESC;
       `;
     } else {
       query = sql`
         SELECT 
-          o.*,
+          o.id,
+          o.ofertante_id,
+          o.tipo,
+          o.modalidad_busqueda,
+          o.turno_ofrece,
+          o.turnos_busca,
+          o.fechas_disponibles,
+          o.descripcion,
+          o.prioridad,
+          o.estado,
+          o.publicado,
+          o.tomador_id,
           json_build_object(
             'id', u.id,
             'nombre', u.nombre,
             'apellido', u.apellido,
             'rol', u.rol,
             'calificacion', COALESCE(u.calificacion, 4.5),
-            'total_intercambios', COALESCE(u.total_intercambios, 0)
+            'totalIntercambios', COALESCE(u.total_intercambios, 0)
           ) as ofertante,
-          to_char(o.fecha_ofrece, 'YYYY-MM-DD') as fecha_ofrece,
-          to_char(o.fecha_busca, 'YYYY-MM-DD') as fecha_busca,
-          to_char(o.fecha_desde, 'YYYY-MM-DD') as fecha_desde,
-          to_char(o.fecha_hasta, 'YYYY-MM-DD') as fecha_hasta,
-          to_char(o.publicado, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as publicado
+          CASE 
+            WHEN o.tomador_id IS NOT NULL THEN
+              json_build_object(
+                'id', t.id,
+                'nombre', t.nombre,
+                'apellido', t.apellido
+              )
+            ELSE NULL
+          END as tomador
         FROM ofertas o
         JOIN users u ON o.ofertante_id = u.id
+        LEFT JOIN users t ON o.tomador_id = t.id
         ORDER BY o.publicado DESC;
       `;
     }
@@ -67,39 +99,32 @@ export async function GET(request: NextRequest) {
     const ofertasFormateadas = ofertas.map((o: any) => ({
       id: o.id,
       ofertante: o.ofertante,
+      tomador: o.tomador,
       tipo: o.tipo,
-      turnoOfrece: o.tipo !== 'ABIERTO' ? {
-        fecha: o.fecha_ofrece,
-        horario: o.horario_ofrece,
-        grupoTurno: o.grupo_ofrece,
-      } : null,
-      turnoBusca: o.tipo === 'INTERCAMBIO' ? {
-        fecha: o.fecha_busca,
-        horario: o.horario_busca,
-        grupoTurno: o.grupo_busca,
-      } : null,
-      rangoFechas: o.tipo === 'ABIERTO' ? {
-        desde: o.fecha_desde,
-        hasta: o.fecha_hasta,
-      } : undefined,
+      modalidadBusqueda: o.modalidad_busqueda,
+      turnoOfrece: o.turno_ofrece ? (typeof o.turno_ofrece === 'string' ? JSON.parse(o.turno_ofrece) : o.turno_ofrece) : null,
+      turnosBusca: o.turnos_busca ? (typeof o.turnos_busca === 'string' ? JSON.parse(o.turnos_busca) : o.turnos_busca) : null,
+      fechasDisponibles: o.fechas_disponibles ? (typeof o.fechas_disponibles === 'string' ? JSON.parse(o.fechas_disponibles) : o.fechas_disponibles) : null,
       descripcion: o.descripcion,
       prioridad: o.prioridad,
-      validoHasta: o.valido_hasta,
       publicado: o.publicado,
       estado: o.estado,
     }));
 
     return NextResponse.json(ofertasFormateadas);
   } catch (error) {
-    console.error('Error fetching ofertas:', error);
+    console.error('❌ Error fetching ofertas:', error);
+    console.error('Error details:', error instanceof Error ? error.message : String(error));
     return NextResponse.json(
-      { error: 'Error al obtener ofertas' }, 
+      { 
+        error: 'Error al obtener ofertas',
+        details: error instanceof Error ? error.message : String(error)
+      }, 
       { status: 500 }
     );
   }
 }
 
-// POST - Crear nueva oferta
 // POST - Crear nueva oferta
 export async function POST(request: NextRequest) {
   try {
@@ -125,12 +150,14 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Usuario autenticado:', userId);
     
-    // Verificar que el usuario existe
-    const [userExists] = await sql`
-      SELECT id FROM users WHERE id = ${userId}::uuid;
+    // Obtener datos del usuario
+    const [usuario] = await sql`
+      SELECT id, horario, grupo_turno 
+      FROM users 
+      WHERE id = ${userId}::uuid;
     `;
     
-    if (!userExists) {
+    if (!usuario) {
       console.error('❌ Usuario no existe:', userId);
       return NextResponse.json(
         { error: 'Usuario no encontrado' }, 
@@ -138,96 +165,65 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    console.log('✅ Usuario encontrado:', userExists);
+    console.log('✅ Usuario encontrado:', usuario);
     
-    // Determinar qué campos usar según el tipo y modalidad
-    let fechaOfrece = null;
-    let horarioOfrece = null;
-    let grupoOfrece = null;
-    let fechaBusca = null;
-    let horarioBusca = null;
-    let grupoBusca = null;
-    let fechaDesde = null;
-    let fechaHasta = null;
+    // Construir turnoOfrece, turnosBusca, fechasDisponibles según modalidad
+    let turnoOfrece = null;
+    let turnosBusca = null;
+    let fechasDisponibles = null;
 
     if (body.modalidadBusqueda === 'INTERCAMBIO') {
-      // Para intercambio, usar fechaOfrece y fechasBusca
-      if (body.tipo === 'OFREZCO') {
-        fechaOfrece = body.fechaOfrece;
-        horarioOfrece = body.horarioOfrece;
-        grupoOfrece = body.grupoOfrece;
-        // Por ahora, tomar la primera fecha que busca
-        if (body.fechasBusca && body.fechasBusca[0]) {
-          fechaBusca = body.fechasBusca[0].fecha;
-          horarioBusca = body.fechasBusca[0].horario;
-        }
-      } else if (body.tipo === 'BUSCO') {
-        fechaOfrece = body.fechaOfrece;
-        horarioOfrece = body.horarioOfrece;
-        grupoOfrece = body.grupoOfrece;
-        if (body.fechasBusca && body.fechasBusca[0]) {
-          fechaBusca = body.fechasBusca[0].fecha;
-          horarioBusca = body.fechasBusca[0].horario;
-        }
+      // Para intercambio, siempre hay un turno que se ofrece
+      if (body.fechaOfrece) {
+        turnoOfrece = {
+          fecha: body.fechaOfrece,
+          horario: usuario.horario,
+          grupoTurno: usuario.grupo_turno
+        };
+      }
+      
+      // Y uno o varios turnos que se buscan
+      if (body.fechasBusca && body.fechasBusca.length > 0) {
+        turnosBusca = body.fechasBusca;
       }
     } else if (body.modalidadBusqueda === 'ABIERTO') {
-      // Para abierto, usar fechasDisponibles
+      // Para abierto, solo fechas disponibles
       if (body.fechasDisponibles && body.fechasDisponibles.length > 0) {
-        // Tomar la primera y última fecha del array
-        const fechas = body.fechasDisponibles.map((f: any) => f.fecha).sort();
-        fechaDesde = fechas[0];
-        fechaHasta = fechas[fechas.length - 1];
+        fechasDisponibles = body.fechasDisponibles;
       }
     }
 
-    console.log('📅 Fechas procesadas:', {
-      fechaOfrece,
-      horarioOfrece,
-      grupoOfrece,
-      fechaBusca,
-      horarioBusca,
-      grupoBusca,
-      fechaDesde,
-      fechaHasta
+    console.log('📅 Datos procesados:', {
+      turnoOfrece,
+      turnosBusca,
+      fechasDisponibles
     });
     
     const [oferta] = await sql`
       INSERT INTO ofertas (
         ofertante_id,
         tipo,
-        fecha_ofrece,
-        horario_ofrece,
-        grupo_ofrece,
-        fecha_busca,
-        horario_busca,
-        grupo_busca,
-        fecha_desde,
-        fecha_hasta,
+        modalidad_busqueda,
+        turno_ofrece,
+        turnos_busca,
+        fechas_disponibles,
         descripcion,
         prioridad,
         estado,
-        valido_hasta,
         publicado
       ) VALUES (
         ${userId}::uuid,
         ${body.tipo},
-        ${fechaOfrece},
-        ${horarioOfrece},
-        ${grupoOfrece},
-        ${fechaBusca},
-        ${horarioBusca},
-        ${grupoBusca},
-        ${fechaDesde},
-        ${fechaHasta},
+        ${body.modalidadBusqueda},
+        ${turnoOfrece ? JSON.stringify(turnoOfrece) : null}::jsonb,
+        ${turnosBusca ? JSON.stringify(turnosBusca) : null}::jsonb,
+        ${fechasDisponibles ? JSON.stringify(fechasDisponibles) : null}::jsonb,
         ${body.descripcion},
         ${body.prioridad},
         'DISPONIBLE',
-        NOW() + INTERVAL '7 days',
         NOW()
       )
-      RETURNING 
-        *,
-        to_char(publicado, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as publicado_formatted;
+      RETURNING *;
     `;
     
     console.log('✅ Oferta insertada:', oferta);
@@ -243,8 +239,7 @@ export async function POST(request: NextRequest) {
           'rol', u.rol,
           'calificacion', COALESCE(u.calificacion, 4.5),
           'totalIntercambios', COALESCE(u.total_intercambios, 0)
-        ) as ofertante,
-        to_char(o.publicado, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as publicado
+        ) as ofertante
       FROM ofertas o
       JOIN users u ON o.ofertante_id = u.id
       WHERE o.id = ${oferta.id};
@@ -256,29 +251,31 @@ export async function POST(request: NextRequest) {
       id: ofertaCompleta.id,
       ofertante: ofertaCompleta.ofertante,
       tipo: ofertaCompleta.tipo,
-      turnoOfrece: ofertaCompleta.tipo !== 'ABIERTO' ? {
-        fecha: ofertaCompleta.fecha_ofrece,
-        horario: ofertaCompleta.horario_ofrece,
-        grupoTurno: ofertaCompleta.grupo_ofrece,
-      } : null,
-      turnoBusca: ofertaCompleta.tipo === 'INTERCAMBIO' ? {
-        fecha: ofertaCompleta.fecha_busca,
-        horario: ofertaCompleta.horario_busca,
-        grupoTurno: ofertaCompleta.grupo_busca,
-      } : null,
-      rangoFechas: ofertaCompleta.fecha_desde && ofertaCompleta.fecha_hasta ? {
-        desde: ofertaCompleta.fecha_desde,
-        hasta: ofertaCompleta.fecha_hasta,
-      } : undefined,
+      modalidadBusqueda: ofertaCompleta.modalidad_busqueda,
+      turnoOfrece: ofertaCompleta.turno_ofrece ? 
+        (typeof ofertaCompleta.turno_ofrece === 'string' ? 
+          JSON.parse(ofertaCompleta.turno_ofrece) : 
+          ofertaCompleta.turno_ofrece
+        ) : null,
+      turnosBusca: ofertaCompleta.turnos_busca ? 
+        (typeof ofertaCompleta.turnos_busca === 'string' ? 
+          JSON.parse(ofertaCompleta.turnos_busca) : 
+          ofertaCompleta.turnos_busca
+        ) : null,
+      fechasDisponibles: ofertaCompleta.fechas_disponibles ? 
+        (typeof ofertaCompleta.fechas_disponibles === 'string' ? 
+          JSON.parse(ofertaCompleta.fechas_disponibles) : 
+          ofertaCompleta.fechas_disponibles
+        ) : null,
       descripcion: ofertaCompleta.descripcion,
       prioridad: ofertaCompleta.prioridad,
       estado: ofertaCompleta.estado,
       publicado: ofertaCompleta.publicado,
-      fechaOfrece: ofertaCompleta.fecha_ofrece,
     }, { status: 201 });
     
   } catch (error) {
     console.error('💥 Error creating oferta:', error);
+    console.error('Error details:', error instanceof Error ? error.message : String(error));
     return NextResponse.json(
       { 
         error: 'Error al crear oferta',

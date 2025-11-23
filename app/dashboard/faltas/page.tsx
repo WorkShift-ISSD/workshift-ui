@@ -15,6 +15,7 @@ import {
   Calendar,
   Clock,
   FileSearch,
+  AlertCircle,
 } from "lucide-react";
 import { calcularGrupoTrabaja, type GrupoTurno } from "@/app/lib/turnosUtils";
 import { ExportData } from "@/app/components/ExportToPdf";
@@ -22,14 +23,20 @@ import { ExportData } from "@/app/components/ExportToPdf";
 // ==== FECHA LOCAL ARGENTINA ====
 const getTodayDate = () => {
   const today = new Date();
-  today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
-  return today.toISOString().split("T")[0];
+  // Obtener fecha en zona horaria local sin conversión UTC
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 // ==== FORMATO DE FECHA ====
 const formatDate = (dateString: string) => {
   try {
-    const date = new Date(dateString.replace(/-/g, "/"));
+    // Crear fecha sin conversión de zona horaria
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+
     return date.toLocaleDateString("es-AR", {
       weekday: "long",
       year: "numeric",
@@ -52,6 +59,25 @@ export default function FaltasPage() {
   const { empleados, isLoading: loadingEmpleados, error: errorEmpleados } = useEmpleados();
   const { faltas, isLoading: loadingFaltas, error: errorFaltas, deleteFalta: eliminarFalta, mutate } = useFaltas(selectedDate);
   const { faltas: todasLasFaltas } = useTodasLasFaltas();
+
+  // ==== DEBUG: Verificar fechas ====
+  useEffect(() => {
+    if (faltas && faltas.length > 0) {
+      console.log("📅 Fecha seleccionada:", selectedDate);
+      console.log("📋 Faltas recibidas:", faltas.map(f => ({
+        empleadoId: f.empleadoId,
+        fecha: f.fecha,
+        fechaOriginal: f.fecha
+      })));
+    }
+  }, [faltas, selectedDate]);
+
+  // ==== VALIDAR FECHA FUTURA ====
+  const esFechaFutura = useMemo(() => {
+    const fechaSeleccionada = new Date(selectedDate);
+    const hoy = new Date(today);
+    return fechaSeleccionada > hoy;
+  }, [selectedDate, today]);
 
   // Calcular qué grupo trabaja en la fecha seleccionada
   const grupoQueTrabaja = useMemo(() => {
@@ -109,6 +135,46 @@ export default function FaltasPage() {
   // Lista de faltas del día
   const empleadosConFalta = (faltas || []).map((f) => f.empleadoId);
 
+  // ==== DEBUG: Verificar datos ====
+  useEffect(() => {
+    console.log("=== DEBUG FALTAS ===");
+    console.log("📅 Fecha seleccionada:", selectedDate);
+    console.log("📅 Grupo que trabaja:", grupoQueTrabaja);
+    console.log("📋 Faltas recibidas:", faltas?.length || 0);
+    console.log("👥 Empleados del día (filtrados):", empleadosDelDia.length);
+    console.log("❌ IDs con falta:", empleadosConFalta);
+
+    if (faltas && faltas.length > 0) {
+      console.log("📋 Detalle de faltas:", faltas.map(f => ({
+        id: f.id,
+        empleadoId: f.empleadoId,
+        fecha: f.fecha,
+        empleado: f.empleado?.nombre + " " + f.empleado?.apellido,
+        grupo: empleados?.find(e => e.id === f.empleadoId)?.grupoTurno
+      })));
+    }
+
+    console.log("👥 Empleados del día:", empleadosDelDia.map(e => ({
+      id: e.id,
+      nombre: e.nombre + " " + e.apellido,
+      grupo: e.grupoTurno,
+      tieneFalta: empleadosConFalta.includes(e.id)
+    })));
+  }, [faltas, selectedDate, empleadosDelDia, empleadosConFalta, grupoQueTrabaja, empleados]);
+
+  // ==== EMPLEADOS PARA EXPORTAR (sin filtros) ====
+  const empleadosParaExportar = useMemo(() => {
+    if (!empleados) return [];
+
+    return empleados.filter((emp) => {
+      const estaActivo = emp.activo;
+      const perteneceAlGrupo = emp.grupoTurno === grupoQueTrabaja;
+      const esRolValido = emp.rol === 'SUPERVISOR' || emp.rol === 'INSPECTOR';
+
+      return estaActivo && perteneceAlGrupo && esRolValido;
+    });
+  }, [empleados, grupoQueTrabaja]);
+
   // ==== ELIMINAR FALTA ====
   const handleEliminarFalta = async (id: string) => {
     if (!confirm("¿Está seguro de eliminar esta falta?")) return;
@@ -129,6 +195,19 @@ export default function FaltasPage() {
     mutate();
   };
 
+  // ==== MANEJAR CAMBIO DE FECHA ====
+  const handleDateChange = (newDate: string) => {
+    const fechaSeleccionada = new Date(newDate);
+    const hoy = new Date(today);
+
+    if (fechaSeleccionada > hoy) {
+      toast.warning("No se pueden consultar fechas futuras");
+      return;
+    }
+
+    setSelectedDate(newDate);
+  };
+
   if (loadingEmpleados || loadingFaltas) return <LoadingSpinner />;
   if (errorEmpleados || errorFaltas)
     return (
@@ -140,7 +219,6 @@ export default function FaltasPage() {
   return (
     <div className="container mx-auto p-6">
       <ToastContainer theme="colored" />
-
 
       {/* Header con botón de consultas */}
       <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -154,7 +232,7 @@ export default function FaltasPage() {
         </div>
 
         {/* Botones agrupados */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => setModalConsultaOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700
@@ -167,10 +245,10 @@ export default function FaltasPage() {
           </button>
 
           <ExportData
-            employees={empleados || []}
+            employees={empleadosParaExportar}
             stats={{
-              total: empleadosDelDia.length,
-              activos: empleadosDelDia.filter(emp => !empleadosConFalta.includes(emp.id)).length,
+              total: empleadosParaExportar.length,
+              activos: empleadosParaExportar.filter(emp => !empleadosConFalta.includes(emp.id)).length,
               ausentes: empleadosConFalta.length,
               enLicencia: 0,
             }}
@@ -187,10 +265,22 @@ export default function FaltasPage() {
         </div>
       </div>
 
+      {/* Alerta de fecha futura */}
+      {esFechaFutura && (
+        <div className="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+            <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">
+              No se pueden consultar fechas futuras. Por favor selecciona una fecha válida.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Info del grupo que trabaja */}
       <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
         <p className="text-sm text-blue-800 dark:text-blue-200">
-          <span className="font-semibold">Grupo que trabaja hoy:</span> Grupo {grupoQueTrabaja}
+          <span className="font-semibold">Grupo que trabaja:</span> Grupo {grupoQueTrabaja}
         </p>
       </div>
 
@@ -205,7 +295,8 @@ export default function FaltasPage() {
           <input
             type="date"
             value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
+            max={today}
+            onChange={(e) => handleDateChange(e.target.value)}
             className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 
                      bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                      focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 
@@ -271,13 +362,18 @@ export default function FaltasPage() {
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             Total: {empleadosDelDia.length} empleado(s) del Grupo {grupoQueTrabaja}
           </p>
-
         </div>
 
-
-
         {/* Contenido */}
-        {empleadosDelDia.length === 0 ? (
+        {esFechaFutura ? (
+          <div className="text-center text-gray-500 dark:text-gray-400 py-12">
+            <AlertCircle className="w-16 h-16 mx-auto mb-4 text-yellow-500" />
+            <p className="text-lg font-medium">Fecha no válida</p>
+            <p className="text-sm">
+              No se pueden consultar fechas futuras
+            </p>
+          </div>
+        ) : empleadosDelDia.length === 0 ? (
           <div className="text-center text-gray-500 dark:text-gray-400 py-12">
             <UserCircle className="w-16 h-16 mx-auto mb-4 opacity-50" />
             <p className="text-lg font-medium">No hay empleados</p>

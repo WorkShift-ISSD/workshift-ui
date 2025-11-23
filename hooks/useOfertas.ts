@@ -14,7 +14,7 @@ export type EstadoOferta =
   | "CANCELADO";
 
 export interface Oferta {
-  destinatario: any;
+  // destinatario: any;
   id: string;
   ofertante: {
     id: string;
@@ -72,6 +72,7 @@ export interface Oferta {
   tomador?: {
     id: string;
     nombre: string;
+    apellido: string;
   };
 }
 
@@ -81,11 +82,11 @@ export interface NuevaOfertaForm {
   fechaOfrece: string;
   horarioOfrece: string;
   grupoOfrece: GrupoTurno;
-  fechaBusca: string;
-  horarioBusca: string;
-  grupoBusca: GrupoTurno;
-  fechaDesde: string;
-  fechaHasta: string;
+  //fechaBusca: string;
+  //horarioBusca: string;
+  //grupoBusca: GrupoTurno;
+  //fechaDesde: string;
+  //fechaHasta: string;
   descripcion: string;
   prioridad: Prioridad;
   fechasBusca: Array<{ fecha: string; horario: string }>; // ✅ Nuevo
@@ -126,7 +127,7 @@ export const useOfertas = () => {
 
     const data = await res.json();
     console.log('📥 Respuesta del servidor:', data);
-    
+
     if (!res.ok) throw new Error(data.error || "Error al crear oferta");
 
     mutate();
@@ -151,7 +152,7 @@ export const useOfertas = () => {
 
   // ✅ Eliminar oferta
   const eliminarOferta = async (id: string) => {
-    const res = await fetch(`/api/ofertas/${id}`, { 
+    const res = await fetch(`/api/ofertas/${id}`, {
       method: "DELETE",
       credentials: 'include', // ✅ Agregar esto
     });
@@ -165,8 +166,8 @@ export const useOfertas = () => {
     if (!ofertas) return { total: 0, ofrezco: 0, busco: 0, urgentes: 0 };
     return {
       total: ofertas.length,
-      ofrezco: ofertas.filter((o) => o.tipo === "OFREZCO").length, // ✅ Actualizado
-      busco: ofertas.filter((o) => o.tipo === "BUSCO").length, // ✅ Actualizado
+      ofrezco: ofertas.filter((o) => o.tipo === "OFREZCO").length,
+      busco: ofertas.filter((o) => o.modalidadBusqueda === "INTERCAMBIO").length, // ✅ Correcto
       urgentes: ofertas.filter((o) => o.prioridad === "URGENTE").length,
     };
   }, [ofertas]);

@@ -4,7 +4,10 @@ import postgres from 'postgres';
 import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
 
-const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
+const sql = postgres(process.env.POSTGRES_URL!, { 
+  ssl: 'require', 
+  prepare: false 
+});
 
 const SECRET_KEY = new TextEncoder().encode(
   process.env.JWT_SECRET || 'Workshift25'
@@ -24,7 +27,9 @@ export async function GET(request: NextRequest) {
           sd.estado,
           sd.motivo,
           sd.prioridad,
-          sd.fecha_solicitud as "fechaSolicitud",
+          sd.fecha_solicitud,
+          sd.turno_solicitante,
+          sd.turno_destinatario,
           json_build_object(
             'id', us.id,
             'nombre', us.nombre,
@@ -36,17 +41,7 @@ export async function GET(request: NextRequest) {
             'nombre', ud.nombre,
             'apellido', ud.apellido,
             'horario', ud.horario
-          ) as destinatario,
-          json_build_object(
-            'fecha', sd.fecha_solicitante,
-            'horario', us.horario,
-            'grupoTurno', sd.grupo_solicitante
-          ) as "turnoSolicitante",
-          json_build_object(
-            'fecha', sd.fecha_destinatario,
-            'horario', ud.horario,
-            'grupoTurno', sd.grupo_destinatario
-          ) as "turnoDestinatario"
+          ) as destinatario
         FROM solicitudes_directas sd
         JOIN users us ON sd.solicitante_id = us.id
         JOIN users ud ON sd.destinatario_id = ud.id
@@ -60,7 +55,9 @@ export async function GET(request: NextRequest) {
           sd.estado,
           sd.motivo,
           sd.prioridad,
-          sd.fecha_solicitud as "fechaSolicitud",
+          sd.fecha_solicitud,
+          sd.turno_solicitante,
+          sd.turno_destinatario,
           json_build_object(
             'id', us.id,
             'nombre', us.nombre,
@@ -72,17 +69,7 @@ export async function GET(request: NextRequest) {
             'nombre', ud.nombre,
             'apellido', ud.apellido,
             'horario', ud.horario
-          ) as destinatario,
-          json_build_object(
-            'fecha', sd.fecha_solicitante,
-            'horario', us.horario,
-            'grupoTurno', sd.grupo_solicitante
-          ) as "turnoSolicitante",
-          json_build_object(
-            'fecha', sd.fecha_destinatario,
-            'horario', ud.horario,
-            'grupoTurno', sd.grupo_destinatario
-          ) as "turnoDestinatario"
+          ) as destinatario
         FROM solicitudes_directas sd
         JOIN users us ON sd.solicitante_id = us.id
         JOIN users ud ON sd.destinatario_id = ud.id
@@ -92,11 +79,30 @@ export async function GET(request: NextRequest) {
 
     const solicitudes = await query;
 
-    return NextResponse.json(solicitudes);
+    // Formatear la respuesta
+    const solicitudesFormateadas = solicitudes.map((s: any) => ({
+      id: s.id,
+      estado: s.estado,
+      motivo: s.motivo,
+      prioridad: s.prioridad,
+      fechaSolicitud: s.fecha_solicitud,
+      solicitante: s.solicitante,
+      destinatario: s.destinatario,
+      turnoSolicitante: typeof s.turno_solicitante === 'string' ? 
+        JSON.parse(s.turno_solicitante) : s.turno_solicitante,
+      turnoDestinatario: typeof s.turno_destinatario === 'string' ? 
+        JSON.parse(s.turno_destinatario) : s.turno_destinatario,
+    }));
+
+    return NextResponse.json(solicitudesFormateadas);
   } catch (error) {
-    console.error('Error fetching solicitudes:', error);
+    console.error('❌ Error fetching solicitudes:', error);
+    console.error('Error details:', error instanceof Error ? error.message : String(error));
     return NextResponse.json(
-      { error: 'Error al obtener solicitudes' },
+      { 
+        error: 'Error al obtener solicitudes',
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     );
   }
@@ -181,17 +187,26 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Usuarios validados');
 
+    // Construir objetos JSONB para los turnos
+    const turnoSolicitante = {
+      fecha: fechaSolicitante,
+      horario: horarioSolicitante,
+      grupoTurno: grupoSolicitante
+    };
+
+    const turnoDestinatario = {
+      fecha: fechaDestinatario,
+      horario: horarioDestinatario,
+      grupoTurno: grupoDestinatario
+    };
+
     // Insertar la solicitud
     const [nuevaSolicitud] = await sql`
       INSERT INTO solicitudes_directas (
         solicitante_id,
         destinatario_id,
-        fecha_solicitante,
-        horario_solicitante,
-        grupo_solicitante,
-        fecha_destinatario,
-        horario_destinatario,
-        grupo_destinatario,
+        turno_solicitante,
+        turno_destinatario,
         motivo,
         prioridad,
         estado,
@@ -199,12 +214,8 @@ export async function POST(request: NextRequest) {
       ) VALUES (
         ${solicitanteId}::uuid,
         ${destinatarioId}::uuid,
-        ${fechaSolicitante},
-        ${horarioSolicitante},
-        ${grupoSolicitante},
-        ${fechaDestinatario},
-        ${horarioDestinatario},
-        ${grupoDestinatario},
+        ${JSON.stringify(turnoSolicitante)}::jsonb,
+        ${JSON.stringify(turnoDestinatario)}::jsonb,
         ${motivo},
         ${prioridad},
         'SOLICITADO',
@@ -221,6 +232,7 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error('❌ Error en POST /api/solicitudes-directas:', error);
+    console.error('Error details:', error instanceof Error ? error.message : String(error));
     return NextResponse.json(
       { 
         error: 'Error al procesar la solicitud',
