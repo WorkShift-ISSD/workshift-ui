@@ -3,6 +3,7 @@
 
 import SideNav from "../ui/dashboard/sidenav";
 import ProtectedRoute from "../components/ProtectedRoute";
+import WhatsAppChatbot from "../components/WhatsAppChatbot";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -15,6 +16,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex-grow p-6 md:p-12 bg-gray-50 dark:bg-gray-900 transition-colors overflow-y-auto scrollbar-hide">
             {children}
           </div>
+          <WhatsAppChatbot />
         </div>
       </ProtectedRoute>
     // </SessionProvider>
