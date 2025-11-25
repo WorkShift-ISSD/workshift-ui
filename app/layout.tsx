@@ -15,6 +15,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           {children}
         </AuthProvider>
+
+        
         
         {/* Footer: siempre al final de la página */}
         <Footer />

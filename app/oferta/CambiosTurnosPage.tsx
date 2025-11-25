@@ -35,21 +35,19 @@ import { calcularGrupoTrabaja, esFechaValidaParaGrupo } from '../lib/turnosUtils
 import ModalConsultarSolicitudes from '../components/ModalConsultarSolicitudes';
 import { formatFechaHoraLocal, formatFechaLocal } from '../lib/utils';
 
-
-// Constantes
-const HORARIOS = ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '14:00-23:00'];
+// Constantes que NO dependen del usuario
 const GRUPOS: string[] = ['A', 'B'];
 
 const INITIAL_OFERTA_FORM: NuevaOfertaForm = {
-  tipo: 'OFREZCO', // 'OFREZCO' o 'BUSCO'
-  modalidadBusqueda: 'INTERCAMBIO', // 'INTERCAMBIO' o 'ABIERTO'
+  tipo: 'OFREZCO',
+  modalidadBusqueda: 'INTERCAMBIO',
   fechaOfrece: '',
   horarioOfrece: '04:00-14:00',
   grupoOfrece: 'A',
   descripcion: '',
   prioridad: 'NORMAL',
-  fechasBusca: [{ fecha: '', horario: '04:00-14:00' }], // Array para múltiples fechas que busca
-  fechasDisponibles: [{ fecha: '', horario: '04:00-14:00' }],  // Array para modalidad abierta
+  fechasBusca: [{ fecha: '', horario: '04:00-14:00' }],
+  fechasDisponibles: [{ fecha: '', horario: '04:00-14:00' }],
 };
 
 const INITIAL_SOLICITUD_FORM: SolicitudDirectaForm = {
@@ -65,12 +63,24 @@ const INITIAL_SOLICITUD_FORM: SolicitudDirectaForm = {
   prioridad: 'NORMAL',
 };
 
-
-
 export default function CambiosTurnosPage() {
-  // Auth y permisos
+  // ✅ Auth y permisos (DENTRO del componente)
   const { user } = useAuth();
   const { can } = usePermissions();
+
+  // ✅ Horarios dinámicos según el rol del usuario (DENTRO del componente)
+  const HORARIOS = useMemo(() => {
+    if (!user) return ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '14:00-23:00'];
+
+    if (user.rol === 'INSPECTOR') {
+      return ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '14:00-23:00'];
+    } else if (user.rol === 'SUPERVISOR') {
+      return ['05:00-14:00', '14:00-22:00', '22:00-06:00'];
+    }
+
+    // Fallback
+    return ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '14:00-23:00'];
+  }, [user]);
 
   // Estado para modal de consulta
   const [isConsultarModalOpen, setIsConsultarModalOpen] = useState(false);
@@ -85,8 +95,6 @@ export default function CambiosTurnosPage() {
     isLoading: isLoadingOfertas,
     error: errorOfertas
   } = useOfertas();
-
-
 
   const {
     solicitudes: solicitudesDirectas,
@@ -107,11 +115,13 @@ export default function CambiosTurnosPage() {
   const [solicitudDirectaForm, setSolicitudDirectaForm] = useState<SolicitudDirectaForm>(INITIAL_SOLICITUD_FORM);
   const [formError, setFormError] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Al inicio del componente, junto con los otros states
   const [solicitudEditandoId, setSolicitudEditandoId] = useState<string | null>(null);
+  const [ofertaEditandoId, setOfertaEditandoId] = useState<string | null>(null);
 
   type MainTab = 'mis-solicitudes' | 'historico' | 'recibidas' | 'ofertas-disponibles';
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('mis-solicitudes');
+
+  // ... resto del código permanece igual
 
   // Cargar usuarios una sola vez
   useEffect(() => {
@@ -166,10 +176,14 @@ export default function CambiosTurnosPage() {
   }, [ofertas, user?.id]);
 
   const ofertasDisponibles = useMemo(() => {
+    if (!user) return [];
+
     return ofertas.filter(
-      o => o.ofertante?.id !== user?.id && o.estado === 'DISPONIBLE'
+      o => o.ofertante?.id !== user.id &&
+        o.estado === 'DISPONIBLE' &&
+        o.ofertante?.rol === user.rol  // ✅ Solo ver ofertas del mismo rol
     );
-  }, [ofertas, user?.id]);
+  }, [ofertas, user]);
 
   // Filtrar solicitudes directas
   const solicitudesEnviadas = useMemo(() => {
@@ -287,33 +301,46 @@ export default function CambiosTurnosPage() {
     e.preventDefault();
     setFormError('');
 
-    console.log('📋 Estado actual del formulario:', nuevaOfertaForm);
-
     const error = validateOfertaForm(nuevaOfertaForm);
     if (error) {
-      console.log('❌ Error de validación:', error);
       setFormError(error);
       return;
     }
 
     setIsSubmitting(true);
     try {
-      console.log('✅ Validación exitosa, enviando...');
+      if (ofertaEditandoId) {
+        // ✅ EDITAR oferta existente
+        const res = await fetch(`/api/ofertas/${ofertaEditandoId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nuevaOfertaForm),
+        });
 
-      // ✅ Pasar directamente el formulario, agregarOferta se encarga del resto
-      await agregarOferta(nuevaOfertaForm);
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Error al actualizar la oferta');
+        }
 
-      console.log('✅ Oferta publicada exitosamente');
+        console.log('✅ Oferta actualizada');
+      } else {
+        // ✅ CREAR nueva oferta
+        await agregarOferta(nuevaOfertaForm);
+        console.log('✅ Oferta publicada exitosamente');
+      }
+
       closeModal();
       setNuevaOfertaForm(INITIAL_OFERTA_FORM);
+      setOfertaEditandoId(null);
       setFormError('');
+      window.location.reload(); // Recargar para ver cambios
     } catch (error) {
-      console.error('❌ Error al publicar:', error);
-      setFormError(error instanceof Error ? error.message : 'Error al publicar la oferta. Intenta nuevamente.');
+      console.error('❌ Error:', error);
+      setFormError(error instanceof Error ? error.message : 'Error al procesar la oferta');
     } finally {
       setIsSubmitting(false);
     }
-  }, [nuevaOfertaForm, validateOfertaForm, agregarOferta, closeModal]);
+  }, [nuevaOfertaForm, ofertaEditandoId, validateOfertaForm, agregarOferta, closeModal]);
 
   // Handlers para solicitud directa
   const handleSolicitudDirectaSubmit = useCallback(async (e: React.FormEvent) => {
@@ -363,11 +390,12 @@ export default function CambiosTurnosPage() {
   // Handler para cerrar modal y limpiar errores
   const handleCloseModal = useCallback(() => {
     closeModal();
-    setFormError(''); // ✅ Limpiar errores
+    setFormError('');
     setIsSubmitting(false);
     setSolicitudEditandoId(null);
+    setOfertaEditandoId(null); // ✅ AGREGAR ESTO
     setSolicitudDirectaForm(INITIAL_SOLICITUD_FORM);
-    setNuevaOfertaForm(INITIAL_OFERTA_FORM); // ✅ AGREGAR ESTO
+    setNuevaOfertaForm(INITIAL_OFERTA_FORM);
   }, [closeModal]);
 
   // Handlers para acciones de ofertas
@@ -674,8 +702,8 @@ export default function CambiosTurnosPage() {
             <button
               onClick={() => setActiveMainTab('mis-solicitudes')}
               className={`flex-1 min-w-[160px] px-6 py-4 font-semibold text-sm transition-colors relative ${activeMainTab === 'mis-solicitudes'
-                  ? 'text-blue-600 dark:text-blue-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
                 }`}
             >
               <div className="flex items-center justify-center gap-2">
@@ -696,8 +724,8 @@ export default function CambiosTurnosPage() {
             <button
               onClick={() => setActiveMainTab('historico')}
               className={`flex-1 min-w-[160px] px-6 py-4 font-semibold text-sm transition-colors relative ${activeMainTab === 'historico'
-                  ? 'text-blue-600 dark:text-blue-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
                 }`}
             >
               <div className="flex items-center justify-center gap-2">
@@ -729,8 +757,8 @@ export default function CambiosTurnosPage() {
               <button
                 onClick={() => setActiveMainTab('recibidas')}
                 className={`flex-1 min-w-[160px] px-6 py-4 font-semibold text-sm transition-colors relative ${activeMainTab === 'recibidas'
-                    ? 'text-blue-600 dark:text-blue-400'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
                   }`}
               >
                 <div className="flex items-center justify-center gap-2">
@@ -753,8 +781,8 @@ export default function CambiosTurnosPage() {
               <button
                 onClick={() => setActiveMainTab('ofertas-disponibles')}
                 className={`flex-1 min-w-[160px] px-6 py-4 font-semibold text-sm transition-colors relative ${activeMainTab === 'ofertas-disponibles'
-                    ? 'text-blue-600 dark:text-blue-400'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
                   }`}
               >
                 <div className="flex items-center justify-center gap-2">
@@ -900,13 +928,40 @@ export default function CambiosTurnosPage() {
                                 </p>
                               )}
 
-                              {/* Botón cancelar */}
-                              <button
-                                onClick={() => handleCancelarOferta(oferta.id)}
-                                className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
-                              >
-                                ✗ Cancelar Oferta
-                              </button>
+                              {/* Botones de acción */}
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    setNuevaOfertaForm({
+                                      tipo: oferta.tipo,
+                                      modalidadBusqueda: oferta.modalidadBusqueda as 'INTERCAMBIO' | 'ABIERTO',
+                                      fechaOfrece: oferta.turnoOfrece?.fecha || '',
+                                      horarioOfrece: oferta.turnoOfrece?.horario || '04:00-14:00',
+                                      grupoOfrece: oferta.turnoOfrece?.grupoTurno || 'A',
+                                      descripcion: oferta.descripcion || '',
+                                      prioridad: oferta.prioridad,
+                                      fechasBusca: oferta.turnosBusca && Array.isArray(oferta.turnosBusca) && oferta.turnosBusca.length > 0
+                                        ? oferta.turnosBusca.map((t: any) => ({ fecha: t.fecha, horario: t.horario }))
+                                        : [{ fecha: '', horario: '04:00-14:00' }],
+                                      fechasDisponibles: oferta.fechasDisponibles && Array.isArray(oferta.fechasDisponibles) && oferta.fechasDisponibles.length > 0
+                                        ? oferta.fechasDisponibles.map((f: any) => ({ fecha: f.fecha, horario: f.horario }))
+                                        : [{ fecha: '', horario: '04:00-14:00' }],
+                                    });
+                                    setOfertaEditandoId(oferta.id);
+                                    openModal('nueva-oferta');
+                                  }}
+                                  className="flex-1 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg transition flex items-center justify-center gap-1"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                  Editar
+                                </button>
+                                <button
+                                  onClick={() => handleCancelarOferta(oferta.id)}
+                                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+                                >
+                                  ✗ Cancelar Oferta
+                                </button>
+                              </div>
                             </div>
                           );
                         })}
@@ -941,8 +996,8 @@ export default function CambiosTurnosPage() {
                                   </div>
                                 </div>
                                 <span className={`px-2 py-1 rounded text-xs font-medium ${solicitud.estado === 'SOLICITADO'
-                                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
-                                    : 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+                                  : 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
                                   }`}>
                                   {solicitud.estado}
                                 </span>
@@ -1097,10 +1152,10 @@ export default function CambiosTurnosPage() {
                               <div className="flex items-center gap-3 flex-1">
                                 <div
                                   className={`w-2 h-2 rounded-full flex-shrink-0 ${oferta.estado === 'COMPLETADO'
-                                      ? 'bg-green-500'
-                                      : oferta.estado === 'SOLICITADO'
-                                        ? 'bg-yellow-500'
-                                        : 'bg-gray-400'
+                                    ? 'bg-green-500'
+                                    : oferta.estado === 'SOLICITADO'
+                                      ? 'bg-yellow-500'
+                                      : 'bg-gray-400'
                                     }`}
                                 ></div>
                                 <div className="flex-1">
@@ -1110,10 +1165,10 @@ export default function CambiosTurnosPage() {
                                     </span>
                                     <span
                                       className={`text-xs px-2 py-0.5 rounded ${oferta.estado === 'COMPLETADO'
-                                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                                          : oferta.estado === 'SOLICITADO'
-                                            ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
-                                            : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
+                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                        : oferta.estado === 'SOLICITADO'
+                                          ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
+                                          : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
                                         }`}
                                     >
                                       {oferta.estado === 'COMPLETADO'
@@ -1192,8 +1247,8 @@ export default function CambiosTurnosPage() {
                                     </span>
                                     <span
                                       className={`text-xs px-2 py-0.5 rounded ${solicitud.estado === 'COMPLETADO'
-                                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                                          : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
+                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                        : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
                                         }`}
                                     >
                                       {solicitud.estado === 'COMPLETADO' ? 'Completado' : 'Cancelado'}
@@ -1256,8 +1311,8 @@ export default function CambiosTurnosPage() {
                             </p>
                           </div>
                           <span className={`px-2 py-1 rounded text-xs font-medium ${solicitud.prioridad === 'URGENTE'
-                              ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                              : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                            ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                            : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
                             }`}>
                             {solicitud.prioridad}
                           </span>
@@ -1353,8 +1408,8 @@ export default function CambiosTurnosPage() {
                               </p>
                             </div>
                             <span className={`px-2 py-1 rounded text-xs font-medium ${oferta.prioridad === 'URGENTE'
-                                ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                              ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                              : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
                               }`}>
                               {oferta.prioridad}
                             </span>
@@ -1487,7 +1542,7 @@ export default function CambiosTurnosPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-400 dark:border-gray-700">
             <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between sticky top-0 bg-white dark:bg-gray-800 z-10">
               <h2 id="modal-nueva-oferta-title" className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                Nueva Oferta de Cambio
+                {ofertaEditandoId ? 'Editar Oferta de Cambio' : 'Nueva Oferta de Cambio'}
               </h2>
               <button
                 onClick={handleCloseModal}
@@ -2019,14 +2074,6 @@ export default function CambiosTurnosPage() {
               {/* Buttons */}
               <div className="flex gap-3 pt-4">
                 <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  disabled={isSubmitting}
-                  className="flex-1 px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Cancelar
-                </button>
-                <button
                   type="submit"
                   disabled={isSubmitting}
                   className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -2034,10 +2081,10 @@ export default function CambiosTurnosPage() {
                   {isSubmitting ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Publicando...
+                      {ofertaEditandoId ? 'Actualizando...' : 'Publicando...'}
                     </>
                   ) : (
-                    'Publicar Oferta'
+                    ofertaEditandoId ? 'Actualizar Oferta' : 'Publicar Oferta'
                   )}
                 </button>
               </div>
