@@ -35,21 +35,19 @@ import { calcularGrupoTrabaja, esFechaValidaParaGrupo } from '../lib/turnosUtils
 import ModalConsultarSolicitudes from '../components/ModalConsultarSolicitudes';
 import { formatFechaHoraLocal, formatFechaLocal } from '../lib/utils';
 
-
-// Constantes
-const HORARIOS = ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '14:00-23:00'];
+// Constantes que NO dependen del usuario
 const GRUPOS: string[] = ['A', 'B'];
 
 const INITIAL_OFERTA_FORM: NuevaOfertaForm = {
-  tipo: 'OFREZCO', // 'OFREZCO' o 'BUSCO'
-  modalidadBusqueda: 'INTERCAMBIO', // 'INTERCAMBIO' o 'ABIERTO'
+  tipo: 'OFREZCO',
+  modalidadBusqueda: 'INTERCAMBIO',
   fechaOfrece: '',
   horarioOfrece: '04:00-14:00',
   grupoOfrece: 'A',
   descripcion: '',
   prioridad: 'NORMAL',
-  fechasBusca: [{ fecha: '', horario: '04:00-14:00' }], // Array para múltiples fechas que busca
-  fechasDisponibles: [{ fecha: '', horario: '04:00-14:00' }],  // Array para modalidad abierta
+  fechasBusca: [{ fecha: '', horario: '04:00-14:00' }],
+  fechasDisponibles: [{ fecha: '', horario: '04:00-14:00' }],
 };
 
 const INITIAL_SOLICITUD_FORM: SolicitudDirectaForm = {
@@ -65,12 +63,24 @@ const INITIAL_SOLICITUD_FORM: SolicitudDirectaForm = {
   prioridad: 'NORMAL',
 };
 
-
-
 export default function CambiosTurnosPage() {
-  // Auth y permisos
+  // ✅ Auth y permisos (DENTRO del componente)
   const { user } = useAuth();
   const { can } = usePermissions();
+
+  // ✅ Horarios dinámicos según el rol del usuario (DENTRO del componente)
+  const HORARIOS = useMemo(() => {
+    if (!user) return ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '14:00-23:00'];
+
+    if (user.rol === 'INSPECTOR') {
+      return ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '14:00-23:00'];
+    } else if (user.rol === 'SUPERVISOR') {
+      return ['05:00-14:00', '14:00-22:00', '22:00-06:00'];
+    }
+
+    // Fallback
+    return ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '14:00-23:00'];
+  }, [user]);
 
   // Estado para modal de consulta
   const [isConsultarModalOpen, setIsConsultarModalOpen] = useState(false);
@@ -85,8 +95,6 @@ export default function CambiosTurnosPage() {
     isLoading: isLoadingOfertas,
     error: errorOfertas
   } = useOfertas();
-
-
 
   const {
     solicitudes: solicitudesDirectas,
@@ -107,12 +115,13 @@ export default function CambiosTurnosPage() {
   const [solicitudDirectaForm, setSolicitudDirectaForm] = useState<SolicitudDirectaForm>(INITIAL_SOLICITUD_FORM);
   const [formError, setFormError] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Al inicio del componente, junto con los otros states
   const [solicitudEditandoId, setSolicitudEditandoId] = useState<string | null>(null);
   const [ofertaEditandoId, setOfertaEditandoId] = useState<string | null>(null);
 
   type MainTab = 'mis-solicitudes' | 'historico' | 'recibidas' | 'ofertas-disponibles';
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('mis-solicitudes');
+
+  // ... resto del código permanece igual
 
   // Cargar usuarios una sola vez
   useEffect(() => {
@@ -167,10 +176,14 @@ export default function CambiosTurnosPage() {
   }, [ofertas, user?.id]);
 
   const ofertasDisponibles = useMemo(() => {
+    if (!user) return [];
+
     return ofertas.filter(
-      o => o.ofertante?.id !== user?.id && o.estado === 'DISPONIBLE'
+      o => o.ofertante?.id !== user.id &&
+        o.estado === 'DISPONIBLE' &&
+        o.ofertante?.rol === user.rol  // ✅ Solo ver ofertas del mismo rol
     );
-  }, [ofertas, user?.id]);
+  }, [ofertas, user]);
 
   // Filtrar solicitudes directas
   const solicitudesEnviadas = useMemo(() => {
