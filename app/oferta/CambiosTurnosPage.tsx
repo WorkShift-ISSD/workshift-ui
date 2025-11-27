@@ -2263,7 +2263,7 @@ export default function CambiosTurnosPage() {
               </div>
 
               {/* Turno del compañero */}
-              <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
+             <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
                 <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
                   <RefreshCw className="h-5 w-5 text-green-600" />
                   Turno del Compañero (que solicitas)
@@ -2340,9 +2340,11 @@ export default function CambiosTurnosPage() {
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 cursor-not-allowed"
                       placeholder="Se asigna automáticamente"
                     />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Horario del compañero seleccionado
-                    </p>
+                    {companeroSeleccionado && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Horario habitual: {companeroSeleccionado.horario}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label htmlFor="grupo-destinatario" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

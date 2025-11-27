@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
         email,
         nombre,
         apellido,
+        horario,
         rol,
         grupo_turno as "grupoTurno",
         horario,
