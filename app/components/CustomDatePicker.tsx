@@ -1,25 +1,25 @@
-'use client'; // Si usas App Router
+'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { GrupoTurno } from '../lib/turnosUtils';
 
 interface CustomDatePickerProps {
-    id?: string;
+  id?: string;
   value: string | null;
   onChange: (date: string) => void;
   onValidate?: (date: Date) => void;
   minDate?: Date;
-  companeroSeleccionado?: any; // o el tipo específico de tu compañero
+  companeroSeleccionado?: any;
   esFechaValidaParaGrupo: (fecha: Date, grupo: GrupoTurno) => boolean;
   setFormError: (error: string) => void;
   formError: string;
   className: string;
 }
 
-export function CustomDatePicker({ 
-    id,
-  value, 
+export function CustomDatePicker({
+  id,
+  value,
   onChange,
   onValidate,
   minDate = new Date(),
@@ -31,6 +31,32 @@ export function CustomDatePicker({
 }: CustomDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  // Cerrar al hacer click fuera o presionar Escape
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen]);
 
   const getDaysInMonth = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -84,7 +110,7 @@ export function CustomDatePicker({
   };
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full" ref={pickerRef}>
       <input
         id={id}
         type="text"
