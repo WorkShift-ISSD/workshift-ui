@@ -34,6 +34,7 @@ import Can from '../components/Can';
 import { calcularGrupoTrabaja, esFechaValidaParaGrupo } from '../lib/turnosUtils';
 import ModalConsultarSolicitudes from '../components/ModalConsultarSolicitudes';
 import { formatFechaHoraLocal, formatFechaLocal } from '../lib/utils';
+import { CustomDatePicker } from '../components/CustomDatePicker';
 
 // Constantes que NO dependen del usuario
 const GRUPOS: string[] = ['A', 'B'];
@@ -1729,22 +1730,18 @@ export default function CambiosTurnosPage() {
                           )}
                           Fecha
                         </label>
-                        <input
+                        <CustomDatePicker
                           id="fecha-ofrece"
-                          type="date"
-                          required
-                          min={new Date().toISOString().split('T')[0]}
                           value={nuevaOfertaForm.fechaOfrece}
-                          onChange={(e) => {
-                            const fecha = e.target.value;
-                            setNuevaOfertaForm((prev: any) => ({ ...prev, fechaOfrece: fecha }));
+                          onChange={(fechaStr) => {
+                            setNuevaOfertaForm((prev: any) => ({ ...prev, fechaOfrece: fechaStr }));
 
                             if (formError) {
                               setFormError('');
                             }
-
-                            if (fecha && user) {
-                              const fechaObj = new Date(fecha + 'T00:00:00');
+                          }}
+                          onValidate={(fechaObj) => {
+                            if (nuevaOfertaForm.fechaOfrece && user) {
                               if (!esFechaValidaParaGrupo(fechaObj, user.grupoTurno)) {
                                 setFormError(`La fecha seleccionada no corresponde al Grupo ${user.grupoTurno}. Solo puedes ofrecer turnos de tu grupo.`);
                               } else {
@@ -1754,10 +1751,15 @@ export default function CambiosTurnosPage() {
                               }
                             }
                           }}
+                          minDate={new Date()}
+                          companeroSeleccionado={user}
+                          esFechaValidaParaGrupo={esFechaValidaParaGrupo}
+                          setFormError={setFormError}
+                          formError={formError}
                           className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 ${nuevaOfertaForm.fechaOfrece && user &&
-                            !esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno)
-                            ? 'border-red-500 dark:border-red-600'
-                            : 'border-gray-300 dark:border-gray-600'
+                              !esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno)
+                              ? 'border-red-500 dark:border-red-600'
+                              : 'border-gray-300 dark:border-gray-600'
                             }`}
                         />
                         {nuevaOfertaForm.fechaOfrece && user &&
@@ -1814,18 +1816,14 @@ export default function CambiosTurnosPage() {
                           )}
                           Fecha
                         </label>
-                        <input
+                        <CustomDatePicker
                           id="fecha-ofrece"
-                          type="date"
-                          required
-                          min={new Date().toISOString().split('T')[0]}
                           value={nuevaOfertaForm.fechaOfrece}
-                          onChange={(e) => {
-                            const fecha = e.target.value;
-                            setNuevaOfertaForm((prev: any) => ({ ...prev, fechaOfrece: fecha }));
-
-                            if (fecha && user) {
-                              const fechaObj = new Date(fecha + 'T00:00:00');
+                          onChange={(fechaStr) => {
+                            setNuevaOfertaForm((prev: any) => ({ ...prev, fechaOfrece: fechaStr }));
+                          }}
+                          onValidate={(fechaObj) => {
+                            if (nuevaOfertaForm.fechaOfrece && user) {
                               if (!esFechaValidaParaGrupo(fechaObj, user.grupoTurno)) {
                                 setFormError(`La fecha seleccionada no corresponde al Grupo ${user.grupoTurno}. Solo puedes ofrecer turnos de tu grupo.`);
                               } else {
@@ -1835,6 +1833,11 @@ export default function CambiosTurnosPage() {
                               }
                             }
                           }}
+                          minDate={new Date()}
+                          companeroSeleccionado={user}
+                          esFechaValidaParaGrupo={esFechaValidaParaGrupo}
+                          setFormError={setFormError}
+                          formError={formError}
                           className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 ${nuevaOfertaForm.fechaOfrece && user &&
                             !esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno)
                             ? 'border-red-500 dark:border-red-600'
@@ -2183,21 +2186,15 @@ export default function CambiosTurnosPage() {
                         </span>
                       )}
                     </label>
-                    {/* si el user pertence al grupo a, solo permitir elegir dias pares */}
-                    <input
+                    <CustomDatePicker
                       id="fecha-solicitante"
-                      type="date"
-                      required
-                      min={new Date().toISOString().split('T')[0]}
                       value={solicitudDirectaForm.fechaSolicitante}
-                      onChange={(e) => {
-                        const fecha = e.target.value;
-                        setSolicitudDirectaForm(prev => ({ ...prev, fechaSolicitante: fecha }));
-
+                      onChange={(fechaStr) => {
+                        setSolicitudDirectaForm(prev => ({ ...prev, fechaSolicitante: fechaStr }));
+                      }}
+                      onValidate={(fechaObj) => {
                         // Validar que la fecha ofrecida sea del grupo del usuario
-                        if (fecha && user) {
-                          const fechaObj = new Date(fecha + 'T00:00:00');
-
+                        if (solicitudDirectaForm.fechaSolicitante && user) {
                           if (!esFechaValidaParaGrupo(fechaObj, user.grupoTurno)) {
                             setFormError(`La fecha seleccionada no corresponde al Grupo ${user.grupoTurno}. Solo puedes ofrecer turnos de tu grupo.`);
                           } else {
@@ -2208,6 +2205,11 @@ export default function CambiosTurnosPage() {
                           }
                         }
                       }}
+                      minDate={new Date()}
+                      companeroSeleccionado={user}
+                      esFechaValidaParaGrupo={esFechaValidaParaGrupo}
+                      setFormError={setFormError}
+                      formError={formError}
                       className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 ${solicitudDirectaForm.fechaSolicitante && user &&
                         !esFechaValidaParaGrupo(new Date(solicitudDirectaForm.fechaSolicitante + 'T00:00:00'), user.grupoTurno)
                         ? 'border-red-500 dark:border-red-600'
@@ -2281,21 +2283,15 @@ export default function CambiosTurnosPage() {
                         </span>
                       )}
                     </label>
-                    <input
+                    <CustomDatePicker
                       id="fecha-destinatario"
-                      type="date"
-                      required
-                      disabled={!companeroSeleccionado}
-                      min={new Date().toISOString().split('T')[0]}
                       value={solicitudDirectaForm.fechaDestinatario}
-                      onChange={(e) => {
-                        const fecha = e.target.value;
-                        setSolicitudDirectaForm(prev => ({ ...prev, fechaDestinatario: fecha }));
-
+                      onChange={(fechaStr) => {
+                        setSolicitudDirectaForm(prev => ({ ...prev, fechaDestinatario: fechaStr }));
+                      }}
+                      onValidate={(fechaObj) => {
                         // Validar que la fecha corresponda al grupo del compañero destinatario
-                        if (fecha && companeroSeleccionado) {
-                          const fechaObj = new Date(fecha + 'T00:00:00');
-
+                        if (solicitudDirectaForm.fechaDestinatario && companeroSeleccionado) {
                           if (!esFechaValidaParaGrupo(fechaObj, companeroSeleccionado.grupoTurno)) {
                             setFormError(`La fecha seleccionada no corresponde al Grupo ${companeroSeleccionado.grupoTurno} de ${companeroSeleccionado.nombre}. Solo puedes solicitar turnos de su grupo.`);
                           } else {
@@ -2306,6 +2302,11 @@ export default function CambiosTurnosPage() {
                           }
                         }
                       }}
+                      minDate={new Date()}
+                      companeroSeleccionado={companeroSeleccionado}
+                      esFechaValidaParaGrupo={esFechaValidaParaGrupo}
+                      setFormError={setFormError}
+                      formError={formError}
                       className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 ${solicitudDirectaForm.fechaDestinatario && companeroSeleccionado &&
                         !esFechaValidaParaGrupo(new Date(solicitudDirectaForm.fechaDestinatario + 'T00:00:00'), companeroSeleccionado.grupoTurno)
                         ? 'border-red-500 dark:border-red-600'
