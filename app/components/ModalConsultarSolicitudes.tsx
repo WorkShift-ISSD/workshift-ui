@@ -180,6 +180,8 @@ const ModalConsultarSolicitudes: React.FC<ModalConsultarSolicitudesProps> = ({ i
                 <option value="APROBADO">Aprobado</option>
                 <option value="COMPLETADO">Completado</option>
                 <option value="CANCELADO">Cancelado</option>
+                <option value="VENCIDO">Vencido</option>
+
               </select>
             </div>
           </div>
