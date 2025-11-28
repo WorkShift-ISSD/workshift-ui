@@ -3,18 +3,23 @@ import { parseFechaSinTimezone } from "./utils";
 export type GrupoTurno = 'A' | 'B';
 
 /**
- * Determina qué grupo trabaja en una fecha específica
- * Regla: 
- * - Grupo A: días impares del mes (1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31)
- * - Grupo B: días pares del mes (2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30)
+ * LÓGICA DE TURNOS: ALTERNANCIA DÍA POR DÍA
  * 
- * Excepción en meses con 31 días:
- * - Si el mes anterior tiene días impares (31 días), se invierte:
- *   - A trabaja pares
- *   - B trabaja impares
+ * Los grupos se alternan cada día de forma continua a través de los meses.
+ * 
+ * Fecha de referencia: 1 de Enero de 2025 = Grupo A
+ * A partir de ahí:
+ * - Si han pasado un número PAR de días desde la referencia → Grupo A
+ * - Si han pasado un número IMPAR de días desde la referencia → Grupo B
+ * 
+ * Esto garantiza que los grupos SIEMPRE alternen, sin importar el cambio de mes.
  */
-export function calcularGrupoTrabaja(fecha: string | Date): GrupoTurno {
 
+// Fecha de referencia: 1 de Enero de 2025, trabaja el Grupo A
+const FECHA_REFERENCIA = new Date(2025, 0, 1); // 1 de Enero de 2025
+const GRUPO_REFERENCIA: GrupoTurno = 'A';
+
+export function calcularGrupoTrabaja(fecha: string | Date): GrupoTurno {
   let dateObj: Date;
 
   if (typeof fecha === 'string') {
@@ -28,24 +33,18 @@ export function calcularGrupoTrabaja(fecha: string | Date): GrupoTurno {
     dateObj = fecha;
   }
 
-  const dia = dateObj.getDate();
-  const mes = dateObj.getMonth();
-  const anio = dateObj.getFullYear();
+  // Calcular días transcurridos desde la fecha de referencia
+  const diffTime = dateObj.getTime() - FECHA_REFERENCIA.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
   
-  // Determinar si el mes anterior tenía 31 días
-  const mesAnterior = mes === 0 ? 11 : mes - 1;
-  const anioMesAnterior = mes === 0 ? anio - 1 : anio;
-  const diasMesAnterior = new Date(anioMesAnterior, mesAnterior + 1, 0).getDate();
+  // Si han pasado un número par de días (0, 2, 4, ...), es el mismo grupo que la referencia
+  // Si han pasado un número impar de días (1, 3, 5, ...), es el grupo opuesto
+  const esParDias = diffDays % 2 === 0;
   
-  // Si el mes anterior tiene 31 días (impar), se invierte la regla
-  const seInvierte = diasMesAnterior === 31;
-  
-  const esImpar = dia % 2 !== 0;
-  
-  if (seInvierte) {
-    return esImpar ? 'A' : 'B';
+  if (esParDias) {
+    return GRUPO_REFERENCIA; // Grupo A
   } else {
-    return esImpar ? 'B' : 'A';
+    return GRUPO_REFERENCIA === 'A' ? 'B' : 'A'; // Grupo B
   }
 }
 
@@ -67,7 +66,7 @@ export function getDiasTrabajo(mes: number, anio: number, grupo: GrupoTurno): nu
 }
 
 /**
- * Calcula el resumen del mes (para mostrar como en la imagen)
+ * Calcula el resumen del mes
  */
 export function getResumenMes(mes: number, anio: number) {
   const nombresMeses = [
@@ -80,7 +79,12 @@ export function getResumenMes(mes: number, anio: number) {
   const anioMesAnterior = mes === 0 ? anio - 1 : anio;
   const diasMesAnterior = new Date(anioMesAnterior, mesAnterior + 1, 0).getDate();
   
-  const seInvierte = diasMesAnterior === 31;
+  // Calcular qué grupo trabaja el día 1 de este mes
+  const fechaDia1 = new Date(anio, mes, 1);
+  const grupoQueTrabajaDia1 = calcularGrupoTrabaja(fechaDia1);
+  
+  // Determinar si la regla está "invertida" (B trabaja impares en lugar de A)
+  const seInvierte = grupoQueTrabajaDia1 === 'B';
   const esImpar = diasEnMes % 2 !== 0;
   
   let tipo: 'impares' | 'pares';
@@ -88,10 +92,12 @@ export function getResumenMes(mes: number, anio: number) {
   let grupoB: 'impares' | 'pares';
   
   if (seInvierte) {
+    // B trabaja el día 1 (impar), entonces B trabaja impares
     tipo = esImpar ? 'impares' : 'pares';
     grupoA = 'pares';
     grupoB = 'impares';
   } else {
+    // A trabaja el día 1 (impar), entonces A trabaja impares
     tipo = esImpar ? 'impares' : 'pares';
     grupoA = 'impares';
     grupoB = 'pares';
@@ -142,7 +148,7 @@ export function getSiguienteDiaDisponible(fechaActual: Date, grupo: GrupoTurno):
 }
 
 /**
- * Formatea la descripción del cálculo como en la imagen
+ * Formatea la descripción del cálculo
  */
 export function getDescripcionCalculo(mes: number, anio: number): string {
   const resumen = getResumenMes(mes, anio);
@@ -151,19 +157,56 @@ export function getDescripcionCalculo(mes: number, anio: number): string {
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
   ];
   
-  let descripcion = `${nombresMeses[mes]} ${anio}: `;
-  
-  if (resumen.tipo === 'impares') {
-    descripcion += `A → impares (dato tuyo). (${resumen.totalDias} días → impar)`;
-  } else {
-    descripcion += `A → pares (dato tuyo). (${resumen.totalDias} días → par)`;
-  }
+  let descripcion = `${nombresMeses[mes]} ${anio}:\n`;
+  descripcion += `Grupo A trabaja días ${resumen.grupoA.tipo} (${resumen.grupoA.cantidad} días)\n`;
+  descripcion += `Grupo B trabaja días ${resumen.grupoB.tipo} (${resumen.grupoB.cantidad} días)`;
   
   if (resumen.seInvierte) {
     const mesAnt = mes === 0 ? 11 : mes - 1;
-    descripcion += `\n⚠️ El mes anterior (${nombresMeses[mesAnt]}) tiene ${resumen.diasMesAnterior} días (impar) → Se invierte: A = pares, B = impares`;
+    descripcion += `\n\n⚠️ Este mes el Grupo B empieza el día 1`;
+    descripcion += `\nEl mes anterior (${nombresMeses[mesAnt]}) terminó con el Grupo A`;
   }
   
   return descripcion;
 }
 
+/**
+ * Función de utilidad para verificar la continuidad entre meses
+ */
+export function verificarContinuidad(mes: number, anio: number): {
+  mesActual: string;
+  ultimoDiaMesAnterior: { dia: number, grupo: GrupoTurno };
+  primerDiaMesActual: { dia: number, grupo: GrupoTurno };
+  esContinuo: boolean;
+} {
+  const nombresMeses = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+  
+  const mesAnterior = mes === 0 ? 11 : mes - 1;
+  const anioMesAnterior = mes === 0 ? anio - 1 : anio;
+  const diasMesAnterior = new Date(anioMesAnterior, mesAnterior + 1, 0).getDate();
+  
+  const fechaUltimoDiaAnterior = new Date(anioMesAnterior, mesAnterior, diasMesAnterior);
+  const fechaPrimerDiaActual = new Date(anio, mes, 1);
+  
+  const grupoUltimoDiaAnterior = calcularGrupoTrabaja(fechaUltimoDiaAnterior);
+  const grupoPrimerDiaActual = calcularGrupoTrabaja(fechaPrimerDiaActual);
+  
+  // Los grupos deben ser diferentes para que sea continuo
+  const esContinuo = grupoUltimoDiaAnterior !== grupoPrimerDiaActual;
+  
+  return {
+    mesActual: nombresMeses[mes],
+    ultimoDiaMesAnterior: {
+      dia: diasMesAnterior,
+      grupo: grupoUltimoDiaAnterior
+    },
+    primerDiaMesActual: {
+      dia: 1,
+      grupo: grupoPrimerDiaActual
+    },
+    esContinuo
+  };
+}
