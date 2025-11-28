@@ -533,7 +533,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Filters and Actions */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all dark:text-gray-400">
         {/* Input de búsqueda */}
         <div className="w-full mb-4">
           <div className="relative">

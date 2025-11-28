@@ -76,7 +76,7 @@ export default function CambiosTurnosPage() {
     if (user.rol === 'INSPECTOR') {
       return ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '14:00-23:00'];
     } else if (user.rol === 'SUPERVISOR') {
-      return ['05:00-14:00', '14:00-22:00', '22:00-06:00'];
+      return ['05:00-14:00', '14:00-23:00', '23:00-05:00'];
     }
 
     // Fallback
