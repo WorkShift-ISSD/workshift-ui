@@ -828,11 +828,11 @@ export default function CambiosTurnosPage() {
                       </h3>
                       <div className="space-y-3">
                         {misOfertas.map((oferta) => {
-                          const fechaFormateada = new Date(oferta.publicado).toLocaleDateString("es-AR", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                          });
+                          const fechaFormateada = new Intl.DateTimeFormat('es-AR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          }).format(new Date(oferta.publicado));
 
                           const esIntercambio = oferta.modalidadBusqueda === 'INTERCAMBIO';
                           const esAbierto = oferta.modalidadBusqueda === 'ABIERTO';
@@ -883,7 +883,14 @@ export default function CambiosTurnosPage() {
                                     {oferta.tipo === "OFREZCO" ? "Turno disponible:" : "Turno que busco:"}
                                   </p>
                                   <p className="text-xs text-gray-900 dark:text-gray-100">
-                                    📅 {oferta.turnoOfrece?.fecha || 'N/A'} •
+                                    📅 {oferta.turnoOfrece?.fecha
+                                      ? new Date(oferta.turnoOfrece.fecha).toLocaleDateString("es-AR", {
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                        year: "numeric",
+                                      })
+                                      : 'N/A'
+                                    } •
                                     🕐 {oferta.turnoOfrece?.horario || user?.horario || 'N/A'} •
                                     Grupo {oferta.turnoOfrece?.grupoTurno || user?.grupoTurno || 'N/A'}
                                   </p>
@@ -898,7 +905,7 @@ export default function CambiosTurnosPage() {
                                     <div className="space-y-1">
                                       {oferta.turnosBusca.map((turno: any, idx: number) => (
                                         <p key={idx} className="text-xs text-gray-900 dark:text-gray-100">
-                                          📅 {turno.fecha} • 🕐 {turno.horario}
+                                          📅 {formatearFecha(turno.fecha)} • 🕐 {turno.horario}
                                         </p>
                                       ))}
                                     </div>
@@ -1757,9 +1764,9 @@ export default function CambiosTurnosPage() {
                           setFormError={setFormError}
                           formError={formError}
                           className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 ${nuevaOfertaForm.fechaOfrece && user &&
-                              !esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno)
-                              ? 'border-red-500 dark:border-red-600'
-                              : 'border-gray-300 dark:border-gray-600'
+                            !esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno)
+                            ? 'border-red-500 dark:border-red-600'
+                            : 'border-gray-300 dark:border-gray-600'
                             }`}
                         />
                         {nuevaOfertaForm.fechaOfrece && user &&
@@ -2263,7 +2270,7 @@ export default function CambiosTurnosPage() {
               </div>
 
               {/* Turno del compañero */}
-             <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
+              <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
                 <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
                   <RefreshCw className="h-5 w-5 text-green-600" />
                   Turno del Compañero (que solicitas)
