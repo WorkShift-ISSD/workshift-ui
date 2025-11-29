@@ -40,21 +40,29 @@ export default function ModalConsultaFaltas({
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
 
-  // Filtrar faltas
   const faltasFiltradas = useMemo(() => {
     if (!faltas) return [];
 
+    // Normalizo el término de búsqueda
+    const search = searchTerm?.toLowerCase() ?? "";
+
     return faltas.filter((falta) => {
-      // Filtro por búsqueda de texto
+      // Normalizo campos seguros
+      const nombre = falta.empleado?.nombre?.toLowerCase() ?? "";
+      const apellido = falta.empleado?.apellido?.toLowerCase() ?? "";
+      const causa = falta.causa?.toLowerCase() ?? "";
+
+      // Filtro por texto
       const textoCoincide =
-        searchTerm === "" ||
-        falta.empleado?.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        falta.empleado?.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        falta.causa.toLowerCase().includes(searchTerm.toLowerCase());
+        search === "" ||
+        nombre.includes(search) ||
+        apellido.includes(search) ||
+        causa.includes(search);
 
       // Filtro por empleado
       const empleadoCoincide =
-        selectedEmpleado === "TODOS" || falta.empleadoId === selectedEmpleado;
+        selectedEmpleado === "TODOS" ||
+        falta.empleadoId === selectedEmpleado;
 
       // Filtro por justificada
       const justificadaCoincide =
@@ -67,9 +75,22 @@ export default function ModalConsultaFaltas({
         (!fechaDesde || falta.fecha >= fechaDesde) &&
         (!fechaHasta || falta.fecha <= fechaHasta);
 
-      return textoCoincide && empleadoCoincide && justificadaCoincide && fechaCoincide;
+      return (
+        textoCoincide &&
+        empleadoCoincide &&
+        justificadaCoincide &&
+        fechaCoincide
+      );
     });
-  }, [faltas, searchTerm, selectedEmpleado, selectedJustificada, fechaDesde, fechaHasta]);
+  }, [
+    faltas,
+    searchTerm,
+    selectedEmpleado,
+    selectedJustificada,
+    fechaDesde,
+    fechaHasta,
+  ]);
+
 
   // Estadísticas
   const stats = useMemo(() => {
@@ -220,31 +241,28 @@ export default function ModalConsultaFaltas({
             <div className="flex gap-2">
               <button
                 onClick={() => setSelectedJustificada("TODOS")}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  selectedJustificada === "TODOS"
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${selectedJustificada === "TODOS"
                     ? "bg-blue-600 text-white"
                     : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-                }`}
+                  }`}
               >
                 Todas
               </button>
               <button
                 onClick={() => setSelectedJustificada("SI")}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  selectedJustificada === "SI"
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${selectedJustificada === "SI"
                     ? "bg-green-600 text-white"
                     : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-                }`}
+                  }`}
               >
                 Justificadas
               </button>
               <button
                 onClick={() => setSelectedJustificada("NO")}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  selectedJustificada === "NO"
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${selectedJustificada === "NO"
                     ? "bg-red-600 text-white"
                     : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-                }`}
+                  }`}
               >
                 No Justificadas
               </button>
