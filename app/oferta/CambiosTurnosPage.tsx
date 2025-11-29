@@ -722,25 +722,43 @@ export default function CambiosTurnosPage() {
             </button>
 
             {/* Tab: Histórico */}
+            {/* Tab: Histórico */}
             <button
               onClick={() => setActiveMainTab('historico')}
               className={`flex-1 min-w-[160px] px-6 py-4 font-semibold text-sm transition-colors relative ${activeMainTab === 'historico'
-                ? 'text-blue-600 dark:text-blue-400'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
                 }`}
             >
               <div className="flex items-center justify-center gap-2">
                 <Star className="h-4 w-4" />
                 <span>Histórico</span>
                 {(() => {
+                  // Solo contar ofertas donde el usuario participó activamente
                   const ofertasHistorico = ofertas.filter(
-                    o => (o.ofertante?.id === user?.id || o.tomador?.id === user?.id) &&
-                      (o.estado === 'COMPLETADO' || o.estado === 'CANCELADO' || o.estado === 'SOLICITADO')
+                    o => {
+                      // Solo si el usuario es ofertante Y tiene tomador (se completó el intercambio)
+                      // O si el usuario es tomador (aceptó una oferta)
+                      const esOfertanteConTomador = o.ofertante?.id === user?.id && o.tomador?.id;
+                      const esTomador = o.tomador?.id === user?.id;
+                      const esEstadoHistorico = o.estado === 'COMPLETADO' || o.estado === 'CANCELADO';
+
+                      return (esOfertanteConTomador || esTomador) && esEstadoHistorico;
+                    }
                   );
+
+                  // Solo contar solicitudes donde el usuario participó
                   const solicitudesHistorico = solicitudesDirectas.filter(
-                    s => s.estado === 'COMPLETADO' || s.estado === 'CANCELADO'
+                    s => {
+                      const esParticipante = s.solicitante?.id === user?.id || s.destinatario?.id === user?.id;
+                      const esEstadoHistorico = s.estado === 'COMPLETADO' || s.estado === 'CANCELADO';
+
+                      return esParticipante && esEstadoHistorico;
+                    }
                   );
+
                   const total = ofertasHistorico.length + solicitudesHistorico.length;
+
                   return total > 0 ? (
                     <span className="ml-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-xs font-medium">
                       {total}
