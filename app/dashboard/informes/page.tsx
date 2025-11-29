@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useEmpleados } from '@/hooks/useEmpleados';
 import { useTodasLasFaltas } from '@/hooks/useFaltas';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
@@ -38,7 +38,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-type Rol = 'SUPERVISOR' | 'INSPECTOR' | 'JEFE' | 'ADMINISTRADOR';
+type Rol = 'SUPERVISOR' | 'INSPECTOR';
 type GrupoTurno = 'A' | 'B';
 type TipoInforme = 'asistencia' | 'ausentismo' | 'comparativo' | 'individual';
 
@@ -61,6 +61,15 @@ export default function InformesPage() {
   const [turnoSeleccionado, setTurnoSeleccionado] = useState<GrupoTurno | 'TODOS'>('TODOS');
   const [searchTerm, setSearchTerm] = useState('');
   const [mostrarFiltros, setMostrarFiltros] = useState(true);
+
+
+
+          useEffect(() => {
+          if (tipoInforme !== "individual") {
+            setEmpleadoSeleccionado("TODOS");
+          }
+        }, [tipoInforme]);
+  
 
   // Colores para gráficos
   const COLORS = {
@@ -90,13 +99,21 @@ export default function InformesPage() {
     }
 
     if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtrados = filtrados.filter(e =>
-        e.nombre.toLowerCase().includes(term) ||
-        e.apellido.toLowerCase().includes(term) ||
-        e.legajo.toString().includes(term)
-      );
-    }
+  const palabras = searchTerm.toLowerCase().trim().split(/\s+/);
+
+  filtrados = filtrados.filter(e => {
+    const nombre = e.nombre.toLowerCase();
+    const apellido = e.apellido.toLowerCase();
+    const legajo = e.legajo.toString();
+
+    // Cada palabra debe matchear en nombre O apellido O legajo
+    return palabras.every(palabra =>
+      nombre.includes(palabra) ||
+      apellido.includes(palabra) ||
+      legajo.includes(palabra)
+    );
+  });
+}
 
     return filtrados;
   }, [empleados, empleadoSeleccionado, rolSeleccionado, turnoSeleccionado, searchTerm]);
@@ -276,6 +293,7 @@ export default function InformesPage() {
       </div>
 
       {/* Selector de Tipo de Informe */}
+
       <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { tipo: 'asistencia' as TipoInforme, label: 'Asistencia', icon: CheckCircle, color: 'blue' },
@@ -381,7 +399,6 @@ export default function InformesPage() {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
                   <option value="TODOS">Todos los roles</option>
-                  <option value="JEFE">Jefe</option>
                   <option value="SUPERVISOR">Supervisor</option>
                   <option value="INSPECTOR">Inspector</option>
                 </select>

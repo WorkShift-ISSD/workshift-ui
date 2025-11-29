@@ -128,20 +128,27 @@ export default function DashboardPage() {
     let filtered = [...employees];
 
     // Search filter
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase().trim();
+if (searchTerm) {
+  const palabras = searchTerm
+    .toLowerCase()
+    .trim()
+    .split(/\s+/); // divide por espacios (1 o más)
 
-      filtered = filtered.filter(emp => {
-        const fullName = `${emp.nombre} ${emp.apellido}`.toLowerCase();
-        return (
-          emp.nombre.toLowerCase().includes(term) ||
-          emp.apellido.toLowerCase().includes(term) ||
-          fullName.includes(term) ||
-          emp.email.toLowerCase().includes(term) ||
-          emp.legajo.toString().includes(term)
-        );
-      });
-    }
+  filtered = filtered.filter((emp) => {
+    const nombre = emp.nombre.toLowerCase();
+    const apellido = emp.apellido.toLowerCase();
+    const email = emp.email.toLowerCase();
+    const legajo = emp.legajo.toString();
+
+    // Cada palabra debe coincidir en algún campo
+    return palabras.every((p) =>
+      nombre.includes(p) ||
+      apellido.includes(p) ||
+      email.includes(p) ||
+      legajo.includes(p)
+    );
+  });
+}
 
     // Role filter
     if (selectedRole !== 'TODOS') {

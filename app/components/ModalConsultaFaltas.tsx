@@ -41,55 +41,66 @@ export default function ModalConsultaFaltas({
   const [fechaHasta, setFechaHasta] = useState("");
 
   const faltasFiltradas = useMemo(() => {
-    if (!faltas) return [];
+  if (!faltas) return [];
 
-    // Normalizo el término de búsqueda
-    const search = searchTerm?.toLowerCase() ?? "";
+  // Normalizo y separo el texto de búsqueda en palabras
+  const palabras = searchTerm?.toLowerCase().trim().split(/\s+/) ?? [];
 
-    return faltas.filter((falta) => {
-      // Normalizo campos seguros
-      const nombre = falta.empleado?.nombre?.toLowerCase() ?? "";
-      const apellido = falta.empleado?.apellido?.toLowerCase() ?? "";
-      const causa = falta.causa?.toLowerCase() ?? "";
+  return faltas.filter((falta) => {
+    // Normalización segura
+    const nombre = falta.empleado?.nombre?.toLowerCase() ?? "";
+    const apellido = falta.empleado?.apellido?.toLowerCase() ?? "";
+    const causa = falta.causa?.toLowerCase() ?? "";
 
-      // Filtro por texto
-      const textoCoincide =
-        search === "" ||
-        nombre.includes(search) ||
-        apellido.includes(search) ||
-        causa.includes(search);
-
-      // Filtro por empleado
-      const empleadoCoincide =
-        selectedEmpleado === "TODOS" ||
-        falta.empleadoId === selectedEmpleado;
-
-      // Filtro por justificada
-      const justificadaCoincide =
-        selectedJustificada === "TODOS" ||
-        (selectedJustificada === "SI" && falta.justificada) ||
-        (selectedJustificada === "NO" && !falta.justificada);
-
-      // Filtro por rango de fechas
-      const fechaCoincide =
-        (!fechaDesde || falta.fecha >= fechaDesde) &&
-        (!fechaHasta || falta.fecha <= fechaHasta);
-
-      return (
-        textoCoincide &&
-        empleadoCoincide &&
-        justificadaCoincide &&
-        fechaCoincide
+    // ======================
+    // Filtro por texto (multi-palabra)
+    // ======================
+    const textoCoincide =
+      palabras.length === 0 ||
+      palabras.every((p) =>
+        nombre.includes(p) ||
+        apellido.includes(p) ||
+        causa.includes(p)
       );
-    });
-  }, [
-    faltas,
-    searchTerm,
-    selectedEmpleado,
-    selectedJustificada,
-    fechaDesde,
-    fechaHasta,
-  ]);
+
+    // ======================
+    // Filtro por empleado
+    // ======================
+    const empleadoCoincide =
+      selectedEmpleado === "TODOS" ||
+      falta.empleadoId === selectedEmpleado;
+
+    // ======================
+    // Filtro por justificada
+    // ======================
+    const justificadaCoincide =
+      selectedJustificada === "TODOS" ||
+      (selectedJustificada === "SI" && falta.justificada) ||
+      (selectedJustificada === "NO" && !falta.justificada);
+
+    // ======================
+    // Filtro por rango de fechas
+    // ======================
+    const fechaCoincide =
+      (!fechaDesde || falta.fecha >= fechaDesde) &&
+      (!fechaHasta || falta.fecha <= fechaHasta);
+
+    // retorno final
+    return (
+      textoCoincide &&
+      empleadoCoincide &&
+      justificadaCoincide &&
+      fechaCoincide
+    );
+  });
+}, [
+  faltas,
+  searchTerm,
+  selectedEmpleado,
+  selectedJustificada,
+  fechaDesde,
+  fechaHasta,
+]);
 
 
   // Estadísticas
