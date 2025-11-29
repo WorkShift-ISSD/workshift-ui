@@ -64,6 +64,13 @@ const INITIAL_SOLICITUD_FORM: SolicitudDirectaForm = {
   prioridad: 'NORMAL',
 };
 
+const parseFechaLocal = (fechaString: string) => {
+  // fechaString: "2025-11-29"
+  const [y, m, d] = fechaString.split('-').map(Number);
+  return new Date(y, m - 1, d); // <-- LOCAL sin UTC
+};
+
+
 export default function CambiosTurnosPage() {
   // ✅ Auth y permisos (DENTRO del componente)
   const { user } = useAuth();
@@ -500,7 +507,7 @@ export default function CambiosTurnosPage() {
     if (!fecha) return 'Fecha no disponible';
 
     try {
-      const date = new Date(fecha);
+      const date = parseFechaLocal(fecha);
       if (isNaN(date.getTime())) return 'Fecha inválida';
 
       return date.toLocaleDateString("es-AR", {
@@ -1330,7 +1337,7 @@ export default function CambiosTurnosPage() {
                           <div className="bg-blue-50 dark:bg-blue-900/10 rounded p-3 border border-blue-200 dark:border-blue-800">
                             <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">Te ofrece:</p>
                             <p className="text-xs text-gray-900 dark:text-gray-100">
-                              📅 {new Date(solicitud.turnoSolicitante.fecha).toLocaleDateString('es-AR')}
+                              📅 {parseFechaLocal(solicitud.turnoSolicitante.fecha).toLocaleDateString("es-AR")}
                             </p>
                             <p className="text-xs text-gray-700 dark:text-gray-300">
                               🕐 {solicitud.turnoSolicitante.horario} - Grupo {solicitud.turnoSolicitante.grupoTurno}
@@ -1340,7 +1347,8 @@ export default function CambiosTurnosPage() {
                           <div className="bg-green-50 dark:bg-green-900/10 rounded p-3 border border-green-200 dark:border-green-800">
                             <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-1">Por tu turno:</p>
                             <p className="text-xs text-gray-900 dark:text-gray-100">
-                              📅 {new Date(solicitud.turnoDestinatario.fecha).toLocaleDateString('es-AR')}
+                              📅 {parseFechaLocal(solicitud.turnoDestinatario.fecha).toLocaleDateString("es-AR")}
+
                             </p>
                             <p className="text-xs text-gray-700 dark:text-gray-300">
                               🕐 {solicitud.turnoDestinatario.horario} - Grupo {solicitud.turnoDestinatario.grupoTurno}
@@ -1727,7 +1735,7 @@ export default function CambiosTurnosPage() {
                         <label htmlFor="fecha-ofrece" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           {nuevaOfertaForm.fechaOfrece && (
                             <span className={`text-xs ml-2 px-2 py-1 rounded ${nuevaOfertaForm.fechaOfrece && user &&
-                              esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno)
+                              esFechaValidaParaGrupo(parseFechaLocal(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno)
                               ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                               : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
                               }`}>
