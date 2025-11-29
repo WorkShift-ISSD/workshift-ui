@@ -356,6 +356,7 @@ export default function CambiosTurnosPage() {
 
     setIsSubmitting(true);
     try {
+      console.log('estado de edición:', solicitudEditandoId);
       if (solicitudEditandoId) {
         // ✅ EDITAR solicitud existente
         const res = await fetch(`/api/solicitudes-directas/${solicitudEditandoId}`, {
@@ -366,11 +367,12 @@ export default function CambiosTurnosPage() {
 
         if (!res.ok) {
           const data = await res.json();
-          throw new Error(data.error || 'Error al actualizar la solicitud');
+          throw new Error(data.details || 'Error al actualizar la solicitud');
         }
 
         console.log('✅ Solicitud actualizada');
       } else {
+        console.log('por crear:', solicitudEditandoId);
         // ✅ CREAR nueva solicitud
         await agregarSolicitud(solicitudDirectaForm);
         console.log('✅ Solicitud creada');
@@ -2133,7 +2135,7 @@ export default function CambiosTurnosPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-400 dark:border-gray-700">
             <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between sticky top-0 bg-white dark:bg-gray-800 z-10">
               <h2 id="modal-solicitud-directa-title" className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                Solicitud Directa de Cambio
+                {solicitudEditandoId ? `Editar Solicitud Directa de Cambio` : 'Nueva Solicitud Directa de Cambio'}
               </h2>
               <button
                 onClick={handleCloseModal}
@@ -2440,14 +2442,16 @@ export default function CambiosTurnosPage() {
 
               {/* Buttons */}
               <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  disabled={isSubmitting}
-                  className="flex-1 px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Cancelar
-                </button>
+                {!solicitudEditandoId &&
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    disabled={isSubmitting}
+                    className="flex-1 px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancelar
+                  </button>
+                }
                 <button
                   type="submit"
                   disabled={isSubmitting || !solicitudDirectaForm.destinatarioId}
@@ -2456,10 +2460,10 @@ export default function CambiosTurnosPage() {
                   {isSubmitting ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Enviando...
+                      {solicitudEditandoId ? 'Actualizando...' : 'Publicando...'}
                     </>
                   ) : (
-                    'Enviar Solicitud'
+                    solicitudEditandoId ? 'Actualizar solicitud' : 'Publicar solicitud'
                   )}
                 </button>
               </div>
