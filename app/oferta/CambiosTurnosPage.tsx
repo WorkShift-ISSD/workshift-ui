@@ -35,13 +35,25 @@ import { calcularGrupoTrabaja, esFechaValidaParaGrupo } from '../lib/turnosUtils
 import ModalConsultarSolicitudes from '../components/ModalConsultarSolicitudes';
 import { formatFechaHoraLocal, formatFechaLocal } from '../lib/utils';
 import { CustomDatePicker } from '../components/CustomDatePicker';
+import {
+  EstadoSolicitud,
+  EstadoOferta,
+  RolUsuario,
+  GrupoTurno,
+  TipoTurno,
+  TipoOferta,
+  Prioridad,
+  EstadoCambio,
+  getEnumSqlString,
+  TipoSolicitud
+} from '../lib/enum';
 
 // Constantes que NO dependen del usuario
 const GRUPOS: string[] = ['A', 'B'];
 
 const INITIAL_OFERTA_FORM: NuevaOfertaForm = {
-  tipo: 'OFREZCO',
-  modalidadBusqueda: 'INTERCAMBIO',
+  tipo: TipoOferta.OFREZCO,
+  modalidadBusqueda: TipoSolicitud.INTERCAMBIO,
   fechaOfrece: '',
   horarioOfrece: '04:00-14:00',
   grupoOfrece: 'A',
@@ -214,7 +226,7 @@ export default function CambiosTurnosPage() {
 
     console.log('🔍 Validando formulario de oferta:', form);
 
-    if (form.modalidadBusqueda === 'INTERCAMBIO') {
+    if (form.modalidadBusqueda === TipoSolicitud.INTERCAMBIO) {
       // ✅ Validar fecha que ofrece (siempre requerida en INTERCAMBIO)
       if (!form.fechaOfrece || form.fechaOfrece.trim() === '') {
         return 'Debes completar la fecha que ofreces';
@@ -246,7 +258,7 @@ export default function CambiosTurnosPage() {
     }
 
     // Validación para modalidad ABIERTO
-    if (form.modalidadBusqueda === 'ABIERTO') {
+    if (form.modalidadBusqueda === TipoSolicitud.ABIERTO) {
       const fechasValidas = form.fechasDisponibles.filter((f: { fecha: string; }) => f.fecha.trim() !== '');
 
       if (fechasValidas.length === 0) {
@@ -363,6 +375,7 @@ export default function CambiosTurnosPage() {
 
     setIsSubmitting(true);
     try {
+      console.log('estado de edición:', solicitudEditandoId);
       if (solicitudEditandoId) {
         // ✅ EDITAR solicitud existente
         const res = await fetch(`/api/solicitudes-directas/${solicitudEditandoId}`, {
@@ -373,11 +386,12 @@ export default function CambiosTurnosPage() {
 
         if (!res.ok) {
           const data = await res.json();
-          throw new Error(data.error || 'Error al actualizar la solicitud');
+          throw new Error(data.details || 'Error al actualizar la solicitud');
         }
 
         console.log('✅ Solicitud actualizada');
       } else {
+        console.log('por crear:', solicitudEditandoId);
         // ✅ CREAR nueva solicitud
         await agregarSolicitud(solicitudDirectaForm);
         console.log('✅ Solicitud creada');
@@ -859,8 +873,8 @@ export default function CambiosTurnosPage() {
                             year: 'numeric'
                           }).format(new Date(oferta.publicado));
 
-                          const esIntercambio = oferta.modalidadBusqueda === 'INTERCAMBIO';
-                          const esAbierto = oferta.modalidadBusqueda === 'ABIERTO';
+                          const esIntercambio = oferta.modalidadBusqueda === TipoSolicitud.INTERCAMBIO;
+                          const esAbierto = oferta.modalidadBusqueda === TipoSolicitud.ABIERTO;
 
                           return (
                             <div
@@ -967,7 +981,7 @@ export default function CambiosTurnosPage() {
                                   onClick={() => {
                                     setNuevaOfertaForm({
                                       tipo: oferta.tipo,
-                                      modalidadBusqueda: oferta.modalidadBusqueda as 'INTERCAMBIO' | 'ABIERTO',
+                                      modalidadBusqueda: oferta.modalidadBusqueda as TipoSolicitud,
                                       fechaOfrece: oferta.turnoOfrece?.fecha || '',
                                       horarioOfrece: oferta.turnoOfrece?.horario || '04:00-14:00',
                                       grupoOfrece: oferta.turnoOfrece?.grupoTurno || 'A',
@@ -1168,7 +1182,7 @@ export default function CambiosTurnosPage() {
                     {ofertasHistorico
                       .sort((a, b) => new Date(b.publicado).getTime() - new Date(a.publicado).getTime())
                       .map((oferta) => {
-                        const esIntercambio = oferta.modalidadBusqueda === 'INTERCAMBIO';
+                        const esIntercambio = oferta.modalidadBusqueda === TipoSolicitud.INTERCAMBIO;
 
                         // Determinar quién es quién en la transacción
                         const soyOfertante = oferta.ofertante?.id === user?.id;
@@ -1477,13 +1491,13 @@ export default function CambiosTurnosPage() {
                               <div>
                                 <span className="text-gray-500 dark:text-gray-400">Tipo:</span>
                                 <p className="text-gray-900 dark:text-gray-100 font-medium">
-                                  {oferta.modalidadBusqueda === 'INTERCAMBIO' ? 'Intercambio' : 'Oferta abierta'}
+                                  {oferta.modalidadBusqueda === TipoSolicitud.INTERCAMBIO ? 'Intercambio' : 'Oferta abierta'}
                                 </p>
                               </div>
                             </div>
                           </div>
 
-                          {oferta.modalidadBusqueda === 'INTERCAMBIO' && oferta.turnosBusca && Array.isArray(oferta.turnosBusca) && oferta.turnosBusca.length > 0 && (
+                          {oferta.modalidadBusqueda === TipoSolicitud.INTERCAMBIO && oferta.turnosBusca && Array.isArray(oferta.turnosBusca) && oferta.turnosBusca.length > 0 && (
                             <div className="bg-green-50 dark:bg-green-900/10 rounded p-4 border border-green-200 dark:border-green-800 mb-3">
                               <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-2">
                                 A cambio de:
@@ -1509,7 +1523,7 @@ export default function CambiosTurnosPage() {
                             </div>
                           )}
 
-                          {oferta.modalidadBusqueda === 'ABIERTO' && oferta.fechasDisponibles && Array.isArray(oferta.fechasDisponibles) && oferta.fechasDisponibles.length > 0 && (
+                          {oferta.modalidadBusqueda === TipoSolicitud.ABIERTO && oferta.fechasDisponibles && Array.isArray(oferta.fechasDisponibles) && oferta.fechasDisponibles.length > 0 && (
                             <div className="bg-purple-50 dark:bg-purple-900/10 rounded p-4 border border-purple-200 dark:border-purple-800 mb-3">
                               <p className="text-xs font-medium text-purple-600 dark:text-purple-400 mb-2">
                                 Fechas disponibles:
@@ -1607,7 +1621,7 @@ export default function CambiosTurnosPage() {
                     onClick={() => setNuevaOfertaForm((prev: any) => ({
                       ...prev,
                       tipo: 'OFREZCO',
-                      modalidadBusqueda: 'INTERCAMBIO'
+                      modalidadBusqueda: TipoSolicitud.INTERCAMBIO
                     }))}
                     className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${nuevaOfertaForm.tipo === 'OFREZCO'
                       ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
@@ -1622,7 +1636,7 @@ export default function CambiosTurnosPage() {
                     onClick={() => setNuevaOfertaForm((prev: any) => ({
                       ...prev,
                       tipo: 'BUSCO',
-                      modalidadBusqueda: 'INTERCAMBIO'
+                      modalidadBusqueda: TipoSolicitud.INTERCAMBIO
                     }))}
                     className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${nuevaOfertaForm.tipo === 'BUSCO'
                       ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
@@ -1642,9 +1656,9 @@ export default function CambiosTurnosPage() {
                     <input
                       type="radio"
                       name="modalidadBusqueda"
-                      value="INTERCAMBIO"
-                      checked={nuevaOfertaForm.modalidadBusqueda === 'INTERCAMBIO'}
-                      onChange={(e) => setNuevaOfertaForm((prev: any) => ({ ...prev, modalidadBusqueda: 'INTERCAMBIO' }))}
+                      value={TipoSolicitud.INTERCAMBIO}
+                      checked={nuevaOfertaForm.modalidadBusqueda === TipoSolicitud.INTERCAMBIO}
+                      onChange={(e) => setNuevaOfertaForm((prev: any) => ({ ...prev, modalidadBusqueda: TipoSolicitud.INTERCAMBIO }))}
                       className="w-4 h-4 text-blue-600"
                     />
                     <span className="text-sm text-gray-700 dark:text-gray-300">Intercambio</span>
@@ -1653,9 +1667,9 @@ export default function CambiosTurnosPage() {
                     <input
                       type="radio"
                       name="modalidadBusqueda"
-                      value="ABIERTO"
-                      checked={nuevaOfertaForm.modalidadBusqueda === 'ABIERTO'}
-                      onChange={(e) => setNuevaOfertaForm((prev: any) => ({ ...prev, modalidadBusqueda: 'ABIERTO' }))}
+                      value={TipoSolicitud.ABIERTO}
+                      checked={nuevaOfertaForm.modalidadBusqueda === TipoSolicitud.ABIERTO}
+                      onChange={(e) => setNuevaOfertaForm((prev: any) => ({ ...prev, modalidadBusqueda: TipoSolicitud.ABIERTO }))}
                       className="w-4 h-4 text-blue-600"
                     />
                     <span className="text-sm text-gray-700 dark:text-gray-300">Abierto</span>
@@ -1664,7 +1678,7 @@ export default function CambiosTurnosPage() {
               </div>
 
               {/* Formulario según tipo */}
-              {nuevaOfertaForm.tipo === 'BUSCO' && nuevaOfertaForm.modalidadBusqueda === 'INTERCAMBIO' && (
+              {nuevaOfertaForm.tipo === 'BUSCO' && nuevaOfertaForm.modalidadBusqueda === TipoSolicitud.INTERCAMBIO && (
                 <>
                   {/* Turno que Busca */}
                   <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
@@ -1827,7 +1841,7 @@ export default function CambiosTurnosPage() {
                 </>
               )}
 
-              {nuevaOfertaForm.tipo === 'OFREZCO' && nuevaOfertaForm.modalidadBusqueda === 'INTERCAMBIO' && (
+              {nuevaOfertaForm.tipo === 'OFREZCO' && nuevaOfertaForm.modalidadBusqueda === TipoSolicitud.INTERCAMBIO && (
                 <>
                   {/* Turno que Ofrece */}
                   <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
@@ -1986,7 +2000,7 @@ export default function CambiosTurnosPage() {
               )}
 
               {/* Modalidad Abierta */}
-              {nuevaOfertaForm.modalidadBusqueda === 'ABIERTO' && (
+              {nuevaOfertaForm.modalidadBusqueda === TipoSolicitud.ABIERTO && (
                 <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
                   <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">
                     Fechas Disponibles
@@ -2141,7 +2155,7 @@ export default function CambiosTurnosPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-400 dark:border-gray-700">
             <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between sticky top-0 bg-white dark:bg-gray-800 z-10">
               <h2 id="modal-solicitud-directa-title" className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                Solicitud Directa de Cambio
+                {solicitudEditandoId ? `Editar Solicitud Directa de Cambio` : 'Nueva Solicitud Directa de Cambio'}
               </h2>
               <button
                 onClick={handleCloseModal}
@@ -2448,14 +2462,16 @@ export default function CambiosTurnosPage() {
 
               {/* Buttons */}
               <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  disabled={isSubmitting}
-                  className="flex-1 px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Cancelar
-                </button>
+                {!solicitudEditandoId &&
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    disabled={isSubmitting}
+                    className="flex-1 px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancelar
+                  </button>
+                }
                 <button
                   type="submit"
                   disabled={isSubmitting || !solicitudDirectaForm.destinatarioId}
@@ -2464,10 +2480,10 @@ export default function CambiosTurnosPage() {
                   {isSubmitting ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Enviando...
+                      {solicitudEditandoId ? 'Actualizando...' : 'Publicando...'}
                     </>
                   ) : (
-                    'Enviar Solicitud'
+                    solicitudEditandoId ? 'Actualizar solicitud' : 'Publicar solicitud'
                   )}
                 </button>
               </div>
