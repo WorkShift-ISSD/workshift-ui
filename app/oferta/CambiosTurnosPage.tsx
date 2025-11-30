@@ -120,6 +120,7 @@ export default function CambiosTurnosPage() {
     solicitudes: solicitudesDirectas,
     agregarSolicitud,
     actualizarEstado,
+    actualizarSolicitud,
     isLoading: isLoadingSolicitudes,
     error: errorSolicitudes
   } = useSolicitudesDirectas();
@@ -375,31 +376,20 @@ export default function CambiosTurnosPage() {
 
     setIsSubmitting(true);
     try {
-      console.log('estado de edición:', solicitudEditandoId);
       if (solicitudEditandoId) {
-        // ✅ EDITAR solicitud existente
-        const res = await fetch(`/api/solicitudes-directas/${solicitudEditandoId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(solicitudDirectaForm),
-        });
-
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.details || 'Error al actualizar la solicitud');
-        }
-
+        // ✅ EDITAR solicitud existente usando el hook
+        await actualizarSolicitud(solicitudEditandoId, solicitudDirectaForm);
         console.log('✅ Solicitud actualizada');
       } else {
-        console.log('por crear:', solicitudEditandoId);
-        // ✅ CREAR nueva solicitud
+        // ✅ CREAR nueva solicitud usando el hook
         await agregarSolicitud(solicitudDirectaForm);
         console.log('✅ Solicitud creada');
       }
 
+      // Limpiar y cerrar
       closeModal();
       setSolicitudDirectaForm(INITIAL_SOLICITUD_FORM);
-      setSolicitudEditandoId(null);
+      setSolicitudEditandoId(null); // ⚠️ IMPORTANTE: Limpiar el ID de edición
       setFormError('');
     } catch (error) {
       console.error('Error:', error);
@@ -407,7 +397,8 @@ export default function CambiosTurnosPage() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [solicitudDirectaForm, solicitudEditandoId, validateSolicitudForm, agregarSolicitud, closeModal]);
+  }, [solicitudDirectaForm, solicitudEditandoId, validateSolicitudForm, agregarSolicitud, actualizarSolicitud, closeModal]);
+
 
   // Handler para cerrar modal y limpiar errores
   const handleCloseModal = useCallback(() => {
@@ -744,6 +735,7 @@ export default function CambiosTurnosPage() {
 
             {/* Tab: Histórico */}
             {/* Tab: Histórico */}
+            {/* Tab: Histórico */}
             <button
               onClick={() => setActiveMainTab('historico')}
               className={`flex-1 min-w-[160px] px-6 py-4 font-semibold text-sm transition-colors relative ${activeMainTab === 'historico'
@@ -755,28 +747,41 @@ export default function CambiosTurnosPage() {
                 <Star className="h-4 w-4" />
                 <span>Histórico</span>
                 {(() => {
-                  // Solo contar ofertas donde el usuario participó activamente
-                  const ofertasHistorico = ofertas.filter(
-                    o => {
-                      // Solo si el usuario es ofertante Y tiene tomador (se completó el intercambio)
-                      // O si el usuario es tomador (aceptó una oferta)
-                      const esOfertanteConTomador = o.ofertante?.id === user?.id && o.tomador?.id;
-                      const esTomador = o.tomador?.id === user?.id;
-                      const esEstadoHistorico = o.estado === 'COMPLETADO' || o.estado === 'CANCELADO';
+                  // ✅ MISMO FILTRO que en el contenido del tab
+                  const ofertasHistorico = ofertas.filter(o => {
+                    const soyOfertante = o.ofertante?.id === user?.id;
+                    const soyTomador = o.tomador?.id === user?.id;
 
-                      return (esOfertanteConTomador || esTomador) && esEstadoHistorico;
+                    // COMPLETADO: mostrar si participé
+                    if (o.estado === 'COMPLETADO') {
+                      return soyOfertante || soyTomador;
                     }
-                  );
 
-                  // Solo contar solicitudes donde el usuario participó
-                  const solicitudesHistorico = solicitudesDirectas.filter(
-                    s => {
-                      const esParticipante = s.solicitante?.id === user?.id || s.destinatario?.id === user?.id;
-                      const esEstadoHistorico = s.estado === 'COMPLETADO' || s.estado === 'CANCELADO';
-
-                      return esParticipante && esEstadoHistorico;
+                    // CANCELADO: SOLO mostrar si YO soy el ofertante
+                    if (o.estado === 'CANCELADO') {
+                      return soyOfertante;
                     }
-                  );
+
+                    return false;
+                  });
+
+                  // ✅ MISMO FILTRO que en el contenido del tab
+                  const solicitudesHistorico = solicitudesDirectas.filter(s => {
+                    const soyElSolicitante = s.solicitante?.id === user?.id;
+                    const soyElDestinatario = s.destinatario?.id === user?.id;
+
+                    // COMPLETADO: mostrar si participé
+                    if (s.estado === 'COMPLETADO') {
+                      return soyElSolicitante || soyElDestinatario;
+                    }
+
+                    // CANCELADO: SOLO mostrar si YO soy el solicitante
+                    if (s.estado === 'CANCELADO') {
+                      return soyElSolicitante;
+                    }
+
+                    return false;
+                  });
 
                   const total = ofertasHistorico.length + solicitudesHistorico.length;
 
@@ -1132,25 +1137,61 @@ export default function CambiosTurnosPage() {
           {activeMainTab === 'historico' && (
             <div>
               {(() => {
-                // Filtrar ofertas para el histórico
-                const ofertasHistorico = ofertas.filter(
-                  o => (o.ofertante?.id === user?.id || o.tomador?.id === user?.id) &&
-                    (o.estado === 'COMPLETADO' || o.estado === 'CANCELADO' || o.estado === 'SOLICITADO')
+                // ✅ NUEVO FILTRO: Solo mostrar lo que YO cancelé o completé
+                const ofertasHistorico = ofertas.filter(o => {
+                  const soyOfertante = o.ofertante?.id === user?.id;
+                  const soyTomador = o.tomador?.id === user?.id;
 
-                );
+                  // Para COMPLETADO: mostrar si participé (ambas partes lo ven)
+                  if (o.estado === 'COMPLETADO') {
+                    return soyOfertante || soyTomador;
+                  }
 
-                // Filtrar solicitudes para el histórico
-                const solicitudesHistorico = solicitudesDirectas.filter(
-                  s => (s.solicitante.id === user?.id || s.destinatario.id === user?.id) &&
-                    (s.estado === 'COMPLETADO' || s.estado === 'CANCELADO')
-                );
+                  // Para CANCELADO: SOLO mostrar si YO soy el ofertante (quien creó la oferta puede cancelar)
+                  if (o.estado === 'CANCELADO') {
+                    return soyOfertante; // ✅ Solo quien creó la oferta ve las canceladas
+                  }
+
+                  return false;
+                });
+
+                // ✅ NUEVO FILTRO: Solo mostrar solicitudes que YO cancelé o completé
+                const solicitudesHistorico = solicitudesDirectas.filter(s => {
+                  const soyElSolicitante = s.solicitante?.id === user?.id;
+                  const soyElDestinatario = s.destinatario?.id === user?.id;
+
+                  // Para COMPLETADO: mostrar si participé (ambas partes lo ven)
+                  if (s.estado === 'COMPLETADO') {
+                    return soyElSolicitante || soyElDestinatario;
+                  }
+
+                  // Para CANCELADO: SOLO mostrar si YO soy el solicitante
+                  // (asumimos que solo el solicitante puede cancelar su propia solicitud)
+                  if (s.estado === 'CANCELADO') {
+                    return soyElSolicitante; // ✅ Solo quien envió la solicitud ve las canceladas
+                  }
+
+                  return false;
+                });
 
                 const totalHistorico = ofertasHistorico.length + solicitudesHistorico.length;
 
-                console.log('📊 Histórico:', {
-                  ofertas: ofertasHistorico,
-                  solicitudes: solicitudesHistorico,
-                  total: totalHistorico
+                // 🔍 Debug
+                console.log('📊 MI Histórico:', {
+                  userId: user?.id,
+                  ofertas: {
+                    todas: ofertas.length,
+                    completadas: ofertas.filter(o => o.estado === 'COMPLETADO' && (o.ofertante?.id === user?.id || o.tomador?.id === user?.id)).length,
+                    canceladasMias: ofertas.filter(o => o.estado === 'CANCELADO' && o.ofertante?.id === user?.id).length,
+                    enHistorico: ofertasHistorico.length
+                  },
+                  solicitudes: {
+                    todas: solicitudesDirectas.length,
+                    completadas: solicitudesDirectas.filter(s => s.estado === 'COMPLETADO' && (s.solicitante?.id === user?.id || s.destinatario?.id === user?.id)).length,
+                    canceladasMias: solicitudesDirectas.filter(s => s.estado === 'CANCELADO' && s.solicitante?.id === user?.id).length,
+                    enHistorico: solicitudesHistorico.length
+                  },
+                  totalHistorico
                 });
 
                 if (totalHistorico === 0) {
@@ -1171,7 +1212,7 @@ export default function CambiosTurnosPage() {
                   <div className="space-y-3 max-w-4xl mx-auto">
                     <div className="mb-4">
                       <h3 className="text-base font-medium text-gray-900 dark:text-gray-100">
-                        Historial de Cambios
+                        Mi Historial de Cambios
                       </h3>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         {totalHistorico} {totalHistorico === 1 ? 'cambio realizado' : 'cambios realizados'}
@@ -1183,8 +1224,6 @@ export default function CambiosTurnosPage() {
                       .sort((a, b) => new Date(b.publicado).getTime() - new Date(a.publicado).getTime())
                       .map((oferta) => {
                         const esIntercambio = oferta.modalidadBusqueda === TipoSolicitud.INTERCAMBIO;
-
-                        // Determinar quién es quién en la transacción
                         const soyOfertante = oferta.ofertante?.id === user?.id;
                         const nombreOtraParte = soyOfertante
                           ? `${oferta.tomador?.nombre || 'Usuario'} ${oferta.tomador?.apellido || ''}`
@@ -1200,9 +1239,7 @@ export default function CambiosTurnosPage() {
                                 <div
                                   className={`w-2 h-2 rounded-full flex-shrink-0 ${oferta.estado === 'COMPLETADO'
                                     ? 'bg-green-500'
-                                    : oferta.estado === 'SOLICITADO'
-                                      ? 'bg-yellow-500'
-                                      : 'bg-gray-400'
+                                    : 'bg-red-500'
                                     }`}
                                 ></div>
                                 <div className="flex-1">
@@ -1213,16 +1250,10 @@ export default function CambiosTurnosPage() {
                                     <span
                                       className={`text-xs px-2 py-0.5 rounded ${oferta.estado === 'COMPLETADO'
                                         ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                                        : oferta.estado === 'SOLICITADO'
-                                          ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
-                                          : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
+                                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
                                         }`}
                                     >
-                                      {oferta.estado === 'COMPLETADO'
-                                        ? 'Completado'
-                                        : oferta.estado === 'SOLICITADO'
-                                          ? 'Pendiente autorización'
-                                          : 'Cancelado'}
+                                      {oferta.estado === 'COMPLETADO' ? 'Completado' : 'Cancelado por ti'}
                                     </span>
                                   </div>
                                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -1257,7 +1288,6 @@ export default function CambiosTurnosPage() {
                               </time>
                             </div>
 
-                            {/* Descripción */}
                             {oferta.descripcion && (
                               <p className="text-xs text-gray-600 dark:text-gray-400 ml-5 italic">
                                 "{oferta.descripcion}"
@@ -1271,7 +1301,7 @@ export default function CambiosTurnosPage() {
                     {solicitudesHistorico
                       .sort((a, b) => new Date(b.fechaSolicitud).getTime() - new Date(a.fechaSolicitud).getTime())
                       .map((solicitud) => {
-                        const soyElSolicitante = solicitud.solicitante.id === user?.id;
+                        const soyElSolicitante = solicitud.solicitante?.id === user?.id;
                         const nombreOtraParte = soyElSolicitante
                           ? `${solicitud.destinatario.nombre} ${solicitud.destinatario.apellido}`
                           : `${solicitud.solicitante.nombre} ${solicitud.solicitante.apellido}`;
@@ -1284,7 +1314,7 @@ export default function CambiosTurnosPage() {
                             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
                               <div className="flex items-center gap-3 flex-1">
                                 <div
-                                  className={`w-2 h-2 rounded-full flex-shrink-0 ${solicitud.estado === 'COMPLETADO' ? 'bg-green-500' : 'bg-gray-400'
+                                  className={`w-2 h-2 rounded-full flex-shrink-0 ${solicitud.estado === 'COMPLETADO' ? 'bg-green-500' : 'bg-red-500'
                                     }`}
                                 ></div>
                                 <div className="flex-1">
@@ -1295,16 +1325,31 @@ export default function CambiosTurnosPage() {
                                     <span
                                       className={`text-xs px-2 py-0.5 rounded ${solicitud.estado === 'COMPLETADO'
                                         ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                                        : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
+                                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
                                         }`}
                                     >
-                                      {solicitud.estado === 'COMPLETADO' ? 'Completado' : 'Cancelado'}
+                                      {solicitud.estado === 'COMPLETADO' ? 'Completado' : 'Cancelado por ti'}
                                     </span>
+                                    {solicitud.prioridad === 'URGENTE' && (
+                                      <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
+                                        URGENTE
+                                      </span>
+                                    )}
                                   </div>
                                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    Tu turno: {formatDate(solicitud.turnoSolicitante.fecha)} ({solicitud.turnoSolicitante.horario})
-                                    {' - '}
-                                    Turno recibido: {formatDate(solicitud.turnoDestinatario.fecha)} ({solicitud.turnoDestinatario.horario})
+                                    {soyElSolicitante ? (
+                                      <>
+                                        Tu turno: {formatDate(solicitud.turnoSolicitante.fecha)} ({solicitud.turnoSolicitante.horario})
+                                        {' - '}
+                                        Turno recibido: {formatDate(solicitud.turnoDestinatario.fecha)} ({solicitud.turnoDestinatario.horario})
+                                      </>
+                                    ) : (
+                                      <>
+                                        Turno ofrecido: {formatDate(solicitud.turnoDestinatario.fecha)} ({solicitud.turnoDestinatario.horario})
+                                        {' - '}
+                                        Turno recibido: {formatDate(solicitud.turnoSolicitante.fecha)} ({solicitud.turnoSolicitante.horario})
+                                      </>
+                                    )}
                                   </p>
                                 </div>
                               </div>
@@ -1312,6 +1357,12 @@ export default function CambiosTurnosPage() {
                                 {formatTimeAgo(solicitud.fechaSolicitud)}
                               </time>
                             </div>
+
+                            {solicitud.motivo && (
+                              <p className="text-xs text-gray-600 dark:text-gray-400 ml-5 mt-2 italic">
+                                "{solicitud.motivo}"
+                              </p>
+                            )}
                           </div>
                         );
                       })}

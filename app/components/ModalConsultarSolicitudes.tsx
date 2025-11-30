@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Search, Calendar, Clock, User, AlertCircle, CheckCircle, XCircle, Loader } from 'lucide-react';
 
 // Tipos
-type EstadoSolicitud = 'SOLICITADO' | 'APROBADO' | 'COMPLETADO' | 'CANCELADO';
+type EstadoSolicitud = 'SOLICITADO' | 'APROBADO' | 'COMPLETADO' | 'CANCELADO' | 'VENCIDO';
 
 interface SolicitudCambio {
   id: string;

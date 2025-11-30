@@ -9,7 +9,7 @@ export default function WhatsAppChatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
   
-  const phoneNumber = "5492995873256";
+  const phoneNumber = "+59899280240";
 
   const handleSendMessage = () => {
     if (!message.trim()) return;

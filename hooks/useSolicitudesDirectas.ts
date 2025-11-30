@@ -80,29 +80,82 @@ export const useSolicitudesDirectas = () => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Error al crear solicitud");
 
-    mutate();
+    // ✅ Actualización optimista
+    mutate(
+      (currentData) => {
+        if (!currentData) return [data.solicitud || data];
+        return [data.solicitud || data, ...currentData];
+      },
+      { revalidate: true }
+    );
+
     return data;
   };
 
-  // ✅ Actualizar estado
+  // ✅ Actualizar solicitud completa (para edición de campos)
+  const actualizarSolicitud = async (id: string, solicitud: SolicitudDirectaForm) => {
+    // ❌ NO enviar solicitanteId ni destinatarioId en la edición
+    const { solicitanteId, destinatarioId, ...solicitudParaActualizar } = solicitud;
+
+    const res = await fetch(`/api/solicitudes-directas/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: 'include',
+      body: JSON.stringify(solicitudParaActualizar),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || data.details || "Error al actualizar solicitud");
+    }
+
+    // ✅ Manejar diferentes formatos de respuesta del servidor
+    const solicitudActualizada = data.solicitud || data;
+
+    // ✅ Actualización optimista: actualizar el estado local inmediatamente
+    mutate(
+      (currentData) => {
+        if (!currentData) return currentData;
+        return currentData.map((s) => 
+          s.id === id ? solicitudActualizada : s
+        );
+      },
+      { revalidate: true } // Revalidar en segundo plano
+    );
+
+    return solicitudActualizada;
+  };
+
+  // ✅ Actualizar solo el estado (para aceptar/rechazar/cancelar)
   const actualizarEstado = async (id: string, nuevoEstado: EstadoOferta) => {
     const res = await fetch(`/api/solicitudes-directas/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      credentials: 'include', // ✅ Agregar esto
+      credentials: 'include',
       body: JSON.stringify({ estado: nuevoEstado }),
     });
 
-    if (!res.ok) throw new Error("Error al actualizar estado");
-    const updated = await res.json();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Error al actualizar estado");
 
-    mutate();
-    return updated;
+    // ✅ Actualización optimista
+    mutate(
+      (currentData) => {
+        if (!currentData) return currentData;
+        return currentData.map((s) => 
+          s.id === id ? { ...s, estado: nuevoEstado } : s
+        );
+      },
+      { revalidate: true }
+    );
+
+    return data;
   };
 
   return {
     solicitudes: solicitudes || [],
     agregarSolicitud,
+    actualizarSolicitud, // ✅ Nueva función para editar
     actualizarEstado,
     isLoading,
     error: error?.message || null,
