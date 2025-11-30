@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useEmpleados } from '@/hooks/useEmpleados';
 import { useTodasLasFaltas } from '@/hooks/useFaltas';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
+import { ExportInformes } from '@/app/components/ExportInformes';
+import { calcularGrupoTrabaja, calcularDiasTrabajoEnRango, calcularPorcentajeAsistenciaReal } from '@/app/lib/turnosUtils';
 import {
   FileText,
   Download,
@@ -61,6 +63,8 @@ export default function InformesPage() {
   const [turnoSeleccionado, setTurnoSeleccionado] = useState<GrupoTurno | 'TODOS'>('TODOS');
   const [searchTerm, setSearchTerm] = useState('');
   const [mostrarFiltros, setMostrarFiltros] = useState(true);
+  const [horarioSeleccionado, setHorarioSeleccionado] = useState<string>('TODOS');
+
 
 
 
@@ -81,42 +85,61 @@ export default function InformesPage() {
     orange: '#F97316',
   };
 
-  // Empleados filtrados
-  const empleadosFiltrados = useMemo(() => {
-    if (!empleados) return [];
-    let filtrados = [...empleados];
 
-    if (empleadoSeleccionado !== 'TODOS') {
-      filtrados = filtrados.filter(e => e.id === empleadoSeleccionado);
-    }
+  const horariosPorRol: Record<Rol, string[]> = {
+  INSPECTOR: ["04:00-14:00", "06:00-16:00", "10:00-20:00", "13:00-23:00", "19:00-05:00"],
+  SUPERVISOR: ["05:00-14:00", "14:00-23:00", "23:00-05:00"],
+  };
 
-    if (rolSeleccionado !== 'TODOS') {
-      filtrados = filtrados.filter(e => e.rol === rolSeleccionado);
-    }
+  useEffect(() => {
+  setHorarioSeleccionado('TODOS');
+  }, [rolSeleccionado]);
 
-    if (turnoSeleccionado !== 'TODOS') {
-      filtrados = filtrados.filter(e => e.grupoTurno === turnoSeleccionado);
-    }
 
-    if (searchTerm) {
-  const palabras = searchTerm.toLowerCase().trim().split(/\s+/);
+ // Empleados filtrados
+const empleadosFiltrados = useMemo(() => {
+  if (!empleados) return [];
+  let filtrados = [...empleados];
 
-  filtrados = filtrados.filter(e => {
-    const nombre = e.nombre.toLowerCase();
-    const apellido = e.apellido.toLowerCase();
-    const legajo = e.legajo.toString();
+  // Excluir JEFE y ADMINISTRADOR comparando como string para evitar error de tipos
+  filtrados = filtrados.filter(e =>
+    !['JEFE', 'ADMINISTRADOR'].includes(String(e.rol))
+  );
 
-    // Cada palabra debe matchear en nombre O apellido O legajo
-    return palabras.every(palabra =>
-      nombre.includes(palabra) ||
-      apellido.includes(palabra) ||
-      legajo.includes(palabra)
-    );
-  });
-}
+  if (empleadoSeleccionado !== 'TODOS') {
+    filtrados = filtrados.filter(e => e.id === empleadoSeleccionado);
+  }
 
-    return filtrados;
-  }, [empleados, empleadoSeleccionado, rolSeleccionado, turnoSeleccionado, searchTerm]);
+  if (rolSeleccionado !== 'TODOS') {
+    filtrados = filtrados.filter(e => e.rol === rolSeleccionado);
+  }
+
+  if (turnoSeleccionado !== 'TODOS') {
+    filtrados = filtrados.filter(e => e.grupoTurno === turnoSeleccionado);
+  }
+
+  if (horarioSeleccionado !== 'TODOS') {
+    filtrados = filtrados.filter(e => e.horario === horarioSeleccionado);
+  }
+
+  if (searchTerm) {
+    const palabras = searchTerm.toLowerCase().trim().split(/\s+/);
+
+    filtrados = filtrados.filter(e => {
+      const nombre = e.nombre.toLowerCase();
+      const apellido = e.apellido.toLowerCase();
+      const legajo = e.legajo.toString();
+
+      return palabras.every(palabra =>
+        nombre.includes(palabra) ||
+        apellido.includes(palabra) ||
+        legajo.includes(palabra)
+      );
+    });
+  }
+
+  return filtrados;
+}, [empleados, empleadoSeleccionado, rolSeleccionado, turnoSeleccionado, horarioSeleccionado, searchTerm]);
 
   // Faltas filtradas por fecha
   const faltasFiltradas = useMemo(() => {
@@ -130,33 +153,38 @@ export default function InformesPage() {
   }, [faltas, fechaInicio, fechaFin]);
 
   // Datos para informe de asistencia
-  const datosAsistencia = useMemo(() => {
-    const empleadosIds = empleadosFiltrados.map(e => e.id);
-    const faltasDelPeriodo = faltasFiltradas.filter(f => empleadosIds.includes(f.empleadoId));
+const datosAsistencia = useMemo(() => {
+  const empleadosIds = empleadosFiltrados.map(e => e.id);
+  const faltasDelPeriodo = faltasFiltradas.filter(f => empleadosIds.includes(f.empleadoId));
 
-    const diasEnPeriodo = Math.ceil((new Date(fechaFin).getTime() - new Date(fechaInicio).getTime()) / (1000 * 60 * 60 * 24));
+  const porEmpleado = empleadosFiltrados.map(emp => {
+    const faltasEmp = faltasDelPeriodo.filter(f => f.empleadoId === emp.id);
+    
+    // Calcular usando la lógica de turnos real
+    const estadisticas = calcularPorcentajeAsistenciaReal(
+      fechaInicio,
+      fechaFin,
+      emp.grupoTurno,
+      faltasEmp.length
+    );
 
-    const porEmpleado = empleadosFiltrados.map(emp => {
-      const faltasEmp = faltasDelPeriodo.filter(f => f.empleadoId === emp.id);
-      const diasTrabajados = diasEnPeriodo - faltasEmp.length;
-      const porcentajeAsistencia = ((diasTrabajados / diasEnPeriodo) * 100).toFixed(1);
+    return {
+      id: emp.id,
+      nombre: `${emp.apellido}, ${emp.nombre}`,
+      legajo: emp.legajo,
+      rol: emp.rol,
+      turno: emp.grupoTurno,
+      faltas: faltasEmp.length,
+      faltasJustificadas: faltasEmp.filter(f => f.justificada).length,
+      faltasInjustificadas: faltasEmp.filter(f => !f.justificada).length,
+      diasDebioTrabajar: estadisticas.diasDebioTrabajar,
+      diasTrabajados: estadisticas.diasTrabajados,
+      porcentajeAsistencia: estadisticas.porcentajeAsistencia,
+    };
+  }).sort((a, b) => b.porcentajeAsistencia - a.porcentajeAsistencia);
 
-      return {
-        id: emp.id,
-        nombre: `${emp.apellido}, ${emp.nombre}`,
-        legajo: emp.legajo,
-        rol: emp.rol,
-        turno: emp.grupoTurno,
-        faltas: faltasEmp.length,
-        faltasJustificadas: faltasEmp.filter(f => f.justificada).length,
-        faltasInjustificadas: faltasEmp.filter(f => !f.justificada).length,
-        diasTrabajados,
-        porcentajeAsistencia: parseFloat(porcentajeAsistencia),
-      };
-    }).sort((a, b) => b.porcentajeAsistencia - a.porcentajeAsistencia);
-
-    return porEmpleado;
-  }, [empleadosFiltrados, faltasFiltradas, fechaInicio, fechaFin]);
+  return porEmpleado;
+}, [empleadosFiltrados, faltasFiltradas, fechaInicio, fechaFin]);
 
   // Datos para informe de ausentismo
   const datosAusentismo = useMemo(() => {
@@ -227,38 +255,40 @@ export default function InformesPage() {
     };
   }, [empleadosFiltrados, faltasFiltradas]);
 
+
   // Estadísticas generales
-  const estadisticas = useMemo(() => {
-    const totalEmpleados = empleadosFiltrados.length;
-    const totalFaltas = faltasFiltradas.filter(f => 
-      empleadosFiltrados.some(e => e.id === f.empleadoId)
-    ).length;
-    const justificadas = faltasFiltradas.filter(f => 
-      empleadosFiltrados.some(e => e.id === f.empleadoId) && f.justificada
-    ).length;
-    const injustificadas = totalFaltas - justificadas;
+const estadisticas = useMemo(() => {
+  const totalEmpleados = empleadosFiltrados.length;
+  const totalFaltas = faltasFiltradas.filter(f => 
+    empleadosFiltrados.some(e => e.id === f.empleadoId)
+  ).length;
+  const justificadas = faltasFiltradas.filter(f => 
+    empleadosFiltrados.some(e => e.id === f.empleadoId) && f.justificada
+  ).length;
+  const injustificadas = totalFaltas - justificadas;
 
-    const diasEnPeriodo = Math.ceil((new Date(fechaFin).getTime() - new Date(fechaInicio).getTime()) / (1000 * 60 * 60 * 24));
-    const tasaAusentismo = totalEmpleados > 0 
-      ? ((totalFaltas / (totalEmpleados * diasEnPeriodo)) * 100).toFixed(2)
-      : '0.00';
+  // Calcular días reales que debieron trabajar todos los empleados
+  let diasDebieroTrabajarTotal = 0;
+  empleadosFiltrados.forEach(emp => {
+    diasDebieroTrabajarTotal += calcularDiasTrabajoEnRango(fechaInicio, fechaFin, emp.grupoTurno);
+  });
 
-    return {
-      totalEmpleados,
-      totalFaltas,
-      justificadas,
-      injustificadas,
-      tasaAusentismo,
-      promedioFaltasPorEmpleado: totalEmpleados > 0 
-        ? (totalFaltas / totalEmpleados).toFixed(2)
-        : '0.00',
-    };
-  }, [empleadosFiltrados, faltasFiltradas, fechaInicio, fechaFin]);
+  const tasaAusentismo = diasDebieroTrabajarTotal > 0 
+    ? ((totalFaltas / diasDebieroTrabajarTotal) * 100).toFixed(2)
+    : '0.00';
 
-  // Función para exportar (placeholder)
-  const handleExport = () => {
-    alert('Funcionalidad de exportación en desarrollo');
+  return {
+    totalEmpleados,
+    totalFaltas,
+    justificadas,
+    injustificadas,
+    tasaAusentismo,
+    promedioFaltasPorEmpleado: totalEmpleados > 0 
+      ? (totalFaltas / totalEmpleados).toFixed(2)
+      : '0.00',
   };
+}, [empleadosFiltrados, faltasFiltradas, fechaInicio, fechaFin]);
+
 
   if (loadingEmpleados || loadingFaltas) {
     return (
@@ -282,47 +312,118 @@ export default function InformesPage() {
               Análisis detallado de asistencia, ausentismo y rendimiento del personal
             </p>
           </div>
-          <button
-            onClick={handleExport}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-          >
-            <Download className="h-5 w-5" />
-            Exportar
-          </button>
+          <ExportInformes
+  tipoInforme={tipoInforme}
+  datos={
+    tipoInforme === 'asistencia' ? datosAsistencia :
+    tipoInforme === 'ausentismo' ? datosAusentismo :
+    tipoInforme === 'comparativo' ? datosComparativos :
+    tipoInforme === 'individual' ? {
+      empleado: empleados?.find(e => e.id === empleadoSeleccionado),
+      ...datosAsistencia.find(d => d.id === empleadoSeleccionado),
+      detallesFaltas: faltasFiltradas.filter(f => f.empleadoId === empleadoSeleccionado)
+    } : null
+  }
+  estadisticas={estadisticas}
+  fechaInicio={fechaInicio}
+  fechaFin={fechaFin}
+  filtros={{
+    rol: rolSeleccionado !== 'TODOS' ? rolSeleccionado : undefined,
+    turno: turnoSeleccionado !== 'TODOS' ? turnoSeleccionado : undefined,
+    empleado: empleadoSeleccionado !== 'TODOS' ? empleadoSeleccionado : undefined
+  }}
+/>
         </div>
       </div>
 
-      {/* Selector de Tipo de Informe */}
+            {/* Selector de Tipo de Informe */}
 
       <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { tipo: 'asistencia' as TipoInforme, label: 'Asistencia', icon: CheckCircle, color: 'blue' },
-          { tipo: 'ausentismo' as TipoInforme, label: 'Ausentismo', icon: UserX, color: 'red' },
-          { tipo: 'comparativo' as TipoInforme, label: 'Comparativo', icon: BarChart3, color: 'purple' },
-          { tipo: 'individual' as TipoInforme, label: 'Individual', icon: FileBarChart, color: 'green' },
-        ].map(({ tipo, label, icon: Icon, color }) => (
-          <button
-            key={tipo}
-            onClick={() => setTipoInforme(tipo)}
-            className={`p-4 rounded-lg border-2 transition-all ${
-              tipoInforme === tipo
-                ? `border-${color}-600 bg-${color}-50 dark:bg-${color}-900/20`
-                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <Icon className={`h-6 w-6 ${
-                tipoInforme === tipo ? `text-${color}-600` : 'text-gray-400'
-              }`} />
-              <span className={`font-semibold ${
-                tipoInforme === tipo ? `text-${color}-900 dark:text-${color}-100` : 'text-gray-700 dark:text-gray-300'
-              }`}>
-                {label}
-              </span>
-            </div>
-          </button>
-        ))}
+        {/* Asistencia */}
+        <button
+          onClick={() => setTipoInforme('asistencia')}
+          className={`p-4 rounded-lg border-2 transition-all ${
+            tipoInforme === 'asistencia'
+              ? 'border-blue-500 bg-blue-500/10 dark:bg-blue-500/20'
+              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <CheckCircle className={`h-6 w-6 ${
+              tipoInforme === 'asistencia' ? 'text-blue-500' : 'text-gray-400'
+            }`} />
+            <span className={`font-semibold ${
+              tipoInforme === 'asistencia' ? 'text-blue-500' : 'text-gray-700 dark:text-gray-400'
+            }`}>
+              Asistencia
+            </span>
+          </div>
+        </button>
+
+        {/* Ausentismo */}
+        <button
+          onClick={() => setTipoInforme('ausentismo')}
+          className={`p-4 rounded-lg border-2 transition-all ${
+            tipoInforme === 'ausentismo'
+              ? 'border-red-500 bg-red-500/10 dark:bg-red-500/20'
+              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <UserX className={`h-6 w-6 ${
+              tipoInforme === 'ausentismo' ? 'text-red-500' : 'text-gray-400'
+            }`} />
+            <span className={`font-semibold ${
+              tipoInforme === 'ausentismo' ? 'text-red-500' : 'text-gray-700 dark:text-gray-400'
+            }`}>
+              Ausentismo
+            </span>
+          </div>
+        </button>
+
+        {/* Comparativo */}
+        <button
+          onClick={() => setTipoInforme('comparativo')}
+          className={`p-4 rounded-lg border-2 transition-all ${
+            tipoInforme === 'comparativo'
+              ? 'border-purple-500 bg-purple-500/10 dark:bg-purple-500/20'
+              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <BarChart3 className={`h-6 w-6 ${
+              tipoInforme === 'comparativo' ? 'text-purple-500' : 'text-gray-400'
+            }`} />
+            <span className={`font-semibold ${
+              tipoInforme === 'comparativo' ? 'text-purple-500' : 'text-gray-700 dark:text-gray-400'
+            }`}>
+              Comparativo
+            </span>
+          </div>
+        </button>
+
+        {/* Individual */}
+        <button
+          onClick={() => setTipoInforme('individual')}
+          className={`p-4 rounded-lg border-2 transition-all ${
+            tipoInforme === 'individual'
+              ? 'border-green-500 bg-green-500/10 dark:bg-green-500/20'
+              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <FileBarChart className={`h-6 w-6 ${
+              tipoInforme === 'individual' ? 'text-green-500' : 'text-gray-400'
+            }`} />
+            <span className={`font-semibold ${
+              tipoInforme === 'individual' ? 'text-green-500' : 'text-gray-700 dark:text-gray-400'
+            }`}>
+              Individual
+            </span>
+          </div>
+        </button>
       </div>
+
 
       {/* Panel de Filtros */}
       <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
@@ -420,6 +521,27 @@ export default function InformesPage() {
                 </select>
               </div>
 
+
+              <div>
+    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+      Horario
+    </label>
+    <select
+      value={horarioSeleccionado}
+      onChange={(e) => setHorarioSeleccionado(e.target.value)}
+      disabled={rolSeleccionado === 'TODOS'}
+      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      <option value="TODOS">Todos los horarios</option>
+      {rolSeleccionado !== 'TODOS' &&
+        horariosPorRol[rolSeleccionado].map((horario) => (
+          <option key={horario} value={horario}>
+            {horario}
+          </option>
+        ))}
+    </select>
+  </div>
+
               {/* Empleado Individual */}
               {tipoInforme === 'individual' && (
                 <div>
@@ -493,47 +615,51 @@ export default function InformesPage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Legajo</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Empleado</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Rol</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Turno</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Faltas</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Justif.</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Injustif.</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">% Asistencia</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {datosAsistencia.map((dato) => (
-                    <tr key={dato.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">{dato.legajo}</td>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{dato.nombre}</td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs">
-                          {dato.rol}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded text-xs">
-                          {dato.turno}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-center text-sm text-gray-900 dark:text-white">{dato.faltas}</td>
-                      <td className="px-6 py-4 text-center text-sm text-green-600 dark:text-green-400">{dato.faltasJustificadas}</td>
-                      <td className="px-6 py-4 text-center text-sm text-red-600 dark:text-red-400">{dato.faltasInjustificadas}</td>
-                      <td className="px-6 py-4 text-center">
-                        <span className={`font-semibold ${
-                          dato.porcentajeAsistencia >= 95 ? 'text-green-600' :
-                          dato.porcentajeAsistencia >= 90 ? 'text-yellow-600' :
-                          'text-red-600'
-                        }`}>
-                          {dato.porcentajeAsistencia}%
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+  <tr>
+    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Legajo</th>
+    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Empleado</th>
+    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Rol</th>
+    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Turno</th>
+    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Días debió trabajar</th>
+    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Faltas</th>
+    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Justif.</th>
+    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Injustif.</th>
+    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">% Asistencia</th>
+  </tr>
+</thead>
+<tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+  {datosAsistencia.map((dato) => (
+    <tr key={dato.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">{dato.legajo}</td>
+      <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{dato.nombre}</td>
+      <td className="px-6 py-4 text-center">
+        <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs">
+          {dato.rol}
+        </span>
+      </td>
+      <td className="px-6 py-4 text-center">
+        <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded text-xs">
+          {dato.turno}
+        </span>
+      </td>
+      <td className="px-6 py-4 text-center text-sm text-gray-900 dark:text-white font-semibold">
+        {dato.diasDebioTrabajar}
+      </td>
+      <td className="px-6 py-4 text-center text-sm text-gray-900 dark:text-white">{dato.faltas}</td>
+      <td className="px-6 py-4 text-center text-sm text-green-600 dark:text-green-400">{dato.faltasJustificadas}</td>
+      <td className="px-6 py-4 text-center text-sm text-red-600 dark:text-red-400">{dato.faltasInjustificadas}</td>
+      <td className="px-6 py-4 text-center">
+        <span className={`font-semibold ${
+          dato.porcentajeAsistencia >= 95 ? 'text-green-600' :
+          dato.porcentajeAsistencia >= 90 ? 'text-yellow-600' :
+          'text-red-600'
+        }`}>
+          {dato.porcentajeAsistencia}%
+        </span>
+      </td>
+    </tr>
+  ))}
+</tbody>
               </table>
             </div>
           </div>
@@ -576,30 +702,31 @@ export default function InformesPage() {
           </div>
 
           {/* Ausentismo por Turno */}
-<div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-    Ausentismo por Grupo Turno
-  </h3>
-  <ResponsiveContainer width="100%" height={300}>
-    <PieChart>
-      <Pie
-        data={datosAusentismo.porTurno.map(item => ({
-          name: item.turno,
-          value: parseInt(item.total.toString()),
-          promedio: item.promedio
-        }))}
-        cx="50%"
-        cy="50%"
-        labelLine={false}
-        label={({ name, promedio }: any) => `${name}: ${promedio}`}
-        outerRadius={100}
-        fill="#8884d8"
-        dataKey="value"
-      >
-        <Cell fill={COLORS.green} />
-        <Cell fill={COLORS.blue} />
-      </Pie>
-      <Tooltip contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }} />
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Ausentismo por Grupo Turno
+            </h3>
+            <h1 className="font-medium text-gray-900 dark:text-white">Promedio de faltas por persona</h1>
+            <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+            <Pie
+              data={datosAusentismo.porTurno.map(item => ({
+              name: item.turno,
+              value: parseInt(item.total.toString()),
+              promedio: item.promedio
+          }))}
+            cx="50%"
+            cy="50%"
+            labelLine={false}
+            label={({ name, promedio }: any) => `${name}: ${promedio}`}
+            outerRadius={100}
+            fill="#8884d8"
+            dataKey="value"
+              >
+            <Cell fill={COLORS.green} />
+            <Cell fill={COLORS.blue} />
+          </Pie>
+        <Tooltip contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }} />
     </PieChart>
   </ResponsiveContainer>
 </div>
