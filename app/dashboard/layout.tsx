@@ -3,6 +3,7 @@
 import SideNav from "../ui/dashboard/sidenav";
 import ProtectedRoute from "../components/ProtectedRoute";
 import WhatsAppChatbot from "../components/WhatsAppChatbot";
+import AsistenteIA from "../components/AsistenteIA";
 import Footer from "../components/Footer";  // ← AGREGAR ESTA LÍNEA
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -19,6 +20,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Footer />  {/* ← AGREGAR ESTA LÍNEA */}
         </div>
         <WhatsAppChatbot />
+        <AsistenteIA />
       </div>
     </ProtectedRoute>
   );

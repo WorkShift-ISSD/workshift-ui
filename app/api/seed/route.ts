@@ -485,6 +485,38 @@ async function seedSolicitudesDirectas() {
   return true;
 }
 
+async function seedDocsHelp() {
+  // Crear extensión vector (si existe en tu PostgreSQL)
+  await sql`CREATE EXTENSION IF NOT EXISTS vector`;
+
+  // Crear tabla
+  const createDocsTable = `
+    CREATE TABLE IF NOT EXISTS docs_help (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      title TEXT,
+      content TEXT,
+      metadata JSONB DEFAULT '{}'::jsonb,
+      embedding vector(1536),
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+  `;
+
+  await sql.unsafe(createDocsTable);
+
+  // Crear índice para búsquedas vectoriales
+  const createIndexQuery = `
+    CREATE INDEX IF NOT EXISTS idx_docs_help_embedding 
+    ON docs_help 
+    USING ivfflat (embedding vector_cosine_ops)
+    WITH (lists = 64);
+  `;
+
+  await sql.unsafe(createIndexQuery);
+
+  console.log("Tabla docs_help creada correctamente.");
+}
+
+
 async function createRelations() {
   console.log('✅ Tablas creadas con índices y relaciones');
   return true;
@@ -532,6 +564,8 @@ export async function GET() {
 
       await seedOfertas();
       await seedSolicitudesDirectas();
+
+      await seedDocsHelp();
 
       await createRelations();
     });
