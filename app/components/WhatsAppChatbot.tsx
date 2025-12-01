@@ -42,7 +42,7 @@ export default function WhatsAppChatbot() {
 
       {/* Ventana del chat */}
       {isOpen && (
-        <div className="fixed bottom-40 right-6 w-80 z-50 bg-white dark:bg-gray-800 
+        <div className="fixed bottom-40 right-6 w-80 bg-white dark:bg-gray-800 
                       rounded-2xl shadow-2xl z-50 flex flex-col 
                       border border-gray-200 dark:border-gray-700">
           {/* Header */}
