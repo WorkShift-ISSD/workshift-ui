@@ -190,14 +190,14 @@ export default function LoginForm() {
                 Recordarme
               </span>
             </label>
-
+            
             <button
               type="button"
               onClick={() => setShowForgotPassword(true)}
               disabled={loading}
-              className="text-sm text-blue-600 dark:text-blue-400 hover:underline transition disabled:opacity-50"
+              className="text-sm text-blue-600 p-1 dark:text-blue-400 hover:underline transition disabled:opacity-50"
             >
-              ¿Olvidaste tu contraseña?
+                ¿Olvidaste tu contraseña?
             </button>
           </div>
 
