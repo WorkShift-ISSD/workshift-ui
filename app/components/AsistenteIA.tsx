@@ -31,14 +31,14 @@ export default function AsistenteBot() {
       {/* BOTÓN FLOTANTE */}
       <button
         onClick={() => setOpen(!open)}
-        className="fixed bottom-6 right-6 bg-blue-600 text-white rounded-full p-4 shadow-xl hover:bg-blue-700 transition"
+        className="fixed bottom-6 right-4 bg-blue-600 text-white rounded-full p-3 shadow-2xl hover:bg-blue-700 transition-all hover:scale-110 z-50"
       >
-        <FaRobot size={24} />
+        <FaRobot className="w-7 h-7" />
       </button>
 
       {/* VENTANA DEL CHAT */}
       {open && (
-        <div className="fixed bottom-20 right-6 w-80 bg-gray-900 text-white p-4 rounded-xl shadow-xl">
+        <div className="fixed bottom-20 right-6 w-80 bg-gray-900 text-white p-2 rounded-xl shadow-xl">
           <h3 className="text-lg font-bold mb-2">Asistente de WorkShift</h3>
 
           <textarea
