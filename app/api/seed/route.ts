@@ -29,7 +29,8 @@ const systemUsers = [
     password: 'Workshift25',
     rol: RolUsuario.ADMINISTRADOR,
     grupoTurno: GrupoTurno.ADMIN,
-    horario: '00:00-23:59'
+    horario: '00:00-23:59',
+    primerIngreso: false  // ✅ NUEVO - Admin no requiere cambio
   },
   {
     legajo: 300002,
@@ -39,7 +40,8 @@ const systemUsers = [
     password: 'Password.666!',
     rol: RolUsuario.JEFE,
     grupoTurno: GrupoTurno.A,
-    horario: '05:00-17:00'
+    horario: '05:00-17:00',
+    primerIngreso: true  // ✅ NUEVO - Jefe debe cambiar en primer ingreso
   },
   {
     legajo: 300003,
@@ -49,7 +51,8 @@ const systemUsers = [
     password: 'Password.1234',
     rol: RolUsuario.SUPERVISOR,
     grupoTurno: GrupoTurno.A,
-    horario: '23:00-05:00'
+    horario: '23:00-05:00',
+    primerIngreso: true  // ✅ NUEVO - Supervisor debe cambiar en primer ingreso
   },
   {
     legajo: 300004,
@@ -59,7 +62,8 @@ const systemUsers = [
     password: 'familia100%!',
     rol: RolUsuario.SUPERVISOR,
     grupoTurno: GrupoTurno.B,
-    horario: '05:00-14:00'
+    horario: '05:00-14:00',
+    primerIngreso: true  // ✅ NUEVO - Supervisor debe cambiar en primer ingreso
   },
   {
     legajo: 300005,
@@ -69,7 +73,8 @@ const systemUsers = [
     password: 'elcrackDelTrabajo!!',
     rol: RolUsuario.INSPECTOR,
     grupoTurno: GrupoTurno.A,
-    horario: '19:00-05:00'
+    horario: '19:00-05:00',
+    primerIngreso: true  // ✅ NUEVO - Inspector debe cambiar en primer ingreso
   },
   {
     legajo: 300006,
@@ -79,36 +84,40 @@ const systemUsers = [
     password: 'Gorreadisimo!!!',
     rol: RolUsuario.INSPECTOR,
     grupoTurno: GrupoTurno.B,
-    horario: '14:00-23:00'
+    horario: '14:00-23:00',
+    primerIngreso: true  // ✅ NUEVO - Inspector debe cambiar en primer ingreso
   }
 ];
 
 async function seedUsers() {
   await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
 
-  const createTableQuery = `
-    CREATE TABLE IF NOT EXISTS users (
-      id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-      legajo INTEGER UNIQUE NOT NULL,
-      email TEXT NOT NULL UNIQUE,
-      nombre VARCHAR(255) NOT NULL,
-      apellido VARCHAR(255) NOT NULL,
-      password TEXT NOT NULL,
-      rol VARCHAR(50) NOT NULL DEFAULT '${RolUsuario.INSPECTOR}' CHECK (rol IN (${getEnumSqlString(RolUsuario)})),
-      telefono VARCHAR(50),
-      direccion TEXT,
-      horario VARCHAR(50),
-      fecha_nacimiento DATE,
-      activo BOOLEAN DEFAULT true,
-      grupo_turno VARCHAR(10) NOT NULL DEFAULT '${GrupoTurno.A}' CHECK (grupo_turno IN (${getEnumSqlString(GrupoTurno)})),
-      foto_perfil TEXT,
-      ultimo_login TIMESTAMP,
-      calificacion DECIMAL(3,2) DEFAULT 4.5,
-      total_intercambios INTEGER DEFAULT 0,
-      created_at TIMESTAMP DEFAULT NOW(),
-      updated_at TIMESTAMP DEFAULT NOW()
-    );
-  `;
+ // LÍNEA 89-111 (DESPUÉS) - ✅ CON CAMPOS NUEVOS
+const createTableQuery = `
+  CREATE TABLE IF NOT EXISTS users (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    legajo INTEGER UNIQUE NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    nombre VARCHAR(255) NOT NULL,
+    apellido VARCHAR(255) NOT NULL,
+    password TEXT NOT NULL,
+    rol VARCHAR(50) NOT NULL DEFAULT '${RolUsuario.INSPECTOR}' CHECK (rol IN (${getEnumSqlString(RolUsuario)})),
+    telefono VARCHAR(50),
+    direccion TEXT,
+    horario VARCHAR(50),
+    fecha_nacimiento DATE,
+    activo BOOLEAN DEFAULT true,
+    grupo_turno VARCHAR(10) NOT NULL DEFAULT '${GrupoTurno.A}' CHECK (grupo_turno IN (${getEnumSqlString(GrupoTurno)})),
+    foto_perfil TEXT,
+    ultimo_login TIMESTAMP,
+    calificacion DECIMAL(3,2) DEFAULT 4.5,
+    total_intercambios INTEGER DEFAULT 0,
+    primer_ingreso BOOLEAN DEFAULT true,            -- ✅ NUEVO
+    ultimo_cambio_password TIMESTAMP,               -- ✅ NUEVO
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+  );
+`;
 
   await sql.unsafe(createTableQuery);
 
@@ -116,6 +125,8 @@ async function seedUsers() {
   await sql`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_users_rol ON users(rol)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_users_activo ON users(activo)`;
+  // DESPUÉS DE LA LÍNEA 118
+  await sql`CREATE INDEX IF NOT EXISTS idx_users_primer_ingreso ON users(primer_ingreso)`;
 
   // Insertar usuarios del sistema primero
   console.log('👥 Insertando usuarios del sistema...');
@@ -135,7 +146,9 @@ async function seedUsers() {
             horario,
             activo,
             calificacion,
-            total_intercambios
+            total_intercambios,
+            primer_ingreso,                    -- ✅ NUEVO
+            ultimo_cambio_password             -- ✅ NUEVO
           )
           VALUES (
             ${user.legajo},
@@ -148,10 +161,13 @@ async function seedUsers() {
             ${user.horario},
             ${true},
             ${5.0},
-            ${0}
+            ${0},
+            ${user.primerIngreso},            -- ✅ NUEVO
+            ${user.primerIngreso ? null : sql`NOW()`}      -- ✅ NUEVO
           )
           ON CONFLICT (email) DO UPDATE SET
             password = EXCLUDED.password,
+            primer_ingreso = EXCLUDED.primer_ingreso,
             updated_at = NOW();
         `;
       } catch (error) {
@@ -185,7 +201,9 @@ async function seedUsers() {
             activo,
             grupo_turno,
             calificacion,
-            total_intercambios
+            total_intercambios,
+            primer_ingreso,                    -- ✅ NUEVO
+            ultimo_cambio_password
           )
           VALUES (
             ${user.id}, 
@@ -202,7 +220,9 @@ async function seedUsers() {
             ${user.activo !== undefined ? user.activo : true},
             ${user.grupoTurno || GrupoTurno.A},
             ${4.5},
-            ${0}
+            ${0},
+            ${true},                           -- ✅ NUEVO (todos requieren cambio)
+            ${null}
           )
           ON CONFLICT (id) DO UPDATE SET
             email = EXCLUDED.email,
@@ -218,6 +238,32 @@ async function seedUsers() {
   console.log(`✅ ${users.length} usuarios de placeholder procesados`);
 
   return [...insertedSystemUsers, ...insertedUsers].filter(Boolean);
+}
+
+// ✅ NUEVA FUNCIÓN
+async function seedPasswordResetTokens() {
+  await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+
+  const createTableQuery = `
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token TEXT NOT NULL UNIQUE,
+      expires_at TIMESTAMP NOT NULL,
+      used BOOLEAN DEFAULT false,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `;
+
+  await sql.unsafe(createTableQuery);
+
+  await sql`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user ON password_reset_tokens(user_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires ON password_reset_tokens(expires_at)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_used ON password_reset_tokens(used)`;
+
+  console.log('✅ Tabla password_reset_tokens creada');
+  return true;
 }
 
 async function seedTurnos() {
@@ -525,6 +571,7 @@ async function createRelations() {
 async function dropAllTables() {
   console.log('🗑️  Eliminando tablas existentes...');
 
+  await sql`DROP TABLE IF EXISTS password_reset_tokens CASCADE`;  // ✅ NUEVO
   await sql`DROP TABLE IF EXISTS solicitudes_directas CASCADE`;
   await sql`DROP TABLE IF EXISTS ofertas CASCADE`;
   await sql`DROP TABLE IF EXISTS turnos_data CASCADE`;
@@ -546,6 +593,9 @@ export async function GET() {
 
       await seedUsers();
       console.log('✅ Usuarios creados');
+
+      await seedPasswordResetTokens();  // ✅ NUEVO
+      console.log('✅ Tabla password_reset_tokens creada');
 
       await seedFaltas();  
       console.log('✅ Faltas creadas');

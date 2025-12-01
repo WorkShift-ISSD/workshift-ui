@@ -13,6 +13,7 @@ interface User {
   grupoTurno: 'A' | 'B';
   horario: string;
   activo: boolean;
+  primerIngreso?: boolean; // ✅ Agregado
 }
 
 interface AuthContextType {
@@ -40,16 +41,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Verificar autenticación
   const checkAuth = async () => {
     try {
-      // El token está en las cookies, no necesitamos enviarlo manualmente
       const res = await fetch('/api/auth/me', {
-        credentials: 'include', // Importante: envía las cookies automáticamente
+        credentials: 'include',
       });
       
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
       } else {
-        // Token inválido o no existe
         setUser(null);
       }
     } catch (error) {
@@ -60,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Login - Ahora recibe directamente los datos del usuario
+  // Login
   const login = (userData: User) => {
     setUser(userData);
   };
@@ -68,15 +67,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Logout
   const logout = async () => {
     try {
-      // Llamar al endpoint de logout (eliminará la cookie en el servidor)
       await fetch('/api/auth/logout', { 
         method: 'POST',
-        credentials: 'include', // Importante: envía las cookies
+        credentials: 'include',
       });
     } catch (error) {
       console.error('Error en logout:', error);
     } finally {
-      // Limpiar estado
       setUser(null);
     }
   };
@@ -99,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-// Hook personalizado para usar el contexto
+// Hook personalizado
 export function useAuth() {
   const context = useContext(AuthContext);
   

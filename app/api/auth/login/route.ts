@@ -1,3 +1,4 @@
+// app/api/auth/login/route.ts (ACTUALIZADO)
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/app/lib/postgres';
 import { SignJWT } from 'jose';
@@ -10,7 +11,7 @@ const SECRET_KEY = new TextEncoder().encode(
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
+    const { email, password, rememberMe } = await request.json();
 
     if (!email || !password) {
       return NextResponse.json(
@@ -31,7 +32,8 @@ export async function POST(request: NextRequest) {
         rol,
         grupo_turno as "grupoTurno",
         horario,
-        activo
+        activo,
+        primer_ingreso as "primerIngreso"
       FROM users 
       WHERE email = ${email} AND activo = true
     `;
@@ -44,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar contraseña con bcrypt
-   const isValidPassword = await bcrypt.compare(password, user.password);
+    const isValidPassword = await bcrypt.compare(password, user.password);
 
     if (!isValidPassword) {
       return NextResponse.json(
@@ -53,6 +55,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Determinar duración del token según "recordarme"
+    const tokenDuration = rememberMe ? '30d' : '24h'; // 30 días o 24 horas
+    const cookieMaxAge = rememberMe 
+      ? 60 * 60 * 24 * 30  // 30 días en segundos
+      : 60 * 60 * 24;      // 24 horas en segundos
+
     // Crear JWT token
     const token = await new SignJWT({
       id: user.id,
@@ -60,7 +68,7 @@ export async function POST(request: NextRequest) {
       rol: user.rol,
     })
       .setProtectedHeader({ alg: 'HS256' })
-      .setExpirationTime('24h')
+      .setExpirationTime(tokenDuration)
       .sign(SECRET_KEY);
 
     // Guardar token en cookie
@@ -69,9 +77,16 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24, // 24 horas
+      maxAge: cookieMaxAge,
       path: '/',
     });
+
+    // Actualizar último login
+    await sql`
+      UPDATE users 
+      SET ultimo_login = NOW() 
+      WHERE id = ${user.id}::uuid
+    `;
 
     // Retornar datos del usuario (sin password)
     const { password: _, ...userData } = user;
@@ -79,6 +94,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       message: 'Login exitoso',
       user: userData,
+      primerIngreso: user.primerIngreso || false,
     });
   } catch (error) {
     console.error('Error en login:', error);
