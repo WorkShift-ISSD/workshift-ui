@@ -1,8 +1,13 @@
 // app/lib/email.ts
 import { Resend } from 'resend';
 
-// Inicializar Resend
-const resend = new Resend(process.env.RESEND_API_KEY);
+// NO inicializar aquí arriba
+// const resend = new Resend(...) ❌
+
+// Helper para obtener instancia de Resend
+function getResendClient() {
+  return new Resend(process.env.RESEND_API_KEY);
+}
 
 // Email de recuperación de contraseña
 export async function sendPasswordResetEmail(
@@ -10,6 +15,7 @@ export async function sendPasswordResetEmail(
   resetToken: string,
   userName: string
 ) {
+  const resend = getResendClient(); // ✅ Crear instancia dentro de la función
   const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password/${resetToken}`;
 
   try {
@@ -93,6 +99,8 @@ export async function sendPasswordChangedEmail(
   email: string,
   userName: string
 ) {
+  const resend = getResendClient(); // ✅ Crear instancia dentro de la función
+
   try {
     const { data, error } = await resend.emails.send({
       from: process.env.EMAIL_FROM || 'WorkShift <onboarding@resend.dev>',
@@ -172,6 +180,8 @@ export async function sendWelcomeEmail(
   userName: string,
   temporaryPassword: string
 ) {
+  const resend = getResendClient(); // ✅ Crear instancia dentro de la función
+
   try {
     const { data, error } = await resend.emails.send({
       from: process.env.EMAIL_FROM || 'WorkShift <onboarding@resend.dev>',
