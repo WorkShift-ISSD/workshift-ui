@@ -2,8 +2,7 @@
 import bcrypt from 'bcrypt';
 import postgres from 'postgres';
 import { cambios, users, turnos, stats, turnosData } from '../../lib/placeholder-data';
-import { NextRequest } from 'next/server';
-import { Cambio, Turno } from '../types';
+
 import {
   EstadoSolicitud,
   EstadoOferta,
@@ -240,7 +239,9 @@ const createTableQuery = `
   return [...insertedSystemUsers, ...insertedUsers].filter(Boolean);
 }
 
-// ✅ NUEVA FUNCIÓN
+
+
+// ✅ NUEVA FUNCIÓN: CREAR TABLA DE PASSWORD RESET TOKENS
 async function seedPasswordResetTokens() {
   await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
 
@@ -265,6 +266,8 @@ async function seedPasswordResetTokens() {
   console.log('✅ Tabla password_reset_tokens creada');
   return true;
 }
+
+
 
 async function seedTurnos() {
   await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
@@ -532,36 +535,416 @@ async function seedSolicitudesDirectas() {
 }
 
 async function seedDocsHelp() {
-  // Crear extensión vector (si existe en tu PostgreSQL)
-  await sql`CREATE EXTENSION IF NOT EXISTS vector`;
+  // Crear extensión vector (opcional, por si después quieres usar embeddings)
+  try {
+    await sql`CREATE EXTENSION IF NOT EXISTS vector`;
+    console.log('✅ Extensión vector verificada');
+  } catch (error) {
+    console.log('⚠️ Extensión vector no disponible (no es necesaria sin OpenAI)');
+  }
 
-  // Crear tabla
+  // Crear tabla SIN la columna de embedding
   const createDocsTable = `
     CREATE TABLE IF NOT EXISTS docs_help (
       id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-      title TEXT,
-      content TEXT,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
       metadata JSONB DEFAULT '{}'::jsonb,
-      embedding vector(1536),
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
   `;
 
   await sql.unsafe(createDocsTable);
+  console.log("✅ Tabla docs_help creada");
 
-  // Crear índice para búsquedas vectoriales
-  const createIndexQuery = `
-    CREATE INDEX IF NOT EXISTS idx_docs_help_embedding 
-    ON docs_help 
-    USING ivfflat (embedding vector_cosine_ops)
-    WITH (lists = 64);
-  `;
+  // Crear índices para búsqueda de texto
+  await sql`CREATE INDEX IF NOT EXISTS idx_docs_help_title ON docs_help USING gin(to_tsvector('spanish', title))`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_docs_help_content ON docs_help USING gin(to_tsvector('spanish', content))`;
+  
+  console.log("✅ Índices de búsqueda creados");
 
-  await sql.unsafe(createIndexQuery);
+  // ✅ DOCUMENTACIÓN DEL MANUAL (sin embeddings)
+  const docsData = [
+    {
+      title: 'Introducción a WorkShift',
+      content: `WorkShift es un sistema de gestión de turnos laborales que permite a los empleados (Inspectores y Supervisores) realizar cambios de turnos entre sí de manera organizada y con la supervisión del Jefe.
 
-  console.log("Tabla docs_help creada correctamente.");
+Propósito del Sistema:
+- Facilitar el intercambio de turnos entre empleados del mismo rol
+- Gestionar licencias y sanciones
+- Registrar faltas y asistencias
+- Llevar un control de días trabajados
+- Mantener un historial completo de cambios
+
+Requisitos Técnicos:
+- Navegador web moderno (Chrome, Firefox, Edge, Safari)
+- Conexión a internet
+- Accesible desde computadora y dispositivos móviles`
+    },
+    {
+      title: 'Roles y Permisos - Inspector',
+      content: `INSPECTOR
+
+Permisos:
+- Solicitar cambios de turno con otros Inspectores
+- Publicar ofertas de turno
+- Tomar ofertas de turno disponibles
+- Solicitar licencias ordinarias (requieren autorización)
+- Cargar licencias especiales (no requieren autorización)
+- Ver su historial de cambios, faltas y licencias
+- Calificar a otros Inspectores después de un intercambio
+
+Restricciones:
+- No puede cambiar turnos con Supervisores o Jefes
+- No puede cambiar turnos si tiene licencia o sanción activa
+- No puede aprobar solicitudes de otros`
+    },
+    {
+      title: 'Roles y Permisos - Supervisor',
+      content: `SUPERVISOR
+
+Permisos:
+- Solicitar cambios de turno con otros Supervisores
+- Publicar ofertas de turno
+- Tomar ofertas de turno disponibles
+- Solicitar licencias ordinarias (requieren autorización)
+- Cargar licencias especiales (no requieren autorización)
+- Ver su historial de cambios, faltas y licencias
+- Calificar a otros Supervisores después de un intercambio
+- Gestionar datos de todos los empleados
+- Gestionar faltas de empleados
+- Cargar Sanciones de los empleados
+
+Restricciones:
+- No puede cambiar turnos con Inspectores o Jefes
+- No puede cambiar turnos si tiene licencia o sanción activa
+- No puede aprobar solicitudes de otros`
+    },
+    {
+      title: 'Roles y Permisos - Jefe y Administrador',
+      content: `JEFE
+
+Permisos:
+- Aprobar o rechazar cambios de turno
+- Aprobar o rechazar licencias ordinarias
+- Ver todos los empleados del sistema
+- Ver historial completo de cambios, faltas y licencias
+- Ver datos de todos los empleados
+- Ver informes y reportes completos
+
+Restricciones:
+- No participa en cambios de turno
+- No puede solicitar cambios ni publicar ofertas
+
+ADMINISTRADOR
+
+Permisos:
+- Acceso completo al sistema
+- Gestión de usuarios
+- Configuración del sistema
+- Acceso a todos los módulos`
+    },
+    {
+      title: 'Sistema de Turnos y Horarios',
+      content: `GRUPOS DE TURNO
+
+El sistema maneja dos grupos de turno que se alternan:
+- GRUPO A: Trabaja en días específicos según calendario rotativo
+- GRUPO B: Trabaja en días complementarios al Grupo A
+
+Importante: Cada empleado pertenece a UN grupo (A o B) y puede cambiar turnos dentro o fuera de su grupo. Los cambios de turno son por un día particular, no permanentes.
+
+HORARIOS DE TRABAJO
+
+Inspectores pueden tener:
+- 04:00-14:00
+- 06:00-16:00
+- 10:00-20:00
+- 13:00-23:00
+- 19:00-05:00
+
+Supervisores pueden tener:
+- 05:00-14:00
+- 14:00-23:00
+- 23:00-05:00
+
+Jefes y Administradores:
+- 05:00-17:00
+- 17:00-05:00`
+    },
+    {
+      title: 'Cómo Solicitar un Cambio de Turno - Solicitud Directa',
+      content: `SOLICITUD DIRECTA
+
+Se utiliza cuando sabes concretamente con quién quieres cambiar.
+
+Paso a paso:
+1. Ir a "Ofertas de Turnos"
+2. Clic en "Solicitud Directa"
+3. Seleccionar el compañero (solo aparecen del mismo rol)
+4. Elegir tu turno que ofreces
+5. Elegir el turno que quieres recibir
+6. Explicar el motivo
+7. Marcar prioridad (Normal o Urgente)
+8. Enviar solicitud
+
+¿Qué pasa después?
+- Tu compañero recibe la solicitud
+- Si acepta → Se crea una autorización pendiente para el Jefe
+- Si rechaza → Se cancela el cambio
+- El Jefe aprueba → El cambio se ejecuta
+- El Jefe rechaza → Se cancela el cambio`
+    },
+    {
+      title: 'Ofertas de Turno - Ofrecer y Buscar Guardias',
+      content: `OFERTAS DE TURNO
+
+Cuando no conoces a alguien específico para cambiar:
+
+A) OFRECER TU TURNO (Modalidad "Ofrezco"):
+1. Ir a "Ofertas de Turnos"
+2. Clic en "Nueva Oferta"
+3. Seleccionar "Ofrezco Guardia"
+4. Elegir modalidad:
+   - Intercambio: Especificas qué turno buscas a cambio
+   - Abierto: Ofreces tu turno sin pedir nada específico
+5. Completar fechas y horarios
+6. Agregar descripción
+7. Publicar
+
+B) BUSCAR UN TURNO (Modalidad "Busco"):
+1. Ir a "Ofertas de Turnos"
+2. Clic en "Nueva Oferta"
+3. Seleccionar "Busco Guardia"
+4. Especificar qué turnos buscas
+5. Indicar qué turno ofreces a cambio
+6. Agregar descripción
+7. Publicar
+
+C) TOMAR UNA OFERTA DISPONIBLE:
+1. Ir a "Ofertas de Turnos" → pestaña "Disponibles"
+2. Filtrar por fechas, horarios
+3. Ver ofertas de otros compañeros
+4. Clic en "Tomar Oferta"
+5. Confirmar
+6. Esperar aprobación del Jefe`
+    },
+    {
+      title: 'Estados y Prioridades de Solicitudes',
+      content: `ESTADOS DE LAS SOLICITUDES
+
+- SOLICITADO: Enviada, esperando respuesta del compañero
+- APROBADO: Compañero aceptó, pendiente de autorización del Jefe
+- COMPLETADO: Jefe aprobó, cambio efectuado
+- CANCELADO: Rechazado por compañero o Jefe
+
+PRIORIDADES
+
+- NORMAL: Solicitud regular, sin urgencia
+- URGENTE: Solicitud prioritaria (aparece destacada con ícono de llama 🔥)
+
+EDITAR O CANCELAR SOLICITUDES
+
+Editar:
+- Solo si está en estado "SOLICITADO"
+- Clic en el botón "Editar" (ícono de lápiz)
+- Modificar datos necesarios
+- Guardar cambios
+
+Cancelar:
+- Solo si está en estado "SOLICITADO"
+- Clic en "Cancelar"
+- Confirmar acción`
+    },
+    {
+      title: 'Gestión de Empleados',
+      content: `GESTIÓN DE EMPLEADOS (Solo Supervisores y Jefes)
+
+CREAR NUEVO EMPLEADO:
+
+1. Ir a "Gestión de Empleados"
+2. Clic en "Nuevo Empleado"
+3. Completar datos obligatorios:
+   - Nombre, Apellido, Legajo (único)
+   - Email (será el usuario)
+   - Rol (Inspector/Supervisor/Jefe)
+   - Grupo de Turno (A/B)
+   - Horario de trabajo
+4. Completar datos opcionales:
+   - Teléfono, Dirección, Fecha de nacimiento
+5. Marcar si la cuenta está activa
+6. Guardar
+
+Importante:
+- El sistema genera una contraseña temporal automáticamente
+- El empleado DEBE cambiarla en su primer ingreso
+- Se envía email con las credenciales de acceso
+
+EDITAR EMPLEADO:
+1. Buscar empleado en la lista
+2. Clic en ícono de lápiz (Editar)
+3. Modificar datos necesarios
+4. Guardar cambios
+
+DESACTIVAR EMPLEADO:
+1. Editar empleado
+2. Desmarcar casilla "Cuenta activa"
+3. Guardar
+
+Efecto:
+- El empleado no puede iniciar sesión
+- No aparece en listados de intercambios
+- Sus datos se mantienen en el sistema`
+    },
+    {
+      title: 'Informes y Reportes',
+      content: `TIPOS DE INFORMES DISPONIBLES
+
+1. INFORME DE ASISTENCIA
+Muestra el porcentaje de asistencia por empleado.
+Datos: días trabajados, faltas totales, faltas justificadas/injustificadas, porcentaje de asistencia
+
+2. INFORME DE AUSENTISMO
+Analiza los promedios de faltas por grupos.
+Datos: ausentismo por rol, por turno, promedio de faltas, nivel de criticidad
+
+3. INFORME COMPARATIVO
+Compara Grupo A vs Grupo B.
+Datos: cantidad de empleados, faltas totales, faltas justificadas, distribución de roles
+
+4. INFORME INDIVIDUAL
+Detalle completo de un empleado específico.
+Datos: información personal, total de faltas, detalle de cada falta, días trabajados vs programados
+
+EXPORTAR INFORMES
+
+Formatos disponibles: PDF y Excel
+
+Pasos:
+1. Generar el informe deseado
+2. Clic en botón "Exportar"
+3. Seleccionar formato
+4. Se descarga automáticamente`
+    },
+    {
+      title: 'Preguntas Frecuentes - Cambios de Turno',
+      content: `PREGUNTAS FRECUENTES SOBRE CAMBIOS
+
+P: ¿Puedo cambiar turno con alguien de otro rol?
+R: No. Los Inspectores solo pueden cambiar con Inspectores, y los Supervisores solo con Supervisores.
+
+P: ¿Puedo cambiar de Grupo A a Grupo B?
+R: Sí. Puedes cambiar turnos entre grupos, siempre que ambos acuerden.
+
+P: ¿Cuántos cambios puedo hacer por mes?
+R: No hay límite, pero todos requieren aprobación del Jefe.
+
+P: ¿Qué pasa si mi compañero no cumple con el cambio?
+R: Puedes calificarlo negativamente y reportar al Jefe. Se le contará la falta a él y no a ti.
+
+P: ¿Cómo sé si alguien es confiable para cambiar?
+R: Revisa su calificación de intercambios anteriores.`
+    },
+    {
+      title: 'Preguntas Frecuentes - Sistema y Acceso',
+      content: `PREGUNTAS FRECUENTES SOBRE EL SISTEMA
+
+P: ¿Funciona en celular?
+R: Sí, el sistema es completamente responsive.
+
+P: ¿Qué hago si olvido mi contraseña?
+R: Usa la opción "Olvidé mi contraseña" en la pantalla de login.
+
+P: ¿Puedo usar el sistema fuera de la empresa?
+R: Sí, solo necesitas internet y tus credenciales.
+
+P: ¿Quién registra las faltas?
+R: Los Supervisores tienen este permiso.
+
+P: ¿Puedo justificar una falta después?
+R: Sí, contacta a tu supervisor o jefe con la documentación.
+
+P: ¿Las faltas justificadas afectan mi récord?
+R: Figuran en tu historial pero no como incumplimiento grave.`
+    },
+    {
+      title: 'Solución de Problemas Comunes',
+      content: `SOLUCIÓN DE PROBLEMAS
+
+NO PUEDO INICIAR SESIÓN
+Causas: contraseña incorrecta, email mal escrito, cuenta desactivada, primera vez sin cambiar contraseña
+Soluciones: verificar email, usar "Olvidé mi contraseña", contactar supervisor
+
+NO APARECEN EMPLEADOS AL BUSCAR
+Causas: filtros incorrectos, no hay empleados del mismo rol, empleados en licencia/sanción
+Soluciones: revisar filtros, limpiar búsqueda, verificar que busques tu mismo rol
+
+NO PUEDO PUBLICAR OFERTA
+Causas: licencia activa, sanción activa, fecha pasada, datos incompletos
+Soluciones: verificar estado, revisar fechas futuras, completar campos obligatorios
+
+LA SOLICITUD NO SE ENVÍA
+Causas: problemas de conexión, intentando cambiar mismo turno, destinatario con licencia/sanción
+Soluciones: verificar conexión, revisar turnos diferentes, verificar disponibilidad`
+    },
+    {
+      title: 'Mejores Prácticas y Recomendaciones',
+      content: `MEJORES PRÁCTICAS
+
+PARA CAMBIOS DE TURNO:
+✅ HACER:
+- Solicitar con anticipación
+- Explicar claramente el motivo
+- Cumplir con los cambios acordados
+- Calificar honestamente
+- Mantener comunicación
+
+❌ NO HACER:
+- Cancelar de último momento
+- Solicitar cambios si tienes licencia
+- Hacer acuerdos fuera del sistema
+- Ignorar solicitudes
+
+PARA LICENCIAS:
+✅ Solicitar con anticipación, adjuntar documentación, especificar fechas exactas
+❌ Solicitar licencias superpuestas, omitir información importante
+
+PARA JEFES:
+✅ Revisar autorizaciones diariamente, ser consistente, comunicar motivos de rechazo, mantener equidad
+❌ Demorar aprobaciones, favorecer empleados, rechazar sin explicación`
+    }
+  ];
+
+  // Limpiar datos existentes
+  await sql`DELETE FROM docs_help`;
+  console.log('🧹 Tabla limpiada');
+
+  // Insertar documentos SIN embeddings
+  let inserted = 0;
+  let failed = 0;
+
+  for (const doc of docsData) {
+    try {
+      await sql`
+        INSERT INTO docs_help (title, content)
+        VALUES (
+          ${doc.title},
+          ${doc.content}
+        )
+      `;
+      
+      inserted++;
+      console.log(`✅ ${doc.title}`);
+    } catch (error) {
+      failed++;
+      console.error(`❌ Error con ${doc.title}:`, error);
+    }
+  }
+
+  console.log(`\n📊 Resultado: ${inserted}/${docsData.length} documentos insertados, ${failed} fallidos`);
+  
+  return true;
 }
-
 
 async function createRelations() {
   console.log('✅ Tablas creadas con índices y relaciones');
