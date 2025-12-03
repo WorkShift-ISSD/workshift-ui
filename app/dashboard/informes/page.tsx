@@ -5,6 +5,7 @@ import { useEmpleados } from '@/hooks/useEmpleados';
 import { useTodasLasFaltas } from '@/hooks/useFaltas';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
 import { ExportInformes } from '@/app/components/ExportInformes';
+import { CustomTooltip } from '@/app/components/CustomTooltip';
 import { calcularGrupoTrabaja, calcularDiasTrabajoEnRango, calcularPorcentajeAsistenciaReal } from '@/app/lib/turnosUtils';
 import {
   FileText,
@@ -40,6 +41,8 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
+
+
 type Rol = 'SUPERVISOR' | 'INSPECTOR';
 type GrupoTurno = 'A' | 'B';
 type TipoInforme = 'asistencia' | 'ausentismo' | 'comparativo' | 'individual';
@@ -68,12 +71,12 @@ export default function InformesPage() {
 
 
 
-          useEffect(() => {
-          if (tipoInforme !== "individual") {
-            setEmpleadoSeleccionado("TODOS");
-          }
-        }, [tipoInforme]);
-  
+  useEffect(() => {
+    if (tipoInforme !== "individual") {
+      setEmpleadoSeleccionado("TODOS");
+    }
+  }, [tipoInforme]);
+
 
   // Colores para gráficos
   const COLORS = {
@@ -87,59 +90,59 @@ export default function InformesPage() {
 
 
   const horariosPorRol: Record<Rol, string[]> = {
-  INSPECTOR: ["04:00-14:00", "06:00-16:00", "10:00-20:00", "13:00-23:00", "19:00-05:00"],
-  SUPERVISOR: ["05:00-14:00", "14:00-23:00", "23:00-05:00"],
+    INSPECTOR: ["04:00-14:00", "06:00-16:00", "10:00-20:00", "13:00-23:00", "19:00-05:00"],
+    SUPERVISOR: ["05:00-14:00", "14:00-23:00", "23:00-05:00"],
   };
 
   useEffect(() => {
-  setHorarioSeleccionado('TODOS');
+    setHorarioSeleccionado('TODOS');
   }, [rolSeleccionado]);
 
 
- // Empleados filtrados
-const empleadosFiltrados = useMemo(() => {
-  if (!empleados) return [];
-  let filtrados = [...empleados];
+  // Empleados filtrados
+  const empleadosFiltrados = useMemo(() => {
+    if (!empleados) return [];
+    let filtrados = [...empleados];
 
-  // Excluir JEFE y ADMINISTRADOR comparando como string para evitar error de tipos
-  filtrados = filtrados.filter(e =>
-    !['JEFE', 'ADMINISTRADOR'].includes(String(e.rol))
-  );
+    // Excluir JEFE y ADMINISTRADOR comparando como string para evitar error de tipos
+    filtrados = filtrados.filter(e =>
+      !['JEFE', 'ADMINISTRADOR'].includes(String(e.rol))
+    );
 
-  if (empleadoSeleccionado !== 'TODOS') {
-    filtrados = filtrados.filter(e => e.id === empleadoSeleccionado);
-  }
+    if (empleadoSeleccionado !== 'TODOS') {
+      filtrados = filtrados.filter(e => e.id === empleadoSeleccionado);
+    }
 
-  if (rolSeleccionado !== 'TODOS') {
-    filtrados = filtrados.filter(e => e.rol === rolSeleccionado);
-  }
+    if (rolSeleccionado !== 'TODOS') {
+      filtrados = filtrados.filter(e => e.rol === rolSeleccionado);
+    }
 
-  if (turnoSeleccionado !== 'TODOS') {
-    filtrados = filtrados.filter(e => e.grupoTurno === turnoSeleccionado);
-  }
+    if (turnoSeleccionado !== 'TODOS') {
+      filtrados = filtrados.filter(e => e.grupoTurno === turnoSeleccionado);
+    }
 
-  if (horarioSeleccionado !== 'TODOS') {
-    filtrados = filtrados.filter(e => e.horario === horarioSeleccionado);
-  }
+    if (horarioSeleccionado !== 'TODOS') {
+      filtrados = filtrados.filter(e => e.horario === horarioSeleccionado);
+    }
 
-  if (searchTerm) {
-    const palabras = searchTerm.toLowerCase().trim().split(/\s+/);
+    if (searchTerm) {
+      const palabras = searchTerm.toLowerCase().trim().split(/\s+/);
 
-    filtrados = filtrados.filter(e => {
-      const nombre = e.nombre.toLowerCase();
-      const apellido = e.apellido.toLowerCase();
-      const legajo = e.legajo.toString();
+      filtrados = filtrados.filter(e => {
+        const nombre = e.nombre.toLowerCase();
+        const apellido = e.apellido.toLowerCase();
+        const legajo = e.legajo.toString();
 
-      return palabras.every(palabra =>
-        nombre.includes(palabra) ||
-        apellido.includes(palabra) ||
-        legajo.includes(palabra)
-      );
-    });
-  }
+        return palabras.every(palabra =>
+          nombre.includes(palabra) ||
+          apellido.includes(palabra) ||
+          legajo.includes(palabra)
+        );
+      });
+    }
 
-  return filtrados;
-}, [empleados, empleadoSeleccionado, rolSeleccionado, turnoSeleccionado, horarioSeleccionado, searchTerm]);
+    return filtrados;
+  }, [empleados, empleadoSeleccionado, rolSeleccionado, turnoSeleccionado, horarioSeleccionado, searchTerm]);
 
   // Faltas filtradas por fecha
   const faltasFiltradas = useMemo(() => {
@@ -153,38 +156,38 @@ const empleadosFiltrados = useMemo(() => {
   }, [faltas, fechaInicio, fechaFin]);
 
   // Datos para informe de asistencia
-const datosAsistencia = useMemo(() => {
-  const empleadosIds = empleadosFiltrados.map(e => e.id);
-  const faltasDelPeriodo = faltasFiltradas.filter(f => empleadosIds.includes(f.empleadoId));
+  const datosAsistencia = useMemo(() => {
+    const empleadosIds = empleadosFiltrados.map(e => e.id);
+    const faltasDelPeriodo = faltasFiltradas.filter(f => empleadosIds.includes(f.empleadoId));
 
-  const porEmpleado = empleadosFiltrados.map(emp => {
-    const faltasEmp = faltasDelPeriodo.filter(f => f.empleadoId === emp.id);
-    
-    // Calcular usando la lógica de turnos real
-    const estadisticas = calcularPorcentajeAsistenciaReal(
-      fechaInicio,
-      fechaFin,
-      emp.grupoTurno,
-      faltasEmp.length
-    );
+    const porEmpleado = empleadosFiltrados.map(emp => {
+      const faltasEmp = faltasDelPeriodo.filter(f => f.empleadoId === emp.id);
 
-    return {
-      id: emp.id,
-      nombre: `${emp.apellido}, ${emp.nombre}`,
-      legajo: emp.legajo,
-      rol: emp.rol,
-      turno: emp.grupoTurno,
-      faltas: faltasEmp.length,
-      faltasJustificadas: faltasEmp.filter(f => f.justificada).length,
-      faltasInjustificadas: faltasEmp.filter(f => !f.justificada).length,
-      diasDebioTrabajar: estadisticas.diasDebioTrabajar,
-      diasTrabajados: estadisticas.diasTrabajados,
-      porcentajeAsistencia: estadisticas.porcentajeAsistencia,
-    };
-  }).sort((a, b) => b.porcentajeAsistencia - a.porcentajeAsistencia);
+      // Calcular usando la lógica de turnos real
+      const estadisticas = calcularPorcentajeAsistenciaReal(
+        fechaInicio,
+        fechaFin,
+        emp.grupoTurno,
+        faltasEmp.length
+      );
 
-  return porEmpleado;
-}, [empleadosFiltrados, faltasFiltradas, fechaInicio, fechaFin]);
+      return {
+        id: emp.id,
+        nombre: `${emp.apellido}, ${emp.nombre}`,
+        legajo: emp.legajo,
+        rol: emp.rol,
+        turno: emp.grupoTurno,
+        faltas: faltasEmp.length,
+        faltasJustificadas: faltasEmp.filter(f => f.justificada).length,
+        faltasInjustificadas: faltasEmp.filter(f => !f.justificada).length,
+        diasDebioTrabajar: estadisticas.diasDebioTrabajar,
+        diasTrabajados: estadisticas.diasTrabajados,
+        porcentajeAsistencia: estadisticas.porcentajeAsistencia,
+      };
+    }).sort((a, b) => b.porcentajeAsistencia - a.porcentajeAsistencia);
+
+    return porEmpleado;
+  }, [empleadosFiltrados, faltasFiltradas, fechaInicio, fechaFin]);
 
   // Datos para informe de ausentismo
   const datosAusentismo = useMemo(() => {
@@ -230,10 +233,10 @@ const datosAsistencia = useMemo(() => {
     const faltasA = faltasFiltradas.filter(f => grupoA.some(e => e.id === f.empleadoId)).length;
     const faltasB = faltasFiltradas.filter(f => grupoB.some(e => e.id === f.empleadoId)).length;
 
-    const justificadasA = faltasFiltradas.filter(f => 
+    const justificadasA = faltasFiltradas.filter(f =>
       grupoA.some(e => e.id === f.empleadoId) && f.justificada
     ).length;
-    const justificadasB = faltasFiltradas.filter(f => 
+    const justificadasB = faltasFiltradas.filter(f =>
       grupoB.some(e => e.id === f.empleadoId) && f.justificada
     ).length;
 
@@ -257,37 +260,37 @@ const datosAsistencia = useMemo(() => {
 
 
   // Estadísticas generales
-const estadisticas = useMemo(() => {
-  const totalEmpleados = empleadosFiltrados.length;
-  const totalFaltas = faltasFiltradas.filter(f => 
-    empleadosFiltrados.some(e => e.id === f.empleadoId)
-  ).length;
-  const justificadas = faltasFiltradas.filter(f => 
-    empleadosFiltrados.some(e => e.id === f.empleadoId) && f.justificada
-  ).length;
-  const injustificadas = totalFaltas - justificadas;
+  const estadisticas = useMemo(() => {
+    const totalEmpleados = empleadosFiltrados.length;
+    const totalFaltas = faltasFiltradas.filter(f =>
+      empleadosFiltrados.some(e => e.id === f.empleadoId)
+    ).length;
+    const justificadas = faltasFiltradas.filter(f =>
+      empleadosFiltrados.some(e => e.id === f.empleadoId) && f.justificada
+    ).length;
+    const injustificadas = totalFaltas - justificadas;
 
-  // Calcular días reales que debieron trabajar todos los empleados
-  let diasDebieroTrabajarTotal = 0;
-  empleadosFiltrados.forEach(emp => {
-    diasDebieroTrabajarTotal += calcularDiasTrabajoEnRango(fechaInicio, fechaFin, emp.grupoTurno);
-  });
+    // Calcular días reales que debieron trabajar todos los empleados
+    let diasDebieroTrabajarTotal = 0;
+    empleadosFiltrados.forEach(emp => {
+      diasDebieroTrabajarTotal += calcularDiasTrabajoEnRango(fechaInicio, fechaFin, emp.grupoTurno);
+    });
 
-  const tasaAusentismo = diasDebieroTrabajarTotal > 0 
-    ? ((totalFaltas / diasDebieroTrabajarTotal) * 100).toFixed(2)
-    : '0.00';
+    const tasaAusentismo = diasDebieroTrabajarTotal > 0
+      ? ((totalFaltas / diasDebieroTrabajarTotal) * 100).toFixed(2)
+      : '0.00';
 
-  return {
-    totalEmpleados,
-    totalFaltas,
-    justificadas,
-    injustificadas,
-    tasaAusentismo,
-    promedioFaltasPorEmpleado: totalEmpleados > 0 
-      ? (totalFaltas / totalEmpleados).toFixed(2)
-      : '0.00',
-  };
-}, [empleadosFiltrados, faltasFiltradas, fechaInicio, fechaFin]);
+    return {
+      totalEmpleados,
+      totalFaltas,
+      justificadas,
+      injustificadas,
+      tasaAusentismo,
+      promedioFaltasPorEmpleado: totalEmpleados > 0
+        ? (totalFaltas / totalEmpleados).toFixed(2)
+        : '0.00',
+    };
+  }, [empleadosFiltrados, faltasFiltradas, fechaInicio, fechaFin]);
 
 
   if (loadingEmpleados || loadingFaltas) {
@@ -313,48 +316,45 @@ const estadisticas = useMemo(() => {
             </p>
           </div>
           <ExportInformes
-  tipoInforme={tipoInforme}
-  datos={
-    tipoInforme === 'asistencia' ? datosAsistencia :
-    tipoInforme === 'ausentismo' ? datosAusentismo :
-    tipoInforme === 'comparativo' ? datosComparativos :
-    tipoInforme === 'individual' ? {
-      empleado: empleados?.find(e => e.id === empleadoSeleccionado),
-      ...datosAsistencia.find(d => d.id === empleadoSeleccionado),
-      detallesFaltas: faltasFiltradas.filter(f => f.empleadoId === empleadoSeleccionado)
-    } : null
-  }
-  estadisticas={estadisticas}
-  fechaInicio={fechaInicio}
-  fechaFin={fechaFin}
-  filtros={{
-    rol: rolSeleccionado !== 'TODOS' ? rolSeleccionado : undefined,
-    turno: turnoSeleccionado !== 'TODOS' ? turnoSeleccionado : undefined,
-    empleado: empleadoSeleccionado !== 'TODOS' ? empleadoSeleccionado : undefined
-  }}
-/>
+            tipoInforme={tipoInforme}
+            datos={
+              tipoInforme === 'asistencia' ? datosAsistencia :
+                tipoInforme === 'ausentismo' ? datosAusentismo :
+                  tipoInforme === 'comparativo' ? datosComparativos :
+                    tipoInforme === 'individual' ? {
+                      empleado: empleados?.find(e => e.id === empleadoSeleccionado),
+                      ...datosAsistencia.find(d => d.id === empleadoSeleccionado),
+                      detallesFaltas: faltasFiltradas.filter(f => f.empleadoId === empleadoSeleccionado)
+                    } : null
+            }
+            estadisticas={estadisticas}
+            fechaInicio={fechaInicio}
+            fechaFin={fechaFin}
+            filtros={{
+              rol: rolSeleccionado !== 'TODOS' ? rolSeleccionado : undefined,
+              turno: turnoSeleccionado !== 'TODOS' ? turnoSeleccionado : undefined,
+              empleado: empleadoSeleccionado !== 'TODOS' ? empleadoSeleccionado : undefined
+            }}
+          />
         </div>
       </div>
 
-            {/* Selector de Tipo de Informe */}
+      {/* Selector de Tipo de Informe */}
 
       <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Asistencia */}
         <button
           onClick={() => setTipoInforme('asistencia')}
-          className={`p-4 rounded-lg border-2 transition-all ${
-            tipoInforme === 'asistencia'
-              ? 'border-blue-500 bg-blue-500/10 dark:bg-blue-500/20'
-              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-          }`}
+          className={`p-4 rounded-lg border-2 transition-all ${tipoInforme === 'asistencia'
+            ? 'border-blue-500 bg-blue-500/10 dark:bg-blue-500/20'
+            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+            }`}
         >
           <div className="flex items-center gap-3">
-            <CheckCircle className={`h-6 w-6 ${
-              tipoInforme === 'asistencia' ? 'text-blue-500' : 'text-gray-400'
-            }`} />
-            <span className={`font-semibold ${
-              tipoInforme === 'asistencia' ? 'text-blue-500' : 'text-gray-700 dark:text-gray-400'
-            }`}>
+            <CheckCircle className={`h-6 w-6 ${tipoInforme === 'asistencia' ? 'text-blue-500' : 'text-gray-400'
+              }`} />
+            <span className={`font-semibold ${tipoInforme === 'asistencia' ? 'text-blue-500' : 'text-gray-700 dark:text-gray-400'
+              }`}>
               Asistencia
             </span>
           </div>
@@ -363,19 +363,16 @@ const estadisticas = useMemo(() => {
         {/* Ausentismo */}
         <button
           onClick={() => setTipoInforme('ausentismo')}
-          className={`p-4 rounded-lg border-2 transition-all ${
-            tipoInforme === 'ausentismo'
-              ? 'border-red-500 bg-red-500/10 dark:bg-red-500/20'
-              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-          }`}
+          className={`p-4 rounded-lg border-2 transition-all ${tipoInforme === 'ausentismo'
+            ? 'border-red-500 bg-red-500/10 dark:bg-red-500/20'
+            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+            }`}
         >
           <div className="flex items-center gap-3">
-            <UserX className={`h-6 w-6 ${
-              tipoInforme === 'ausentismo' ? 'text-red-500' : 'text-gray-400'
-            }`} />
-            <span className={`font-semibold ${
-              tipoInforme === 'ausentismo' ? 'text-red-500' : 'text-gray-700 dark:text-gray-400'
-            }`}>
+            <UserX className={`h-6 w-6 ${tipoInforme === 'ausentismo' ? 'text-red-500' : 'text-gray-400'
+              }`} />
+            <span className={`font-semibold ${tipoInforme === 'ausentismo' ? 'text-red-500' : 'text-gray-700 dark:text-gray-400'
+              }`}>
               Ausentismo
             </span>
           </div>
@@ -384,19 +381,16 @@ const estadisticas = useMemo(() => {
         {/* Comparativo */}
         <button
           onClick={() => setTipoInforme('comparativo')}
-          className={`p-4 rounded-lg border-2 transition-all ${
-            tipoInforme === 'comparativo'
-              ? 'border-purple-500 bg-purple-500/10 dark:bg-purple-500/20'
-              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-          }`}
+          className={`p-4 rounded-lg border-2 transition-all ${tipoInforme === 'comparativo'
+            ? 'border-purple-500 bg-purple-500/10 dark:bg-purple-500/20'
+            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+            }`}
         >
           <div className="flex items-center gap-3">
-            <BarChart3 className={`h-6 w-6 ${
-              tipoInforme === 'comparativo' ? 'text-purple-500' : 'text-gray-400'
-            }`} />
-            <span className={`font-semibold ${
-              tipoInforme === 'comparativo' ? 'text-purple-500' : 'text-gray-700 dark:text-gray-400'
-            }`}>
+            <BarChart3 className={`h-6 w-6 ${tipoInforme === 'comparativo' ? 'text-purple-500' : 'text-gray-400'
+              }`} />
+            <span className={`font-semibold ${tipoInforme === 'comparativo' ? 'text-purple-500' : 'text-gray-700 dark:text-gray-400'
+              }`}>
               Comparativo
             </span>
           </div>
@@ -405,19 +399,16 @@ const estadisticas = useMemo(() => {
         {/* Individual */}
         <button
           onClick={() => setTipoInforme('individual')}
-          className={`p-4 rounded-lg border-2 transition-all ${
-            tipoInforme === 'individual'
-              ? 'border-green-500 bg-green-500/10 dark:bg-green-500/20'
-              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-          }`}
+          className={`p-4 rounded-lg border-2 transition-all ${tipoInforme === 'individual'
+            ? 'border-green-500 bg-green-500/10 dark:bg-green-500/20'
+            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+            }`}
         >
           <div className="flex items-center gap-3">
-            <FileBarChart className={`h-6 w-6 ${
-              tipoInforme === 'individual' ? 'text-green-500' : 'text-gray-400'
-            }`} />
-            <span className={`font-semibold ${
-              tipoInforme === 'individual' ? 'text-green-500' : 'text-gray-700 dark:text-gray-400'
-            }`}>
+            <FileBarChart className={`h-6 w-6 ${tipoInforme === 'individual' ? 'text-green-500' : 'text-gray-400'
+              }`} />
+            <span className={`font-semibold ${tipoInforme === 'individual' ? 'text-green-500' : 'text-gray-700 dark:text-gray-400'
+              }`}>
               Individual
             </span>
           </div>
@@ -523,24 +514,24 @@ const estadisticas = useMemo(() => {
 
 
               <div>
-    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-      Horario
-    </label>
-    <select
-      value={horarioSeleccionado}
-      onChange={(e) => setHorarioSeleccionado(e.target.value)}
-      disabled={rolSeleccionado === 'TODOS'}
-      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      <option value="TODOS">Todos los horarios</option>
-      {rolSeleccionado !== 'TODOS' &&
-        horariosPorRol[rolSeleccionado].map((horario) => (
-          <option key={horario} value={horario}>
-            {horario}
-          </option>
-        ))}
-    </select>
-  </div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Horario
+                </label>
+                <select
+                  value={horarioSeleccionado}
+                  onChange={(e) => setHorarioSeleccionado(e.target.value)}
+                  disabled={rolSeleccionado === 'TODOS'}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="TODOS">Todos los horarios</option>
+                  {rolSeleccionado !== 'TODOS' &&
+                    horariosPorRol[rolSeleccionado].map((horario) => (
+                      <option key={horario} value={horario}>
+                        {horario}
+                      </option>
+                    ))}
+                </select>
+              </div>
 
               {/* Empleado Individual */}
               {tipoInforme === 'individual' && (
@@ -615,51 +606,50 @@ const estadisticas = useMemo(() => {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
-  <tr>
-    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Legajo</th>
-    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Empleado</th>
-    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Rol</th>
-    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Turno</th>
-    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Días debió trabajar</th>
-    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Faltas</th>
-    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Justif.</th>
-    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Injustif.</th>
-    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">% Asistencia</th>
-  </tr>
-</thead>
-<tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-  {datosAsistencia.map((dato) => (
-    <tr key={dato.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">{dato.legajo}</td>
-      <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{dato.nombre}</td>
-      <td className="px-6 py-4 text-center">
-        <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs">
-          {dato.rol}
-        </span>
-      </td>
-      <td className="px-6 py-4 text-center">
-        <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded text-xs">
-          {dato.turno}
-        </span>
-      </td>
-      <td className="px-6 py-4 text-center text-sm text-gray-900 dark:text-white font-semibold">
-        {dato.diasDebioTrabajar}
-      </td>
-      <td className="px-6 py-4 text-center text-sm text-gray-900 dark:text-white">{dato.faltas}</td>
-      <td className="px-6 py-4 text-center text-sm text-green-600 dark:text-green-400">{dato.faltasJustificadas}</td>
-      <td className="px-6 py-4 text-center text-sm text-red-600 dark:text-red-400">{dato.faltasInjustificadas}</td>
-      <td className="px-6 py-4 text-center">
-        <span className={`font-semibold ${
-          dato.porcentajeAsistencia >= 95 ? 'text-green-600' :
-          dato.porcentajeAsistencia >= 90 ? 'text-yellow-600' :
-          'text-red-600'
-        }`}>
-          {dato.porcentajeAsistencia}%
-        </span>
-      </td>
-    </tr>
-  ))}
-</tbody>
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Legajo</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Empleado</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Rol</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Turno</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Días debió trabajar</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Faltas</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Justif.</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Injustif.</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">% Asistencia</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {datosAsistencia.map((dato) => (
+                    <tr key={dato.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">{dato.legajo}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{dato.nombre}</td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs">
+                          {dato.rol}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded text-xs">
+                          {dato.turno}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-center text-sm text-gray-900 dark:text-white font-semibold">
+                        {dato.diasDebioTrabajar}
+                      </td>
+                      <td className="px-6 py-4 text-center text-sm text-gray-900 dark:text-white">{dato.faltas}</td>
+                      <td className="px-6 py-4 text-center text-sm text-green-600 dark:text-green-400">{dato.faltasJustificadas}</td>
+                      <td className="px-6 py-4 text-center text-sm text-red-600 dark:text-red-400">{dato.faltasInjustificadas}</td>
+                      <td className="px-6 py-4 text-center">
+                        <span className={`font-semibold ${dato.porcentajeAsistencia >= 95 ? 'text-green-600' :
+                          dato.porcentajeAsistencia >= 90 ? 'text-yellow-600' :
+                            'text-red-600'
+                          }`}>
+                          {dato.porcentajeAsistencia}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
               </table>
             </div>
           </div>
@@ -674,8 +664,31 @@ const estadisticas = useMemo(() => {
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="nombre" angle={-45} textAnchor="end" height={100} stroke="#9CA3AF" />
                 <YAxis stroke="#9CA3AF" />
-                <Tooltip contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }} />
-                <Bar dataKey="porcentajeAsistencia" fill={COLORS.green} radius={[8, 8, 0, 0]} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1F2937',           // Ya estaba
+                    border: '1px solid #374151',         // Ya estaba
+                    borderRadius: '8px',                 // ⭐ NUEVO - Bordes redondeados
+                    padding: '8px 12px'                  // ⭐ NUEVO - Más padding
+                  }}
+                  labelStyle={{                          // ⭐ NUEVO - Estilo del título
+                    color: '#F3F4F6',                    // Color claro para el texto
+                    fontWeight: 'bold',                  // Texto en negrita
+                    marginBottom: '4px'                  // Espacio debajo del título
+                  }}
+                  itemStyle={{ color: '#10B981' }}      // ⭐ NUEVO - Color verde claro para valores
+                  cursor={{ fill: 'transparent' }}  // ⭐ NUEVO - Elimina el rectángulo gris/blanco
+                />
+                <Bar
+                  dataKey="porcentajeAsistencia"
+                  fill={COLORS.green}
+                  radius={[8, 8, 0, 0]}
+                  activeBar={{                           // ⭐ NUEVO - Efecto hover personalizado
+                    fill: '#059669',                     // Tono más oscuro de verde
+                    stroke: '#10B981',                   // Borde verde
+                    strokeWidth: 2                       // Grosor del borde
+                  }}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -694,9 +707,22 @@ const estadisticas = useMemo(() => {
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="rol" stroke="#9CA3AF" />
                 <YAxis stroke="#9CA3AF" />
-                <Tooltip contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }} />
+                <Tooltip
+                  content={<CustomTooltip labelColor="#F97316" />}
+                  cursor={{ fill: 'transparent' }}
+                />
                 <Legend />
-                <Bar dataKey="promedio" fill={COLORS.orange} name="Promedio Faltas" radius={[8, 8, 0, 0]} />
+                <Bar
+                  dataKey="promedio"
+                  fill={COLORS.orange}
+                  name="Promedio Faltas"
+                  radius={[8, 8, 0, 0]}
+                  activeBar={{                           // ⭐ NUEVO
+                    fill: '#EA580C',                     // Tono más oscuro de naranja
+                    stroke: '#F97316',                   // Borde naranja
+                    strokeWidth: 2
+                  }}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -708,28 +734,56 @@ const estadisticas = useMemo(() => {
             </h3>
             <h1 className="font-medium text-gray-900 dark:text-white">Promedio de faltas por persona</h1>
             <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-            <Pie
-              data={datosAusentismo.porTurno.map(item => ({
-              name: item.turno,
-              value: parseInt(item.total.toString()),
-              promedio: item.promedio
-          }))}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            label={({ name, promedio }: any) => `${name}: ${promedio}`}
-            outerRadius={100}
-            fill="#8884d8"
-            dataKey="value"
-              >
-            <Cell fill={COLORS.green} />
-            <Cell fill={COLORS.blue} />
-          </Pie>
-        <Tooltip contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }} />
-    </PieChart>
-  </ResponsiveContainer>
-</div>
+              <PieChart>
+                <Pie
+                  data={datosAusentismo.porTurno.map(item => ({
+                    name: item.turno,
+                    value: parseInt(item.total.toString()),
+                    promedio: item.promedio
+                  }))}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+label={({ name, promedio }: any) => `${name}: ${promedio}`}
+                  outerRadius={100}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  <Cell fill={COLORS.green} />
+                  <Cell fill={COLORS.blue} />
+                </Pie>
+<Tooltip
+  content={({ active, payload }) => {
+    if (!active || !payload || !payload.length) return null;
+    
+    const data = payload[0];
+    
+    // Colores según el grupo
+    const colorMap: Record<string, string> = {
+      'A': '#3B82F6',    // Azul para grupo A
+      'B': '#10B981'     // Verde para grupo B
+    };
+    
+    const color = colorMap[data.name] || '#6B7280';
+    
+    return (
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-lg">
+        <p className="m-0">
+          <span style={{ color: color }} className="font-bold">
+            {data.name}
+          </span>
+          {': '}
+          <span className="text-gray-900 dark:text-white font-bold">
+            {data.value}
+          </span>
+        </p>
+      </div>
+    );
+  }}
+/>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
 
           {/* Tabla Resumen por Rol */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 lg:col-span-2">
@@ -753,13 +807,12 @@ const estadisticas = useMemo(() => {
                       <td className="px-6 py-4 text-center text-sm text-gray-900 dark:text-white">{dato.total}</td>
                       <td className="px-6 py-4 text-center text-sm text-gray-900 dark:text-white">{dato.promedio}</td>
                       <td className="px-6 py-4 text-center">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          parseFloat(dato.promedio) >= 5 
-                            ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' 
-                            : parseFloat(dato.promedio) >= 3 
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${parseFloat(dato.promedio) >= 5
+                          ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                          : parseFloat(dato.promedio) >= 3
                             ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                             : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                        }`}>
+                          }`}>
                           {parseFloat(dato.promedio) >= 5 ? 'Crítico' : parseFloat(dato.promedio) >= 3 ? 'Moderado' : 'Bajo'}
                         </span>
                       </td>
@@ -784,11 +837,71 @@ const estadisticas = useMemo(() => {
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="grupo" stroke="#9CA3AF" />
                 <YAxis stroke="#9CA3AF" />
-                <Tooltip contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }} />
+                <Tooltip
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload) return null;
+
+                    const colorMap: Record<string, string> = {
+                      'Empleados': '#3B82F6',
+                      'Faltas': '#EF4444',
+                      'Justificadas': '#10B981'
+                    };
+
+                    return (
+                      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-lg">
+                        <p className="text-gray-900 dark:text-gray-100 font-bold mb-1 m-0">
+                          {label}
+                        </p>
+                        {payload.map((entry: any, index: number) => (
+                          <p key={index} className="m-1">
+                            <span style={{ color: colorMap[entry.name] }}>
+                              {entry.name}
+                            </span>
+                            {' : '}
+                            <span className="text-gray-900 dark:text-white font-bold">
+                              {entry.value}
+                            </span>
+                          </p>
+                        ))}
+                      </div>
+                    );
+                  }}
+                  cursor={{ fill: 'transparent' }}
+                />
                 <Legend />
-                <Bar dataKey="empleados" fill={COLORS.blue} name="Empleados" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="faltas" fill={COLORS.red} name="Faltas" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="justificadas" fill={COLORS.green} name="Justificadas" radius={[8, 8, 0, 0]} />
+                <Bar
+                  dataKey="empleados"
+                  fill={COLORS.blue}
+                  name="Empleados"
+                  radius={[8, 8, 0, 0]}
+                  activeBar={{                           // ⭐ NUEVO
+                    fill: '#2563EB',                     // Azul más oscuro
+                    stroke: '#3B82F6',                   // Borde azul
+                    strokeWidth: 2
+                  }}
+                />
+                <Bar
+                  dataKey="faltas"
+                  fill={COLORS.red}
+                  name="Faltas"
+                  radius={[8, 8, 0, 0]}
+                  activeBar={{                           // ⭐ NUEVO
+                    fill: '#DC2626',                     // Rojo más oscuro
+                    stroke: '#EF4444',                   // Borde rojo
+                    strokeWidth: 2
+                  }}
+                />
+                <Bar
+                  dataKey="justificadas"
+                  fill={COLORS.green}
+                  name="Justificadas"
+                  radius={[8, 8, 0, 0]}
+                  activeBar={{                           // ⭐ NUEVO
+                    fill: '#059669',                     // Verde más oscuro
+                    stroke: '#10B981',                   // Borde verde
+                    strokeWidth: 2
+                  }}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -811,11 +924,41 @@ const estadisticas = useMemo(() => {
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {Object.keys(datosComparativos.porRol.A).map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={[COLORS.blue, COLORS.green, COLORS.yellow, COLORS.purple][index % 4]} />
-                    ))}
+                    {Object.entries(datosComparativos.porRol.A).map(([rol, _], index) => {
+                      const colorPorRol: Record<string, string> = {
+                        'SUPERVISOR': COLORS.blue,   // Azul para Supervisor
+                        'INSPECTOR': COLORS.green    // Verde para Inspector
+                      };
+                      return <Cell key={`cell-${index}`} fill={colorPorRol[rol] || COLORS.blue} />;
+                    })}
                   </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }} />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload || !payload.length) return null;
+
+                      const data = payload[0];
+                      const colorMap: Record<string, string> = {
+                        'SUPERVISOR': '#3B82F6',
+                        'INSPECTOR': '#10B981'
+                      };
+
+                      const color = colorMap[data.name] || '#6B7280';
+
+                      return (
+                        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-lg">
+                          <p className="m-0">
+                            <span className="text-gray-900 dark:text-white font-bold">
+                              {data.name}
+                            </span>
+                            {' : '}
+                            <span style={{ color: color }} className="font-bold">
+                              {data.value}
+                            </span>
+                          </p>
+                        </div>
+                      );
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -835,11 +978,46 @@ const estadisticas = useMemo(() => {
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {Object.keys(datosComparativos.porRol.B).map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={[COLORS.blue, COLORS.green, COLORS.yellow, COLORS.purple][index % 4]} />
-                    ))}
+                    {Object.entries(datosComparativos.porRol.B).map(([rol, _], index) => {
+                      const colorPorRol: Record<string, string> = {
+                        'SUPERVISOR': COLORS.blue,   // Azul para Supervisor
+                        'INSPECTOR': COLORS.green    // Verde para Inspector
+                      };
+                      return <Cell key={`cell-${index}`} fill={colorPorRol[rol] || COLORS.blue} />;
+                    })}
                   </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }} />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload || !payload.length) return null;
+
+                      const data = payload[0];
+                      const colorMap: Record<string, string> = {
+                        'SUPERVISOR': '#60A5FA',  // Azul
+                        'INSPECTOR': '#34D399'    // Verde
+                      };
+
+                      const color = colorMap[data.name] || '#E5E7EB';
+
+                      return (
+                        <div style={{
+                          backgroundColor: '#1F2937',
+                          border: '1px solid #374151',
+                          borderRadius: '8px',
+                          padding: '8px 12px'
+                        }}>
+                          <p style={{ margin: 0 }}>
+                            <span style={{ color: '#FFFFFF', fontWeight: 'bold' }}>
+                              {data.name}
+                            </span>
+                            {' : '}
+                            <span style={{ color: color, fontWeight: 'bold' }}>
+                              {data.value}
+                            </span>
+                          </p>
+                        </div>
+                      );
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -865,7 +1043,7 @@ const estadisticas = useMemo(() => {
               {(() => {
                 const empleado = empleados?.find(e => e.id === empleadoSeleccionado);
                 const datosEmp = datosAsistencia.find(d => d.id === empleadoSeleccionado);
-                
+
                 if (!empleado || !datosEmp) return null;
 
                 return (
@@ -882,11 +1060,10 @@ const estadisticas = useMemo(() => {
                         </div>
                         <div className="text-right">
                           <p className="text-sm text-gray-600 dark:text-gray-400">Asistencia</p>
-                          <p className={`text-3xl font-bold ${
-                            datosEmp.porcentajeAsistencia >= 95 ? 'text-green-600' :
+                          <p className={`text-3xl font-bold ${datosEmp.porcentajeAsistencia >= 95 ? 'text-green-600' :
                             datosEmp.porcentajeAsistencia >= 90 ? 'text-yellow-600' :
-                            'text-red-600'
-                          }`}>
+                              'text-red-600'
+                            }`}>
                             {datosEmp.porcentajeAsistencia}%
                           </p>
                         </div>
@@ -942,11 +1119,10 @@ const estadisticas = useMemo(() => {
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">{falta.causa}</td>
                                     <td className="px-6 py-4 text-center">
-                                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                        falta.justificada
-                                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                                      }`}>
+                                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${falta.justificada
+                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                        }`}>
                                         {falta.justificada ? 'Justificada' : 'Injustificada'}
                                       </span>
                                     </td>

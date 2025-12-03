@@ -19,7 +19,7 @@
     "jspdf": "^3.0.3",
     "lucide-react": "^0.524.0",
     "next": "latest",
-    "next-auth": "5.0.0-beta.25",
+    "next-auth": "^5.0.0-beta.30",
     "openai": "^6.9.1",
     "pdf-parse": "^2.4.5",
     "postcss": "8.5.1",
