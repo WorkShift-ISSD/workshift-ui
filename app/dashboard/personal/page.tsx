@@ -84,10 +84,10 @@ export default function DashboardPage() {
   const employees = empleados || [];
 
   const horariosPorRol: Record<Rol, string[]> = {
-    INSPECTOR: ["04:00-14:00", "06:00-16:00", "10:00-20:00", "13:00-23:00", "19:00-05:00"],
+    INSPECTOR: ["04:00-14:00", "06:00-16:00", "10:00-20:00", "14:00-23:00", "19:00-05:00"],
     SUPERVISOR: ["05:00-14:00", "14:00-23:00", "23:00-05:00"],
     JEFE: ["05:00-17:00", "17:00-05:00"],
-    ADMINISTRADOR: ["05:00-17:00", "17:00-05:00"],
+    ADMINISTRADOR: ["00:00-23:59"],
   };
 
   // Calcular estado del empleado
@@ -128,27 +128,27 @@ export default function DashboardPage() {
     let filtered = [...employees];
 
     // Search filter
-if (searchTerm) {
-  const palabras = searchTerm
-    .toLowerCase()
-    .trim()
-    .split(/\s+/); // divide por espacios (1 o más)
+    if (searchTerm) {
+      const palabras = searchTerm
+        .toLowerCase()
+        .trim()
+        .split(/\s+/); // divide por espacios (1 o más)
 
-  filtered = filtered.filter((emp) => {
-    const nombre = emp.nombre.toLowerCase();
-    const apellido = emp.apellido.toLowerCase();
-    const email = emp.email.toLowerCase();
-    const legajo = emp.legajo.toString();
+      filtered = filtered.filter((emp) => {
+        const nombre = emp.nombre.toLowerCase();
+        const apellido = emp.apellido.toLowerCase();
+        const email = emp.email.toLowerCase();
+        const legajo = emp.legajo.toString();
 
-    // Cada palabra debe coincidir en algún campo
-    return palabras.every((p) =>
-      nombre.includes(p) ||
-      apellido.includes(p) ||
-      email.includes(p) ||
-      legajo.includes(p)
-    );
-  });
-}
+        // Cada palabra debe coincidir en algún campo
+        return palabras.every((p) =>
+          nombre.includes(p) ||
+          apellido.includes(p) ||
+          email.includes(p) ||
+          legajo.includes(p)
+        );
+      });
+    }
 
     // Role filter
     if (selectedRole !== 'TODOS') {
@@ -174,11 +174,12 @@ if (searchTerm) {
 
   // Calcular estadísticas
   const stats = useMemo(() => ({
-    total: employees.length,
-    activos: employees.filter(e => e.activo && calcularEstado(e) === 'ACTIVO').length,
-    enLicencia: employees.filter(e => calcularEstado(e) === 'LICENCIA').length,
-    ausentes: employees.filter(e => calcularEstado(e) === 'AUSENTE').length
-  }), [employees]);
+    total: filteredEmployeesMemo.length,
+    activos: filteredEmployeesMemo.filter(e => e.activo && calcularEstado(e) === 'ACTIVO').length,
+    enLicencia: filteredEmployeesMemo.filter(e => calcularEstado(e) === 'LICENCIA').length,
+    ausentes: filteredEmployeesMemo.filter(e => calcularEstado(e) === 'AUSENTE').length
+  }), [filteredEmployeesMemo]);
+
 
   // Modal handlers
   const openModal = (mode: 'view' | 'edit' | 'create', employee?: Inspector) => {
