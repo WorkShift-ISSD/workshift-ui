@@ -739,8 +739,8 @@ export default function CambiosTurnosPage() {
             <button
               onClick={() => setActiveMainTab('historico')}
               className={`flex-1 min-w-[160px] px-6 py-4 font-semibold text-sm transition-colors relative ${activeMainTab === 'historico'
-                  ? 'text-blue-600 dark:text-blue-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
                 }`}
             >
               <div className="flex items-center justify-center gap-2">
@@ -1860,13 +1860,33 @@ export default function CambiosTurnosPage() {
                             : 'border-gray-300 dark:border-gray-600'
                             }`}
                         />
-                        {nuevaOfertaForm.fechaOfrece && user &&
-                          !esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno) && (
-                            <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
-                              <AlertCircle className="h-3 w-3" />
-                              Esta fecha corresponde al Grupo {calcularGrupoTrabaja(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'))}, pero tú eres del Grupo {user.grupoTurno}. Solo puedes ofrecer tus propios turnos.
-                            </p>
-                          )}
+                        {nuevaOfertaForm.fechaOfrece && user && (
+                          <>
+                            {/* Si es ADMIN → mensaje especial */}
+                            {user.rol === "ADMINISTRADOR" ? (
+                              <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                Los administradores no pueden realizar ofertas ni solicitar cambios de turno.
+                                Esta función está habilitada solo para inspectores y supervisores.
+                              </p>
+                            ) : (
+                              /* Si NO es admin, validar normalmente el grupo */
+                              !esFechaValidaParaGrupo(
+                                new Date(nuevaOfertaForm.fechaOfrece + "T00:00:00"),
+                                user.grupoTurno
+                              ) && (
+                                <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
+                                  <AlertCircle className="h-3 w-3" />
+                                  Esta fecha corresponde al Grupo{" "}
+                                  {calcularGrupoTrabaja(
+                                    new Date(nuevaOfertaForm.fechaOfrece + "T00:00:00")
+                                  )}
+                                  , pero tú eres del Grupo {user.grupoTurno}. Solo puedes ofrecer tus propios turnos.
+                                </p>
+                              )
+                            )}
+                          </>
+                        )}
                         {nuevaOfertaForm.fechaOfrece && user &&
                           esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno) && (
                             <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
@@ -1942,13 +1962,34 @@ export default function CambiosTurnosPage() {
                             : 'border-gray-300 dark:border-gray-600'
                             }`}
                         />
-                        {nuevaOfertaForm.fechaOfrece && user &&
-                          !esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno) && (
-                            <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
-                              <AlertCircle className="h-3 w-3" />
-                              Esta fecha corresponde al Grupo {calcularGrupoTrabaja(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'))}, pero tú eres del Grupo {user.grupoTurno}. Solo puedes ofrecer tus propios turnos.
-                            </p>
-                          )}
+                        {nuevaOfertaForm.fechaOfrece && user && (
+                          <>
+                            {/* Caso especial: ADMIN */}
+                            {user.rol === "ADMINISTRADOR" ? (
+                              <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                Los administradores no pueden realizar ofertas ni solicitar cambios de turno.
+                                Esta funcionalidad está habilitada únicamente para inspectores y supervisores.
+                              </p>
+                            ) : (
+                              /* Validación normal cuando NO es admin */
+                              !esFechaValidaParaGrupo(
+                                new Date(nuevaOfertaForm.fechaOfrece + "T00:00:00"),
+                                user.grupoTurno
+                              ) && (
+                                <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
+                                  <AlertCircle className="h-3 w-3" />
+                                  Esta fecha corresponde al Grupo{" "}
+                                  {calcularGrupoTrabaja(
+                                    new Date(nuevaOfertaForm.fechaOfrece + "T00:00:00")
+                                  )}
+                                  , pero tú eres del Grupo {user.grupoTurno}. Solo puedes ofrecer tus propios turnos.
+                                </p>
+                              )
+                            )}
+                          </>
+                        )}
+
                         {nuevaOfertaForm.fechaOfrece && user &&
                           esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno) && (
                             <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
@@ -2314,13 +2355,33 @@ export default function CambiosTurnosPage() {
                         : 'border-gray-300 dark:border-gray-600'
                         }`}
                     />
-                    {solicitudDirectaForm.fechaSolicitante && user &&
-                      !esFechaValidaParaGrupo(new Date(solicitudDirectaForm.fechaSolicitante + 'T00:00:00'), user.grupoTurno) && (
-                        <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
-                          <AlertCircle className="h-3 w-3" />
-                          Esta fecha corresponde al Grupo {calcularGrupoTrabaja(new Date(solicitudDirectaForm.fechaSolicitante + 'T00:00:00'))}, pero tú eres del Grupo {user.grupoTurno}. Solo puedes ofrecer tus propios turnos.
-                        </p>
-                      )}
+                    {solicitudDirectaForm.fechaSolicitante && user && (
+                      <>
+                        {/* Caso especial: si es ADMIN */}
+                        {user.rol === "ADMINISTRADOR" ? (
+                          <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" />
+                            Los administradores no pueden realizar ofertas ni solicitar cambios de turno.
+                            Solo los inspectores y supervisores tienen acceso a esta función.
+                          </p>
+                        ) : (
+                          /* Caso normal: validación de grupo incorrecto */
+                          !esFechaValidaParaGrupo(
+                            new Date(solicitudDirectaForm.fechaSolicitante + "T00:00:00"),
+                            user.grupoTurno
+                          ) && (
+                            <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3" />
+                              Esta fecha corresponde al Grupo{" "}
+                              {calcularGrupoTrabaja(
+                                new Date(solicitudDirectaForm.fechaSolicitante + "T00:00:00")
+                              )}
+                              , pero tú eres del Grupo {user.grupoTurno}. Solo puedes ofrecer tus propios turnos.
+                            </p>
+                          )
+                        )}
+                      </>
+                    )}
                     {solicitudDirectaForm.fechaSolicitante && user &&
                       esFechaValidaParaGrupo(new Date(solicitudDirectaForm.fechaSolicitante + 'T00:00:00'), user.grupoTurno) && (
                         <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
