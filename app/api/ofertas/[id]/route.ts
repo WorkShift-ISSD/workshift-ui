@@ -107,12 +107,12 @@ export async function PATCH(
     if (body.modalidadBusqueda === 'INTERCAMBIO') {
       // Para intercambio, siempre hay un turno que se ofrece
       if (body.fechaOfrece) {
-        turnoOfrece = {
-          fecha: body.fechaOfrece,
-          horario: usuario.horario,
-          grupoTurno: usuario.grupo_turno
-        };
-      }
+  turnoOfrece = {
+    fecha: body.fechaOfrece,
+    horario: body.horarioOfrece || usuario.horario, // ✅ USAR EL DEL FORM
+    grupoTurno: body.grupoOfrece || usuario.grupo_turno
+  };
+}
       
       // Y uno o varios turnos que se buscan
       if (body.fechasBusca && body.fechasBusca.length > 0) {

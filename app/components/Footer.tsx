@@ -26,7 +26,7 @@ export default function Footer() {
   }, []);
 
   return (
-    <footer className="mt-auto flex flex-col items-center justify-center gap-3 px-4 py-4 bg-[#cddcea] dark:bg-gray-700 text-gray-700 dark:text-gray-300 w-full md:flex-row md:justify-between md:gap-4 md:px-6 transition-colors">
+    <footer className="flex flex-col items-center justify-center gap-3 px-4 py-4 bg-[#cddcea] dark:bg-gray-700 text-gray-700 dark:text-gray-300 w-full md:flex-row md:justify-between md:gap-4 md:px-6 transition-colors">
       {/* 🔹 Izquierda */}
       <div className="text-xs sm:text-sm text-center md:text-left">
         © {new Date().getFullYear()}{" "}

@@ -66,7 +66,7 @@ export const turnos = [
   {
     id: '50ca3e18-62cd-11ee-8c99-0242ac120003',
     nombre: 'Mañana - Inspector Clouseau',
-    tipo: 'mañana',
+    tipo: 'manana',
     horaInicio: '06:00:00',
     horaFin: '14:00:00'
   },

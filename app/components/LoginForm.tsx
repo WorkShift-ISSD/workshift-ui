@@ -4,21 +4,39 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import ChangePasswordModal from "./ChangePasswordModal";
 
 export default function LoginForm() {
   const router = useRouter();
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Estados para primer ingreso
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [primerIngreso, setPrimerIngreso] = useState(false);
+  const [tempUserData, setTempUserData] = useState<any>(null);
 
   // Estados para recuperar contraseña
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
   const [resetMessage, setResetMessage] = useState("");
+
+  // Cargar email guardado al montar
+  useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedEmail = localStorage.getItem('remembered-email');
+      if (savedEmail) {
+        setEmail(savedEmail);
+        setRememberMe(true);
+      }
+    }
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,22 +47,33 @@ export default function LoginForm() {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // ✅ Importante: para enviar/recibir cookies
-        body: JSON.stringify({ email, password }),
+        credentials: "include",
+        body: JSON.stringify({ email, password, rememberMe }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        // ✅ El token ya está en las cookies (httpOnly), no necesitamos guardarlo
-        // Solo actualizamos el contexto con los datos del usuario
-        await login(data.user);
-        
-        // Redirigir con loading screen
-        router.push("/loading");
-        setTimeout(() => {
-          router.push("/dashboard");
-        }, 2000);
+        // Guardar o eliminar email según checkbox
+        if (rememberMe) {
+          localStorage.setItem('remembered-email', email);
+        } else {
+          localStorage.removeItem('remembered-email');
+        }
+
+        // Verificar si es primer ingreso
+        if (data.primerIngreso) {
+          setPrimerIngreso(true);
+          setTempUserData(data.user);
+          setShowChangePasswordModal(true);
+        } else {
+          // Login normal
+          await login(data.user);
+          router.push("/loading");
+          setTimeout(() => {
+            router.push("/dashboard");
+          }, 2000);
+        }
       } else {
         setError(data.error || "Credenciales incorrectas");
       }
@@ -53,6 +82,19 @@ export default function LoginForm() {
       setError("Error al conectar con el servidor");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePasswordChangeSuccess = async () => {
+    setShowChangePasswordModal(false);
+    
+    // Continuar con el login después de cambiar contraseña
+    if (tempUserData) {
+      await login({ ...tempUserData, primerIngreso: false });
+      router.push("/loading");
+      setTimeout(() => {
+        router.push("/dashboard");
+      }, 2000);
     }
   };
 
@@ -89,7 +131,7 @@ export default function LoginForm() {
 
   return (
     <>
-      <div className="flex items-center justify-center bg-gray-100 dark:bg-gray-900  rounded-lg transition-colors">
+      <div className="flex items-center justify-center bg-gray-100 dark:bg-gray-900 rounded-lg transition-colors">
         <form
           onSubmit={handleSubmit}
           className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-md w-full max-w-sm transition-colors"
@@ -114,7 +156,7 @@ export default function LoginForm() {
             className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring focus:ring-blue-300 rounded w-full mb-4 px-3 py-2 transition-colors disabled:opacity-50"
           />
 
-          <div className="relative mb-6">
+          <div className="relative mb-4">
             <input
               type={showPassword ? "text" : "password"}
               placeholder="Contraseña"
@@ -134,6 +176,31 @@ export default function LoginForm() {
             </button>
           </div>
 
+          {/* Checkbox Recordarme */}
+          <div className="flex items-center justify-between mb-6">
+            <label className="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                disabled={loading}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer disabled:opacity-50"
+              />
+              <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
+                Recordarme
+              </span>
+            </label>
+            
+            <button
+              type="button"
+              onClick={() => setShowForgotPassword(true)}
+              disabled={loading}
+              className="text-sm text-blue-600 p-1 dark:text-blue-400 hover:underline transition disabled:opacity-50"
+            >
+                ¿Olvidaste tu contraseña?
+            </button>
+          </div>
+
           <button
             type="submit"
             disabled={loading}
@@ -148,18 +215,15 @@ export default function LoginForm() {
               "Ingresar"
             )}
           </button>
-
-          <div className="flex items-center justify-end mt-8 text-sm">
-            <button
-              type="button"
-              onClick={() => setShowForgotPassword(true)}
-              className="text-blue-600 dark:text-blue-400 hover:underline transition"
-            >
-              ¿Olvidaste tu contraseña?
-            </button>
-          </div>
         </form>
       </div>
+
+      {/* Modal Cambiar Contraseña (Primer Ingreso) */}
+      <ChangePasswordModal
+        isOpen={showChangePasswordModal}
+        isPrimerIngreso={primerIngreso}
+        onSuccess={handlePasswordChangeSuccess}
+      />
 
       {/* Modal Recuperar Contraseña */}
       {showForgotPassword && (

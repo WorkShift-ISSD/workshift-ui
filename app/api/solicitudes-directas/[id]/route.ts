@@ -46,47 +46,45 @@ export async function PATCH(
     }
 
     // Determinar qué tipo de actualización es
-if (body.estado && Object.keys(body).length === 1) {
-  // ✅ CASO 1: Solo actualizar estado (aceptar/rechazar/cancelar solicitud)
-  
-  const nuevoEstado = body.estado;
-  
-  // Validar permisos según el rol y estado
-  if (nuevoEstado === 'CANCELADO') {
-    // El solicitante puede cancelar su propia solicitud
-    if (solicitudExistente.solicitante_id !== userId && solicitudExistente.destinatario_id !== userId) {
-      return NextResponse.json(
-        { error: 'No tienes permiso para cancelar esta solicitud' },
-        { status: 403 }
-      );
-    }
-  } else if (nuevoEstado === 'APROBADO') {
-    // Solo el destinatario puede aprobar
-    if (solicitudExistente.destinatario_id !== userId) {
-      return NextResponse.json(
-        { error: 'Solo el destinatario puede aprobar la solicitud' },
-        { status: 403 }
-      );
-    }
-  } else {
-    // Otros estados solo el destinatario
-    if (solicitudExistente.destinatario_id !== userId) {
-      return NextResponse.json(
-        { error: 'No tienes permiso para cambiar el estado de esta solicitud' },
-        { status: 403 }
-      );
-    }
-  }
+    if (body.estado && Object.keys(body).length === 1) {
+      // ✅ CASO 1: Solo actualizar estado (aceptar/rechazar/cancelar solicitud)
+      
+      const nuevoEstado = body.estado;
+      
+      // Validar permisos según el rol y estado
+      if (nuevoEstado === 'CANCELADO') {
+        // El solicitante puede cancelar su propia solicitud
+        if (solicitudExistente.solicitante_id !== userId && solicitudExistente.destinatario_id !== userId) {
+          return NextResponse.json(
+            { error: 'No tienes permiso para cancelar esta solicitud' },
+            { status: 403 }
+          );
+        }
+      } else if (nuevoEstado === 'APROBADO') {
+        // Solo el destinatario puede aprobar
+        if (solicitudExistente.destinatario_id !== userId) {
+          return NextResponse.json(
+            { error: 'Solo el destinatario puede aprobar la solicitud' },
+            { status: 403 }
+          );
+        }
+      } else {
+        // Otros estados solo el destinatario
+        if (solicitudExistente.destinatario_id !== userId) {
+          return NextResponse.json(
+            { error: 'No tienes permiso para cambiar el estado de esta solicitud' },
+            { status: 403 }
+          );
+        }
+      }
 
-  await sql`
-    UPDATE solicitudes_directas 
-    SET 
-      estado = ${nuevoEstado},
-      updated_at = NOW()
-    WHERE id = ${id}::uuid;
-  `;
-
-  // ... resto del código (obtener solicitud formateada)
+      await sql`
+        UPDATE solicitudes_directas 
+        SET 
+          estado = ${nuevoEstado},
+          updated_at = NOW()
+        WHERE id = ${id}::uuid;
+      `;
 
       // ✅ Obtener la solicitud actualizada con el formato correcto
       const [solicitudFormateada] = await sql`
@@ -99,12 +97,16 @@ if (body.estado && Object.keys(body).length === 1) {
           json_build_object(
             'id', us.id,
             'nombre', us.nombre,
-            'apellido', us.apellido
+            'apellido', us.apellido,
+            'rol', us.rol,
+            'horario', us.horario
           ) as solicitante,
           json_build_object(
             'id', ud.id,
             'nombre', ud.nombre,
-            'apellido', ud.apellido
+            'apellido', ud.apellido,
+            'rol', ud.rol,
+            'horario', ud.horario
           ) as destinatario,
           json_build_object(
             'fecha', sd.fecha_solicitante,
@@ -170,7 +172,20 @@ if (body.estado && Object.keys(body).length === 1) {
         );
       }
 
-      // Actualizar la solicitud
+      // ✅ Construir objetos JSONB para actualizar también esos campos
+      const turnoSolicitante = {
+        fecha: fechaSolicitante,
+        horario: horarioSolicitante,
+        grupoTurno: grupoSolicitante
+      };
+
+      const turnoDestinatario = {
+        fecha: fechaDestinatario,
+        horario: horarioDestinatario,
+        grupoTurno: grupoDestinatario
+      };
+
+      // ✅ Actualizar la solicitud (incluyendo campos JSONB)
       await sql`
         UPDATE solicitudes_directas
         SET
@@ -180,6 +195,8 @@ if (body.estado && Object.keys(body).length === 1) {
           fecha_destinatario = ${fechaDestinatario},
           horario_destinatario = ${horarioDestinatario},
           grupo_destinatario = ${grupoDestinatario},
+          turno_solicitante = ${JSON.stringify(turnoSolicitante)}::jsonb,
+          turno_destinatario = ${JSON.stringify(turnoDestinatario)}::jsonb,
           motivo = ${motivo},
           prioridad = ${prioridad},
           updated_at = NOW()
@@ -197,12 +214,16 @@ if (body.estado && Object.keys(body).length === 1) {
           json_build_object(
             'id', us.id,
             'nombre', us.nombre,
-            'apellido', us.apellido
+            'apellido', us.apellido,
+            'rol', us.rol,
+            'horario', us.horario
           ) as solicitante,
           json_build_object(
             'id', ud.id,
             'nombre', ud.nombre,
-            'apellido', ud.apellido
+            'apellido', ud.apellido,
+            'rol', ud.rol,
+            'horario', ud.horario
           ) as destinatario,
           json_build_object(
             'fecha', sd.fecha_solicitante,
@@ -220,10 +241,8 @@ if (body.estado && Object.keys(body).length === 1) {
         WHERE sd.id = ${id}::uuid;
       `;
 
-      return NextResponse.json({
-        message: 'Solicitud actualizada correctamente',
-        solicitud: solicitudFormateada,
-      });
+      // ✅ Devolver la solicitud directamente (sin wrapper)
+      return NextResponse.json(solicitudFormateada);
     }
   } catch (error) {
     console.error('Error en PATCH /api/solicitudes-directas/[id]:', error);

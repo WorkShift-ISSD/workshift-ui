@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Search, Calendar, Clock, User, AlertCircle, CheckCircle, XCircle, Loader } from 'lucide-react';
 
 // Tipos
-type EstadoSolicitud = 'SOLICITADO' | 'APROBADO' | 'COMPLETADO' | 'CANCELADO';
+type EstadoSolicitud = 'SOLICITADO' | 'APROBADO' | 'COMPLETADO' | 'CANCELADO' | 'VENCIDO';
 
 interface SolicitudCambio {
   id: string;
@@ -72,7 +72,7 @@ const ModalConsultarSolicitudes: React.FC<ModalConsultarSolicitudesProps> = ({ i
 
   // Filtrar solicitudes
   const solicitudesFiltradas = solicitudes.filter(solicitud => {
-    const coincideBusqueda = busqueda === '' || 
+    const coincideBusqueda = busqueda === '' ||
       solicitud.solicitante.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
       solicitud.solicitante.apellido.toLowerCase().includes(busqueda.toLowerCase()) ||
       solicitud.destinatario.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -85,15 +85,14 @@ const ModalConsultarSolicitudes: React.FC<ModalConsultarSolicitudesProps> = ({ i
 
   // Utilidades
   const formatearFecha = (fecha: string) => {
-    try {
-      return new Date(fecha).toLocaleDateString('es-AR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      });
-    } catch {
-      return 'Fecha inválida';
-    }
+    if (!fecha) return "Fecha inválida";
+
+    // Fecha esperada: "2025-12-01"
+    const partes = fecha.split("-");
+    if (partes.length !== 3) return "Fecha inválida";
+
+    const [year, month, day] = partes;
+    return `${day}/${month}/${year}`;
   };
 
   const getEstadoColor = (estado: EstadoSolicitud) => {
@@ -180,6 +179,8 @@ const ModalConsultarSolicitudes: React.FC<ModalConsultarSolicitudesProps> = ({ i
                 <option value="APROBADO">Aprobado</option>
                 <option value="COMPLETADO">Completado</option>
                 <option value="CANCELADO">Cancelado</option>
+                <option value="VENCIDO">Vencido</option>
+
               </select>
             </div>
           </div>

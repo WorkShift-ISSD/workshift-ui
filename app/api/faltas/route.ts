@@ -17,17 +17,15 @@ export async function GET(request: NextRequest) {
     const fecha = searchParams.get('fecha');
     const empleadoId = searchParams.get('empleadoId');
 
-    console.log('📅 Parámetros recibidos:', { fecha, empleadoId });
-
     let query;
 
+    // FILTRAR POR FECHA
     if (fecha) {
-      console.log('🔍 Filtrando por fecha:', fecha);
-      // IMPORTANTE: Usar la fecha directamente sin conversión
       query = sql`
         SELECT 
           f.id::text,
           f.empleado_id::text as "empleadoId",
+          
           json_build_object(
             'id', e.id::text,
             'nombre', e.nombre,
@@ -36,24 +34,36 @@ export async function GET(request: NextRequest) {
             'horario', e.horario,
             'rol', e.rol
           ) as empleado,
+
           f.fecha::text as fecha,
           f.causa as motivo,
           f.observaciones,
           f.justificada,
-          f.registrado_por as "registradoPor",
+
+          json_build_object(
+            'id', u.id::text,
+            'nombre', u.nombre,
+            'apellido', u.apellido
+          ) as "registradoPor",
+
           f.created_at::text as "createdAt",
           f.updated_at::text as "updatedAt"
         FROM faltas f
         JOIN users e ON f.empleado_id = e.id
+        LEFT JOIN users u ON f.registrado_por::uuid = u.id
         WHERE f.fecha = ${fecha}::date
         ORDER BY f.created_at DESC;
       `;
-    } else if (empleadoId) {
-      console.log('👤 Filtrando por empleado:', empleadoId);
+    }
+
+
+    // FILTRAR POR EMPLEADO
+    else if (empleadoId) {
       query = sql`
         SELECT 
           f.id::text,
           f.empleado_id::text as "empleadoId",
+          
           json_build_object(
             'id', e.id::text,
             'nombre', e.nombre,
@@ -62,24 +72,36 @@ export async function GET(request: NextRequest) {
             'horario', e.horario,
             'rol', e.rol
           ) as empleado,
+
           f.fecha::text as fecha,
           f.causa as motivo,
           f.observaciones,
           f.justificada,
-          f.registrado_por as "registradoPor",
+
+          json_build_object(
+            'id', u.id::text,
+            'nombre', u.nombre,
+            'apellido', u.apellido
+          ) as "registradoPor",
+
           f.created_at::text as "createdAt",
           f.updated_at::text as "updatedAt"
         FROM faltas f
         JOIN users e ON f.empleado_id = e.id
+        LEFT JOIN users u ON f.registrado_por::uuid = u.id
         WHERE f.empleado_id = ${empleadoId}::uuid
         ORDER BY f.fecha DESC;
       `;
-    } else {
-      console.log('📋 Obteniendo todas las faltas');
+    }
+
+
+    // SIN FILTROS → TODAS LAS FALTAS
+    else {
       query = sql`
         SELECT 
           f.id::text,
           f.empleado_id::text as "empleadoId",
+          
           json_build_object(
             'id', e.id::text,
             'nombre', e.nombre,
@@ -88,26 +110,32 @@ export async function GET(request: NextRequest) {
             'horario', e.horario,
             'rol', e.rol
           ) as empleado,
+
           f.fecha::text as fecha,
           f.causa as motivo,
           f.observaciones,
           f.justificada,
-          f.registrado_por as "registradoPor",
+
+          json_build_object(
+            'id', u.id::text,
+            'nombre', u.nombre,
+            'apellido', u.apellido
+          ) as "registradoPor",
+
           f.created_at::text as "createdAt",
           f.updated_at::text as "updatedAt"
         FROM faltas f
         JOIN users e ON f.empleado_id = e.id
+        LEFT JOIN users u ON f.registrado_por::uuid = u.id
         ORDER BY f.fecha DESC;
       `;
     }
     
     const faltas = await query;
-    console.log(`✅ Faltas encontradas: ${faltas.length}`);
-    
-    // Normalizar fechas en el resultado
+
+    // Normalizar fechas (solo YYYY-MM-DD)
     const faltasNormalizadas = faltas.map(falta => ({
       ...falta,
-      // Asegurar que la fecha sea YYYY-MM-DD sin timestamp
       fecha: falta.fecha.split('T')[0]
     }));
     
@@ -122,16 +150,11 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// ========================
+
 // POST - crear falta
-// ========================
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-
-    console.log('📝 Creando falta:', body);
-
-    // Soportar tanto 'motivo' como 'causa' para compatibilidad
     const motivo = body.motivo || body.causa;
 
     if (!body.empleadoId || !body.fecha || !motivo) {
@@ -141,25 +164,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Normalizar fecha (solo YYYY-MM-DD)
     const fechaNormalizada = body.fecha.split('T')[0];
-    console.log('📅 Fecha normalizada:', fechaNormalizada);
 
-    // Obtener usuario que registra la falta
+    // Usuario que registra la falta
     const cookieStore = await cookies();
     const token = cookieStore.get('auth-token')?.value;
 
-    let registradoPor = "Sistema";
+    let registradoPorId = null; // ✅ Guardar el ID en lugar del nombre
 
     if (token) {
       try {
         const { payload } = await jwtVerify(token, SECRET_KEY);
-        const [usuario] = await sql`
-          SELECT nombre, apellido FROM users WHERE id = ${payload.id as string}::uuid;
-        `;
-        if (usuario) {
-          registradoPor = `${usuario.nombre} ${usuario.apellido}`;
-        }
+        registradoPorId = payload.id as string;
       } catch {}
     }
 
@@ -177,7 +193,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar si ya existe falta en ese día
+    // Verificar si ya existe falta ese día
     const [faltaExistente] = await sql`
       SELECT id
       FROM faltas
@@ -192,7 +208,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Insertar falta
+    // Insertar falta - ✅ Guardar el ID del usuario
     const [falta] = await sql`
       INSERT INTO faltas (
         id,
@@ -212,7 +228,7 @@ export async function POST(request: NextRequest) {
         ${body.motivo},
         ${body.observaciones || null},
         ${body.justificada || false},
-        ${registradoPor},
+        ${registradoPorId ? `${registradoPorId}::uuid` : null},
         NOW(),
         NOW()
       )
@@ -223,15 +239,38 @@ export async function POST(request: NextRequest) {
         causa as motivo,
         observaciones,
         justificada,
-        registrado_por as "registradoPor",
+        registrado_por::text as registrado_por_id,
         created_at::text as "createdAt",
         updated_at::text as "updatedAt";
     `;
 
-    // Normalizar fecha en respuesta
+    // ✅ Obtener datos del usuario que registró
+    let registradoPor = null;
+    if (falta.registrado_por_id) {
+      const [usuario] = await sql`
+        SELECT id::text, nombre, apellido
+        FROM users
+        WHERE id = ${falta.registrado_por_id}::uuid;
+      `;
+      if (usuario) {
+        registradoPor = {
+          id: usuario.id,
+          nombre: usuario.nombre,
+          apellido: usuario.apellido
+        };
+      }
+    }
+
     const faltaCompleta = {
-      ...falta,
+      id: falta.id,
+      empleadoId: falta.empleadoId,
       fecha: falta.fecha.split('T')[0],
+      motivo: falta.motivo,
+      observaciones: falta.observaciones,
+      justificada: falta.justificada,
+      registradoPor, // ✅ Ahora es un objeto como en GET
+      createdAt: falta.createdAt,
+      updatedAt: falta.updatedAt,
       empleado: {
         id: empleado.id.toString(),
         nombre: empleado.nombre,
@@ -241,8 +280,6 @@ export async function POST(request: NextRequest) {
         rol: empleado.rol
       }
     };
-
-    console.log('✅ Falta creada:', faltaCompleta);
 
     return NextResponse.json(faltaCompleta, { status: 201 });
 

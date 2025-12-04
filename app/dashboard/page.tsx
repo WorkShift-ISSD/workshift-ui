@@ -22,6 +22,11 @@ import { useTurnosData } from '@/hooks/useTurnosData';
 import { Cambio as TipoCambio } from '../api/types';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
+import { useTodasLasFaltas } from '@/hooks/useFaltas';
+import { calcularDiasTrabajoEnRango } from '@/app/lib/turnosUtils';
+import { useMemo, useEffect } from 'react';
+import { useOfertas } from '@/hooks/useOfertas';
+import { useSolicitudesDirectas } from '@/hooks/useSolicitudesDirectas';
 
 
 export default function DashboardHome() {
@@ -40,6 +45,11 @@ export default function DashboardHome() {
   const { stats, isLoading: loadingStats, error: errorStats } = useStats();
   const { turnosData, isLoading: loadingTurnos, error: errorTurnos } = useTurnosData();
 
+  const { faltas, isLoading: loadingFaltas } = useTodasLasFaltas();
+
+  const { ofertas, isLoading: loadingOfertas } = useOfertas();
+  const { solicitudes, isLoading: loadingSolicitudes } = useSolicitudesDirectas();
+
   // Estados para crear nuevo cambio
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -55,11 +65,55 @@ export default function DashboardHome() {
 
   const { user } = useAuth();
 
+  // Información del mes actual
+  const monthInfo = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth(); // 0-11
+
+    return {
+      year: year,
+      month: month,
+      firstDay: `${year}-${String(month + 1).padStart(2, '0')}-01`,
+      lastDayStr: new Date(year, month + 1, 0).toISOString().split('T')[0],
+    };
+  }, []);
+
+  // Calcular turnos reales basados en presentismo
+  const misGuardiasReales = useMemo(() => {
+    if (!user) return 0;
+
+    // Días que debía trabajar según su grupo A/B
+    return calcularDiasTrabajoEnRango(
+      monthInfo.firstDay,
+      monthInfo.lastDayStr,
+      user.grupoTurno
+    );
+  }, [user, monthInfo]);
+
+  // Calcular turnos trabajados (días sin faltas)
+  const guardiasTrabajadas = useMemo(() => {
+    if (!user || !faltas) return 0;
+
+    // Contar faltas del usuario en el mes actual
+    const faltasDelMes = faltas.filter(falta => {
+      const fechaFalta = new Date(falta.fecha);
+      return (
+        falta.empleadoId === user.id &&
+        fechaFalta.getFullYear() === monthInfo.year &&
+        fechaFalta.getMonth() === monthInfo.month
+      );
+    }).length;
+
+    // Días trabajados = días que debía - faltas
+    return misGuardiasReales - faltasDelMes;
+  }, [user, faltas, monthInfo, misGuardiasReales]);
+
   // Calcular porcentaje cubierto
-  const porcentajeCubierto = (() => {
-    if (!turnosData || turnosData.misGuardias === 0) return 0;
-    return Math.round((turnosData.guardiasCubiertas / turnosData.misGuardias) * 100);
-  })();
+  const porcentajeCubierto = useMemo(() => {
+    if (misGuardiasReales === 0) return 0;
+    return Math.round((guardiasTrabajadas / misGuardiasReales) * 100);
+  }, [guardiasTrabajadas, misGuardiasReales]);
 
   // Función para formatear fecha
   const formatDate = (dateString: string) => {
@@ -78,6 +132,83 @@ export default function DashboardHome() {
     };
     return colors[estado as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
+
+  // Estadísticas reales basadas en ofertas y solicitudes
+// Type guard - ACTUALIZAR para incluir CANCELADO
+type SolicitudDirectaEstado = 'SOLICITADO' | 'APROBADO' | 'RECHAZADO' | 'CANCELADO';
+
+// Estadísticas reales basadas en ofertas y solicitudes
+const statsReales = useMemo(() => {
+    
+  const turnosDisponibles = ofertas?.filter(o => o.estado === 'DISPONIBLE').length || 0;
+  
+  const aprobadosDelMes = solicitudes?.filter(sol => {
+    const fechaSol = new Date(sol.fechaSolicitud);
+    const estado = sol.estado as SolicitudDirectaEstado;
+    return (
+      estado === 'APROBADO' &&
+      fechaSol.getFullYear() === monthInfo.year &&
+      fechaSol.getMonth() === monthInfo.month
+    );
+  }).length || 0;
+
+
+
+  const pendientesParaMi = solicitudes?.filter(sol => {
+  const estado = String(sol.estado).toUpperCase();
+    const coincide = sol.destinatario.id === user?.id;
+    const esSolicitado = estado === 'SOLICITADO' || estado === 'PENDIENTE';
+    
+  
+    
+    return coincide && esSolicitado;
+  }).length || 0;
+
+  const rechazadosDelMes = solicitudes?.filter(sol => {
+    const fechaSol = new Date(sol.fechaSolicitud);
+    const estado = sol.estado as SolicitudDirectaEstado;
+    return (
+      sol.solicitante.id === user?.id &&
+      (estado === 'RECHAZADO' || estado === 'CANCELADO') &&
+      fechaSol.getFullYear() === monthInfo.year &&
+      fechaSol.getMonth() === monthInfo.month
+    );
+  }).length || 0;
+
+  return {
+    turnosOferta: turnosDisponibles,
+    aprobados: aprobadosDelMes,
+    pendientes: pendientesParaMi,
+    rechazados: rechazadosDelMes,
+  };
+}, [ofertas, solicitudes, user, monthInfo]); // ← Asegúrate de tener todas estas dependencias
+
+useEffect(() => {
+  
+  
+  if (solicitudes) {
+    
+    // Ver específicamente las rechazadas
+    const rechazadas = solicitudes.filter(sol => {
+      const estado = sol.estado as SolicitudDirectaEstado;
+      return estado === 'RECHAZADO';
+    });
+    
+    
+    // Ver las del mes
+    const rechazadasDelMes = solicitudes.filter(sol => {
+      const fechaSol = new Date(sol.fechaSolicitud);
+      const estado = sol.estado as SolicitudDirectaEstado;
+      
+      return (
+        estado === 'RECHAZADO' &&
+        fechaSol.getFullYear() === monthInfo.year &&
+        fechaSol.getMonth() === monthInfo.month
+      );
+    });
+    
+  }
+}, [solicitudes, monthInfo]);
 
   // Manejar creación de cambio
   const handleCreate = async (e: React.FormEvent) => {
@@ -127,7 +258,7 @@ export default function DashboardHome() {
   };
 
   // Componente de loading
-  if (loadingCambios || loadingStats || loadingTurnos) {
+  if (loadingCambios || loadingStats || loadingTurnos || loadingFaltas || loadingOfertas || loadingSolicitudes) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
         <LoadingSpinner />
@@ -155,7 +286,7 @@ export default function DashboardHome() {
   }
 
   return (
-    
+
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header de Bienvenida */}
       <div className="mb-8 flex items-center justify-between">
@@ -263,55 +394,63 @@ export default function DashboardHome() {
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {/* Turnos en Oferta */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
-              <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <span className="text-sm text-gray-500 dark:text-gray-400">En oferta</span>
-          </div>
-          <p className="text-3xl font-bold text-blue-400 dark:text-blue-400">{stats?.turnosOferta || 0}</p>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Turnos disponibles</p>
-        </div>
-
-        {/* Aprobados */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
-              <CheckCircle className="h-6 w-6 text-green-500" />
-            </div>
-            <span className="text-sm text-gray-500">Este mes</span>
-          </div>
-          <p className="text-3xl font-bold text-green-600 dark:text-green-400">{stats?.aprobados || 0}</p>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes aprobadas</p>
-        </div>
-
-        {/* Pendientes */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
-              <Clock className="h-6 w-6 text-yellow-500" />
-            </div>
-            <span className="text-sm text-gray-500">Esperando</span>
-          </div>
-          <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{stats?.pendientes || 0}</p>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes pendientes</p>
-        </div>
-
-        {/* Rechazados */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-red-100 dark:bg-red-900 rounded-lg">
-              <XCircle className="h-6 w-6 text-red-500" />
-            </div>
-            <span className="text-sm text-gray-500">Este mes</span>
-          </div>
-          <p className="text-3xl font-bold text-red-600 dark:text-red-400">{stats?.rechazados || 0}</p>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes rechazadas</p>
-        </div>
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+  {/* Turnos en Oferta */}
+  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+    <div className="flex items-center justify-between mb-4">
+      <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
+        <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
       </div>
+      <span className="text-sm text-gray-500 dark:text-gray-400">En oferta</span>
+    </div>
+    <p className="text-3xl font-bold text-blue-400 dark:text-blue-400">
+      {statsReales.turnosOferta}
+    </p>
+    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Turnos disponibles</p>
+  </div>
+
+  {/* Aprobados */}
+  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+    <div className="flex items-center justify-between mb-4">
+      <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
+        <CheckCircle className="h-6 w-6 text-green-500" />
+      </div>
+      <span className="text-sm text-gray-500">Este mes</span>
+    </div>
+    <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+      {statsReales.aprobados}
+    </p>
+    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes aprobadas</p>
+  </div>
+
+  {/* Pendientes */}
+  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+    <div className="flex items-center justify-between mb-4">
+      <div className="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
+        <Clock className="h-6 w-6 text-yellow-500" />
+      </div>
+      <span className="text-sm text-gray-500">Para ti</span>
+    </div>
+    <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
+      {statsReales.pendientes}
+    </p>
+    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes pendientes</p>
+  </div>
+
+  {/* Rechazados */}
+  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+    <div className="flex items-center justify-between mb-4">
+      <div className="p-3 bg-red-100 dark:bg-red-900 rounded-lg">
+        <XCircle className="h-6 w-6 text-red-500" />
+      </div>
+      <span className="text-sm text-gray-500">Este mes</span>
+    </div>
+    <p className="text-3xl font-bold text-red-600 dark:text-red-400">
+      {statsReales.rechazados}
+    </p>
+    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes rechazadas</p>
+  </div>
+</div>
 
       {/* Sección Principal: Gráfico y Próximos Cambios */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -352,32 +491,35 @@ export default function DashboardHome() {
             </div>
           </div>
 
-          {/* Leyenda */}
-          {turnosData && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-sky-400"></div>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Mis Guardias</span>
-                </div>
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{turnosData.misGuardias}</span>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-sky-400"></div>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Mis Guardias</span>
               </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-blue-600"></div>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Guardias Cubiertas</span>
-                </div>
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{turnosData.guardiasCubiertas}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-gray-600"></div>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Guardias que me cubrieron</span>
-                </div>
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{turnosData.guardiasQueMeCubrieron}</span>
-              </div>
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {misGuardiasReales}
+              </span>
             </div>
-          )}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-blue-600"></div>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Guardias Trabajadas</span>
+              </div>
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {guardiasTrabajadas}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-gray-600"></div>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Guardias que me cubrieron</span>
+              </div>
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {turnosData?.guardiasQueMeCubrieron || 0}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Próximos Cambios */}
@@ -444,22 +586,27 @@ export default function DashboardHome() {
       </div>
 
       {/* Sección de Estadísticas Rápidas */}
-      {turnosData && (
-        <div className="mt-6 bg-gradient-to-r from-blue-600 to-blue-700 p-6 rounded-lg shadow-sm text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-100 text-sm">Rendimiento del mes</p>
-              <p className="text-2xl font-bold mt-1">Excelente trabajo</p>
-              <p className="text-blue-100 text-sm mt-1">
-                Has cubierto {turnosData.guardiasCubiertas} turnos y te han cubierto {turnosData.guardiasQueMeCubrieron}
-              </p>
-            </div>
-            <div className="p-4 bg-white/10 rounded-lg">
-              <TrendingUp className="h-8 w-8" />
-            </div>
+      <div className="mt-6 bg-gradient-to-r from-blue-600 to-blue-700 p-6 rounded-lg shadow-sm text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-blue-100 text-sm">Rendimiento del mes</p>
+            <p className="text-2xl font-bold mt-1">
+              {porcentajeCubierto >= 95 ? 'Excelente trabajo' :
+                porcentajeCubierto >= 85 ? 'Buen trabajo' :
+                  'Mejorá tu asistencia'}
+            </p>
+            <p className="text-blue-100 text-sm mt-1">
+              Has trabajado {guardiasTrabajadas} de {misGuardiasReales} turnos
+              {turnosData && turnosData.guardiasQueMeCubrieron > 0 &&
+                ` y te cubrieron ${turnosData.guardiasQueMeCubrieron}`
+              }
+            </p>
+          </div>
+          <div className="p-4 bg-white/10 rounded-lg">
+            <TrendingUp className="h-8 w-8" />
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

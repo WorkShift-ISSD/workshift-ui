@@ -210,3 +210,93 @@ export function verificarContinuidad(mes: number, anio: number): {
     esContinuo
   };
 }
+
+
+/**
+ * Calcula la cantidad de días que trabaja un grupo en un rango de fechas
+ */
+export function calcularDiasTrabajoEnRango(
+  fechaInicio: string | Date,
+  fechaFin: string | Date,
+  grupo: GrupoTurno
+): number {
+  let inicio: Date;
+  let fin: Date;
+
+  // Parsear fechas
+  if (typeof fechaInicio === 'string') {
+    inicio = fechaInicio.includes('-') && !fechaInicio.includes('T')
+      ? parseFechaSinTimezone(fechaInicio)
+      : new Date(fechaInicio);
+  } else {
+    inicio = fechaInicio;
+  }
+
+  if (typeof fechaFin === 'string') {
+    fin = fechaFin.includes('-') && !fechaFin.includes('T')
+      ? parseFechaSinTimezone(fechaFin)
+      : new Date(fechaFin);
+  } else {
+    fin = fechaFin;
+  }
+
+  let diasTrabajo = 0;
+  const fechaActual = new Date(inicio);
+
+  // Iterar día por día
+  while (fechaActual <= fin) {
+    if (calcularGrupoTrabaja(fechaActual) === grupo) {
+      diasTrabajo++;
+    }
+    fechaActual.setDate(fechaActual.getDate() + 1);
+  }
+
+  return diasTrabajo;
+}
+
+/**
+ * Obtiene estadísticas de trabajo para ambos grupos en un rango de fechas
+ */
+export function getEstadisticasTrabajoEnRango(
+  fechaInicio: string | Date,
+  fechaFin: string | Date
+): {
+  grupoA: number;
+  grupoB: number;
+  totalDias: number;
+} {
+  const diasGrupoA = calcularDiasTrabajoEnRango(fechaInicio, fechaFin, 'A');
+  const diasGrupoB = calcularDiasTrabajoEnRango(fechaInicio, fechaFin, 'B');
+
+  return {
+    grupoA: diasGrupoA,
+    grupoB: diasGrupoB,
+    totalDias: diasGrupoA + diasGrupoB,
+  };
+}
+
+/**
+ * Calcula el porcentaje de asistencia real considerando solo los días que le tocaba trabajar
+ */
+export function calcularPorcentajeAsistenciaReal(
+  fechaInicio: string | Date,
+  fechaFin: string | Date,
+  grupo: GrupoTurno,
+  faltas: number
+): {
+  diasDebioTrabajar: number;
+  diasTrabajados: number;
+  porcentajeAsistencia: number;
+} {
+  const diasDebioTrabajar = calcularDiasTrabajoEnRango(fechaInicio, fechaFin, grupo);
+  const diasTrabajados = diasDebioTrabajar - faltas;
+  const porcentajeAsistencia = diasDebioTrabajar > 0
+    ? (diasTrabajados / diasDebioTrabajar) * 100
+    : 0;
+
+  return {
+    diasDebioTrabajar,
+    diasTrabajados,
+    porcentajeAsistencia: parseFloat(porcentajeAsistencia.toFixed(2)),
+  };
+}

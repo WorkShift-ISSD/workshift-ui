@@ -25,6 +25,8 @@ import {
 import { useEmpleados } from '@/hooks/useEmpleados';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
 import { ExportData } from '@/app/components/ExportToPdf';
+import { useAuth } from '@/app/context/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 
 
 // Types based on our Prisma schema
@@ -71,6 +73,8 @@ export default function DashboardPage() {
   const [formData, setFormData] = useState<Partial<Inspector>>({});
   const [formError, setFormError] = useState('');
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+  const { user } = useAuth();
+  const { can } = usePermissions();
 
   const {
     empleados,
@@ -84,10 +88,10 @@ export default function DashboardPage() {
   const employees = empleados || [];
 
   const horariosPorRol: Record<Rol, string[]> = {
-    INSPECTOR: ["04:00-14:00", "06:00-16:00", "10:00-20:00", "13:00-23:00", "19:00-05:00"],
+    INSPECTOR: ["04:00-14:00", "06:00-16:00", "10:00-20:00", "14:00-23:00", "19:00-05:00"],
     SUPERVISOR: ["05:00-14:00", "14:00-23:00", "23:00-05:00"],
     JEFE: ["05:00-17:00", "17:00-05:00"],
-    ADMINISTRADOR: ["05:00-17:00", "17:00-05:00"],
+    ADMINISTRADOR: ["00:00-23:59"],
   };
 
   // Calcular estado del empleado
@@ -129,16 +133,23 @@ export default function DashboardPage() {
 
     // Search filter
     if (searchTerm) {
-      const term = searchTerm.toLowerCase().trim();
+      const palabras = searchTerm
+        .toLowerCase()
+        .trim()
+        .split(/\s+/); // divide por espacios (1 o más)
 
-      filtered = filtered.filter(emp => {
-        const fullName = `${emp.nombre} ${emp.apellido}`.toLowerCase();
-        return (
-          emp.nombre.toLowerCase().includes(term) ||
-          emp.apellido.toLowerCase().includes(term) ||
-          fullName.includes(term) ||
-          emp.email.toLowerCase().includes(term) ||
-          emp.legajo.toString().includes(term)
+      filtered = filtered.filter((emp) => {
+        const nombre = emp.nombre.toLowerCase();
+        const apellido = emp.apellido.toLowerCase();
+        const email = emp.email.toLowerCase();
+        const legajo = emp.legajo.toString();
+
+        // Cada palabra debe coincidir en algún campo
+        return palabras.every((p) =>
+          nombre.includes(p) ||
+          apellido.includes(p) ||
+          email.includes(p) ||
+          legajo.includes(p)
         );
       });
     }
@@ -167,12 +178,11 @@ export default function DashboardPage() {
 
   // Calcular estadísticas
   const stats = useMemo(() => ({
-    total: employees.length,
-    activos: employees.filter(e => e.activo && calcularEstado(e) === 'ACTIVO').length,
-    enLicencia: employees.filter(e => calcularEstado(e) === 'LICENCIA').length,
-    ausentes: employees.filter(e => calcularEstado(e) === 'AUSENTE').length
-  }), [employees]);
-
+    total: filteredEmployeesMemo.length,
+    activos: filteredEmployeesMemo.filter(e => e.activo && calcularEstado(e) === 'ACTIVO').length,
+    enLicencia: filteredEmployeesMemo.filter(e => calcularEstado(e) === 'LICENCIA').length,
+    ausentes: filteredEmployeesMemo.filter(e => calcularEstado(e) === 'AUSENTE').length
+  }), [filteredEmployeesMemo]);
   // Modal handlers
   const openModal = (mode: 'view' | 'edit' | 'create', employee?: Inspector) => {
     setModalMode(mode);
@@ -533,7 +543,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Filters and Actions */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all dark:text-gray-400">
         {/* Input de búsqueda */}
         <div className="w-full mb-4">
           <div className="relative">
@@ -727,20 +737,26 @@ export default function DashboardPage() {
                         >
                           <Eye className="h-4 w-4" />
                         </button>
-                        <button
-                          onClick={() => openModal('edit', employee)}
-                          className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 transition-colors"
-                          title="Editar"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(employee.id)}
-                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+
+                        {user?.rol !== "JEFE" && (
+  <>
+    <button
+      onClick={() => openModal('edit', employee)}
+      className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 transition-colors"
+      title="Editar"
+    >
+      <Edit2 className="h-4 w-4" />
+    </button>
+
+    <button
+      onClick={() => handleDelete(employee.id)}
+      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+      title="Eliminar"
+    >
+      <Trash2 className="h-4 w-4" />
+    </button>
+  </>
+)}
                       </div>
                     </td>
                   </tr>

@@ -33,7 +33,7 @@ export default function SideNav() {
       >
         {/* LOGO */}
         <div className="flex items-center justify-center h-20 border-b border-gray-200 dark:border-gray-700">
-          <button 
+          <button
             onClick={() => setOpen(false)}
             className="block md:hidden w-10 h-10 hover:opacity-80 transition-opacity"
           >
@@ -64,10 +64,9 @@ export default function SideNav() {
         )}
 
         {/* MENÚ PRINCIPAL */}
-        <nav className="flex flex-col flex-grow overflow-y-auto dark:text-gray-400 px-2 md:px-4 py-4 space-y-2">
+        <nav className="flex flex-col flex-grow dark:text-gray-400 px-2 md:px-4 py-4 space-y-2">
           <NavLinks onLinkClick={() => setOpen(false)} />
         </nav>
-
         {/* BOTÓN DE LOGOUT */}
         <div className="border-t border-gray-200 dark:border-gray-700 px-2 md:px-4 py-3">
           <LogoutButton />

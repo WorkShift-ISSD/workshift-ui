@@ -1,8 +1,18 @@
 // app/api/ofertas/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import postgres from 'postgres';
 import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
+import postgres from 'postgres';
+import {
+  EstadoOferta,
+  TipoOferta,
+  Prioridad,
+  isValidEstadoOferta,
+  isValidTipoOferta,
+  isValidPrioridad,
+  isValidTipoSolicitud,
+  TipoSolicitud
+} from '../../lib/enum';
 
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require', prepare: false });
 
@@ -15,125 +25,79 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const estado = searchParams.get('estado');
-    
-    let query;
-    if (estado) {
-      query = sql`
-        SELECT 
-          o.id,
-          o.ofertante_id,
-          o.tipo,
-          o.modalidad_busqueda,
-          o.turno_ofrece,
-          o.turnos_busca,
-          o.fechas_disponibles,
-          o.descripcion,
-          o.prioridad,
-          o.estado,
-          o.publicado,
-          o.tomador_id,
-          json_build_object(
-            'id', u.id,
-            'nombre', u.nombre,
-            'apellido', u.apellido,
-            'rol', u.rol,
-            'calificacion', COALESCE(u.calificacion, 4.5),
-            'totalIntercambios', COALESCE(u.total_intercambios, 0)
-          ) as ofertante,
-          CASE 
-            WHEN o.tomador_id IS NOT NULL THEN
-              json_build_object(
-                'id', t.id,
-                'nombre', t.nombre,
-                'apellido', t.apellido
-              )
-            ELSE NULL
-          END as tomador
-        FROM ofertas o
-        JOIN users u ON o.ofertante_id = u.id
-        LEFT JOIN users t ON o.tomador_id = t.id
-        WHERE o.estado = ${estado}
-        ORDER BY o.publicado DESC;
-      `;
-    } else {
-      query = sql`
-        SELECT 
-          o.id,
-          o.ofertante_id,
-          o.tipo,
-          o.modalidad_busqueda,
-          o.turno_ofrece,
-          o.turnos_busca,
-          o.fechas_disponibles,
-          o.descripcion,
-          o.prioridad,
-          o.estado,
-          o.publicado,
-          o.tomador_id,
-          json_build_object(
-            'id', u.id,
-            'nombre', u.nombre,
-            'apellido', u.apellido,
-            'rol', u.rol,
-            'calificacion', COALESCE(u.calificacion, 4.5),
-            'totalIntercambios', COALESCE(u.total_intercambios, 0)
-          ) as ofertante,
-          CASE 
-            WHEN o.tomador_id IS NOT NULL THEN
-              json_build_object(
-                'id', t.id,
-                'nombre', t.nombre,
-                'apellido', t.apellido
-              )
-            ELSE NULL
-          END as tomador
-        FROM ofertas o
-        JOIN users u ON o.ofertante_id = u.id
-        LEFT JOIN users t ON o.tomador_id = t.id
-        ORDER BY o.publicado DESC;
-      `;
-    }
 
-    const ofertas = await query;
-    
-    const ofertasFormateadas = ofertas.map((o: any) => ({
+    const ofertas = await sql`
+      SELECT 
+        o.*,
+        json_build_object(
+          'id', u.id,
+          'nombre', u.nombre,
+          'apellido', u.apellido,
+          'rol', u.rol,
+          'calificacion', COALESCE(u.calificacion, 4.5),
+          'totalIntercambios', COALESCE(u.total_intercambios, 0)
+        ) as ofertante
+      FROM ofertas o
+      JOIN users u ON o.ofertante_id = u.id
+      WHERE o.estado IN (
+        ${EstadoOferta.DISPONIBLE}, 
+        ${EstadoOferta.SOLICITADO}, 
+        ${EstadoOferta.APROBADO}
+      )
+        AND o.valido_hasta > NOW()
+      ORDER BY o.publicado DESC;
+    `;
+
+    const ofertasFormateadas = ofertas.map(o => ({
       id: o.id,
       ofertante: o.ofertante,
-      tomador: o.tomador,
       tipo: o.tipo,
       modalidadBusqueda: o.modalidad_busqueda,
-      turnoOfrece: o.turno_ofrece ? (typeof o.turno_ofrece === 'string' ? JSON.parse(o.turno_ofrece) : o.turno_ofrece) : null,
-      turnosBusca: o.turnos_busca ? (typeof o.turnos_busca === 'string' ? JSON.parse(o.turnos_busca) : o.turnos_busca) : null,
-      fechasDisponibles: o.fechas_disponibles ? (typeof o.fechas_disponibles === 'string' ? JSON.parse(o.fechas_disponibles) : o.fechas_disponibles) : null,
+      turnoOfrece: o.turno_ofrece ?
+        (typeof o.turno_ofrece === 'string' ?
+          JSON.parse(o.turno_ofrece) :
+          o.turno_ofrece
+        ) : null,
+      turnosBusca: o.turnos_busca ?
+        (typeof o.turnos_busca === 'string' ?
+          JSON.parse(o.turnos_busca) :
+          o.turnos_busca
+        ) : null,
+      fechasDisponibles: o.fechas_disponibles ?
+        (typeof o.fechas_disponibles === 'string' ?
+          JSON.parse(o.fechas_disponibles) :
+          o.fechas_disponibles
+        ) : null,
       descripcion: o.descripcion,
       prioridad: o.prioridad,
-      publicado: o.publicado,
       estado: o.estado,
+      validoHasta: o.valido_hasta,
+      publicado: o.publicado,
     }));
 
     return NextResponse.json(ofertasFormateadas);
   } catch (error) {
-    console.error('❌ Error fetching ofertas:', error);
-    console.error('Error details:', error instanceof Error ? error.message : String(error));
+    console.error('Error en GET /api/ofertas:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Error al obtener ofertas',
         details: error instanceof Error ? error.message : String(error)
-      }, 
+      },
       { status: 500 }
     );
   }
 }
 
-// POST - Crear nueva oferta
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log('📥 Body recibido:', body);
-    console.log('🔍 Tipo:', body.tipo);
-    console.log('🔍 Modalidad:', body.modalidadBusqueda);
-    
-    // ✅ Obtener userId del token JWT
+    console.log('📥 Body recibido:', {
+  horarioOfrece: body.horarioOfrece,
+  fechaOfrece: body.fechaOfrece,
+  tipo: body.tipo,
+  bodyCompleto: body
+});
+
     const cookieStore = await cookies();
     const token = cookieStore.get('auth-token')?.value;
 
@@ -149,57 +113,105 @@ export async function POST(request: NextRequest) {
     const userId = payload.id as string;
 
     console.log('✅ Usuario autenticado:', userId);
-    
+
     // Obtener datos del usuario
     const [usuario] = await sql`
       SELECT id, horario, grupo_turno 
       FROM users 
       WHERE id = ${userId}::uuid;
     `;
-    
+
     if (!usuario) {
       console.error('❌ Usuario no existe:', userId);
       return NextResponse.json(
-        { error: 'Usuario no encontrado' }, 
+        { error: 'Usuario no encontrado' },
         { status: 404 }
       );
     }
-    
+
     console.log('✅ Usuario encontrado:', usuario);
-    
-    // Construir turnoOfrece, turnosBusca, fechasDisponibles según modalidad
+
+    // ✅ Validar tipo (OFREZCO o BUSCO)
+    if (!isValidTipoOferta(body.tipo)) {
+      return NextResponse.json(
+        { error: `Tipo de oferta inválido: "${body.tipo}". Debe ser: ${Object.values(TipoOferta).join(' o ')}` },
+        { status: 400 }
+      );
+    }
+
+    // ✅ Validar modalidadBusqueda (INTERCAMBIO o ABIERTO)
+    if (!isValidTipoSolicitud(body.modalidadBusqueda)) {
+      return NextResponse.json(
+        { error: `Modalidad inválida: "${body.modalidadBusqueda}". Debe ser: ${Object.values(TipoSolicitud).join(' o ')}` },
+        { status: 400 }
+      );
+    }
+
+    if (body.prioridad && !isValidPrioridad(body.prioridad)) {
+      return NextResponse.json(
+        { error: `Prioridad inválida. Debe ser: ${Object.values(Prioridad).join(', ')}` },
+        { status: 400 }
+      );
+    }
+
+
+console.log('🔧 Creando turnoOfrece con:', {
+  fechaOfrece: body.fechaOfrece,
+  horarioOfrece: body.horarioOfrece,
+  grupoOfrece: body.grupoOfrece,
+  usuarioHorario: usuario.horario,
+  horarioFinal: body.horarioOfrece || usuario.horario
+});
+
+
+    // Calcular valido_hasta
+    const diasValidez = body.diasValidez || 7;
+    const validoHasta = new Date();
+    validoHasta.setDate(validoHasta.getDate() + diasValidez);
+
+    // Construir datos según modalidad
     let turnoOfrece = null;
     let turnosBusca = null;
     let fechasDisponibles = null;
+    console.log('🔧 Creando turnoOfrece con:', {
+  fechaOfrece: body.fechaOfrece,
+  horarioOfrece: body.horarioOfrece,
+  usuarioHorario: usuario.horario,
+  horarioFinal: body.horarioOfrece || usuario.horario
+});
 
-    if (body.modalidadBusqueda === 'INTERCAMBIO') {
-      // Para intercambio, siempre hay un turno que se ofrece
+    if (body.modalidadBusqueda === TipoSolicitud.INTERCAMBIO) {
+      // Para INTERCAMBIO: guardar turno que ofrece y turnos que busca
       if (body.fechaOfrece) {
         turnoOfrece = {
           fecha: body.fechaOfrece,
-          horario: usuario.horario,
-          grupoTurno: usuario.grupo_turno
+          horario: body.horarioOfrece || usuario.horario, // ✅ USAR EL DEL FORM
+          grupoTurno: body.grupoOfrece || usuario.grupo_turno
         };
       }
-      
-      // Y uno o varios turnos que se buscan
+
       if (body.fechasBusca && body.fechasBusca.length > 0) {
         turnosBusca = body.fechasBusca;
       }
-    } else if (body.modalidadBusqueda === 'ABIERTO') {
-      // Para abierto, solo fechas disponibles
+    } else if (body.modalidadBusqueda === TipoSolicitud.ABIERTO) {
+      // Para ABIERTO: solo fechas disponibles
       if (body.fechasDisponibles && body.fechasDisponibles.length > 0) {
         fechasDisponibles = body.fechasDisponibles;
       }
     }
 
     console.log('📅 Datos procesados:', {
+      userId,
+      tipo: body.tipo,
+      modalidadBusqueda: body.modalidadBusqueda,
       turnoOfrece,
       turnosBusca,
-      fechasDisponibles
+      fechasDisponibles,
+      validoHasta: validoHasta.toISOString()
     });
-    
-    const [oferta] = await sql`
+
+    // Insertar oferta
+    const resultado = await sql`
       INSERT INTO ofertas (
         ofertante_id,
         tipo,
@@ -210,6 +222,7 @@ export async function POST(request: NextRequest) {
         descripcion,
         prioridad,
         estado,
+        valido_hasta,
         publicado
       ) VALUES (
         ${userId}::uuid,
@@ -219,17 +232,27 @@ export async function POST(request: NextRequest) {
         ${turnosBusca ? JSON.stringify(turnosBusca) : null}::jsonb,
         ${fechasDisponibles ? JSON.stringify(fechasDisponibles) : null}::jsonb,
         ${body.descripcion},
-        ${body.prioridad},
-        'DISPONIBLE',
+        ${body.prioridad || Prioridad.NORMAL},
+        ${EstadoOferta.DISPONIBLE},
+        ${validoHasta.toISOString()},
         NOW()
       )
       RETURNING *;
     `;
-    
-    console.log('✅ Oferta insertada:', oferta);
 
-    // Obtener datos completos con el ofertante
-    const [ofertaCompleta] = await sql`
+    console.log('💾 GUARDADO EN BD:', {
+  turno_ofrece: resultado[0].turno_ofrece,
+  tipo: typeof resultado[0].turno_ofrece,
+  parseado: typeof resultado[0].turno_ofrece === 'string' 
+    ? JSON.parse(resultado[0].turno_ofrece)
+    : resultado[0].turno_ofrece
+});
+
+    const oferta = resultado[0];
+    console.log('✅ Oferta insertada con ID:', oferta.id);
+
+    // Obtener oferta completa
+    const ofertaCompleta = await sql`
       SELECT 
         o.*,
         json_build_object(
@@ -245,42 +268,43 @@ export async function POST(request: NextRequest) {
       WHERE o.id = ${oferta.id};
     `;
 
-    console.log('✅ Oferta completa:', ofertaCompleta);
+    const ofertaFinal = ofertaCompleta[0];
 
     return NextResponse.json({
-      id: ofertaCompleta.id,
-      ofertante: ofertaCompleta.ofertante,
-      tipo: ofertaCompleta.tipo,
-      modalidadBusqueda: ofertaCompleta.modalidad_busqueda,
-      turnoOfrece: ofertaCompleta.turno_ofrece ? 
-        (typeof ofertaCompleta.turno_ofrece === 'string' ? 
-          JSON.parse(ofertaCompleta.turno_ofrece) : 
-          ofertaCompleta.turno_ofrece
+      id: ofertaFinal.id,
+      ofertante: ofertaFinal.ofertante,
+      tipo: ofertaFinal.tipo,
+      modalidadBusqueda: ofertaFinal.modalidad_busqueda,
+      turnoOfrece: ofertaFinal.turno_ofrece ?
+        (typeof ofertaFinal.turno_ofrece === 'string' ?
+          JSON.parse(ofertaFinal.turno_ofrece) :
+          ofertaFinal.turno_ofrece
         ) : null,
-      turnosBusca: ofertaCompleta.turnos_busca ? 
-        (typeof ofertaCompleta.turnos_busca === 'string' ? 
-          JSON.parse(ofertaCompleta.turnos_busca) : 
-          ofertaCompleta.turnos_busca
+      turnosBusca: ofertaFinal.turnos_busca ?
+        (typeof ofertaFinal.turnos_busca === 'string' ?
+          JSON.parse(ofertaFinal.turnos_busca) :
+          ofertaFinal.turnos_busca
         ) : null,
-      fechasDisponibles: ofertaCompleta.fechas_disponibles ? 
-        (typeof ofertaCompleta.fechas_disponibles === 'string' ? 
-          JSON.parse(ofertaCompleta.fechas_disponibles) : 
-          ofertaCompleta.fechas_disponibles
+      fechasDisponibles: ofertaFinal.fechas_disponibles ?
+        (typeof ofertaFinal.fechas_disponibles === 'string' ?
+          JSON.parse(ofertaFinal.fechas_disponibles) :
+          ofertaFinal.fechas_disponibles
         ) : null,
-      descripcion: ofertaCompleta.descripcion,
-      prioridad: ofertaCompleta.prioridad,
-      estado: ofertaCompleta.estado,
-      publicado: ofertaCompleta.publicado,
+      descripcion: ofertaFinal.descripcion,
+      prioridad: ofertaFinal.prioridad,
+      estado: ofertaFinal.estado,
+      validoHasta: ofertaFinal.valido_hasta,
+      publicado: ofertaFinal.publicado,
     }, { status: 201 });
-    
+
   } catch (error) {
     console.error('💥 Error creating oferta:', error);
-    console.error('Error details:', error instanceof Error ? error.message : String(error));
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
     return NextResponse.json(
-      { 
+      {
         error: 'Error al crear oferta',
         details: error instanceof Error ? error.message : String(error)
-      }, 
+      },
       { status: 500 }
     );
   }
