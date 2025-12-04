@@ -170,19 +170,12 @@ export async function POST(request: NextRequest) {
     const cookieStore = await cookies();
     const token = cookieStore.get('auth-token')?.value;
 
-    let registradoPor = "Sistema";
+    let registradoPorId = null; // ✅ Guardar el ID en lugar del nombre
 
     if (token) {
       try {
         const { payload } = await jwtVerify(token, SECRET_KEY);
-        const [usuario] = await sql`
-          SELECT nombre, apellido 
-          FROM users 
-          WHERE id = ${payload.id as string}::uuid;
-        `;
-        if (usuario) {
-          registradoPor = `${usuario.nombre} ${usuario.apellido}`;
-        }
+        registradoPorId = payload.id as string;
       } catch {}
     }
 
@@ -215,7 +208,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Insertar falta
+    // Insertar falta - ✅ Guardar el ID del usuario
     const [falta] = await sql`
       INSERT INTO faltas (
         id,
@@ -235,7 +228,7 @@ export async function POST(request: NextRequest) {
         ${body.motivo},
         ${body.observaciones || null},
         ${body.justificada || false},
-        ${registradoPor},
+        ${registradoPorId ? `${registradoPorId}::uuid` : null},
         NOW(),
         NOW()
       )
@@ -246,14 +239,38 @@ export async function POST(request: NextRequest) {
         causa as motivo,
         observaciones,
         justificada,
-        registrado_por as "registradoPor",
+        registrado_por::text as registrado_por_id,
         created_at::text as "createdAt",
         updated_at::text as "updatedAt";
     `;
 
+    // ✅ Obtener datos del usuario que registró
+    let registradoPor = null;
+    if (falta.registrado_por_id) {
+      const [usuario] = await sql`
+        SELECT id::text, nombre, apellido
+        FROM users
+        WHERE id = ${falta.registrado_por_id}::uuid;
+      `;
+      if (usuario) {
+        registradoPor = {
+          id: usuario.id,
+          nombre: usuario.nombre,
+          apellido: usuario.apellido
+        };
+      }
+    }
+
     const faltaCompleta = {
-      ...falta,
+      id: falta.id,
+      empleadoId: falta.empleadoId,
       fecha: falta.fecha.split('T')[0],
+      motivo: falta.motivo,
+      observaciones: falta.observaciones,
+      justificada: falta.justificada,
+      registradoPor, // ✅ Ahora es un objeto como en GET
+      createdAt: falta.createdAt,
+      updatedAt: falta.updatedAt,
       empleado: {
         id: empleado.id.toString(),
         nombre: empleado.nombre,

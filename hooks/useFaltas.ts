@@ -12,7 +12,11 @@ export interface Falta {
   causa: string;
   observaciones: string | null;
   justificada: boolean;
-  registradoPor: string;
+  registradoPor: {
+    id: string;
+    nombre: string;
+    apellido: string;
+  };
   createdAt: string;
   updatedAt: string;
   // Relaciones opcionales
