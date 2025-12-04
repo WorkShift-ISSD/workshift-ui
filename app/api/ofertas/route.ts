@@ -3,9 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
 import postgres from 'postgres';
-import { 
-  EstadoOferta, 
-  TipoOferta, 
+import {
+  EstadoOferta,
+  TipoOferta,
   Prioridad,
   isValidEstadoOferta,
   isValidTipoOferta,
@@ -53,19 +53,19 @@ export async function GET(request: NextRequest) {
       ofertante: o.ofertante,
       tipo: o.tipo,
       modalidadBusqueda: o.modalidad_busqueda,
-      turnoOfrece: o.turno_ofrece ? 
-        (typeof o.turno_ofrece === 'string' ? 
-          JSON.parse(o.turno_ofrece) : 
+      turnoOfrece: o.turno_ofrece ?
+        (typeof o.turno_ofrece === 'string' ?
+          JSON.parse(o.turno_ofrece) :
           o.turno_ofrece
         ) : null,
-      turnosBusca: o.turnos_busca ? 
-        (typeof o.turnos_busca === 'string' ? 
-          JSON.parse(o.turnos_busca) : 
+      turnosBusca: o.turnos_busca ?
+        (typeof o.turnos_busca === 'string' ?
+          JSON.parse(o.turnos_busca) :
           o.turnos_busca
         ) : null,
-      fechasDisponibles: o.fechas_disponibles ? 
-        (typeof o.fechas_disponibles === 'string' ? 
-          JSON.parse(o.fechas_disponibles) : 
+      fechasDisponibles: o.fechas_disponibles ?
+        (typeof o.fechas_disponibles === 'string' ?
+          JSON.parse(o.fechas_disponibles) :
           o.fechas_disponibles
         ) : null,
       descripcion: o.descripcion,
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error en GET /api/ofertas:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Error al obtener ofertas',
         details: error instanceof Error ? error.message : String(error)
       },
@@ -91,8 +91,14 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log('📥 Body recibido:', JSON.stringify(body, null, 2));
-     const cookieStore = await cookies();
+    console.log('📥 Body recibido:', {
+  horarioOfrece: body.horarioOfrece,
+  fechaOfrece: body.fechaOfrece,
+  tipo: body.tipo,
+  bodyCompleto: body
+});
+
+    const cookieStore = await cookies();
     const token = cookieStore.get('auth-token')?.value;
 
     if (!token) {
@@ -107,24 +113,24 @@ export async function POST(request: NextRequest) {
     const userId = payload.id as string;
 
     console.log('✅ Usuario autenticado:', userId);
-    
+
     // Obtener datos del usuario
     const [usuario] = await sql`
       SELECT id, horario, grupo_turno 
       FROM users 
       WHERE id = ${userId}::uuid;
     `;
-    
+
     if (!usuario) {
       console.error('❌ Usuario no existe:', userId);
       return NextResponse.json(
-        { error: 'Usuario no encontrado' }, 
+        { error: 'Usuario no encontrado' },
         { status: 404 }
       );
     }
-    
+
     console.log('✅ Usuario encontrado:', usuario);
-    
+
     // ✅ Validar tipo (OFREZCO o BUSCO)
     if (!isValidTipoOferta(body.tipo)) {
       return NextResponse.json(
@@ -147,31 +153,43 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    
 
 
-    
+console.log('🔧 Creando turnoOfrece con:', {
+  fechaOfrece: body.fechaOfrece,
+  horarioOfrece: body.horarioOfrece,
+  grupoOfrece: body.grupoOfrece,
+  usuarioHorario: usuario.horario,
+  horarioFinal: body.horarioOfrece || usuario.horario
+});
+
 
     // Calcular valido_hasta
     const diasValidez = body.diasValidez || 7;
     const validoHasta = new Date();
     validoHasta.setDate(validoHasta.getDate() + diasValidez);
-    
+
     // Construir datos según modalidad
     let turnoOfrece = null;
     let turnosBusca = null;
     let fechasDisponibles = null;
+    console.log('🔧 Creando turnoOfrece con:', {
+  fechaOfrece: body.fechaOfrece,
+  horarioOfrece: body.horarioOfrece,
+  usuarioHorario: usuario.horario,
+  horarioFinal: body.horarioOfrece || usuario.horario
+});
 
     if (body.modalidadBusqueda === TipoSolicitud.INTERCAMBIO) {
       // Para INTERCAMBIO: guardar turno que ofrece y turnos que busca
       if (body.fechaOfrece) {
         turnoOfrece = {
           fecha: body.fechaOfrece,
-          horario: usuario.horario,
-          grupoTurno: usuario.grupo_turno
+          horario: body.horarioOfrece || usuario.horario, // ✅ USAR EL DEL FORM
+          grupoTurno: body.grupoOfrece || usuario.grupo_turno
         };
       }
-      
+
       if (body.fechasBusca && body.fechasBusca.length > 0) {
         turnosBusca = body.fechasBusca;
       }
@@ -191,7 +209,7 @@ export async function POST(request: NextRequest) {
       fechasDisponibles,
       validoHasta: validoHasta.toISOString()
     });
-    
+
     // Insertar oferta
     const resultado = await sql`
       INSERT INTO ofertas (
@@ -221,7 +239,15 @@ export async function POST(request: NextRequest) {
       )
       RETURNING *;
     `;
-    
+
+    console.log('💾 GUARDADO EN BD:', {
+  turno_ofrece: resultado[0].turno_ofrece,
+  tipo: typeof resultado[0].turno_ofrece,
+  parseado: typeof resultado[0].turno_ofrece === 'string' 
+    ? JSON.parse(resultado[0].turno_ofrece)
+    : resultado[0].turno_ofrece
+});
+
     const oferta = resultado[0];
     console.log('✅ Oferta insertada con ID:', oferta.id);
 
@@ -249,19 +275,19 @@ export async function POST(request: NextRequest) {
       ofertante: ofertaFinal.ofertante,
       tipo: ofertaFinal.tipo,
       modalidadBusqueda: ofertaFinal.modalidad_busqueda,
-      turnoOfrece: ofertaFinal.turno_ofrece ? 
-        (typeof ofertaFinal.turno_ofrece === 'string' ? 
-          JSON.parse(ofertaFinal.turno_ofrece) : 
+      turnoOfrece: ofertaFinal.turno_ofrece ?
+        (typeof ofertaFinal.turno_ofrece === 'string' ?
+          JSON.parse(ofertaFinal.turno_ofrece) :
           ofertaFinal.turno_ofrece
         ) : null,
-      turnosBusca: ofertaFinal.turnos_busca ? 
-        (typeof ofertaFinal.turnos_busca === 'string' ? 
-          JSON.parse(ofertaFinal.turnos_busca) : 
+      turnosBusca: ofertaFinal.turnos_busca ?
+        (typeof ofertaFinal.turnos_busca === 'string' ?
+          JSON.parse(ofertaFinal.turnos_busca) :
           ofertaFinal.turnos_busca
         ) : null,
-      fechasDisponibles: ofertaFinal.fechas_disponibles ? 
-        (typeof ofertaFinal.fechas_disponibles === 'string' ? 
-          JSON.parse(ofertaFinal.fechas_disponibles) : 
+      fechasDisponibles: ofertaFinal.fechas_disponibles ?
+        (typeof ofertaFinal.fechas_disponibles === 'string' ?
+          JSON.parse(ofertaFinal.fechas_disponibles) :
           ofertaFinal.fechas_disponibles
         ) : null,
       descripcion: ofertaFinal.descripcion,
@@ -270,15 +296,15 @@ export async function POST(request: NextRequest) {
       validoHasta: ofertaFinal.valido_hasta,
       publicado: ofertaFinal.publicado,
     }, { status: 201 });
-    
+
   } catch (error) {
     console.error('💥 Error creating oferta:', error);
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
     return NextResponse.json(
-      { 
+      {
         error: 'Error al crear oferta',
         details: error instanceof Error ? error.message : String(error)
-      }, 
+      },
       { status: 500 }
     );
   }
@@ -384,19 +410,19 @@ export async function PATCH(
         ofertante: ofertaFinal.ofertante,
         tipo: ofertaFinal.tipo,
         modalidadBusqueda: ofertaFinal.modalidad_busqueda,
-        turnoOfrece: ofertaFinal.turno_ofrece ? 
-          (typeof ofertaFinal.turno_ofrece === 'string' ? 
-            JSON.parse(ofertaFinal.turno_ofrece) : 
+        turnoOfrece: ofertaFinal.turno_ofrece ?
+          (typeof ofertaFinal.turno_ofrece === 'string' ?
+            JSON.parse(ofertaFinal.turno_ofrece) :
             ofertaFinal.turno_ofrece
           ) : null,
-        turnosBusca: ofertaFinal.turnos_busca ? 
-          (typeof ofertaFinal.turnos_busca === 'string' ? 
-            JSON.parse(ofertaFinal.turnos_busca) : 
+        turnosBusca: ofertaFinal.turnos_busca ?
+          (typeof ofertaFinal.turnos_busca === 'string' ?
+            JSON.parse(ofertaFinal.turnos_busca) :
             ofertaFinal.turnos_busca
           ) : null,
-        fechasDisponibles: ofertaFinal.fechas_disponibles ? 
-          (typeof ofertaFinal.fechas_disponibles === 'string' ? 
-            JSON.parse(ofertaFinal.fechas_disponibles) : 
+        fechasDisponibles: ofertaFinal.fechas_disponibles ?
+          (typeof ofertaFinal.fechas_disponibles === 'string' ?
+            JSON.parse(ofertaFinal.fechas_disponibles) :
             ofertaFinal.fechas_disponibles
           ) : null,
         descripcion: ofertaFinal.descripcion,
@@ -415,7 +441,7 @@ export async function PATCH(
   } catch (error) {
     console.error('Error en PATCH /api/ofertas/[id]:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Error al actualizar oferta',
         details: error instanceof Error ? error.message : String(error)
       },
@@ -488,7 +514,7 @@ export async function DELETE(
   } catch (error) {
     console.error('Error en DELETE /api/ofertas/[id]:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Error al eliminar oferta',
         details: error instanceof Error ? error.message : String(error)
       },

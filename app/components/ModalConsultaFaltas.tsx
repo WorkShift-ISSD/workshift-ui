@@ -11,7 +11,11 @@ interface Falta {
   causa: string;
   observaciones: string | null;
   justificada: boolean;
-  registradoPor: string;
+  registradoPor: {
+    id: string;
+    nombre: string;
+    apellido: string;
+  }
   createdAt: string;
   empleado?: {
     id: string;
@@ -41,66 +45,58 @@ export default function ModalConsultaFaltas({
   const [fechaHasta, setFechaHasta] = useState("");
 
   const faltasFiltradas = useMemo(() => {
-  if (!faltas) return [];
+    if (!faltas) return [];
 
-  // Normalizo y separo el texto de búsqueda en palabras
-  const palabras = searchTerm?.toLowerCase().trim().split(/\s+/) ?? [];
+    // Normalizo y separo el texto de búsqueda en palabras
+    const palabras = searchTerm?.toLowerCase().trim().split(/\s+/) ?? [];
 
-  return faltas.filter((falta) => {
-    // Normalización segura
-    const nombre = falta.empleado?.nombre?.toLowerCase() ?? "";
-    const apellido = falta.empleado?.apellido?.toLowerCase() ?? "";
-    const causa = falta.causa?.toLowerCase() ?? "";
+    return faltas.filter((falta) => {
+      // Normalización segura
+      const nombre = falta.empleado?.nombre?.toLowerCase() ?? "";
+      const apellido = falta.empleado?.apellido?.toLowerCase() ?? "";
+      const causa = falta.causa?.toLowerCase() ?? "";
 
-    // ======================
-    // Filtro por texto (multi-palabra)
-    // ======================
-    const textoCoincide =
-      palabras.length === 0 ||
-      palabras.every((p) =>
-        nombre.includes(p) ||
-        apellido.includes(p) ||
-        causa.includes(p)
+      // Filtro por texto (multi-palabra)
+      const textoCoincide =
+        palabras.length === 0 ||
+        palabras.every((p) =>
+          nombre.includes(p) ||
+          apellido.includes(p) ||
+          causa.includes(p)
+        );
+
+      // Filtro por empleado
+      const empleadoCoincide =
+        selectedEmpleado === "TODOS" ||
+        falta.empleadoId === selectedEmpleado;
+
+      // Filtro por justificada
+      const justificadaCoincide =
+        selectedJustificada === "TODOS" ||
+        (selectedJustificada === "SI" && falta.justificada) ||
+        (selectedJustificada === "NO" && !falta.justificada);
+
+      // Filtro por rango de fechas
+      const fechaCoincide =
+        (!fechaDesde || falta.fecha >= fechaDesde) &&
+        (!fechaHasta || falta.fecha <= fechaHasta);
+
+      // retorno final
+      return (
+        textoCoincide &&
+        empleadoCoincide &&
+        justificadaCoincide &&
+        fechaCoincide
       );
-
-    // ======================
-    // Filtro por empleado
-    // ======================
-    const empleadoCoincide =
-      selectedEmpleado === "TODOS" ||
-      falta.empleadoId === selectedEmpleado;
-
-    // ======================
-    // Filtro por justificada
-    // ======================
-    const justificadaCoincide =
-      selectedJustificada === "TODOS" ||
-      (selectedJustificada === "SI" && falta.justificada) ||
-      (selectedJustificada === "NO" && !falta.justificada);
-
-    // ======================
-    // Filtro por rango de fechas
-    // ======================
-    const fechaCoincide =
-      (!fechaDesde || falta.fecha >= fechaDesde) &&
-      (!fechaHasta || falta.fecha <= fechaHasta);
-
-    // retorno final
-    return (
-      textoCoincide &&
-      empleadoCoincide &&
-      justificadaCoincide &&
-      fechaCoincide
-    );
-  });
-}, [
-  faltas,
-  searchTerm,
-  selectedEmpleado,
-  selectedJustificada,
-  fechaDesde,
-  fechaHasta,
-]);
+    });
+  }, [
+    faltas,
+    searchTerm,
+    selectedEmpleado,
+    selectedJustificada,
+    fechaDesde,
+    fechaHasta,
+  ]);
 
 
   // Estadísticas
@@ -253,8 +249,8 @@ export default function ModalConsultaFaltas({
               <button
                 onClick={() => setSelectedJustificada("TODOS")}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${selectedJustificada === "TODOS"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
                   }`}
               >
                 Todas
@@ -262,8 +258,8 @@ export default function ModalConsultaFaltas({
               <button
                 onClick={() => setSelectedJustificada("SI")}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${selectedJustificada === "SI"
-                    ? "bg-green-600 text-white"
-                    : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                  ? "bg-green-600 text-white"
+                  : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
                   }`}
               >
                 Justificadas
@@ -271,8 +267,8 @@ export default function ModalConsultaFaltas({
               <button
                 onClick={() => setSelectedJustificada("NO")}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${selectedJustificada === "NO"
-                    ? "bg-red-600 text-white"
-                    : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                  ? "bg-red-600 text-white"
+                  : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
                   }`}
               >
                 No Justificadas
@@ -342,8 +338,8 @@ export default function ModalConsultaFaltas({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                      {falta.registradoPor}
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                      {`${falta.registradoPor.nombre} ${falta.registradoPor.apellido}`}
                     </td>
                   </tr>
                 ))}
