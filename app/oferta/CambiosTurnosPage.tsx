@@ -550,11 +550,13 @@ export default function CambiosTurnosPage() {
   }, []);
 
   // Utilidades
-  const formatearFecha = useCallback((fecha: string | null | undefined) => {
-    if (!fecha) return 'Fecha no disponible';
+const formatearFecha = useCallback((fecha: string | null | undefined) => {
+  if (!fecha) return 'Fecha no disponible';
 
-    try {
-      const date = parseFechaLocal(fecha);
+  try {
+    // Si viene un ISO completo: 2025-12-02T15:48:13.000Z
+    if (fecha.includes('T')) {
+      const date = new Date(fecha);
       if (isNaN(date.getTime())) return 'Fecha inválida';
 
       return date.toLocaleDateString("es-AR", {
@@ -562,10 +564,22 @@ export default function CambiosTurnosPage() {
         month: "2-digit",
         year: "numeric",
       });
-    } catch (error) {
-      return 'Error en fecha';
     }
-  }, []);
+
+    // Si viene YYYY-MM-DD (tu caso para los turnos)
+    const date = parseFechaLocal(fecha);
+    if (isNaN(date.getTime())) return 'Fecha inválida';
+
+    return date.toLocaleDateString("es-AR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  } catch (error) {
+    return 'Error en fecha';
+  }
+}, []);
+
 
   const validarFechaGrupo = useCallback((fecha: string): boolean => {
     if (!fecha || !user) return false;

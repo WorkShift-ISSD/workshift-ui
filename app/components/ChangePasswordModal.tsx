@@ -10,10 +10,10 @@ interface ChangePasswordModalProps {
   onSuccess: () => void;
 }
 
-export default function ChangePasswordModal({ 
-  isOpen, 
+export default function ChangePasswordModal({
+  isOpen,
   isPrimerIngreso,
-  onSuccess 
+  onSuccess
 }: ChangePasswordModalProps) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -34,7 +34,7 @@ export default function ChangePasswordModal({
     if (/[A-Z]/.test(password)) strength++;
     if (/\d/.test(password)) strength++;
     if (/[^a-zA-Z\d]/.test(password)) strength++;
-    
+
     setPasswordStrength(Math.min(strength, 5));
   };
 
@@ -122,8 +122,8 @@ export default function ChangePasswordModal({
             {isPrimerIngreso ? "Configura tu Contraseña" : "Cambiar Contraseña"}
           </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-            {isPrimerIngreso 
-              ? "Por seguridad, debes establecer una nueva contraseña" 
+            {isPrimerIngreso
+              ? "Por seguridad, debes establecer una nueva contraseña"
               : "Actualiza tu contraseña de acceso"}
           </p>
         </div>
@@ -187,17 +187,16 @@ export default function ChangePasswordModal({
                 {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
-            
+
             {/* Indicador de fortaleza */}
             {newPassword && (
               <div className="mt-2">
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span className="text-gray-600 dark:text-gray-400">Fortaleza:</span>
-                  <span className={`font-medium ${
-                    passwordStrength <= 1 ? 'text-red-600' :
-                    passwordStrength <= 3 ? 'text-yellow-600' :
-                    'text-green-600'
-                  }`}>
+                  <span className={`font-medium ${passwordStrength <= 1 ? 'text-red-600' :
+                      passwordStrength <= 3 ? 'text-yellow-600' :
+                        'text-green-600'
+                    }`}>
                     {getStrengthText()}
                   </span>
                 </div>
@@ -269,21 +268,39 @@ export default function ChangePasswordModal({
             )}
           </div>
 
-          {/* Botón */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-          >
-            {loading ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                Actualizando...
-              </>
-            ) : (
-              "Actualizar Contraseña"
+          {/* Botones */}
+          <div className="flex items-center gap-3 mt-6">
+
+            {/* BOTÓN CANCELAR (solo si NO es primer ingreso) */}
+            {!isPrimerIngreso && (
+              <button
+                type="button"
+                onClick={onSuccess}
+                disabled={loading}
+                className="px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition disabled:opacity-50"
+              >
+                Cancelar
+              </button>
             )}
-          </button>
+
+            {/* BOTÓN PRINCIPAL */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            >
+              {loading ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  {isPrimerIngreso ? "Guardando..." : "Actualizando..."}
+                </>
+              ) : (
+                isPrimerIngreso ? "Configurar Contraseña" : "Actualizar Contraseña"
+              )}
+            </button>
+
+          </div>
+
         </form>
       </div>
     </div>

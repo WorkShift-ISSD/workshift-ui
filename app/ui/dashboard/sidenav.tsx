@@ -4,11 +4,13 @@ import { useState } from "react";
 import NavLinks from "@/app/ui/dashboard/nav-links";
 import MigraLogo from "@/app/ui/MigraLogo";
 import LogoutButton from "@/app/components/LogoutButton";
-import { MenuIcon, User } from "lucide-react";
+import { MenuIcon, Lock, User } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
+import ChangePasswordModal from "@/app/components/ChangePasswordModal";
 
 
 export default function SideNav() {
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
 
@@ -51,17 +53,29 @@ export default function SideNav() {
               <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
                 <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
+
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                   {user.nombre} {user.apellido}
                 </p>
+
                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                   {user.rol}
                 </p>
+
+                {/* 🔵 BOTÓN CAMBIAR CONTRASEÑA */}
+                <button
+                  onClick={() => setIsPasswordModalOpen(true)}
+                  className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                >
+                  <Lock size={12} />
+                  Cambiar contraseña
+                </button>
               </div>
             </div>
           </div>
         )}
+
 
         {/* MENÚ PRINCIPAL */}
         <nav className="flex flex-col flex-grow dark:text-gray-400 px-2 md:px-4 py-4 space-y-2">
@@ -80,6 +94,15 @@ export default function SideNav() {
           onClick={() => setOpen(false)}
         ></div>
       )}
+
+      <ChangePasswordModal
+        isOpen={isPasswordModalOpen}
+        isPrimerIngreso={false}
+        onSuccess={() => {
+          setIsPasswordModalOpen(false);
+        }}
+      />
+
     </>
   );
 }
