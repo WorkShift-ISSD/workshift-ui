@@ -102,6 +102,18 @@ export default function CambiosTurnosPage() {
     return ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '14:00-23:00'];
   }, [user]);
 
+  const FORM_INICIAL = useMemo(() => ({
+    tipo: TipoOferta.OFREZCO,
+    modalidadBusqueda: TipoSolicitud.INTERCAMBIO,
+    fechaOfrece: '',
+    horarioOfrece: user?.horario || '04:00-14:00',
+    grupoOfrece: user?.grupoTurno || 'A',
+    descripcion: '',
+    prioridad: 'NORMAL' as Prioridad,
+    fechasBusca: [{ fecha: '', horario: user?.horario || '04:00-14:00' }],
+    fechasDisponibles: [{ fecha: '', horario: user?.horario || '04:00-14:00' }],
+  }), [user?.horario, user?.grupoTurno]);
+
   // Estado para modal de consulta
   const [isConsultarModalOpen, setIsConsultarModalOpen] = useState(false);
 
@@ -132,7 +144,7 @@ export default function CambiosTurnosPage() {
   // Estados locales
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [loadingUsuarios, setLoadingUsuarios] = useState(false);
-  const [nuevaOfertaForm, setNuevaOfertaForm] = useState<NuevaOfertaForm>(INITIAL_OFERTA_FORM);
+  const [nuevaOfertaForm, setNuevaOfertaForm] = useState<NuevaOfertaForm>(FORM_INICIAL);
   const [solicitudDirectaForm, setSolicitudDirectaForm] = useState<SolicitudDirectaForm>(INITIAL_SOLICITUD_FORM);
   const [formError, setFormError] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -142,7 +154,17 @@ export default function CambiosTurnosPage() {
   type MainTab = 'mis-solicitudes' | 'historico' | 'recibidas' | 'ofertas-disponibles';
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('mis-solicitudes');
 
-  // ... resto del código permanece igual
+  useEffect(() => {
+  if (user?.horario) {
+    setNuevaOfertaForm(prev => ({
+      ...prev,
+      horarioOfrece: user.horario,
+      grupoOfrece: user.grupoTurno,
+      fechasBusca: prev.fechasBusca.map(f => ({ ...f, horario: user.horario })),
+      fechasDisponibles: prev.fechasDisponibles.map(f => ({ ...f, horario: user.horario })),
+    }));
+  }
+}, [user?.horario, user?.grupoTurno]);
 
   // Cargar usuarios una sola vez
   useEffect(() => {
@@ -335,7 +357,23 @@ export default function CambiosTurnosPage() {
         const res = await fetch(`/api/ofertas/${ofertaEditandoId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(nuevaOfertaForm),
+          body: JSON.stringify({
+            tipo: nuevaOfertaForm.tipo,
+            modalidadBusqueda: nuevaOfertaForm.modalidadBusqueda,
+            fechaOfrece: nuevaOfertaForm.fechaOfrece,
+            horarioOfrece: nuevaOfertaForm.horarioOfrece, // ✅ Dentro del body
+            grupoOfrece: nuevaOfertaForm.grupoOfrece,
+            fechasBusca: nuevaOfertaForm.fechasBusca,
+            fechasDisponibles: nuevaOfertaForm.fechasDisponibles,
+            descripcion: nuevaOfertaForm.descripcion,
+            prioridad: nuevaOfertaForm.prioridad,
+          }),
+        });
+
+        console.log('📤 ENVIANDO AL BACKEND:', {
+          horarioOfrece: nuevaOfertaForm.horarioOfrece,
+          userHorario: user?.horario,
+          formCompleto: nuevaOfertaForm
         });
 
         if (!res.ok) {
@@ -351,10 +389,10 @@ export default function CambiosTurnosPage() {
       }
 
       closeModal();
-      setNuevaOfertaForm(INITIAL_OFERTA_FORM);
+      setNuevaOfertaForm(FORM_INICIAL);
       setOfertaEditandoId(null);
       setFormError('');
-      window.location.reload(); // Recargar para ver cambios
+
     } catch (error) {
       console.error('❌ Error:', error);
       setFormError(error instanceof Error ? error.message : 'Error al procesar la oferta');
@@ -408,7 +446,7 @@ export default function CambiosTurnosPage() {
     setSolicitudEditandoId(null);
     setOfertaEditandoId(null); // ✅ AGREGAR ESTO
     setSolicitudDirectaForm(INITIAL_SOLICITUD_FORM);
-    setNuevaOfertaForm(INITIAL_OFERTA_FORM);
+    setNuevaOfertaForm(FORM_INICIAL);
   }, [closeModal]);
 
   // Handlers para acciones de ofertas
@@ -449,7 +487,11 @@ export default function CambiosTurnosPage() {
         body: JSON.stringify({ tomadorId: user.id }),
       });
 
-      console.log('📥 Respuesta status:', res.status);
+      console.log('📤 ENVIANDO AL BACKEND:', {
+        horarioOfrece: nuevaOfertaForm.horarioOfrece,
+        userHorario: user?.horario,
+        formCompleto: nuevaOfertaForm
+      });
 
       if (!res.ok) {
         const data = await res.json();
@@ -463,7 +505,7 @@ export default function CambiosTurnosPage() {
       alert('¡Oferta tomada exitosamente! Pendiente de autorización del jefe.');
 
       // ✅ Recargar la página para ver los cambios
-      window.location.reload();
+
 
     } catch (error) {
       console.error('❌ Error al tomar oferta:', error);
@@ -500,7 +542,7 @@ export default function CambiosTurnosPage() {
 
       if (res.ok) {
         console.log('✅ Solicitud eliminada');
-        window.location.reload();
+
       }
     } catch (error) {
       console.error('Error:', error);
@@ -928,7 +970,7 @@ export default function CambiosTurnosPage() {
                                   </p>
                                   <p className="text-xs text-gray-900 dark:text-gray-100">
                                     📅 {oferta.turnoOfrece?.fecha
-                                      ? new Date(oferta.turnoOfrece.fecha).toLocaleDateString("es-AR", {
+                                      ? parseFechaLocal(oferta.turnoOfrece.fecha).toLocaleDateString("es-AR", {
                                         day: "2-digit",
                                         month: "2-digit",
                                         year: "numeric",
@@ -965,7 +1007,7 @@ export default function CambiosTurnosPage() {
                                     <div className="space-y-1">
                                       {oferta.fechasDisponibles.map((fecha: any, idx: number) => (
                                         <p key={idx} className="text-xs text-gray-900 dark:text-gray-100">
-                                          📅 {fecha.fecha} • 🕐 {fecha.horario}
+                                          📅 {formatearFecha(fecha.fecha)} • 🕐 {fecha.horario}
                                         </p>
                                       ))}
                                     </div>
@@ -988,7 +1030,7 @@ export default function CambiosTurnosPage() {
                                       tipo: oferta.tipo,
                                       modalidadBusqueda: oferta.modalidadBusqueda as TipoSolicitud,
                                       fechaOfrece: oferta.turnoOfrece?.fecha || '',
-                                      horarioOfrece: oferta.turnoOfrece?.horario || '04:00-14:00',
+                                      horarioOfrece: oferta.turnoOfrece?.horario || user?.horario || '04:00-14:00',
                                       grupoOfrece: oferta.turnoOfrece?.grupoTurno || 'A',
                                       descripcion: oferta.descripcion || '',
                                       prioridad: oferta.prioridad,

@@ -25,6 +25,8 @@ import {
 import { useEmpleados } from '@/hooks/useEmpleados';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
 import { ExportData } from '@/app/components/ExportToPdf';
+import { useAuth } from '@/app/context/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 
 
 // Types based on our Prisma schema
@@ -71,6 +73,8 @@ export default function DashboardPage() {
   const [formData, setFormData] = useState<Partial<Inspector>>({});
   const [formError, setFormError] = useState('');
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+  const { user } = useAuth();
+  const { can } = usePermissions();
 
   const {
     empleados,
@@ -179,8 +183,6 @@ export default function DashboardPage() {
     enLicencia: filteredEmployeesMemo.filter(e => calcularEstado(e) === 'LICENCIA').length,
     ausentes: filteredEmployeesMemo.filter(e => calcularEstado(e) === 'AUSENTE').length
   }), [filteredEmployeesMemo]);
-
-
   // Modal handlers
   const openModal = (mode: 'view' | 'edit' | 'create', employee?: Inspector) => {
     setModalMode(mode);
@@ -735,20 +737,26 @@ export default function DashboardPage() {
                         >
                           <Eye className="h-4 w-4" />
                         </button>
-                        <button
-                          onClick={() => openModal('edit', employee)}
-                          className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 transition-colors"
-                          title="Editar"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(employee.id)}
-                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+
+                        {user?.rol !== "JEFE" && (
+  <>
+    <button
+      onClick={() => openModal('edit', employee)}
+      className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 transition-colors"
+      title="Editar"
+    >
+      <Edit2 className="h-4 w-4" />
+    </button>
+
+    <button
+      onClick={() => handleDelete(employee.id)}
+      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+      title="Eliminar"
+    >
+      <Trash2 className="h-4 w-4" />
+    </button>
+  </>
+)}
                       </div>
                     </td>
                   </tr>

@@ -59,131 +59,147 @@ export default function CalificacionesPage() {
   
   const [selectedPeriod, setSelectedPeriod] = useState<'mes' | 'trimestre' | 'año'>('mes');
 
-  // ============ ESTADÍSTICAS DE PERSONAL ============
-  const statsPersonal = useMemo(() => {
-    if (!empleados) return null;
+const statsPersonal = useMemo(() => {
+  if (!empleados) return null;
 
-    const activos = empleados.filter(e => e.activo);
-    const inactivos = empleados.filter(e => !e.activo);
+  // Filtrar solo SUPERVISOR e INSPECTOR
+  const empleadosFiltrados = empleados.filter(
+    e => e.rol === 'SUPERVISOR' || e.rol === 'INSPECTOR'
+  );
 
-    // Por rol
-    const porRol = empleados.reduce((acc, emp) => {
-      acc[emp.rol] = (acc[emp.rol] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+  const activos = empleadosFiltrados.filter(e => e.activo);
+  const inactivos = empleadosFiltrados.filter(e => !e.activo);
 
-    // Por turno
-    const porTurno = empleados.reduce((acc, emp) => {
-      acc[emp.grupoTurno] = (acc[emp.grupoTurno] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+  // Por rol
+  const porRol = empleadosFiltrados.reduce((acc, emp) => {
+    acc[emp.rol] = (acc[emp.rol] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
-    // Por horario
-    const porHorario = empleados.reduce((acc, emp) => {
-      const horario = emp.horario || 'Sin asignar';
-      acc[horario] = (acc[horario] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+  // Por turno
+  const porTurno = empleadosFiltrados.reduce((acc, emp) => {
+    acc[emp.grupoTurno] = (acc[emp.grupoTurno] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
-    return {
-      total: empleados.length,
-      activos: activos.length,
-      inactivos: inactivos.length,
-      porRol: Object.entries(porRol).map(([name, value]) => ({ name, value })),
-      porTurno: Object.entries(porTurno).map(([name, value]) => ({ name, value })),
-      porHorario: Object.entries(porHorario)
-        .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 6),
-    };
-  }, [empleados]);
+// Por horario
+const porHorario = empleadosFiltrados.reduce((acc, emp) => {
+  const horario = emp.horario || 'Sin asignar';
+  acc[horario] = (acc[horario] || 0) + 1;
+  return acc;
+}, {} as Record<string, number>);
 
-  // ============ ESTADÍSTICAS DE FALTAS ============
-  const statsFaltas = useMemo(() => {
-    if (!faltas || !empleados) return null;
 
-    const now = new Date();
-    const mesActual = now.getMonth();
-    const añoActual = now.getFullYear();
+return {
+  total: empleadosFiltrados.length,
+  activos: activos.length,
+  inactivos: inactivos.length,
+  porRol: Object.entries(porRol).map(([name, value]) => ({ name, value })),
+  porTurno: Object.entries(porTurno).map(([name, value]) => ({ name, value })),
+  porHorario: Object.entries(porHorario)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 6),
+};
+}, [empleados]);
 
-    // Filtrar según período
-    const faltasFiltradas = faltas.filter(f => {
-      const fecha = new Date(f.fecha);
-      if (selectedPeriod === 'mes') {
-        return fecha.getMonth() === mesActual && fecha.getFullYear() === añoActual;
-      } else if (selectedPeriod === 'trimestre') {
-        const trimestreActual = Math.floor(mesActual / 3);
-        const trimestreFalta = Math.floor(fecha.getMonth() / 3);
-        return trimestreFalta === trimestreActual && fecha.getFullYear() === añoActual;
-      } else {
-        return fecha.getFullYear() === añoActual;
-      }
-    });
+// ============ ESTADÍSTICAS DE FALTAS ============
+const statsFaltas = useMemo(() => {
+  if (!faltas || !empleados) return null;
 
-    // Total de faltas
-    const totalFaltas = faltasFiltradas.length;
-    const justificadas = faltasFiltradas.filter(f => f.justificada).length;
-    const injustificadas = totalFaltas - justificadas;
+  // Filtrar solo SUPERVISOR e INSPECTOR
+  const empleadosFiltrados = empleados.filter(
+    e => e.rol === 'SUPERVISOR' || e.rol === 'INSPECTOR'
+  );
 
-    // Faltas por empleado
-    const faltasPorEmpleado = faltasFiltradas.reduce((acc, f) => {
-      acc[f.empleadoId] = (acc[f.empleadoId] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+  const now = new Date();
+  const mesActual = now.getMonth();
+  const añoActual = now.getFullYear();
 
-    const topFaltas = Object.entries(faltasPorEmpleado)
-      .map(([empleadoId, cantidad]) => {
-        const emp = empleados.find(e => e.id === empleadoId);
-        return {
-          name: emp ? `${emp.apellido}, ${emp.nombre}` : 'Desconocido',
-          value: cantidad,
-        };
-      })
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 10);
+  // Filtrar según período y solo empleados filtrados
+  const faltasFiltradas = faltas.filter(f => {
+    const fecha = new Date(f.fecha);
+    const esEmpleadoValido = empleadosFiltrados.some(e => e.id === f.empleadoId);
+    
+    if (!esEmpleadoValido) return false;
 
-    // Faltas por mes (últimos 6 meses)
-    const faltasPorMes = [];
-    for (let i = 5; i >= 0; i--) {
-      const fecha = new Date(añoActual, mesActual - i, 1);
-      const mes = fecha.toLocaleDateString('es-AR', { month: 'short' });
-      const cantidad = faltas.filter(f => {
-        const fechaFalta = new Date(f.fecha);
-        return fechaFalta.getMonth() === fecha.getMonth() && 
-               fechaFalta.getFullYear() === fecha.getFullYear();
-      }).length;
-      faltasPorMes.push({ mes, cantidad });
+    if (selectedPeriod === 'mes') {
+      return fecha.getMonth() === mesActual && fecha.getFullYear() === añoActual;
+    } else if (selectedPeriod === 'trimestre') {
+      const trimestreActual = Math.floor(mesActual / 3);
+      const trimestreFalta = Math.floor(fecha.getMonth() / 3);
+      return trimestreFalta === trimestreActual && fecha.getFullYear() === añoActual;
+    } else {
+      return fecha.getFullYear() === añoActual;
     }
+  });
 
-    // Faltas por rol
-    const faltasPorRol = faltasFiltradas.reduce((acc, f) => {
-      const emp = empleados.find(e => e.id === f.empleadoId);
-      if (emp) {
-        acc[emp.rol] = (acc[emp.rol] || 0) + 1;
-      }
-      return acc;
-    }, {} as Record<string, number>);
+  // Total de faltas
+  const totalFaltas = faltasFiltradas.length;
+  const justificadas = faltasFiltradas.filter(f => f.justificada).length;
+  const injustificadas = totalFaltas - justificadas;
 
-    // Tasa de ausentismo por turno
-    const faltasPorTurno = faltasFiltradas.reduce((acc, f) => {
-      const emp = empleados.find(e => e.id === f.empleadoId);
-      if (emp) {
-        acc[emp.grupoTurno] = (acc[emp.grupoTurno] || 0) + 1;
-      }
-      return acc;
-    }, {} as Record<string, number>);
+  // Faltas por empleado
+  const faltasPorEmpleado = faltasFiltradas.reduce((acc, f) => {
+    acc[f.empleadoId] = (acc[f.empleadoId] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
-    return {
-      total: totalFaltas,
-      justificadas,
-      injustificadas,
-      topFaltas,
-      faltasPorMes,
-      faltasPorRol: Object.entries(faltasPorRol).map(([name, value]) => ({ name, value })),
-      faltasPorTurno: Object.entries(faltasPorTurno).map(([name, value]) => ({ name, value })),
-      tasaAusentismo: ((totalFaltas / (empleados.length * 30)) * 100).toFixed(2),
-    };
-  }, [faltas, empleados, selectedPeriod]);
+  const topFaltas = Object.entries(faltasPorEmpleado)
+    .map(([empleadoId, cantidad]) => {
+      const emp = empleadosFiltrados.find(e => e.id === empleadoId);
+      return {
+        name: emp ? `${emp.apellido}, ${emp.nombre}` : 'Desconocido',
+        value: cantidad,
+      };
+    })
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 10);
+
+  // Faltas por mes (últimos 6 meses) - solo empleados filtrados
+  const faltasPorMes = [];
+  for (let i = 5; i >= 0; i--) {
+    const fecha = new Date(añoActual, mesActual - i, 1);
+    const mes = fecha.toLocaleDateString('es-AR', { month: 'short' });
+    const cantidad = faltas.filter(f => {
+      const fechaFalta = new Date(f.fecha);
+      const esEmpleadoValido = empleadosFiltrados.some(e => e.id === f.empleadoId);
+      return esEmpleadoValido && 
+             fechaFalta.getMonth() === fecha.getMonth() && 
+             fechaFalta.getFullYear() === fecha.getFullYear();
+    }).length;
+    faltasPorMes.push({ mes, cantidad });
+  }
+
+  // Faltas por rol
+  const faltasPorRol = faltasFiltradas.reduce((acc, f) => {
+    const emp = empleadosFiltrados.find(e => e.id === f.empleadoId);
+    if (emp) {
+      acc[emp.rol] = (acc[emp.rol] || 0) + 1;
+    }
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Tasa de ausentismo por turno
+  const faltasPorTurno = faltasFiltradas.reduce((acc, f) => {
+    const emp = empleadosFiltrados.find(e => e.id === f.empleadoId);
+    if (emp) {
+      acc[emp.grupoTurno] = (acc[emp.grupoTurno] || 0) + 1;
+    }
+    return acc;
+  }, {} as Record<string, number>);
+
+  return {
+    total: totalFaltas,
+    justificadas,
+    injustificadas,
+    topFaltas,
+    faltasPorMes,
+    faltasPorRol: Object.entries(faltasPorRol).map(([name, value]) => ({ name, value })),
+    faltasPorTurno: Object.entries(faltasPorTurno).map(([name, value]) => ({ name, value })),
+    tasaAusentismo: ((totalFaltas / (empleadosFiltrados.length * 30)) * 100).toFixed(2),
+  };
+}, [faltas, empleados, selectedPeriod]);
 
   // ============ COLORES ============
   const COLORS = {
@@ -348,27 +364,63 @@ export default function CalificacionesPage() {
             </ResponsiveContainer>
           </div>
 
-          {/* Gráfico: Personal por Horario */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 lg:col-span-2">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Distribución por Horario Laboral
-            </h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={statsPersonal.porHorario} layout="horizontal">
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis type="number" stroke="#9CA3AF" />
-                <YAxis dataKey="name" type="category" width={100} stroke="#9CA3AF" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#1F2937', 
-                    border: '1px solid #374151',
-                    borderRadius: '8px'
-                  }}
-                />
-                <Bar dataKey="value" fill={COLORS.blue} radius={[0, 8, 8, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+{/* Gráfico: Personal por Horario */}
+<div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 lg:col-span-2">
+  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+    Distribución por Horario Laboral
+  </h3>
+  {!statsPersonal?.porHorario || statsPersonal.porHorario.length === 0 ? (
+    <div className="flex items-center justify-center h-[300px] text-gray-500 dark:text-gray-400">
+      <div className="text-center">
+        <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
+        <p>No hay datos de horarios disponibles</p>
+      </div>
+    </div>
+  ) : (
+    <ResponsiveContainer width="100%" height={350}>
+      <BarChart 
+        data={statsPersonal.porHorario}
+        layout="vertical"
+        margin={{ top: 5, right: 30, left: 20, bottom: 30 }}
+      >
+        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+        <XAxis 
+          type="number" 
+          stroke="#9CA3AF"
+          label={{ 
+            value: 'Cantidad', 
+            position: 'insideBottom',
+            offset: -10,
+            fill: '#9CA3AF',
+            style: { fontSize: '14px' }
+          }}
+        />
+        <YAxis 
+          type="category"
+          dataKey="name" 
+          width={150} 
+          stroke="#9CA3AF"
+          tick={{ fontSize: 14 }}
+        />
+        <Tooltip 
+          contentStyle={{ 
+            backgroundColor: '#1F2937', 
+            border: '1px solid #374151',
+            borderRadius: '8px',
+            color: '#fff'
+          }}
+          cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
+        />
+        <Bar 
+          dataKey="value" 
+          fill={COLORS.blue} 
+          radius={[0, 8, 8, 0]}
+          label={{ position: 'right', fill: '#9CA3AF', fontSize: 12 }}
+        />
+      </BarChart>
+    </ResponsiveContainer>
+  )}
+</div>
         </div>
       </div>
 

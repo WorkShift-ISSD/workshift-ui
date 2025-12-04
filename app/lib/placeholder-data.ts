@@ -65,7 +65,7 @@ export const turnos = [
   },
   {
     id: '50ca3e18-62cd-11ee-8c99-0242ac120003',
-    nombre: 'Manana - Inspector Clouseau',
+    nombre: 'Mañana - Inspector Clouseau',
     tipo: 'manana',
     horaInicio: '06:00:00',
     horaFin: '14:00:00'
@@ -99,7 +99,7 @@ export const cambios = [
   {
     id: 'd6e15727-9fe1-4961-8c5b-ea44a9bd8003',
     fecha: '2025-10-12',
-    turno: 'Manana - Inspector Clouseau',
+    turno: 'Mañana - Inspector Clouseau',
     solicitante: 'Luis González',
     destinatario: 'Patricia Hernández',
     estado: 'PENDIENTE'
