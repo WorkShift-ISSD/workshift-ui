@@ -67,6 +67,8 @@ export default function ChangeImageModal({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al actualizar imagen");
 
+      // data.url contiene la URL de Cloudinary
+      // Actualizar tu usuario local o hacer fetch para refrescar
       onSuccess();
     } catch (err: any) {
       setError(err.message);
@@ -78,7 +80,7 @@ export default function ChangeImageModal({
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-8 border border-gray-200 dark:border-gray-700 relative">
-        
+
         {/* Botón Cerrar */}
         <button
           onClick={onClose}
