@@ -4,15 +4,20 @@ import { useState } from "react";
 import NavLinks from "@/app/ui/dashboard/nav-links";
 import MigraLogo from "@/app/ui/MigraLogo";
 import LogoutButton from "@/app/components/LogoutButton";
-import { MenuIcon, Lock, User } from "lucide-react";
+import { MenuIcon, Lock, User, UserCog, Image } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
 import ChangePasswordModal from "@/app/components/ChangePasswordModal";
+import ChangeImageModal from "@/app/components/ChangeImageModal";
 
 
 export default function SideNav() {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isChangeImageOpen, setIsChangeImageOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
+
+
 
   return (
     <>
@@ -48,11 +53,16 @@ export default function SideNav() {
 
         {/* INFORMACIÓN DEL USUARIO */}
         {user && (
-          <div className="hidden md:block px-4 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="hidden md:block px-4 py-4 border-b border-gray-200 dark:border-gray-700 relative">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+
+              {/* Avatar */}
+              <button
+                onClick={() => setIsUserMenuOpen(prev => !prev)}
+                className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center hover:opacity-80 transition"
+              >
                 <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              </div>
+              </button>
 
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
@@ -62,17 +72,57 @@ export default function SideNav() {
                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                   {user.rol}
                 </p>
-
-                {/* 🔵 BOTÓN CAMBIAR CONTRASEÑA */}
-                <button
-                  onClick={() => setIsPasswordModalOpen(true)}
-                  className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-                >
-                  <Lock size={12} />
-                  Cambiar contraseña
-                </button>
               </div>
             </div>
+
+            {/* 🔽 MENÚ DESPLEGABLE */}
+            {isUserMenuOpen && (
+              <div
+                className="absolute left-12 top-16 w-52 bg-white dark:bg-gray-800 shadow-xl 
+               rounded-xl border border-gray-200 dark:border-gray-700 z-50 py-2"
+              >
+                <button
+                  className="w-full flex items-start gap-2 text-left px-4 py-2 text-sm 
+                  text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 
+                  rounded-lg transition"
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                  }}
+                >
+                  <UserCog size={16} className="opacity-70 mt-1" />
+                  <span>
+                    Actualizar Datos<br />
+                    Personales
+                  </span>
+                </button>
+
+                <button
+                  className="w-full flex items-start gap-2 text-left px-4 py-2 text-sm 
+                 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 
+                 rounded-lg transition"
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    setIsChangeImageOpen(true); // abrir modal imagen
+                  }}
+                >
+                  <Image size={14} className="opacity-70 mt-1" />
+                  Cambiar Imagen
+                </button>
+
+                <button
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 
+                 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition 
+                 flex items-center gap-2"
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    setIsPasswordModalOpen(true);
+                  }}
+                >
+                  <Lock size={14} className="opacity-70" />
+                  Cambiar Contraseña
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -95,6 +145,8 @@ export default function SideNav() {
         ></div>
       )}
 
+
+
       <ChangePasswordModal
         isOpen={isPasswordModalOpen}
         isPrimerIngreso={false}
@@ -102,6 +154,17 @@ export default function SideNav() {
           setIsPasswordModalOpen(false);
         }}
       />
+
+      <ChangeImageModal
+        isOpen={isChangeImageOpen}
+        onClose={() => setIsChangeImageOpen(false)}
+        onSuccess={() => {
+          setIsChangeImageOpen(false);
+        }}
+        currentImage={user?.imagen}
+      />
+
+
 
     </>
   );

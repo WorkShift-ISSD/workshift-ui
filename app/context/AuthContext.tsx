@@ -13,7 +13,8 @@ interface User {
   grupoTurno: 'A' | 'B';
   horario: string;
   activo: boolean;
-  primerIngreso?: boolean; // ✅ Agregado
+  imagen?: string | null;
+  primerIngreso?: boolean;
 }
 
 interface AuthContextType {
