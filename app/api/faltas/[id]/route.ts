@@ -5,11 +5,11 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // GET - Obtener una falta por id
 export async function GET(
-  request: NextRequest, 
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> } // <-- Promise aquí
 ) {
   const { id } = await params; // <-- await aquí
-  
+
   try {
     const [falta] = await sql`
       SELECT 
@@ -38,18 +38,26 @@ export async function GET(
 
 // PUT - Editar una falta
 export async function PUT(
-  request: NextRequest, 
-  { params }: { params: Promise<{ id: string }> } // <-- Promise aquí
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params; // <-- await aquí
+  const { id } = await params;
   const body = await request.json();
 
   try {
+
+    // Normalizar: convertir undefined → null
+    const causa = body.causa ?? null;
+    const observaciones = body.observaciones ?? null;
+    const justificada =
+      body.justificada === undefined ? null : body.justificada;
+
+    // Ejecutar UPDATE
     const [updated] = await sql`
       UPDATE faltas SET
-        causa = COALESCE(${body.causa}, causa),
-        observaciones = COALESCE(${body.observaciones}, observaciones),
-        justificada = COALESCE(${body.justificada}, justificada),
+        causa = COALESCE(${causa}, causa),
+        observaciones = COALESCE(${observaciones}, observaciones),
+        justificada = COALESCE(${justificada}, justificada),
         updated_at = NOW()
       WHERE id = ${id}::uuid
       RETURNING id::text;
@@ -60,14 +68,16 @@ export async function PUT(
     }
 
     return NextResponse.json(updated);
+
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
 
+
 // DELETE - Borrar falta
 export async function DELETE(
-  request: NextRequest, 
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> } // <-- Promise aquí
 ) {
   const { id } = await params; // <-- await aquí
