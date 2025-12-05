@@ -414,6 +414,13 @@ export default function DashboardPage() {
 
   // Format date
   const formatDate = (dateString: string | null) => {
+    if (!dateString) return "";
+    const [year, month, day] = dateString.split("-");
+
+    return `${day}/${month}/${year}`;
+  };
+
+  const formatDateActualizacion = (dateString: string | null) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
     return date.toLocaleDateString('es-ES', {
@@ -738,24 +745,24 @@ export default function DashboardPage() {
                         </button>
 
                         {user?.rol !== "JEFE" && (
-  <>
-    <button
-      onClick={() => openModal('edit', employee)}
-      className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 transition-colors"
-      title="Editar"
-    >
-      <Edit2 className="h-4 w-4" />
-    </button>
+                          <>
+                            <button
+                              onClick={() => openModal('edit', employee)}
+                              className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 transition-colors"
+                              title="Editar"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
 
-    <button
-      onClick={() => handleDelete(employee.id)}
-      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-      title="Eliminar"
-    >
-      <Trash2 className="h-4 w-4" />
-    </button>
-  </>
-)}
+                            <button
+                              onClick={() => handleDelete(employee.id)}
+                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                              title="Eliminar"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -973,7 +980,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">Última actualización</p>
-                      <p className="font-semibold text-gray-900 dark:text-gray-100">{formatDate(selectedEmployee.updatedAt)}</p>
+                      <p className="font-semibold text-gray-900 dark:text-gray-100">{formatDateActualizacion(selectedEmployee.updatedAt)}</p>
                     </div>
                   </div>
 

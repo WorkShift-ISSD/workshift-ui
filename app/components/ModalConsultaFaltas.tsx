@@ -109,12 +109,10 @@ export default function ModalConsultaFaltas({
   }, [faltasFiltradas]);
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("es-AR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
+    if (!dateString) return "";
+    const [year, month, day] = dateString.split("-");
+
+    return `${day}/${month}/${year}`;
   };
 
   if (!open) return null;
