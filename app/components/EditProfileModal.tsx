@@ -2,7 +2,8 @@
 
 import { useState, useRef } from "react";
 import { User, Phone, MapPin, AlertCircle, Calendar } from "lucide-react";
-import { putter } from "@/app/api/fetcher";
+import { useEmpleados } from "@/hooks/useEmpleados";
+
 
 interface EditProfileModalProps {
     isOpen: boolean;
@@ -32,6 +33,7 @@ export default function EditProfileModal({
     const dateInputRef = useRef<HTMLInputElement | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const {empleados, updateEmpleado} = useEmpleados();
 
     if (!isOpen) return null;
 
@@ -41,10 +43,10 @@ export default function EditProfileModal({
         setLoading(true);
 
         try {
-            await putter(`/api/users/${userData.id}`, {
+            await updateEmpleado(userData.id, {
                 telefono,
                 direccion,
-                fecha_nacimiento: fechaNacimiento || null,
+                fechaNacimiento: fechaNacimiento || null,
             });
 
             onSuccess();
