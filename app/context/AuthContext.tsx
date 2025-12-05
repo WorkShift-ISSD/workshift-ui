@@ -15,6 +15,10 @@ interface User {
   activo: boolean;
   imagen?: string | null;
   primerIngreso?: boolean;
+  telefono: string;
+  direccion: string;
+  fechaNacimiento?: string; 
+
 }
 
 interface AuthContextType {

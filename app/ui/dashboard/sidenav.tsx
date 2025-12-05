@@ -8,11 +8,14 @@ import { MenuIcon, Lock, User, UserCog, Image } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
 import ChangePasswordModal from "@/app/components/ChangePasswordModal";
 import ChangeImageModal from "@/app/components/ChangeImageModal";
+import EditProfileModal from "@/app/components/EditProfileModal";
+
 
 
 export default function SideNav() {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isChangeImageOpen, setIsChangeImageOpen] = useState(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
@@ -87,6 +90,7 @@ export default function SideNav() {
                   rounded-lg transition"
                   onClick={() => {
                     setIsUserMenuOpen(false);
+                    setIsEditProfileOpen(true);
                   }}
                 >
                   <UserCog size={16} className="opacity-70 mt-1" />
@@ -164,6 +168,19 @@ export default function SideNav() {
         currentImage={user?.imagen}
       />
 
+      <EditProfileModal
+        isOpen={isEditProfileOpen}
+        onClose={() => setIsEditProfileOpen(false)}
+        onSuccess={() => {
+          setIsEditProfileOpen(false);
+        }}
+        userData={{
+          id: user?.id!,
+          telefono: user?.telefono,
+          direccion: user?.direccion,
+          fecha_nacimiento: user?.fechaNacimiento,
+        }}
+      />
 
 
     </>
