@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
     }
 
 
-    // SIN FILTROS → TODAS LAS FALTAS
+     // SIN FILTROS → TODAS LAS FALTAS
     else {
       query = sql`
         SELECT 
@@ -127,17 +127,20 @@ export async function GET(request: NextRequest) {
         FROM faltas f
         JOIN users e ON f.empleado_id = e.id
         LEFT JOIN users u ON f.registrado_por::uuid = u.id
+        WHERE e.id IS NOT NULL
         ORDER BY f.fecha DESC;
       `;
     }
-    
+
     const faltas = await query;
 
-    // Normalizar fechas (solo YYYY-MM-DD)
-    const faltasNormalizadas = faltas.map(falta => ({
-      ...falta,
-      fecha: falta.fecha.split('T')[0]
-    }));
+    // Filtrar faltas nulas y normalizar fechas
+    const faltasNormalizadas = (faltas || [])
+      .filter(falta => falta && falta.empleadoId) // ✅ Eliminar faltas con datos null
+      .map(falta => ({
+        ...falta,
+        fecha: falta.fecha.split('T')[0]
+      }));
     
     return NextResponse.json(faltasNormalizadas);
 
@@ -170,7 +173,7 @@ export async function POST(request: NextRequest) {
     const cookieStore = await cookies();
     const token = cookieStore.get('auth-token')?.value;
 
-    let registradoPorId = null; // ✅ Guardar el ID en lugar del nombre
+    let registradoPorId: string | null = null; // ✅ Guardar el ID en lugar del nombre
 
     if (token) {
       try {
@@ -228,7 +231,7 @@ export async function POST(request: NextRequest) {
         ${body.motivo},
         ${body.observaciones || null},
         ${body.justificada || false},
-        ${registradoPorId ? `${registradoPorId}::uuid` : null},
+        ${registradoPorId}::uuid,
         NOW(),
         NOW()
       )

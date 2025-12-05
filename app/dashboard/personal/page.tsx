@@ -175,7 +175,6 @@ export default function DashboardPage() {
   useEffect(() => {
     setFilteredEmployees(filteredEmployeesMemo);
   }, [filteredEmployeesMemo]);
-
   // Calcular estadísticas
   const stats = useMemo(() => ({
     total: filteredEmployeesMemo.length,
