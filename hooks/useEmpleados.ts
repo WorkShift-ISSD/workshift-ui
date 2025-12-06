@@ -12,6 +12,7 @@ interface Inspector {
   email: string;
   nombre: string;
   apellido: string;
+  password: string;
   rol: 'SUPERVISOR' | 'INSPECTOR' | 'JEFE';
   telefono: string | null;
   direccion: string | null;

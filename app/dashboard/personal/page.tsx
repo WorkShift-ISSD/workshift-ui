@@ -27,6 +27,7 @@ import { LoadingSpinner } from '@/app/components/LoadingSpinner';
 import { ExportData } from '@/app/components/ExportToPdf';
 import { useAuth } from '@/app/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import bcrypt from 'bcrypt';
 
 
 // Types based on our Prisma schema
@@ -341,11 +342,14 @@ export default function DashboardPage() {
         if (!confirmCreate) return;
 
         const validRol = (formData.rol || 'INSPECTOR') as Exclude<Rol, 'ADMINISTRADOR'>;
+        const hashedPassword = await bcrypt.hash(`${formData.nombre!.trim().charAt(0)}${formData.apellido!.trim()}25`,10);
+        console.log(hashedPassword);
         await createEmpleado({
           legajo: formData.legajo!,
           email: formData.email!,
           nombre: formData.nombre!,
           apellido: formData.apellido!,
+          password: hashedPassword,
           rol: validRol,
           telefono: formData.telefono || null,
           direccion: formData.direccion || null,
