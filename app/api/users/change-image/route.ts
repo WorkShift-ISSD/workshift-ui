@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import cloudinary from "@/app/lib/cloudinary";
 import { sql } from "@/app/lib/postgres";
+import { cookies } from "next/headers";
 
 export async function POST(req: NextRequest) {
   console.log("🔵 [DEBUG] Inicio de /api/users/change-image");
-  
+
   try {
     // 1. OBTENER USUARIO DE LA SESIÓN
     console.log("🔵 [DEBUG] Verificando autenticación...");
-    
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth-token')?.value;
+
     const authCheck = await fetch(`${req.nextUrl.origin}/api/auth/me`, {
-      headers: req.headers,
+      headers: {
+        Cookie: `auth-token=${token}` // ✅ Pasar la cookie explícitamente
+      },
     });
 
     console.log("🔵 [DEBUG] Status de /api/auth/me:", authCheck.status);
@@ -22,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     const authData = await authCheck.json();
     console.log("🔵 [DEBUG] Usuario obtenido:", authData.user?.email);
-    
+
     const sessionUser = authData.user;
 
     // 2. OBTENER ARCHIVO
@@ -50,7 +55,7 @@ export async function POST(req: NextRequest) {
 
     // 4. OBTENER IMAGEN ANTERIOR
     console.log("🔵 [DEBUG] Consultando BD para usuario:", sessionUser.id);
-    
+
     const [currentUser] = await sql`
       SELECT cloudinary_public_id 
       FROM users 
@@ -62,7 +67,7 @@ export async function POST(req: NextRequest) {
 
     // 5. SUBIR A CLOUDINARY
     console.log("🔵 [DEBUG] Preparando subida a Cloudinary...");
-    
+
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
@@ -90,7 +95,7 @@ export async function POST(req: NextRequest) {
 
     // 6. ACTUALIZAR BD
     console.log("🔵 [DEBUG] Actualizando BD...");
-    
+
     await sql`
       UPDATE users 
       SET 
@@ -113,8 +118,8 @@ export async function POST(req: NextRequest) {
     }
 
     console.log("✅ [SUCCESS] Proceso completado exitosamente");
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       url: result.secure_url,
       message: "Imagen actualizada correctamente"
     });
@@ -124,14 +129,14 @@ export async function POST(req: NextRequest) {
     console.error("Nombre del error:", err.name);
     console.error("Mensaje:", err.message);
     console.error("Stack:", err.stack);
-    
+
     if (err.http_code) {
       console.error("HTTP Code:", err.http_code);
       console.error("Error Cloudinary:", err);
     }
 
     return NextResponse.json(
-      { 
+      {
         error: "Error al subir imagen",
         details: err.message // Agregar detalles en desarrollo
       },

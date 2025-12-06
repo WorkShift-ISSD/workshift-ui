@@ -4,7 +4,7 @@ import postgres from 'postgres';
 import { sendPasswordChangedEmail } from '@/app/lib/email';
 import { jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
-import bcrypt from 'bcrypt';
+import bcryptjs from 'bcryptjs';
 
 const SECRET_KEY = new TextEncoder().encode(
   process.env.JWT_SECRET || 'Workshift25'
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+      const isValidPassword = await bcryptjs.compare(currentPassword, user.password);
       
       if (!isValidPassword) {
         await sql.end();
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar que la nueva contraseña sea diferente a la actual
-    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    const isSamePassword = await bcryptjs.compare(newPassword, user.password);
     if (isSamePassword) {
       await sql.end();
       return NextResponse.json(
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Hashear nueva contraseña
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await bcryptjs.hash(newPassword, 10);
 
     // Actualizar contraseña
     await sql`
