@@ -29,8 +29,9 @@ export default function ChangeImageModal({
 
     // Validaciones
     const maxSize = 3 * 1024 * 1024; // 3MB
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
-    if (!selected.type.startsWith("image/")) {
+    if (!allowedTypes.includes(selected.type)) {
       setError("El archivo debe ser una imagen (JPG, PNG, WebP)");
       return;
     }
@@ -58,7 +59,8 @@ export default function ChangeImageModal({
       const formData = new FormData();
       formData.append("image", file);
 
-      const res = await fetch("/api/user/change-image", {
+      // ✅ CORREGIDO: Ruta correcta
+      const res = await fetch("/api/users/change-image", {
         method: "POST",
         body: formData,
         credentials: "include"
@@ -67,14 +69,35 @@ export default function ChangeImageModal({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al actualizar imagen");
 
+      // Limpiar el preview local
+      if (preview) {
+        URL.revokeObjectURL(preview);
+      }
+      
       // data.url contiene la URL de Cloudinary
-      // Actualizar tu usuario local o hacer fetch para refrescar
       onSuccess();
+      onClose();
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleClose = () => {
+    // Limpiar el preview al cerrar
+    if (preview) {
+      URL.revokeObjectURL(preview);
+    }
+    setFile(null);
+    setPreview(null);
+    setError("");
+    onClose();
+  };
+
+  // Helper para imagen por defecto
+  const getDefaultAvatar = () => {
+    return "https://ui-avatars.com/api/?name=Usuario&size=200&background=3b82f6&color=fff&bold=true";
   };
 
   return (
@@ -83,8 +106,9 @@ export default function ChangeImageModal({
 
         {/* Botón Cerrar */}
         <button
-          onClick={onClose}
-          className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          onClick={handleClose}
+          className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition"
+          disabled={loading}
         >
           <X size={20} />
         </button>
@@ -99,37 +123,48 @@ export default function ChangeImageModal({
             Cambiar Imagen
           </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-            Sube una nueva imagen de perfil
+            Sube una nueva imagen de perfil (máx. 3MB)
           </p>
         </div>
 
         {/* Error */}
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-4 flex items-start gap-2">
-            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
+            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
           </div>
         )}
 
         {/* Imagen actual + nueva */}
-        <div className="flex items-center justify-center gap-6 mb-4">
+        <div className="flex items-center justify-center gap-6 mb-6">
+          {/* Imagen actual */}
           <div className="text-center">
-            <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Actual</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 font-medium">Actual</p>
             <img
-              src={currentImage || "/default-user.jpg"}
-              className="w-20 h-20 rounded-full object-cover border"
+              src={currentImage || getDefaultAvatar()}
+              alt="Imagen actual"
+              className="w-20 h-20 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600"
             />
           </div>
 
+          {/* Flecha */}
+          <div className="text-gray-400 dark:text-gray-500">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </div>
+
+          {/* Imagen nueva */}
           <div className="text-center">
-            <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Nueva</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 font-medium">Nueva</p>
             {preview ? (
               <img
                 src={preview}
-                className="w-20 h-20 rounded-full object-cover border"
+                alt="Vista previa"
+                className="w-20 h-20 rounded-full object-cover border-2 border-blue-500 dark:border-blue-400"
               />
             ) : (
-              <div className="w-20 h-20 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500">
+              <div className="w-20 h-20 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 border-2 border-dashed border-gray-300 dark:border-gray-600">
                 <ImageIcon size={28} />
               </div>
             )}
@@ -137,38 +172,41 @@ export default function ChangeImageModal({
         </div>
 
         {/* Input archivo */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Selecciona una imagen
           </label>
           <input
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/jpg,image/png,image/webp"
             disabled={loading}
             onChange={handleFileChange}
-            className="w-full text-sm text-gray-800 dark:text-gray-200"
+            className="w-full text-sm text-gray-800 dark:text-gray-200 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-400 dark:hover:file:bg-blue-900/50 file:cursor-pointer cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           />
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Formatos: JPG, PNG, WebP
+          </p>
         </div>
 
         {/* Botones */}
-        <div className="flex items-center gap-3 mt-6">
+        <div className="flex items-center gap-3">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             disabled={loading}
-            className="px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition disabled:opacity-50"
+            className="px-5 py-3 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           >
             Cancelar
           </button>
 
           <button
             onClick={handleSubmit}
-            disabled={loading}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition flex items-center justify-center disabled:opacity-50"
+            disabled={loading || !file}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30"
           >
             {loading ? (
               <>
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                Guardando...
+                Subiendo...
               </>
             ) : (
               "Actualizar Imagen"

@@ -18,7 +18,7 @@ export default function SideNav() {
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [open, setOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth(); // ✅ Agregado refreshUser
 
 
 
@@ -62,9 +62,19 @@ export default function SideNav() {
               {/* Avatar */}
               <button
                 onClick={() => setIsUserMenuOpen(prev => !prev)}
-                className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center hover:opacity-80 transition"
+                className="w-10 h-10 rounded-full hover:opacity-80 transition overflow-hidden border-2 border-gray-200 dark:border-gray-600"
               >
-                <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                {user.imagen ? (
+                  <img
+                    src={user.imagen}
+                    alt={`${user.nombre} ${user.apellido}`}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                    <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                )}
               </button>
 
               <div className="flex-1 min-w-0">
@@ -106,7 +116,7 @@ export default function SideNav() {
                  rounded-lg transition"
                   onClick={() => {
                     setIsUserMenuOpen(false);
-                    setIsChangeImageOpen(true); // abrir modal imagen
+                    setIsChangeImageOpen(true);
                   }}
                 >
                   <Image size={14} className="opacity-70 mt-1" />
@@ -159,10 +169,12 @@ export default function SideNav() {
         }}
       />
 
+      {/* ✅ Modal de cambio de imagen ACTUALIZADO */}
       <ChangeImageModal
         isOpen={isChangeImageOpen}
         onClose={() => setIsChangeImageOpen(false)}
-        onSuccess={() => {
+        onSuccess={async () => {
+          await refreshUser(); // ✅ Recargar datos del usuario
           setIsChangeImageOpen(false);
         }}
         currentImage={user?.imagen}
