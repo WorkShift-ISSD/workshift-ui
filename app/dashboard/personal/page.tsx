@@ -30,7 +30,6 @@ import { usePermissions } from '@/hooks/usePermissions';
 import bcryptjs from 'bcryptjs';
 
 
-
 // Types based on our Prisma schema
 type Rol = 'SUPERVISOR' | 'INSPECTOR' | 'JEFE' | 'ADMINISTRADOR';
 type GrupoTurno = 'A' | 'B';
