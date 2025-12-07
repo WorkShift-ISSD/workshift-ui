@@ -37,12 +37,23 @@ const normalizarFecha = (fecha: string): string => {
     return fecha;
   }
   
-  // Si viene con timestamp, extraer solo la fecha
-  const date = new Date(fecha);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  // Si viene con timestamp ISO (ejemplo: "2024-12-05T03:00:00.000Z"), extraer solo la fecha
+  if (fecha.includes('T')) {
+    return fecha.split('T')[0];
+  }
+  
+  // Si viene en otro formato, intentar extraer la fecha manualmente
+  try {
+    const match = fecha.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      return `${match[1]}-${match[2]}-${match[3]}`;
+    }
+  } catch (error) {
+    console.error('Error normalizando fecha:', error);
+  }
+  
+  // Si todo falla, devolver la fecha original
+  return fecha;
 };
 
 // Hook para obtener faltas de una fecha específica
@@ -123,6 +134,8 @@ export function useTodasLasFaltas() {
       dedupingInterval: 60000, // Cache de 1 minuto
     }
   );
+
+
 
   return {
     faltas: data || [],

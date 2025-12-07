@@ -1,6 +1,6 @@
 import '@/app/ui/global.css';
 import { inter } from '@/app/ui/fonts';
-import Footer from './components/Footer';
+
 import ThemeToggle from './components/ThemeToggle';
 import { AuthProvider } from './context/AuthContext';
 

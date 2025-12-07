@@ -54,7 +54,12 @@ export async function GET(request: NextRequest) {
         rol,
         grupo_turno as "grupoTurno",
         horario,
-        activo
+        activo,
+        imagen,
+        cloudinary_public_id,
+        telefono,
+        direccion,
+        fecha_nacimiento as "fechaNacimiento"
       FROM users 
       WHERE id = ${userId} AND activo = true
     `;

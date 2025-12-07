@@ -54,23 +54,15 @@ export default function FaltasPage() {
   const today = getTodayDate();
   const [selectedDate, setSelectedDate] = useState(today);
   const [modalEmpleado, setModalEmpleado] = useState<any>(null);
+  const [faltaEnEdicion, setFaltaEnEdicion] = useState<any>(null);
   const [modalConsultaOpen, setModalConsultaOpen] = useState(false);
+
+  const [searchText, setSearchText] = useState("");
 
   const { empleados, isLoading: loadingEmpleados, error: errorEmpleados } = useEmpleados();
   const { faltas, isLoading: loadingFaltas, error: errorFaltas, deleteFalta: eliminarFalta, mutate } = useFaltas(selectedDate);
   const { faltas: todasLasFaltas } = useTodasLasFaltas();
 
-  // ==== DEBUG: Verificar fechas ====
-  useEffect(() => {
-    if (faltas && faltas.length > 0) {
-      console.log("📅 Fecha seleccionada:", selectedDate);
-      console.log("📋 Faltas recibidas:", faltas.map(f => ({
-        empleadoId: f.empleadoId,
-        fecha: f.fecha,
-        fechaOriginal: f.fecha
-      })));
-    }
-  }, [faltas, selectedDate]);
 
   // ==== VALIDAR FECHA FUTURA ====
   const esFechaFutura = useMemo(() => {
@@ -123,44 +115,25 @@ export default function FaltasPage() {
           : emp.rol === selectedRole;
         const turnoCoincide = selectedTurno === "TODOS" || emp.horario === selectedTurno;
 
-        return estaActivo && perteneceAlGrupo && rolCoincide && turnoCoincide;
+        // 👇 Filtro por texto (nombre o apellido)
+        const coincideTexto = searchText === "" ||
+          emp.nombre.toLowerCase().includes(searchText.toLowerCase()) ||
+          emp.apellido.toLowerCase().includes(searchText.toLowerCase());
+
+        // 👇 AGREGÁ coincideTexto ACÁ
+        return estaActivo && perteneceAlGrupo && rolCoincide && turnoCoincide && coincideTexto;
       })
       .sort((a, b) => {
         const horaA = a.horario?.split("-")[0] ?? "";
         const horaB = b.horario?.split("-")[0] ?? "";
         return horaA.localeCompare(horaB);
       });
-  }, [empleados, selectedDate, selectedRole, selectedTurno, grupoQueTrabaja]);
+  }, [empleados, selectedDate, selectedRole, selectedTurno, grupoQueTrabaja, searchText]);
+
 
   // Lista de faltas del día
   const empleadosConFalta = (faltas || []).map((f) => f.empleadoId);
 
-  // ==== DEBUG: Verificar datos ====
-  useEffect(() => {
-    console.log("=== DEBUG FALTAS ===");
-    console.log("📅 Fecha seleccionada:", selectedDate);
-    console.log("📅 Grupo que trabaja:", grupoQueTrabaja);
-    console.log("📋 Faltas recibidas:", faltas?.length || 0);
-    console.log("👥 Empleados del día (filtrados):", empleadosDelDia.length);
-    console.log("❌ IDs con falta:", empleadosConFalta);
-
-    if (faltas && faltas.length > 0) {
-      console.log("📋 Detalle de faltas:", faltas.map(f => ({
-        id: f.id,
-        empleadoId: f.empleadoId,
-        fecha: f.fecha,
-        empleado: f.empleado?.nombre + " " + f.empleado?.apellido,
-        grupo: empleados?.find(e => e.id === f.empleadoId)?.grupoTurno
-      })));
-    }
-
-    console.log("👥 Empleados del día:", empleadosDelDia.map(e => ({
-      id: e.id,
-      nombre: e.nombre + " " + e.apellido,
-      grupo: e.grupoTurno,
-      tieneFalta: empleadosConFalta.includes(e.id)
-    })));
-  }, [faltas, selectedDate, empleadosDelDia, empleadosConFalta, grupoQueTrabaja, empleados]);
 
   // ==== EMPLEADOS PARA EXPORTAR (sin filtros) ====
   const empleadosParaExportar = useMemo(() => {
@@ -192,6 +165,7 @@ export default function FaltasPage() {
   // ==== CUANDO GUARDA FORM DE FALTA ====
   const handleFaltaSaved = () => {
     setModalEmpleado(null);
+    setFaltaEnEdicion(null); 
     mutate();
   };
 
@@ -298,9 +272,9 @@ export default function FaltasPage() {
             max={today}
             onChange={(e) => handleDateChange(e.target.value)}
             className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 
-                     bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                     focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 
-                     focus:border-transparent transition-all"
+                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                    focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 
+                    focus:border-transparent transition-all"
           />
         </div>
 
@@ -349,6 +323,25 @@ export default function FaltasPage() {
                 <option key={h} value={h}>{h}</option>
               ))}
           </select>
+        </div>
+
+        {/* 👇 Búsqueda - ocupa toda la línea */}
+        <div className="md:col-span-4">
+          <label className="flex items-center gap-2 font-semibold mb-2 text-gray-700 dark:text-gray-300">
+            <FileSearch className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            Buscar Empleado
+          </label>
+          <input
+            type="text"
+            placeholder="Escribe el nombre o apellido del empleado..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 
+        bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+        placeholder:text-gray-400 dark:placeholder:text-gray-500
+        focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 
+        focus:border-transparent transition-all"
+          />
         </div>
       </div>
 
@@ -431,13 +424,13 @@ export default function FaltasPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         {enFalta ? (
                           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold
-                                       bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200">
+                                      bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200">
                             <XCircle className="w-4 h-4" />
                             Falta
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold
-                                       bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200">
+                                      bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200">
                             <CheckCircle className="w-4 h-4" />
                             Presente
                           </span>
@@ -449,22 +442,39 @@ export default function FaltasPage() {
                           <button
                             onClick={() => setModalEmpleado(emp)}
                             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600
-                                     text-white rounded-lg font-medium transition-colors
-                                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                                     dark:focus:ring-offset-gray-800"
+                            text-white rounded-lg font-medium transition-colors
+                            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                            dark:focus:ring-offset-gray-800"
                           >
                             Registrar Falta
                           </button>
                         ) : (
-                          <button
-                            onClick={() => handleEliminarFalta(falta.id)}
-                            className="px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600
-                                     text-white rounded-lg font-medium transition-colors
-                                     focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
-                                     dark:focus:ring-offset-gray-800"
-                          >
-                            Eliminar Falta
-                          </button>
+                          // 👇 CAMBIAR ESTO - Agregar dos botones
+                          <div className="flex gap-2 justify-center">
+                            <button
+                              onClick={() => {
+                                setFaltaEnEdicion(falta);
+                                setModalEmpleado(falta.empleado || emp);
+                                
+                              }}
+                              className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-500 dark:hover:bg-yellow-600
+                              text-white rounded-lg font-medium transition-colors
+                              focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2
+                              dark:focus:ring-offset-gray-800"
+                            >
+                              Editar
+                            </button>
+
+                            <button
+                              onClick={() => handleEliminarFalta(falta.id)}
+                              className="px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600
+                                text-white rounded-lg font-medium transition-colors
+                                focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
+                                dark:focus:ring-offset-gray-800"
+                            >
+                              Eliminar
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -476,14 +486,23 @@ export default function FaltasPage() {
         )}
       </div>
 
-      {/* Modal Registrar Falta */}
+      {/* Modal Registrar/Editar Falta */}
       {modalEmpleado && (
         <ModalFalta
           empleado={modalEmpleado}
           fecha={selectedDate}
           open={true}
-          onClose={() => setModalEmpleado(null)}
-          onSaved={handleFaltaSaved}
+          onClose={() => {
+            setModalEmpleado(null);
+            setFaltaEnEdicion(null); // 👈 Limpiar también la falta
+          }}
+          onSaved={() => {
+            setModalEmpleado(null);
+            setFaltaEnEdicion(null); // 👈 Limpiar también la falta
+            mutate();
+          }}
+          falta={faltaEnEdicion} // 👈 Pasar la falta si existe
+          mode={faltaEnEdicion ? 'edit' : 'create'} // 👈 OPCIONAL: ser explícito
         />
       )}
 

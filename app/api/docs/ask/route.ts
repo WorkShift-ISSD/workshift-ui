@@ -28,13 +28,30 @@ export async function POST(req: NextRequest) {
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/[¿?¡!]/g, '');
 
-    // Extraer palabras clave
+    // Detectar saludos simples
+    const greetings = ['hola', 'buenos dias', 'buenas tardes', 'buenas noches', 'hey', 'saludos'];
+    const isGreeting = greetings.some(g => normalizedQuestion.trim() === g || normalizedQuestion.trim().startsWith(g + ' '));
+
+    if (isGreeting) {
+      return NextResponse.json({
+        answer: '¡Hola! 👋 Soy el asistente de WorkShift. Estoy aquí para ayudarte con preguntas sobre el sistema de gestión de turnos. ¿En qué puedo ayudarte hoy?',
+        sources: []
+      });
+    }
+
+    // Extraer palabras clave (más flexible)
+    const stopWords = ['como', 'puedo', 'hacer', 'para', 'cual', 'donde', 'cuando', 'quien', 'porque', 'que', 'es', 'la', 'el', 'los', 'las', 'un', 'una', 'de', 'del', 'en', 'con', 'por'];
     const allWords: string[] = normalizedQuestion.split(' ');
-    const keywords: string[] = allWords.filter((w: string) => w.length > 3);
+    const keywords: string[] = allWords.filter((w: string) => w.length > 3 && !stopWords.includes(w));
+
+    // Si no hay keywords pero hay pregunta, usar palabras de 3+ caracteres
+    if (keywords.length === 0 && allWords.length > 1) {
+      keywords.push(...allWords.filter((w: string) => w.length >= 3));
+    }
 
     if (keywords.length === 0) {
       return NextResponse.json({
-        answer: 'Por favor, haz una pregunta más específica.',
+        answer: 'Por favor, haz una pregunta más específica sobre WorkShift.',
         sources: []
       });
     }
@@ -89,29 +106,34 @@ Por favor reformula tu pregunta o contacta a tu supervisor.`,
         });
       }
 
-      // Crear contexto para Gemini
+      // Crear contexto para Gemini (usar más documentos)
       const context = allResults
-        .slice(0, 3)
+        .slice(0, 5) // Aumentado de 3 a 5 para más contexto
         .map((r: any, i: number) => `Documento ${i + 1}: ${r.title}\n${r.content}`)
         .join('\n\n---\n\n');
 
-      const prompt = `Eres un asistente del sistema WorkShift para gestión de turnos laborales.
+      const prompt = `Eres un asistente virtual amigable y útil del sistema WorkShift para gestión de turnos laborales.
 
-Tu trabajo es responder preguntas usando ÚNICAMENTE la siguiente documentación oficial del sistema:
-
+DOCUMENTACIÓN DISPONIBLE:
 ${context}
 
-Reglas importantes:
-1. Responde SOLO con información de la documentación proporcionada
-2. Sé conciso pero completo
-3. Si la información no está en la documentación, di: "No tengo esa información en la documentación disponible"
-4. Usa un tono profesional pero amigable
-5. Si hay pasos, enuméralos claramente
+---
 
-Pregunta del usuario:
+INSTRUCCIONES:
+1. Responde de forma natural, amigable y conversacional
+2. Usa la información de la documentación proporcionada como base
+3. Si la documentación contiene información relacionada o similar, úsala para construir una respuesta útil
+4. Puedes hacer inferencias razonables basándote en la información disponible
+5. Si necesitas relacionar conceptos de diferentes documentos, hazlo de manera natural
+6. Sé conciso pero completo - prioriza lo más importante
+7. Si hay pasos a seguir, enuméralos claramente
+8. Si definitivamente NO hay información sobre el tema preguntado en ningún documento, indícalo claramente y sugiere temas relacionados que sí están disponibles
+9. Usa emojis ocasionalmente para hacer la conversación más amigable (sin exagerar)
+
+PREGUNTA DEL USUARIO:
 ${question}
 
-Tu respuesta:`;
+Tu respuesta (directa, sin preámbulos como "Según la documentación..." - responde como si fueras parte del equipo de soporte):`;
 
       console.log('🤖 Generando respuesta con Gemini...');
       const answer = await createAnswer(prompt);

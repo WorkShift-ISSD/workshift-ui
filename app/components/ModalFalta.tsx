@@ -11,15 +11,17 @@ interface ModalFaltaProps {
   falta?: any;
   empleado: any;
   fecha?: string;
+  mode?: 'create' | 'edit';
 }
 
-export default function ModalFalta({ 
-  open, 
-  onClose, 
-  onSaved, 
-  falta, 
-  empleado, 
-  fecha 
+export default function ModalFalta({
+  open,
+  onClose,
+  onSaved,
+  falta,
+  empleado,
+  fecha,
+  mode = falta ? 'edit' : 'create'
 }: ModalFaltaProps) {
   const { register, handleSubmit, reset, watch } = useForm({
     defaultValues: {
@@ -114,8 +116,8 @@ export default function ModalFalta({
     <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex justify-center items-center z-50">
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-md shadow-xl">
         <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">
-          {falta 
-            ? "Editar Falta" 
+          {mode === 'edit'
+            ? `Editar Falta - ${empleado.apellido}, ${empleado.nombre}`
             : `Registrar Falta - ${empleado.apellido}, ${empleado.nombre}`
           }
         </h2>
@@ -129,8 +131,8 @@ export default function ModalFalta({
             <select
               {...register("motivo")}
               className="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-lg
-                       bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                       focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                      focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             >
               <option value="">Seleccionar motivo</option>

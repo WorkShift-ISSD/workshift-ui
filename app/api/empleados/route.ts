@@ -39,6 +39,8 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const empleado = await request.json();
+
+
     
     const [newEmpleado] = await sql`
       INSERT INTO users (
@@ -47,7 +49,7 @@ export async function POST(request: NextRequest) {
       )
       VALUES (
         ${empleado.legajo}, ${empleado.email}, ${empleado.nombre}, 
-        ${empleado.apellido}, ${empleado.legajo}, ${empleado.rol}, ${empleado.telefono || null},
+        ${empleado.apellido},  ${empleado.password}, ${empleado.legajo}, ${empleado.rol}, ${empleado.telefono || null},
         ${empleado.direccion || null}, ${empleado.horario || null}, 
         ${empleado.fechaNacimiento || null}, ${empleado.activo}, ${empleado.grupoTurno}
       )
@@ -57,7 +59,7 @@ export async function POST(request: NextRequest) {
         email,
         nombre,
         apellido,
-        password
+        password,
         rol,
         telefono,
         direccion,

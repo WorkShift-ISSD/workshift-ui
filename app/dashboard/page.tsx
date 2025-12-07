@@ -91,23 +91,41 @@ export default function DashboardHome() {
     );
   }, [user, monthInfo]);
 
-  // Calcular turnos trabajados (días sin faltas)
-  const guardiasTrabajadas = useMemo(() => {
+  // Calcular faltas del mes hasta hoy (separado para reutilizar)
+  const faltasDelMes = useMemo(() => {
     if (!user || !faltas) return 0;
 
-    // Contar faltas del usuario en el mes actual
-    const faltasDelMes = faltas.filter(falta => {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    return faltas.filter(falta => {
       const fechaFalta = new Date(falta.fecha);
       return (
         falta.empleadoId === user.id &&
         fechaFalta.getFullYear() === monthInfo.year &&
-        fechaFalta.getMonth() === monthInfo.month
+        fechaFalta.getMonth() === monthInfo.month &&
+        fechaFalta <= hoy
       );
     }).length;
+  }, [user, faltas, monthInfo]);
 
-    // Días trabajados = días que debía - faltas
-    return misGuardiasReales - faltasDelMes;
-  }, [user, faltas, monthInfo, misGuardiasReales]);
+  // Calcular turnos trabajados (días sin faltas, solo hasta hoy)
+  const guardiasTrabajadas = useMemo(() => {
+    if (!user) return 0;
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    // Calcular cuántos días debía trabajar HASTA HOY (no todo el mes)
+    const diasDebioTrabajarHastaHoy = calcularDiasTrabajoEnRango(
+      monthInfo.firstDay,
+      hoy > new Date(monthInfo.lastDayStr) ? monthInfo.lastDayStr : hoy.toISOString().split('T')[0],
+      user.grupoTurno
+    );
+
+    // Días trabajados = días que debía trabajar hasta hoy - faltas
+    return Math.max(0, diasDebioTrabajarHastaHoy - faltasDelMes);
+  }, [user, monthInfo, faltasDelMes]);
 
   // Calcular porcentaje cubierto
   const porcentajeCubierto = useMemo(() => {
@@ -495,7 +513,7 @@ useEffect(() => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-sky-400"></div>
-                <span className="text-sm text-gray-600 dark:text-gray-400">Mis Guardias</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Guardias del mes</span>
               </div>
               <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                 {misGuardiasReales}
@@ -504,7 +522,7 @@ useEffect(() => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-blue-600"></div>
-                <span className="text-sm text-gray-600 dark:text-gray-400">Guardias Trabajadas</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Trabajadas (hasta hoy)</span>
               </div>
               <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                 {guardiasTrabajadas}
@@ -513,10 +531,19 @@ useEffect(() => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-gray-600"></div>
-                <span className="text-sm text-gray-600 dark:text-gray-400">Guardias que me cubrieron</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Me cubrieron</span>
               </div>
               <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                 {turnosData?.guardiasQueMeCubrieron || 0}
+              </span>
+            </div>
+                        <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Faltas (hasta hoy)</span>
+              </div>
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {faltasDelMes}
               </span>
             </div>
           </div>

@@ -14,15 +14,21 @@ export async function fetcher<T>(url: string): Promise<T> {
   const res = await fetch(url);
 
   if (!res.ok) {
-    const info = await res.json().catch(() => ({}));
-    throw new APIError(
-      'Error al obtener datos',
-      res.status,
-      info
-    );
+  let errorData;
+  try {
+    errorData = await res.json();
+  } catch {
+    errorData = { message: 'Error desconocido' };
   }
+  
+  throw new APIError(
+    errorData.error || 'Error al obtener datos',
+    res.status,
+    errorData
+  );
+}
 
-  return res.json();
+return res.json(); // Solo se ejecuta si res.ok === true
 }
 
 export async function poster<T>(

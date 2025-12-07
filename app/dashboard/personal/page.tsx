@@ -27,6 +27,7 @@ import { LoadingSpinner } from '@/app/components/LoadingSpinner';
 import { ExportData } from '@/app/components/ExportToPdf';
 import { useAuth } from '@/app/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import bcryptjs from 'bcryptjs';
 
 
 // Types based on our Prisma schema
@@ -175,7 +176,6 @@ export default function DashboardPage() {
   useEffect(() => {
     setFilteredEmployees(filteredEmployeesMemo);
   }, [filteredEmployeesMemo]);
-
   // Calcular estadísticas
   const stats = useMemo(() => ({
     total: filteredEmployeesMemo.length,
@@ -342,11 +342,14 @@ export default function DashboardPage() {
         if (!confirmCreate) return;
 
         const validRol = (formData.rol || 'INSPECTOR') as Exclude<Rol, 'ADMINISTRADOR'>;
+        const hashedPassword = await bcryptjs.hash(`${formData.nombre!.trim().charAt(0)}${formData.apellido!.trim()}25`,10);
+        console.log(hashedPassword);
         await createEmpleado({
           legajo: formData.legajo!,
           email: formData.email!,
           nombre: formData.nombre!,
           apellido: formData.apellido!,
+          password: hashedPassword,
           rol: validRol,
           telefono: formData.telefono || null,
           direccion: formData.direccion || null,
@@ -415,6 +418,13 @@ export default function DashboardPage() {
 
   // Format date
   const formatDate = (dateString: string | null) => {
+    if (!dateString) return "";
+    const [year, month, day] = dateString.split("-");
+
+    return `${day}/${month}/${year}`;
+  };
+
+  const formatDateActualizacion = (dateString: string | null) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
     return date.toLocaleDateString('es-ES', {
@@ -739,24 +749,24 @@ export default function DashboardPage() {
                         </button>
 
                         {user?.rol !== "JEFE" && (
-  <>
-    <button
-      onClick={() => openModal('edit', employee)}
-      className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 transition-colors"
-      title="Editar"
-    >
-      <Edit2 className="h-4 w-4" />
-    </button>
+                          <>
+                            <button
+                              onClick={() => openModal('edit', employee)}
+                              className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 transition-colors"
+                              title="Editar"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
 
-    <button
-      onClick={() => handleDelete(employee.id)}
-      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors"
-      title="Eliminar"
-    >
-      <Trash2 className="h-4 w-4" />
-    </button>
-  </>
-)}
+                            <button
+                              onClick={() => handleDelete(employee.id)}
+                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                              title="Eliminar"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -974,7 +984,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">Última actualización</p>
-                      <p className="font-semibold text-gray-900 dark:text-gray-100">{formatDate(selectedEmployee.updatedAt)}</p>
+                      <p className="font-semibold text-gray-900 dark:text-gray-100">{formatDateActualizacion(selectedEmployee.updatedAt)}</p>
                     </div>
                   </div>
 

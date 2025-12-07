@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/app/lib/postgres';
 import { SignJWT } from 'jose';
 import { cookies } from 'next/headers';
-import bcrypt from 'bcrypt';
+import bcryptjs from 'bcryptjs';
 
 const SECRET_KEY = new TextEncoder().encode(
   process.env.JWT_SECRET || 'Workshift25'
@@ -45,8 +45,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar contraseña con bcrypt
-    const isValidPassword = await bcrypt.compare(password, user.password);
+    // Verificar contraseña con bcryptjs
+    const isValidPassword = await bcryptjs.compare(password, user.password);
 
     if (!isValidPassword) {
       return NextResponse.json(

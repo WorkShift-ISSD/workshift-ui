@@ -13,7 +13,12 @@ interface User {
   grupoTurno: 'A' | 'B';
   horario: string;
   activo: boolean;
-  primerIngreso?: boolean; // ✅ Agregado
+  imagen?: string | null;
+  primerIngreso?: boolean;
+  telefono: string;
+  direccion: string;
+  fechaNacimiento?: string; 
+
 }
 
 interface AuthContextType {
