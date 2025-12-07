@@ -1311,7 +1311,7 @@ export default function CambiosTurnosPage() {
                           const tipoOferta = esIntercambio ? 'Intercambio' : 'Oferta abierta';
 
                           if (oferta.estado === 'CANCELADO' && !oferta.tomador?.id) {
-                            return `${tipoOferta} cancelada`;
+                            return `${tipoOferta} cancelado`;
                           }
 
                           if (soyOfertante && oferta.tomador?.nombre) {
@@ -1362,7 +1362,7 @@ export default function CambiosTurnosPage() {
                                       {oferta.estado === 'COMPLETADO'
                                         ? 'Completado'
                                         : oferta.estado === 'APROBADO'
-                                          ? 'En progreso'
+                                          ? 'Intercambio'
                                           : (oferta.estado === 'DISPONIBLE' || oferta.estado === 'SOLICITADO')
                                             ? 'Solicitado'
                                             : 'Cancelado por vos'}
