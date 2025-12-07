@@ -124,6 +124,7 @@ export default function CambiosTurnosPage() {
     agregarOferta,
     actualizarEstado: actualizarEstadoOferta,
     eliminarOferta,
+    refetch,
     isLoading: isLoadingOfertas,
     error: errorOfertas
   } = useOfertas();
@@ -155,16 +156,16 @@ export default function CambiosTurnosPage() {
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('mis-solicitudes');
 
   useEffect(() => {
-  if (user?.horario) {
-    setNuevaOfertaForm(prev => ({
-      ...prev,
-      horarioOfrece: user.horario,
-      grupoOfrece: user.grupoTurno,
-      fechasBusca: prev.fechasBusca.map(f => ({ ...f, horario: user.horario })),
-      fechasDisponibles: prev.fechasDisponibles.map(f => ({ ...f, horario: user.horario })),
-    }));
-  }
-}, [user?.horario, user?.grupoTurno]);
+    if (user?.horario) {
+      setNuevaOfertaForm(prev => ({
+        ...prev,
+        horarioOfrece: user.horario,
+        grupoOfrece: user.grupoTurno,
+        fechasBusca: prev.fechasBusca.map(f => ({ ...f, horario: user.horario })),
+        fechasDisponibles: prev.fechasDisponibles.map(f => ({ ...f, horario: user.horario })),
+      }));
+    }
+  }, [user?.horario, user?.grupoTurno]);
 
   // Cargar usuarios una sola vez
   useEffect(() => {
@@ -461,12 +462,27 @@ export default function CambiosTurnosPage() {
 
   const handleCancelarOferta = useCallback(async (ofertaId: string) => {
     try {
-      await eliminarOferta(ofertaId);
+      if (!confirm('¿Estás seguro de que quieres cancelar esta oferta?')) {
+        return;
+      }
+
+      console.log('🔴 Cancelando oferta:', ofertaId);
+
+      await actualizarEstadoOferta(ofertaId, 'CANCELADO');
+
+      console.log('✅ Oferta cancelada, recargando...');
+
+      await refetch();
+
+      console.log('✅ Ofertas recargadas');
+
+      alert('Oferta cancelada exitosamente');
+
     } catch (error) {
-      console.error('Error al cancelar oferta:', error);
+      console.error('❌ Error al cancelar oferta:', error);
       alert('Error al cancelar la oferta');
     }
-  }, [eliminarOferta]);
+  }, [actualizarEstadoOferta, refetch]);
 
   const handleTomarOferta = useCallback(async (ofertaId: string) => {
     try {
@@ -505,13 +521,13 @@ export default function CambiosTurnosPage() {
       alert('¡Oferta tomada exitosamente! Pendiente de autorización del jefe.');
 
       // ✅ Recargar la página para ver los cambios
-
+      await refetch();
 
     } catch (error) {
       console.error('❌ Error al tomar oferta:', error);
       alert(error instanceof Error ? error.message : 'Error al tomar la oferta. Intenta nuevamente.');
     }
-  }, [user?.id]);
+  }, [user?.id, refetch]);
 
   // Handlers para solicitudes
   const handleAceptarSolicitud = useCallback(async (id: string) => {
@@ -550,13 +566,24 @@ export default function CambiosTurnosPage() {
   }, []);
 
   // Utilidades
-const formatearFecha = useCallback((fecha: string | null | undefined) => {
-  if (!fecha) return 'Fecha no disponible';
+  const formatearFecha = useCallback((fecha: string | null | undefined) => {
+    if (!fecha) return 'Fecha no disponible';
 
-  try {
-    // Si viene un ISO completo: 2025-12-02T15:48:13.000Z
-    if (fecha.includes('T')) {
-      const date = new Date(fecha);
+    try {
+      // Si viene un ISO completo: 2025-12-02T15:48:13.000Z
+      if (fecha.includes('T')) {
+        const date = new Date(fecha);
+        if (isNaN(date.getTime())) return 'Fecha inválida';
+
+        return date.toLocaleDateString("es-AR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
+      }
+
+      // Si viene YYYY-MM-DD (tu caso para los turnos)
+      const date = parseFechaLocal(fecha);
       if (isNaN(date.getTime())) return 'Fecha inválida';
 
       return date.toLocaleDateString("es-AR", {
@@ -564,21 +591,10 @@ const formatearFecha = useCallback((fecha: string | null | undefined) => {
         month: "2-digit",
         year: "numeric",
       });
+    } catch (error) {
+      return 'Error en fecha';
     }
-
-    // Si viene YYYY-MM-DD (tu caso para los turnos)
-    const date = parseFechaLocal(fecha);
-    if (isNaN(date.getTime())) return 'Fecha inválida';
-
-    return date.toLocaleDateString("es-AR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  } catch (error) {
-    return 'Error en fecha';
-  }
-}, []);
+  }, []);
 
 
   const validarFechaGrupo = useCallback((fecha: string): boolean => {
@@ -805,6 +821,14 @@ const formatearFecha = useCallback((fecha: string | null | undefined) => {
                 {(() => {
                   // ✅ MISMO FILTRO que en el contenido del tab
                   const ofertasHistorico = ofertas.filter(o => {
+                    if (o.ofertante?.id === user?.id || o.tomador?.id === user?.id) {
+                      console.log('📊 Oferta mía:', {
+                        id: o.id.substring(0, 8),
+                        estado: o.estado,
+                        soyOfertante: o.ofertante?.id === user?.id,
+                        soyTomador: o.tomador?.id === user?.id
+                      });
+                    }
                     const soyOfertante = o.ofertante?.id === user?.id;
                     const soyTomador = o.tomador?.id === user?.id;
 
@@ -1190,41 +1214,44 @@ const formatearFecha = useCallback((fecha: string | null | undefined) => {
           )}
 
           {/* Tab Content: Histórico */}
+          {/* Tab Content: Histórico */}
           {activeMainTab === 'historico' && (
             <div>
               {(() => {
-                // ✅ NUEVO FILTRO: Solo mostrar lo que YO cancelé o completé
+                // ✅ FILTRO FLEXIBLE: Incluye DISPONIBLE y SOLICITADO
                 const ofertasHistorico = ofertas.filter(o => {
                   const soyOfertante = o.ofertante?.id === user?.id;
                   const soyTomador = o.tomador?.id === user?.id;
 
-                  // Para COMPLETADO: mostrar si participé (ambas partes lo ven)
-                  if (o.estado === 'COMPLETADO') {
+                  // Para COMPLETADO y APROBADO: mostrar si participé
+                  if (o.estado === 'COMPLETADO' || o.estado === 'APROBADO') {
                     return soyOfertante || soyTomador;
                   }
 
-                  // Para CANCELADO: SOLO mostrar si YO soy el ofertante (quien creó la oferta puede cancelar)
+                  // ✅ AGREGAR: Para ofertas disponibles/pendientes (ambos estados)
+                  if (o.estado === 'DISPONIBLE' || o.estado === 'SOLICITADO') {
+                    return soyOfertante || soyTomador;
+                  }
+
+                  // Para CANCELADO: SOLO mostrar si YO soy el ofertante
                   if (o.estado === 'CANCELADO') {
-                    return soyOfertante; // ✅ Solo quien creó la oferta ve las canceladas
+                    return soyOfertante;
                   }
 
                   return false;
                 });
 
-                // ✅ NUEVO FILTRO: Solo mostrar solicitudes que YO cancelé o completé
+                // Filtro de solicitudes directas (sin cambios)
                 const solicitudesHistorico = solicitudesDirectas.filter(s => {
                   const soyElSolicitante = s.solicitante?.id === user?.id;
                   const soyElDestinatario = s.destinatario?.id === user?.id;
 
-                  // Para COMPLETADO: mostrar si participé (ambas partes lo ven)
                   if (s.estado === 'COMPLETADO') {
                     return soyElSolicitante || soyElDestinatario;
                   }
 
-                  // Para CANCELADO: SOLO mostrar si YO soy el solicitante
-                  // (asumimos que solo el solicitante puede cancelar su propia solicitud)
                   if (s.estado === 'CANCELADO') {
-                    return soyElSolicitante; // ✅ Solo quien envió la solicitud ve las canceladas
+                    return soyElSolicitante;
                   }
 
                   return false;
@@ -1232,20 +1259,17 @@ const formatearFecha = useCallback((fecha: string | null | undefined) => {
 
                 const totalHistorico = ofertasHistorico.length + solicitudesHistorico.length;
 
-                // 🔍 Debug
+                // Debug
                 console.log('📊 MI Histórico:', {
                   userId: user?.id,
                   ofertas: {
                     todas: ofertas.length,
                     completadas: ofertas.filter(o => o.estado === 'COMPLETADO' && (o.ofertante?.id === user?.id || o.tomador?.id === user?.id)).length,
+                    aprobadas: ofertas.filter(o => o.estado === 'APROBADO' && (o.ofertante?.id === user?.id || o.tomador?.id === user?.id)).length,
+                    disponibles: ofertas.filter(o => o.estado === 'DISPONIBLE' && (o.ofertante?.id === user?.id || o.tomador?.id === user?.id)).length,
+                    solicitadas: ofertas.filter(o => o.estado === 'SOLICITADO' && (o.ofertante?.id === user?.id || o.tomador?.id === user?.id)).length,
                     canceladasMias: ofertas.filter(o => o.estado === 'CANCELADO' && o.ofertante?.id === user?.id).length,
                     enHistorico: ofertasHistorico.length
-                  },
-                  solicitudes: {
-                    todas: solicitudesDirectas.length,
-                    completadas: solicitudesDirectas.filter(s => s.estado === 'COMPLETADO' && (s.solicitante?.id === user?.id || s.destinatario?.id === user?.id)).length,
-                    canceladasMias: solicitudesDirectas.filter(s => s.estado === 'CANCELADO' && s.solicitante?.id === user?.id).length,
-                    enHistorico: solicitudesHistorico.length
                   },
                   totalHistorico
                 });
@@ -1282,8 +1306,24 @@ const formatearFecha = useCallback((fecha: string | null | undefined) => {
                         const esIntercambio = oferta.modalidadBusqueda === TipoSolicitud.INTERCAMBIO;
                         const soyOfertante = oferta.ofertante?.id === user?.id;
                         const nombreOtraParte = soyOfertante
-                          ? `${oferta.tomador?.nombre || 'Usuario'} ${oferta.tomador?.apellido || ''}`
-                          : `${oferta.ofertante?.nombre} ${oferta.ofertante?.apellido}`;
+                        // ✅ AGREGAR
+                        const textoTitulo = (() => {
+                          const tipoOferta = esIntercambio ? 'Intercambio' : 'Oferta abierta';
+
+                          if (oferta.estado === 'CANCELADO' && !oferta.tomador?.id) {
+                            return `${tipoOferta} cancelada`;
+                          }
+
+                          if (soyOfertante && oferta.tomador?.nombre) {
+                            return `${tipoOferta} con ${oferta.tomador.nombre} ${oferta.tomador.apellido}`;
+                          }
+
+                          if (!soyOfertante && oferta.ofertante?.nombre) {
+                            return `${tipoOferta} con ${oferta.ofertante.nombre} ${oferta.ofertante.apellido}`;
+                          }
+
+                          return tipoOferta;
+                        })();
 
                         return (
                           <div
@@ -1292,24 +1332,40 @@ const formatearFecha = useCallback((fecha: string | null | undefined) => {
                           >
                             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2 mb-3">
                               <div className="flex items-center gap-3 flex-1">
+                                {/* ✅ CORREGIDO: Soporte para DISPONIBLE y SOLICITADO */}
                                 <div
                                   className={`w-2 h-2 rounded-full flex-shrink-0 ${oferta.estado === 'COMPLETADO'
                                     ? 'bg-green-500'
-                                    : 'bg-red-500'
+                                    : oferta.estado === 'APROBADO'
+                                      ? 'bg-blue-500'
+                                      : (oferta.estado === 'DISPONIBLE' || oferta.estado === 'SOLICITADO')
+                                        ? 'bg-yellow-500'
+                                        : 'bg-red-500'
                                     }`}
                                 ></div>
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <span className="text-gray-900 dark:text-gray-100 font-medium text-sm">
-                                      {esIntercambio ? 'Intercambio' : 'Oferta abierta'} con {nombreOtraParte}
+                                      {textoTitulo}
                                     </span>
+                                    {/* ✅ CORREGIDO: Badges con soporte para ambos estados */}
                                     <span
                                       className={`text-xs px-2 py-0.5 rounded ${oferta.estado === 'COMPLETADO'
                                         ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                                        : oferta.estado === 'APROBADO'
+                                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                          : (oferta.estado === 'DISPONIBLE' || oferta.estado === 'SOLICITADO')
+                                            ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
+                                            : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
                                         }`}
                                     >
-                                      {oferta.estado === 'COMPLETADO' ? 'Completado' : 'Cancelado por ti'}
+                                      {oferta.estado === 'COMPLETADO'
+                                        ? 'Completado'
+                                        : oferta.estado === 'APROBADO'
+                                          ? 'En progreso'
+                                          : (oferta.estado === 'DISPONIBLE' || oferta.estado === 'SOLICITADO')
+                                            ? 'Solicitado'
+                                            : 'Cancelado por vos'}
                                     </span>
                                   </div>
                                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -1345,15 +1401,52 @@ const formatearFecha = useCallback((fecha: string | null | undefined) => {
                             </div>
 
                             {oferta.descripcion && (
-                              <p className="text-xs text-gray-600 dark:text-gray-400 ml-5 italic">
+                              <p className="text-xs text-gray-600 dark:text-gray-400 ml-5 italic mb-3">
                                 "{oferta.descripcion}"
                               </p>
                             )}
+
+                            {/* ✅ CORREGIDO: Botones con soporte para ambos estados */}
+                            <div className="ml-5 mt-3">
+                              {/* Botones para ofertas disponibles/pendientes (solo si NO soy el ofertante) */}
+                              {(oferta.estado === 'DISPONIBLE' || oferta.estado === 'SOLICITADO') && !soyOfertante && (
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleTomarOferta(oferta.id)}
+                                    className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+                                  >
+                                    ✓ Tomar Oferta
+                                  </button>
+                                  <button
+                                    onClick={() => handleCancelarOferta(oferta.id)}
+                                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors"
+                                  >
+                                    Ignorar
+                                  </button>
+                                </div>
+                              )}
+
+                              {/* Mensaje si soy el ofertante y está disponible/pendiente */}
+                              {(oferta.estado === 'DISPONIBLE' || oferta.estado === 'SOLICITADO') && soyOfertante && (
+                                <div className="px-3 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-lg text-sm text-center">
+                                  ⏳ Esperando que alguien tome tu oferta
+                                </div>
+                              )}
+
+                              {/* Badge si está APROBADO */}
+                              {oferta.estado === 'APROBADO' && (
+                                <div className="px-3 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-lg text-sm text-center">
+                                  {oferta.tomador?.id === user?.id
+                                    ? '✓ Has tomado esta oferta - En proceso'
+                                    : `→ ${oferta.tomador?.nombre} ${oferta.tomador?.apellido} tomó esta oferta`}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
 
-                    {/* SOLICITUDES DIRECTAS en histórico */}
+                    {/* SOLICITUDES DIRECTAS en histórico (sin cambios) */}
                     {solicitudesHistorico
                       .sort((a, b) => new Date(b.fechaSolicitud).getTime() - new Date(a.fechaSolicitud).getTime())
                       .map((solicitud) => {

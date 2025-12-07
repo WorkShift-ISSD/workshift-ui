@@ -21,11 +21,13 @@ const SECRET_KEY = new TextEncoder().encode(
 );
 
 // GET - Obtener todas las ofertas
+// GET - Obtener todas las ofertas
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const estado = searchParams.get('estado');
 
+    // ✅ CORREGIDO: Incluir TODOS los estados (también CANCELADO y COMPLETADO)
     const ofertas = await sql`
       SELECT 
         o.*,
@@ -36,21 +38,29 @@ export async function GET(request: NextRequest) {
           'rol', u.rol,
           'calificacion', COALESCE(u.calificacion, 4.5),
           'totalIntercambios', COALESCE(u.total_intercambios, 0)
-        ) as ofertante
+        ) as ofertante,
+        json_build_object(
+          'id', t.id,
+          'nombre', t.nombre,
+          'apellido', t.apellido
+        ) as tomador
       FROM ofertas o
       JOIN users u ON o.ofertante_id = u.id
+      LEFT JOIN users t ON o.tomador_id = t.id
       WHERE o.estado IN (
         ${EstadoOferta.DISPONIBLE}, 
         ${EstadoOferta.SOLICITADO}, 
-        ${EstadoOferta.APROBADO}
+        ${EstadoOferta.APROBADO},
+        ${EstadoOferta.COMPLETADO},
+        ${EstadoOferta.CANCELADO}
       )
-        AND o.valido_hasta > NOW()
       ORDER BY o.publicado DESC;
     `;
 
     const ofertasFormateadas = ofertas.map(o => ({
       id: o.id,
       ofertante: o.ofertante,
+      tomador: o.tomador?.id ? o.tomador : null, // ✅ Incluir tomador si existe
       tipo: o.tipo,
       modalidadBusqueda: o.modalidad_busqueda,
       turnoOfrece: o.turno_ofrece ?
