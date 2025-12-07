@@ -736,9 +736,9 @@ useEffect(() => {
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Estado
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                {/* <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Turnos/Mes
-                </th>
+                </th> */}
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Acciones
                 </th>
@@ -823,12 +823,12 @@ useEffect(() => {
                       </span>
                     </td>
 
-                    <td className="px-6 py-4 text-center whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                    {/* <td className="px-6 py-4 text-center whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                       <div className="flex justify-center items-center gap-2">
                         <Clock className="h-4 w-4 text-gray-400 dark:text-gray-300" />
                         {employee.turnosEsteMes || 0}
                       </div>
-                    </td>
+                    </td> */}
 
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center justify-center gap-2">
