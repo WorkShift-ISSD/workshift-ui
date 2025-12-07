@@ -136,22 +136,54 @@ ${question}
 Tu respuesta (directa, sin preámbulos como "Según la documentación..." - responde como si fueras parte del equipo de soporte):`;
 
       console.log('🤖 Generando respuesta con Gemini...');
-      const answer = await createAnswer(prompt);
-      console.log('✅ Respuesta generada');
+      
+      try {
+        const answer = await createAnswer(prompt);
+        console.log('✅ Respuesta generada');
 
-      return NextResponse.json({
-        answer,
-        sources: allResults.slice(0, 3).map((r: any) => ({ 
-          id: r.id, 
-          title: r.title
-        }))
-      });
+        return NextResponse.json({
+          answer,
+          sources: allResults.slice(0, 3).map((r: any) => ({ 
+            id: r.id, 
+            title: r.title
+          }))
+        });
+
+      } catch (geminiError: any) {
+        // Manejo específico de error de rate limit
+        if (geminiError.message === 'RATE_LIMIT_EXCEEDED') {
+          console.error('⏳ Límite de cuota de Gemini excedido');
+          
+          // Respuesta de fallback sin IA
+          const fallbackAnswer = `📚 **Información encontrada:**
+
+${allResults.slice(0, 3).map((r: any, i: number) => 
+  `**${i + 1}. ${r.title}**\n${r.content.substring(0, 200)}...`
+).join('\n\n')}
+
+---
+
+💡 *Nota: El asistente IA está temporalmente sobrecargado. Te he mostrado la información disponible en la documentación. Para más detalles, contacta a tu supervisor.*`;
+
+          return NextResponse.json({
+            answer: fallbackAnswer,
+            sources: allResults.slice(0, 3).map((r: any) => ({ 
+              id: r.id, 
+              title: r.title
+            })),
+            warning: 'rate_limit'
+          });
+        }
+
+        // Otros errores de Gemini
+        throw geminiError;
+      }
 
     } catch (dbError: any) {
       console.error('❌ Error:', dbError);
       
       return NextResponse.json({
-        answer: 'Error al procesar tu pregunta. Por favor intenta de nuevo.',
+        answer: 'Error al procesar tu pregunta. Por favor intenta de nuevo en unos momentos.',
         sources: []
       }, { status: 500 });
     }
@@ -161,7 +193,7 @@ Tu respuesta (directa, sin preámbulos como "Según la documentación..." - resp
     return NextResponse.json(
       { 
         error: "Error interno",
-        answer: "Hubo un error. Por favor intenta de nuevo."
+        answer: "Hubo un error. Por favor intenta de nuevo más tarde."
       },
       { status: 500 }
     );

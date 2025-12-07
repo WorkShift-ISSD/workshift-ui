@@ -1,5 +1,5 @@
 // app/api/seed/route.ts
-import bcrypt from 'bcrypt';
+import bcryptjs from 'bcryptjs';
 import postgres from 'postgres';
 import { cambios, users, turnos, stats, turnosData } from '../../lib/placeholder-data';
 
@@ -131,7 +131,7 @@ const createTableQuery = `
   console.log('👥 Insertando usuarios del sistema...');
   const insertedSystemUsers = await Promise.all(
     systemUsers.map(async (user) => {
-      const hashedPassword = await bcrypt.hash(user.password, 10);
+      const hashedPassword = await bcryptjs.hash(user.password, 10);
       try {
         return await sql`
           INSERT INTO users (
@@ -182,7 +182,7 @@ const createTableQuery = `
   console.log('👥 Insertando usuarios de placeholder...');
   const insertedUsers = await Promise.all(
     users.map(async (user) => {
-      const hashedPassword = await bcrypt.hash(user.legajo?.toString() || 'password123', 10);
+      const hashedPassword = await bcryptjs.hash(user.legajo?.toString() || 'password123', 10);
       try {
         return await sql`
           INSERT INTO users (

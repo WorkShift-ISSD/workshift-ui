@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/app/lib/postgres';
 import { sendPasswordChangedEmail } from '@/app/lib/email';
-import bcrypt from 'bcrypt';
+import bcryptjs from 'bcryptjs';
 
 export async function POST(
   request: NextRequest,
@@ -61,7 +61,7 @@ export async function POST(
     }
 
     // Hashear nueva contraseña
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await bcryptjs.hash(newPassword, 10);
 
     // Actualizar contraseña
     await sql`
