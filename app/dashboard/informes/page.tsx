@@ -68,14 +68,27 @@ export default function InformesPage() {
   const [mostrarFiltros, setMostrarFiltros] = useState(true);
   const [horarioSeleccionado, setHorarioSeleccionado] = useState<string>('TODOS');
 
+  const [soloConFaltas, setSoloConFaltas] = useState(false);
+
+  // Estados para el segundo grupo de comparación
+  const [compararActivo, setCompararActivo] = useState(false);
+  const [rolComparacion, setRolComparacion] = useState<Rol | 'TODOS'>('TODOS');
+  const [turnoComparacion, setTurnoComparacion] = useState<GrupoTurno | 'TODOS'>('TODOS');
+  const [horarioComparacion, setHorarioComparacion] = useState<string>('TODOS');
+  const [fechaInicioComparacion, setFechaInicioComparacion] = useState(() => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - 1);
+    return date.toISOString().split('T')[0];
+  });
+  const [fechaFinComparacion, setFechaFinComparacion] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+
+  // Estados para paginación
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [itemsPorPagina, setItemsPorPagina] = useState(10);
 
 
-
-  useEffect(() => {
-    if (tipoInforme !== "individual") {
-      setEmpleadoSeleccionado("TODOS");
-    }
-  }, [tipoInforme]);
 
 
   // Colores para gráficos
@@ -98,6 +111,11 @@ export default function InformesPage() {
     setHorarioSeleccionado('TODOS');
   }, [rolSeleccionado]);
 
+  useEffect(() => {
+    if (tipoInforme !== "individual") {
+      setEmpleadoSeleccionado("TODOS");
+    }
+  }, [tipoInforme]);
 
   // Empleados filtrados
   const empleadosFiltrados = useMemo(() => {
@@ -109,7 +127,8 @@ export default function InformesPage() {
       !['JEFE', 'ADMINISTRADOR'].includes(String(e.rol))
     );
 
-    if (empleadoSeleccionado !== 'TODOS') {
+    // Solo filtrar por empleado seleccionado si estamos en informe individual
+    if (empleadoSeleccionado !== 'TODOS' && tipoInforme === 'individual') {
       filtrados = filtrados.filter(e => e.id === empleadoSeleccionado);
     }
 
@@ -142,7 +161,59 @@ export default function InformesPage() {
     }
 
     return filtrados;
-  }, [empleados, empleadoSeleccionado, rolSeleccionado, turnoSeleccionado, horarioSeleccionado, searchTerm]);
+  }, [empleados, empleadoSeleccionado, rolSeleccionado, turnoSeleccionado, horarioSeleccionado, searchTerm, tipoInforme]);
+
+  // Empleados para el selector (filtrados por búsqueda)
+  const empleadosParaSelector = useMemo(() => {
+    if (!empleados) return [];
+    let filtrados = empleados.filter(e =>
+      !['JEFE', 'ADMINISTRADOR'].includes(String(e.rol))
+    );
+
+    if (searchTerm) {
+      const palabras = searchTerm.toLowerCase().trim().split(/\s+/);
+
+      filtrados = filtrados.filter(e => {
+        const nombre = e.nombre.toLowerCase();
+        const apellido = e.apellido.toLowerCase();
+        const legajo = e.legajo.toString();
+
+        return palabras.every(palabra =>
+          nombre.includes(palabra) ||
+          apellido.includes(palabra) ||
+          legajo.includes(palabra)
+        );
+      });
+    }
+
+    return filtrados;
+  }, [empleados, searchTerm]);
+
+
+
+  // Empleados del segundo grupo (para comparación)
+  const empleadosComparacion = useMemo(() => {
+    if (!empleados || !compararActivo) return [];
+    let filtrados = [...empleados];
+
+    filtrados = filtrados.filter(e =>
+      !['JEFE', 'ADMINISTRADOR'].includes(String(e.rol))
+    );
+
+    if (rolComparacion !== 'TODOS') {
+      filtrados = filtrados.filter(e => e.rol === rolComparacion);
+    }
+
+    if (turnoComparacion !== 'TODOS') {
+      filtrados = filtrados.filter(e => e.grupoTurno === turnoComparacion);
+    }
+
+    if (horarioComparacion !== 'TODOS') {
+      filtrados = filtrados.filter(e => e.horario === horarioComparacion);
+    }
+
+    return filtrados;
+  }, [empleados, rolComparacion, turnoComparacion, horarioComparacion, compararActivo]);
 
   // Faltas filtradas por fecha
   const faltasFiltradas = useMemo(() => {
@@ -154,6 +225,17 @@ export default function InformesPage() {
       return fecha >= inicio && fecha <= fin;
     });
   }, [faltas, fechaInicio, fechaFin]);
+
+  // Faltas del segundo grupo
+  const faltasComparacion = useMemo(() => {
+    if (!faltas || !compararActivo) return [];
+    return faltas.filter(f => {
+      const fecha = new Date(f.fecha);
+      const inicio = new Date(fechaInicioComparacion);
+      const fin = new Date(fechaFinComparacion);
+      return fecha >= inicio && fecha <= fin;
+    });
+  }, [faltas, fechaInicioComparacion, fechaFinComparacion, compararActivo]);
 
   // Datos para informe de asistencia
   const datosAsistencia = useMemo(() => {
@@ -184,10 +266,34 @@ export default function InformesPage() {
         diasTrabajados: estadisticas.diasTrabajados,
         porcentajeAsistencia: estadisticas.porcentajeAsistencia,
       };
-    }).sort((a, b) => b.porcentajeAsistencia - a.porcentajeAsistencia);
+    })
+      .filter(emp => emp.faltas > 0)
+      .sort((a, b) => b.porcentajeAsistencia - a.porcentajeAsistencia);
 
     return porEmpleado;
   }, [empleadosFiltrados, faltasFiltradas, fechaInicio, fechaFin]);
+
+  // Datos paginados
+  const datosPaginados = useMemo(() => {
+    if (datosAsistencia.length === 0) return [];
+
+    const indexInicio = (paginaActual - 1) * itemsPorPagina;
+    const indexFin = indexInicio + itemsPorPagina;
+
+    return datosAsistencia.slice(indexInicio, indexFin);
+  }, [datosAsistencia, paginaActual, itemsPorPagina]);
+
+  // Calcular número total de páginas
+  const totalPaginas = useMemo(() => {
+    return Math.max(1, Math.ceil(datosAsistencia.length / itemsPorPagina));
+  }, [datosAsistencia.length, itemsPorPagina]);
+
+  // Resetear página cuando cambian los filtros o si la página actual es mayor al total
+  useEffect(() => {
+    if (paginaActual > totalPaginas) {
+      setPaginaActual(1);
+    }
+  }, [paginaActual, totalPaginas]);
 
   // Datos para informe de ausentismo
   const datosAusentismo = useMemo(() => {
@@ -291,6 +397,70 @@ export default function InformesPage() {
         : '0.00',
     };
   }, [empleadosFiltrados, faltasFiltradas, fechaInicio, fechaFin]);
+
+  // Estadísticas para comparación avanzada
+  const estadisticasComparativas = useMemo(() => {
+    if (!compararActivo) return null;
+
+    // Estadísticas Grupo A (filtros principales)
+    const empleadosIdsA = empleadosFiltrados.map(e => e.id);
+    const faltasA = faltasFiltradas.filter(f => empleadosIdsA.includes(f.empleadoId));
+
+    let diasDebieroTrabajarA = 0;
+    empleadosFiltrados.forEach(emp => {
+      diasDebieroTrabajarA += calcularDiasTrabajoEnRango(fechaInicio, fechaFin, emp.grupoTurno);
+    });
+
+    // Estadísticas Grupo B (filtros de comparación)
+    const empleadosIdsB = empleadosComparacion.map(e => e.id);
+    const faltasB = faltasComparacion.filter(f => empleadosIdsB.includes(f.empleadoId));
+
+    let diasDebieroTrabajarB = 0;
+    empleadosComparacion.forEach(emp => {
+      diasDebieroTrabajarB += calcularDiasTrabajoEnRango(fechaInicioComparacion, fechaFinComparacion, emp.grupoTurno);
+    });
+
+    return {
+      grupoA: {
+        nombre: 'Grupo 1',
+        empleados: empleadosFiltrados.length,
+        totalFaltas: faltasA.length,
+        justificadas: faltasA.filter(f => f.justificada).length,
+        injustificadas: faltasA.filter(f => !f.justificada).length,
+        diasDebioTrabajar: diasDebieroTrabajarA,
+        tasaAusentismo: diasDebieroTrabajarA > 0
+          ? ((faltasA.length / diasDebieroTrabajarA) * 100).toFixed(2)
+          : '0.00',
+        promedioFaltas: empleadosFiltrados.length > 0
+          ? (faltasA.length / empleadosFiltrados.length).toFixed(2)
+          : '0.00',
+      },
+      grupoB: {
+        nombre: 'Grupo 2',
+        empleados: empleadosComparacion.length,
+        totalFaltas: faltasB.length,
+        justificadas: faltasB.filter(f => f.justificada).length,
+        injustificadas: faltasB.filter(f => !f.justificada).length,
+        diasDebioTrabajar: diasDebieroTrabajarB,
+        tasaAusentismo: diasDebieroTrabajarB > 0
+          ? ((faltasB.length / diasDebieroTrabajarB) * 100).toFixed(2)
+          : '0.00',
+        promedioFaltas: empleadosComparacion.length > 0
+          ? (faltasB.length / empleadosComparacion.length).toFixed(2)
+          : '0.00',
+      }
+    };
+  }, [
+    compararActivo,
+    empleadosFiltrados,
+    faltasFiltradas,
+    empleadosComparacion,
+    faltasComparacion,
+    fechaInicio,
+    fechaFin,
+    fechaInicioComparacion,
+    fechaFinComparacion
+  ]);
 
 
   if (loadingEmpleados || loadingFaltas) {
@@ -453,7 +623,7 @@ export default function InformesPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
               {/* Fecha Inicio */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -545,12 +715,22 @@ export default function InformesPage() {
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   >
                     <option value="TODOS">Seleccionar empleado</option>
-                    {empleados?.map(emp => (
+                    {empleadosParaSelector.map(emp => (
                       <option key={emp.id} value={emp.id}>
                         {emp.apellido}, {emp.nombre} - Leg. {emp.legajo}
                       </option>
                     ))}
                   </select>
+                  {searchTerm && empleadosParaSelector.length > 0 && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Mostrando {empleadosParaSelector.length} empleado{empleadosParaSelector.length !== 1 ? 's' : ''} que coincide{empleadosParaSelector.length !== 1 ? 'n' : ''} con "{searchTerm}"
+                    </p>
+                  )}
+                  {searchTerm && empleadosParaSelector.length === 0 && (
+                    <p className="text-xs text-red-500 dark:text-red-400 mt-1">
+                      No se encontraron empleados con "{searchTerm}"
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -619,7 +799,7 @@ export default function InformesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {datosAsistencia.map((dato) => (
+                  {datosPaginados.map((dato) => (
                     <tr key={dato.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">{dato.legajo}</td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{dato.nombre}</td>
@@ -652,6 +832,107 @@ export default function InformesPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Controles de paginación */}
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                  Mostrar
+                </span>
+                <select
+                  value={itemsPorPagina}
+                  onChange={(e) => {
+                    setItemsPorPagina(Number(e.target.value));
+                    setPaginaActual(1);
+                  }}
+                  className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                  por página
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                  Mostrando {datosAsistencia.length === 0 ? 0 : (paginaActual - 1) * itemsPorPagina + 1} a{' '}
+                  {Math.min(paginaActual * itemsPorPagina, datosAsistencia.length)} de{' '}
+                  {datosAsistencia.length} registros
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1">
+                {/* Botón Primera Página */}
+                <button
+                  onClick={() => setPaginaActual(1)}
+                  disabled={paginaActual === 1}
+                  className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                  «
+                </button>
+
+                {/* Botón Anterior */}
+                <button
+                  onClick={() => setPaginaActual(prev => Math.max(1, prev - 1))}
+                  disabled={paginaActual === 1}
+                  className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                  ‹
+                </button>
+
+                {/* Números de página */}
+                {(() => {
+                  const pages = [];
+                  const maxPagesToShow = 5;
+                  let startPage = Math.max(1, paginaActual - Math.floor(maxPagesToShow / 2));
+                  let endPage = Math.min(totalPaginas, startPage + maxPagesToShow - 1);
+
+                  if (endPage - startPage < maxPagesToShow - 1) {
+                    startPage = Math.max(1, endPage - maxPagesToShow + 1);
+                  }
+
+                  for (let i = startPage; i <= endPage; i++) {
+                    pages.push(
+                      <button
+                        key={i}
+                        onClick={() => setPaginaActual(i)}
+                        className={`px-3 py-1 rounded-lg text-sm ${paginaActual === i
+                          ? 'bg-blue-600 text-white'
+                          : 'border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                          }`}
+                      >
+                        {i}
+                      </button>
+                    );
+                  }
+
+                  return pages;
+                })()}
+
+                {/* Botón Siguiente */}
+                <button
+                  onClick={() => setPaginaActual(prev => Math.min(totalPaginas, prev + 1))}
+                  disabled={paginaActual === totalPaginas}
+                  className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                  ›
+                </button>
+
+                {/* Botón Última Página */}
+                <button
+                  onClick={() => setPaginaActual(totalPaginas)}
+                  disabled={paginaActual === totalPaginas}
+                  className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                  »
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Gráfico Top 10 */}
@@ -666,27 +947,27 @@ export default function InformesPage() {
                 <YAxis stroke="#9CA3AF" />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: '#1F2937',           // Ya estaba
-                    border: '1px solid #374151',         // Ya estaba
-                    borderRadius: '8px',                 // ⭐ NUEVO - Bordes redondeados
-                    padding: '8px 12px'                  // ⭐ NUEVO - Más padding
+                    backgroundColor: '#1F2937',
+                    border: '1px solid #374151',
+                    borderRadius: '8px',
+                    padding: '8px 12px'
                   }}
-                  labelStyle={{                          // ⭐ NUEVO - Estilo del título
-                    color: '#F3F4F6',                    // Color claro para el texto
-                    fontWeight: 'bold',                  // Texto en negrita
-                    marginBottom: '4px'                  // Espacio debajo del título
+                  labelStyle={{
+                    color: '#F3F4F6',
+                    fontWeight: 'bold',
+                    marginBottom: '4px'
                   }}
-                  itemStyle={{ color: '#10B981' }}      // ⭐ NUEVO - Color verde claro para valores
-                  cursor={{ fill: 'transparent' }}  // ⭐ NUEVO - Elimina el rectángulo gris/blanco
+                  itemStyle={{ color: '#10B981' }}
+                  cursor={{ fill: 'transparent' }}
                 />
                 <Bar
                   dataKey="porcentajeAsistencia"
                   fill={COLORS.green}
                   radius={[8, 8, 0, 0]}
-                  activeBar={{                           // ⭐ NUEVO - Efecto hover personalizado
-                    fill: '#059669',                     // Tono más oscuro de verde
-                    stroke: '#10B981',                   // Borde verde
-                    strokeWidth: 2                       // Grosor del borde
+                  activeBar={{
+                    fill: '#059669',
+                    stroke: '#10B981',
+                    strokeWidth: 2
                   }}
                 />
               </BarChart>
@@ -744,7 +1025,7 @@ export default function InformesPage() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-label={({ name, promedio }: any) => `${name}: ${promedio}`}
+                  label={({ name, promedio }: any) => `${name}: ${promedio}`}
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
@@ -752,35 +1033,35 @@ label={({ name, promedio }: any) => `${name}: ${promedio}`}
                   <Cell fill={COLORS.green} />
                   <Cell fill={COLORS.blue} />
                 </Pie>
-<Tooltip
-  content={({ active, payload }) => {
-    if (!active || !payload || !payload.length) return null;
-    
-    const data = payload[0];
-    
-    // Colores según el grupo
-    const colorMap: Record<string, string> = {
-      'A': '#3B82F6',    // Azul para grupo A
-      'B': '#10B981'     // Verde para grupo B
-    };
-    
-    const color = colorMap[data.name] || '#6B7280';
-    
-    return (
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-lg">
-        <p className="m-0">
-          <span style={{ color: color }} className="font-bold">
-            {data.name}
-          </span>
-          {': '}
-          <span className="text-gray-900 dark:text-white font-bold">
-            {data.value}
-          </span>
-        </p>
-      </div>
-    );
-  }}
-/>
+                <Tooltip
+                  content={({ active, payload }) => {
+                    if (!active || !payload || !payload.length) return null;
+
+                    const data = payload[0];
+
+                    // Colores según el grupo
+                    const colorMap: Record<string, string> = {
+                      'A': '#3B82F6',    // Azul para grupo A
+                      'B': '#10B981'     // Verde para grupo B
+                    };
+
+                    const color = colorMap[data.name] || '#6B7280';
+
+                    return (
+                      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-lg">
+                        <p className="m-0">
+                          <span style={{ color: color }} className="font-bold">
+                            {data.name}
+                          </span>
+                          {': '}
+                          <span className="text-gray-900 dark:text-white font-bold">
+                            {data.value}
+                          </span>
+                        </p>
+                      </div>
+                    );
+                  }}
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -820,13 +1101,268 @@ label={({ name, promedio }: any) => `${name}: ${promedio}`}
                   ))}
                 </tbody>
               </table>
+
             </div>
           </div>
         </div>
       )}
 
+
+
       {tipoInforme === 'comparativo' && (
         <div className="space-y-6">
+
+          {tipoInforme === 'comparativo' && (
+            <>
+              {/* Toggle para activar comparación avanzada */}
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Comparación Avanzada
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      Compara dos grupos diferentes con filtros independientes
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setCompararActivo(!compararActivo)}
+                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${compararActivo
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                      }`}
+                  >
+                    {compararActivo ? 'Desactivar' : 'Activar'} Comparación
+                  </button>
+                </div>
+
+                {compararActivo && (
+                  <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Grupo A - Filtros actuales */}
+                      <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-lg border-2 border-blue-200 dark:border-blue-800">
+                        <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-3 flex items-center gap-2">
+                          <span className="bg-blue-600 text-white px-2 py-1 rounded text-sm">1</span>
+                          Grupo de Referencia (Filtros principales)
+                        </h4>
+                        <div className="space-y-2 text-sm">
+                          <p className="text-gray-700 dark:text-gray-300">
+                            <strong>Período:</strong> {new Date(fechaInicio).toLocaleDateString('es-AR')} - {new Date(fechaFin).toLocaleDateString('es-AR')}
+                          </p>
+                          <p className="text-gray-700 dark:text-gray-300">
+                            <strong>Rol:</strong> {rolSeleccionado === 'TODOS' ? 'Todos' : rolSeleccionado}
+                          </p>
+                          <p className="text-gray-700 dark:text-gray-300">
+                            <strong>Turno:</strong> {turnoSeleccionado === 'TODOS' ? 'Todos' : `Grupo ${turnoSeleccionado}`}
+                          </p>
+                          <p className="text-gray-700 dark:text-gray-300">
+                            <strong>Horario:</strong> {horarioSeleccionado === 'TODOS' ? 'Todos' : horarioSeleccionado}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Grupo B - Filtros de comparación */}
+                      <div className="bg-green-50 dark:bg-green-900/10 p-4 rounded-lg border-2 border-green-200 dark:border-green-800">
+                        <h4 className="font-semibold text-green-900 dark:text-green-100 mb-3 flex items-center gap-2">
+                          <span className="bg-green-600 text-white px-2 py-1 rounded text-sm">2</span>
+                          Grupo de Comparación
+                        </h4>
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Fecha Inicio
+                              </label>
+                              <input
+                                type="date"
+                                value={fechaInicioComparacion}
+                                onChange={(e) => setFechaInicioComparacion(e.target.value)}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Fecha Fin
+                              </label>
+                              <input
+                                type="date"
+                                value={fechaFinComparacion}
+                                onChange={(e) => setFechaFinComparacion(e.target.value)}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              Rol
+                            </label>
+                            <select
+                              value={rolComparacion}
+                              onChange={(e) => setRolComparacion(e.target.value as Rol | 'TODOS')}
+                              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            >
+                              <option value="TODOS">Todos los roles</option>
+                              <option value="SUPERVISOR">Supervisor</option>
+                              <option value="INSPECTOR">Inspector</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              Grupo Turno
+                            </label>
+                            <select
+                              value={turnoComparacion}
+                              onChange={(e) => setTurnoComparacion(e.target.value as GrupoTurno | 'TODOS')}
+                              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            >
+                              <option value="TODOS">Todos los turnos</option>
+                              <option value="A">Grupo A</option>
+                              <option value="B">Grupo B</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              Horario
+                            </label>
+                            <select
+                              value={horarioComparacion}
+                              onChange={(e) => setHorarioComparacion(e.target.value)}
+                              disabled={rolComparacion === 'TODOS'}
+                              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
+                            >
+                              <option value="TODOS">Todos los horarios</option>
+                              {rolComparacion !== 'TODOS' &&
+                                horariosPorRol[rolComparacion].map((horario) => (
+                                  <option key={horario} value={horario}>
+                                    {horario}
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Mostrar comparación cuando está activa */}
+              {compararActivo && estadisticasComparativas && (
+                <div className="space-y-6">
+                  {/* Cards comparativos */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Empleados */}
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Empleados</p>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="text-xs text-blue-600 dark:text-blue-400">1:</span>
+                          <span className="text-lg font-bold text-gray-900 dark:text-white ml-1">
+                            {estadisticasComparativas.grupoA.empleados}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-xs text-green-600 dark:text-green-400">2:</span>
+                          <span className="text-lg font-bold text-gray-900 dark:text-white ml-1">
+                            {estadisticasComparativas.grupoB.empleados}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Total Faltas */}
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Total Faltas</p>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="text-xs text-blue-600 dark:text-blue-400">1:</span>
+                          <span className="text-lg font-bold text-gray-900 dark:text-white ml-1">
+                            {estadisticasComparativas.grupoA.totalFaltas}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-xs text-green-600 dark:text-green-400">2:</span>
+                          <span className="text-lg font-bold text-gray-900 dark:text-white ml-1">
+                            {estadisticasComparativas.grupoB.totalFaltas}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Promedio Faltas */}
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Promedio Faltas</p>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="text-xs text-blue-600 dark:text-blue-400">1:</span>
+                          <span className="text-lg font-bold text-gray-900 dark:text-white ml-1">
+                            {estadisticasComparativas.grupoA.promedioFaltas}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-xs text-green-600 dark:text-green-400">2:</span>
+                          <span className="text-lg font-bold text-gray-900 dark:text-white ml-1">
+                            {estadisticasComparativas.grupoB.promedioFaltas}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tasa Ausentismo */}
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Tasa Ausentismo</p>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="text-xs text-blue-600 dark:text-blue-400">1:</span>
+                          <span className="text-lg font-bold text-gray-900 dark:text-white ml-1">
+                            {estadisticasComparativas.grupoA.tasaAusentismo}%
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-xs text-green-600 dark:text-green-400">2:</span>
+                          <span className="text-lg font-bold text-gray-900 dark:text-white ml-1">
+                            {estadisticasComparativas.grupoB.tasaAusentismo}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Gráfico comparativo */}
+                  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                      Comparación Detallada
+                    </h3>
+                    <ResponsiveContainer width="100%" height={400}>
+                      <BarChart data={[
+                        estadisticasComparativas.grupoA,
+                        estadisticasComparativas.grupoB
+                      ]}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                        <XAxis dataKey="nombre" stroke="#9CA3AF" />
+                        <YAxis stroke="#9CA3AF" />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#1F2937',
+                            border: '1px solid #374151',
+                            borderRadius: '8px',
+                            padding: '8px 12px'
+                          }}
+                          cursor={{ fill: 'transparent' }}
+                        />
+                        <Legend />
+                        <Bar dataKey="empleados" fill={COLORS.blue} name="Empleados" radius={[8, 8, 0, 0]} />
+                        <Bar dataKey="totalFaltas" fill={COLORS.red} name="Total Faltas" radius={[8, 8, 0, 0]} />
+                        <Bar dataKey="justificadas" fill={COLORS.green} name="Justificadas" radius={[8, 8, 0, 0]} />
+                        <Bar dataKey="injustificadas" fill={COLORS.orange} name="Injustificadas" radius={[8, 8, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
           {/* Comparación Grupos A y B */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">

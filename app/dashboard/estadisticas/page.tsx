@@ -53,153 +53,411 @@ interface Falta {
   justificada: boolean;
 }
 
-export default function CalificacionesPage() {
-  const { empleados, isLoading: loadingEmpleados } = useEmpleados();
-  const { faltas, isLoading: loadingFaltas } = useTodasLasFaltas();
-  
-  const [selectedPeriod, setSelectedPeriod] = useState<'mes' | 'trimestre' | 'año'>('mes');
+interface DatoConProyeccion {
+  periodo: string;
+  cantidad: number;
+  esProyeccion: boolean;
+  esIncompleto?: boolean;
+}
 
-const statsPersonal = useMemo(() => {
-  if (!empleados) return null;
+// Ordenar Horario
+function ordenarHorarios(arr: { name: string; value: number }[]) {
+  return [...arr].sort((a, b) => {
+    const inicioA = a.name.split('-')[0];
+    const inicioB = b.name.split('-')[0];
 
-  // Filtrar solo SUPERVISOR e INSPECTOR
-  const empleadosFiltrados = empleados.filter(
-    e => e.rol === 'SUPERVISOR' || e.rol === 'INSPECTOR'
-  );
+    // Convertir a minutos para comparar
+    const minutosA = parseInt(inicioA.split(':')[0]) * 60 + parseInt(inicioA.split(':')[1]);
+    const minutosB = parseInt(inicioB.split(':')[0]) * 60 + parseInt(inicioB.split(':')[1]);
 
-  const activos = empleadosFiltrados.filter(e => e.activo);
-  const inactivos = empleadosFiltrados.filter(e => !e.activo);
-
-  // Por rol
-  const porRol = empleadosFiltrados.reduce((acc, emp) => {
-    acc[emp.rol] = (acc[emp.rol] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  // Por turno
-  const porTurno = empleadosFiltrados.reduce((acc, emp) => {
-    acc[emp.grupoTurno] = (acc[emp.grupoTurno] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-// Por horario
-const porHorario = empleadosFiltrados.reduce((acc, emp) => {
-  const horario = emp.horario || 'Sin asignar';
-  acc[horario] = (acc[horario] || 0) + 1;
-  return acc;
-}, {} as Record<string, number>);
-
-
-return {
-  total: empleadosFiltrados.length,
-  activos: activos.length,
-  inactivos: inactivos.length,
-  porRol: Object.entries(porRol).map(([name, value]) => ({ name, value })),
-  porTurno: Object.entries(porTurno).map(([name, value]) => ({ name, value })),
-  porHorario: Object.entries(porHorario)
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 6),
-};
-}, [empleados]);
-
-// ============ ESTADÍSTICAS DE FALTAS ============
-const statsFaltas = useMemo(() => {
-  if (!faltas || !empleados) return null;
-
-  // Filtrar solo SUPERVISOR e INSPECTOR
-  const empleadosFiltrados = empleados.filter(
-    e => e.rol === 'SUPERVISOR' || e.rol === 'INSPECTOR'
-  );
-
-  const now = new Date();
-  const mesActual = now.getMonth();
-  const añoActual = now.getFullYear();
-
-  // Filtrar según período y solo empleados filtrados
-  const faltasFiltradas = faltas.filter(f => {
-    const fecha = new Date(f.fecha);
-    const esEmpleadoValido = empleadosFiltrados.some(e => e.id === f.empleadoId);
-    
-    if (!esEmpleadoValido) return false;
-
-    if (selectedPeriod === 'mes') {
-      return fecha.getMonth() === mesActual && fecha.getFullYear() === añoActual;
-    } else if (selectedPeriod === 'trimestre') {
-      const trimestreActual = Math.floor(mesActual / 3);
-      const trimestreFalta = Math.floor(fecha.getMonth() / 3);
-      return trimestreFalta === trimestreActual && fecha.getFullYear() === añoActual;
-    } else {
-      return fecha.getFullYear() === añoActual;
-    }
+    return minutosA - minutosB;
   });
+}
 
-  // Total de faltas
-  const totalFaltas = faltasFiltradas.length;
-  const justificadas = faltasFiltradas.filter(f => f.justificada).length;
-  const injustificadas = totalFaltas - justificadas;
+function calcularProyeccion(datos: { periodo: string; cantidad: number; esIncompleto?: boolean }[]): {
+  proyecciones: DatoConProyeccion[];
+  tendencia: 'creciente' | 'decreciente' | 'estable';
+} | null {
+  // Filtrar solo datos completos para la proyección
+  const datosCompletos = datos.filter(d => !d.esIncompleto);
+  const n = datosCompletos.length;
 
-  // Faltas por empleado
-  const faltasPorEmpleado = faltasFiltradas.reduce((acc, f) => {
-    acc[f.empleadoId] = (acc[f.empleadoId] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  if (n < 2) return null;
 
-  const topFaltas = Object.entries(faltasPorEmpleado)
-    .map(([empleadoId, cantidad]) => {
-      const emp = empleadosFiltrados.find(e => e.id === empleadoId);
-      return {
-        name: emp ? `${emp.apellido}, ${emp.nombre}` : 'Desconocido',
-        value: cantidad,
-      };
-    })
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 10);
+  const sumX = datosCompletos.reduce((sum, _, i) => sum + i, 0);
+  const sumY = datosCompletos.reduce((sum, d) => sum + d.cantidad, 0);
+  const sumXY = datosCompletos.reduce((sum, d, i) => sum + (i * d.cantidad), 0);
+  const sumX2 = datosCompletos.reduce((sum, _, i) => sum + (i * i), 0);
 
-  // Faltas por mes (últimos 6 meses) - solo empleados filtrados
-  const faltasPorMes = [];
-  for (let i = 5; i >= 0; i--) {
-    const fecha = new Date(añoActual, mesActual - i, 1);
-    const mes = fecha.toLocaleDateString('es-AR', { month: 'short' });
-    const cantidad = faltas.filter(f => {
-      const fechaFalta = new Date(f.fecha);
-      const esEmpleadoValido = empleadosFiltrados.some(e => e.id === f.empleadoId);
-      return esEmpleadoValido && 
-             fechaFalta.getMonth() === fecha.getMonth() && 
-             fechaFalta.getFullYear() === fecha.getFullYear();
-    }).length;
-    faltasPorMes.push({ mes, cantidad });
+  const pendiente = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  const intercepto = (sumY - pendiente * sumX) / n;
+
+  // Proyectar los próximos 3 períodos
+  const proyecciones: DatoConProyeccion[] = [];
+  for (let i = 1; i <= 3; i++) {
+    const valorProyectado = Math.max(0, Math.round(pendiente * (n + i - 1) + intercepto));
+    proyecciones.push({
+      periodo: `+${i}`,
+      cantidad: valorProyectado,
+      esProyeccion: true
+    });
   }
 
-  // Faltas por rol
-  const faltasPorRol = faltasFiltradas.reduce((acc, f) => {
-    const emp = empleadosFiltrados.find(e => e.id === f.empleadoId);
-    if (emp) {
-      acc[emp.rol] = (acc[emp.rol] || 0) + 1;
-    }
-    return acc;
-  }, {} as Record<string, number>);
-
-  // Tasa de ausentismo por turno
-  const faltasPorTurno = faltasFiltradas.reduce((acc, f) => {
-    const emp = empleadosFiltrados.find(e => e.id === f.empleadoId);
-    if (emp) {
-      acc[emp.grupoTurno] = (acc[emp.grupoTurno] || 0) + 1;
-    }
-    return acc;
-  }, {} as Record<string, number>);
-
   return {
-    total: totalFaltas,
-    justificadas,
-    injustificadas,
-    topFaltas,
-    faltasPorMes,
-    faltasPorRol: Object.entries(faltasPorRol).map(([name, value]) => ({ name, value })),
-    faltasPorTurno: Object.entries(faltasPorTurno).map(([name, value]) => ({ name, value })),
-    tasaAusentismo: ((totalFaltas / (empleadosFiltrados.length * 30)) * 100).toFixed(2),
+    proyecciones,
+    tendencia: pendiente > 0.5 ? 'creciente' : pendiente < -0.5 ? 'decreciente' : 'estable'
   };
-}, [faltas, empleados, selectedPeriod]);
+}
+
+export default function EstadisticasPage() {
+  const { empleados, isLoading: loadingEmpleados } = useEmpleados();
+  const { faltas, isLoading: loadingFaltas } = useTodasLasFaltas();
+
+  const [selectedPeriod, setSelectedPeriod] = useState<'mes' | 'trimestre' | 'año'>('mes');
+
+  const [hoveredEmpleado, setHoveredEmpleado] = useState<{
+    empleadoId: string;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const statsPersonal = useMemo(() => {
+    if (!empleados) return null;
+
+    // Filtrar solo SUPERVISOR e INSPECTOR
+    const empleadosFiltrados = empleados.filter(
+      e => e.rol === 'SUPERVISOR' || e.rol === 'INSPECTOR'
+    );
+
+    const activos = empleadosFiltrados.filter(e => e.activo);
+    const inactivos = empleadosFiltrados.filter(e => !e.activo);
+
+    // Por rol
+    const porRol = empleadosFiltrados.reduce((acc, emp) => {
+      acc[emp.rol] = (acc[emp.rol] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Por turno
+    const porTurno = empleadosFiltrados.reduce((acc, emp) => {
+      acc[emp.grupoTurno] = (acc[emp.grupoTurno] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+
+    // Por horario - INSPECTORES
+    const porHorarioInspectores = empleadosFiltrados
+      .filter(e => e.rol === 'INSPECTOR')
+      .reduce((acc, emp) => {
+        const horario = emp.horario || 'Sin asignar';
+        acc[horario] = (acc[horario] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+    // Por horario - SUPERVISORES
+    const porHorarioSupervisores = empleadosFiltrados
+      .filter(e => e.rol === 'SUPERVISOR')
+      .reduce((acc, emp) => {
+        const horario = emp.horario || 'Sin asignar';
+        acc[horario] = (acc[horario] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+
+
+    return {
+      total: empleadosFiltrados.length,
+      activos: activos.length,
+      inactivos: inactivos.length,
+      porRol: Object.entries(porRol).map(([name, value]) => ({ name, value })),
+      porTurno: Object.entries(porTurno).map(([name, value]) => ({ name, value })),
+      porHorarioInspectores: Object.entries(porHorarioInspectores)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 6),
+      porHorarioSupervisores: Object.entries(porHorarioSupervisores)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 6),
+    };
+  }, [empleados]);
+
+  // ============ ESTADÍSTICAS DE FALTAS ============
+  const statsFaltas = useMemo(() => {
+    if (!faltas || !empleados) return null;
+
+    // Filtrar solo SUPERVISOR e INSPECTOR
+    const empleadosFiltrados = empleados.filter(
+      e => e.rol === 'SUPERVISOR' || e.rol === 'INSPECTOR'
+    );
+
+    const now = new Date();
+    const mesActual = now.getMonth();
+    const añoActual = now.getFullYear();
+
+    // Filtrar según período y solo empleados filtrados
+    const faltasFiltradas = faltas.filter(f => {
+      const fecha = new Date(f.fecha);
+      const esEmpleadoValido = empleadosFiltrados.some(e => e.id === f.empleadoId);
+
+      if (!esEmpleadoValido) return false;
+
+      if (selectedPeriod === 'mes') {
+        return fecha.getMonth() === mesActual && fecha.getFullYear() === añoActual;
+      } else if (selectedPeriod === 'trimestre') {
+        const trimestreActual = Math.floor(mesActual / 3);
+        const trimestreFalta = Math.floor(fecha.getMonth() / 3);
+        return trimestreFalta === trimestreActual && fecha.getFullYear() === añoActual;
+      } else {
+        return fecha.getFullYear() === añoActual;
+      }
+    });
+
+    // Total de faltas
+    const totalFaltas = faltasFiltradas.length;
+    const justificadas = faltasFiltradas.filter(f => f.justificada).length;
+    const injustificadas = totalFaltas - justificadas;
+
+    // Faltas por empleado
+    const faltasPorEmpleado = faltasFiltradas.reduce((acc, f) => {
+      acc[f.empleadoId] = (acc[f.empleadoId] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const topFaltas = Object.entries(faltasPorEmpleado)
+      .map(([empleadoId, cantidad]) => {
+        const emp = empleadosFiltrados.find(e => e.id === empleadoId);
+        return {
+          name: emp ? `${emp.apellido}, ${emp.nombre}` : 'Desconocido',
+          value: cantidad,
+        };
+      })
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10);
+
+    // Faltas por empleado con detalle de causas
+    const faltasPorEmpleadoDetalle = faltasFiltradas.reduce((acc, f) => {
+      if (!acc[f.empleadoId]) {
+        acc[f.empleadoId] = {
+          total: 0,
+          causas: {} as Record<string, number>
+        };
+      }
+      acc[f.empleadoId].total += 1;
+      acc[f.empleadoId].causas[f.motivo] = (acc[f.empleadoId].causas[f.motivo] || 0) + 1;
+      return acc;
+    }, {} as Record<string, { total: number; causas: Record<string, number> }>);
+
+    const topFaltasConDetalle = Object.entries(faltasPorEmpleado)
+      .map(([empleadoId, cantidad]) => {
+        const emp = empleadosFiltrados.find(e => e.id === empleadoId);
+        const detalle = faltasPorEmpleadoDetalle[empleadoId];
+        return {
+          empleadoId,
+          name: emp ? `${emp.apellido}, ${emp.nombre}` : 'Desconocido',
+          value: cantidad,
+          causas: detalle ? Object.entries(detalle.causas).map(([motivo, cant]) => ({
+            motivo,
+            cantidad: cant
+          })).sort((a, b) => b.cantidad - a.cantidad) : []
+        };
+      })
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10);
+
+    // Faltas por período (dinámico según selección)
+    let faltasPorPeriodo = [];
+
+    if (selectedPeriod === 'mes') {
+      // Últimos 30 días - estos están completos, no necesitan ajuste
+      for (let i = 29; i >= 0; i--) {
+        const fecha = new Date(now);
+        fecha.setDate(fecha.getDate() - i);
+        const dia = fecha.getDate();
+        const cantidad = faltasFiltradas.filter(f => {
+          const fechaFalta = new Date(f.fecha);
+          return fechaFalta.toDateString() === fecha.toDateString();
+        }).length;
+        faltasPorPeriodo.push({ periodo: `${dia}`, cantidad });
+      }
+    } else if (selectedPeriod === 'trimestre') {
+      // Últimas 12 semanas
+      for (let i = 11; i >= 0; i--) {
+        const inicioSemana = new Date(now);
+        inicioSemana.setDate(inicioSemana.getDate() - (i * 7));
+
+        const finSemana = new Date(inicioSemana);
+        finSemana.setDate(finSemana.getDate() + 6);
+
+        const semanaCompleta = finSemana < now;
+        const semana = `S${12 - i}`;
+
+        const cantidad = faltas.filter(f => {
+          const fechaFalta = new Date(f.fecha);
+          const esEmpleadoValido = empleadosFiltrados.some(e => e.id === f.empleadoId);
+
+          // Verificar si la falta está entre inicio y fin de esta semana
+          return esEmpleadoValido &&
+            fechaFalta >= inicioSemana &&
+            fechaFalta <= finSemana;
+        }).length;
+
+        // Si la semana no está completa, proyectar proporcionalmente
+        let cantidadAjustada = cantidad;
+        if (!semanaCompleta && i === 0) {
+          const diasTranscurridos = Math.ceil((now.getTime() - inicioSemana.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+          if (diasTranscurridos > 0 && diasTranscurridos < 7) {
+            cantidadAjustada = Math.round((cantidad / diasTranscurridos) * 7);
+          }
+        }
+
+        faltasPorPeriodo.push({
+          periodo: semana,
+          cantidad: cantidadAjustada,
+          esIncompleto: !semanaCompleta && i === 0
+        });
+      }
+    } else {
+      // Últimos 12 meses
+      for (let i = 11; i >= 0; i--) {
+        const fecha = new Date(añoActual, mesActual - i, 1);
+        const mes = fecha.toLocaleDateString('es-AR', { month: 'short' });
+
+        // Verificar si es el mes actual (incompleto)
+        const esMesActual = fecha.getMonth() === mesActual && fecha.getFullYear() === añoActual;
+
+        const cantidad = faltas.filter(f => {
+          const fechaFalta = new Date(f.fecha);
+          const esEmpleadoValido = empleadosFiltrados.some(e => e.id === f.empleadoId);
+          return esEmpleadoValido &&
+            fechaFalta.getMonth() === fecha.getMonth() &&
+            fechaFalta.getFullYear() === fecha.getFullYear();
+        }).length;
+
+        // Si es el mes actual, ajustar proporcionalmente
+        let cantidadAjustada = cantidad;
+        if (esMesActual) {
+          const diaActual = now.getDate();
+          const diasEnMes = new Date(añoActual, mesActual + 1, 0).getDate();
+          cantidadAjustada = Math.round((cantidad / diaActual) * diasEnMes);
+        }
+
+        faltasPorPeriodo.push({
+          periodo: mes,
+          cantidad: cantidadAjustada,
+          esIncompleto: esMesActual
+        });
+      }
+    }
+
+    // Faltas por rol
+    const faltasPorRol = faltasFiltradas.reduce((acc, f) => {
+      const emp = empleadosFiltrados.find(e => e.id === f.empleadoId);
+      if (emp) {
+        acc[emp.rol] = (acc[emp.rol] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Tasa de ausentismo por turno
+    const faltasPorTurno = faltasFiltradas.reduce((acc, f) => {
+      const emp = empleadosFiltrados.find(e => e.id === f.empleadoId);
+      if (emp) {
+        acc[emp.grupoTurno] = (acc[emp.grupoTurno] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Faltas por día de la semana
+    const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const faltasPorDiaSemana = diasSemana.map((dia, index) => ({
+      dia,
+      cantidad: faltasFiltradas.filter(f => {
+        const fechaFalta = new Date(f.fecha);
+        return fechaFalta.getDay() === index;
+      }).length
+    }));
+
+    // Proyección de faltas
+    const proyeccion = calcularProyeccion(faltasPorPeriodo);
+    const datosConProyeccion = proyeccion
+      ? [...faltasPorPeriodo.map(d => ({ ...d, esProyeccion: false })), ...proyeccion.proyecciones]
+      : faltasPorPeriodo.map(d => ({ ...d, esProyeccion: false }));
+
+    // Comparativa: Período actual vs período anterior
+    let comparativaPeriodos = {
+      actual: 0,
+      anterior: 0,
+      porcentajeCambio: 0,
+      mejoro: false
+    };
+
+    if (selectedPeriod === 'mes') {
+      // Mes actual vs mes anterior
+      const mesAnterior = new Date(añoActual, mesActual - 1, 1);
+
+      comparativaPeriodos.actual = faltasFiltradas.length;
+      comparativaPeriodos.anterior = faltas.filter(f => {
+        const fechaFalta = new Date(f.fecha);
+        const esEmpleadoValido = empleadosFiltrados.some(e => e.id === f.empleadoId);
+        return esEmpleadoValido &&
+          fechaFalta.getMonth() === mesAnterior.getMonth() &&
+          fechaFalta.getFullYear() === mesAnterior.getFullYear();
+      }).length;
+    } else if (selectedPeriod === 'trimestre') {
+      // Trimestre actual vs trimestre anterior
+      const trimestreActual = Math.floor(mesActual / 3);
+      const trimestreAnterior = trimestreActual - 1;
+      const añoTrimestreAnterior = trimestreAnterior < 0 ? añoActual - 1 : añoActual;
+      const trimestreAnteriorAjustado = trimestreAnterior < 0 ? 3 : trimestreAnterior;
+
+      comparativaPeriodos.actual = faltasFiltradas.length;
+      comparativaPeriodos.anterior = faltas.filter(f => {
+        const fechaFalta = new Date(f.fecha);
+        const esEmpleadoValido = empleadosFiltrados.some(e => e.id === f.empleadoId);
+        const trimestreFalta = Math.floor(fechaFalta.getMonth() / 3);
+        return esEmpleadoValido &&
+          trimestreFalta === trimestreAnteriorAjustado &&
+          fechaFalta.getFullYear() === añoTrimestreAnterior;
+      }).length;
+    } else {
+      // Año actual vs año anterior
+      comparativaPeriodos.actual = faltasFiltradas.length;
+      comparativaPeriodos.anterior = faltas.filter(f => {
+        const fechaFalta = new Date(f.fecha);
+        const esEmpleadoValido = empleadosFiltrados.some(e => e.id === f.empleadoId);
+        return esEmpleadoValido && fechaFalta.getFullYear() === añoActual - 1;
+      }).length;
+    }
+
+    // Calcular porcentaje de cambio
+    if (comparativaPeriodos.anterior > 0) {
+      comparativaPeriodos.porcentajeCambio =
+        ((comparativaPeriodos.actual - comparativaPeriodos.anterior) / comparativaPeriodos.anterior) * 100;
+      comparativaPeriodos.mejoro = comparativaPeriodos.porcentajeCambio < 0;
+    } else if (comparativaPeriodos.actual === 0) {
+      comparativaPeriodos.porcentajeCambio = 0;
+      comparativaPeriodos.mejoro = true;
+    } else {
+      comparativaPeriodos.porcentajeCambio = 100;
+      comparativaPeriodos.mejoro = false;
+    }
+
+    return {
+      total: totalFaltas,
+      justificadas,
+      injustificadas,
+      faltasPorPeriodo: faltasPorPeriodo,
+      faltasPorRol: Object.entries(faltasPorRol).map(([name, value]) => ({ name, value })),
+      faltasPorTurno: Object.entries(faltasPorTurno).map(([name, value]) => ({ name, value })),
+      faltasPorDiaSemana,
+      datosConProyeccion,
+      comparativaPeriodos,
+      topFaltas: topFaltasConDetalle,
+      tendenciaProyeccion: proyeccion?.tendencia || 'estable',
+      tasaAusentismo: ((totalFaltas / (empleadosFiltrados.length * 30)) * 100).toFixed(2),
+    };
+  }, [faltas, empleados, selectedPeriod]);
 
   // ============ COLORES ============
   const COLORS = {
@@ -244,22 +502,25 @@ const statsFaltas = useMemo(() => {
         </p>
       </div>
 
-      {/* Selector de Período */}
+      {/* Selector de Período (fixed) */}
       <div className="mb-6 flex justify-end">
-        <div className="flex gap-2 bg-white dark:bg-gray-800 p-1 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          {(['mes', 'trimestre', 'año'] as const).map((period) => (
-            <button
-              key={period}
-              onClick={() => setSelectedPeriod(period)}
-              className={`px-4 py-2 rounded-md font-medium transition-colors ${
-                selectedPeriod === period
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}
-            >
-              {period.charAt(0).toUpperCase() + period.slice(1)}
-            </button>
-          ))}
+        <div className="hidden md:block">
+          <div className="fixed right-16 top-24 z-50">
+            <div className="inline-flex gap-2 bg-white dark:bg-gray-800 p-1 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              {(['mes', 'trimestre', 'año'] as const).map((period) => (
+                <button
+                  key={period}
+                  onClick={() => setSelectedPeriod(period)}
+                  className={`px-4 py-2 rounded-md font-medium transition-colors ${selectedPeriod === period
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                >
+                  {period.charAt(0).toUpperCase() + period.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -352,9 +613,9 @@ const statsFaltas = useMemo(() => {
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="name" stroke="#9CA3AF" />
                 <YAxis stroke="#9CA3AF" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#1F2937', 
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1F2937',
                     border: '1px solid #374151',
                     borderRadius: '8px'
                   }}
@@ -364,63 +625,121 @@ const statsFaltas = useMemo(() => {
             </ResponsiveContainer>
           </div>
 
-{/* Gráfico: Personal por Horario */}
-<div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 lg:col-span-2">
-  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-    Distribución por Horario Laboral
-  </h3>
-  {!statsPersonal?.porHorario || statsPersonal.porHorario.length === 0 ? (
-    <div className="flex items-center justify-center h-[300px] text-gray-500 dark:text-gray-400">
-      <div className="text-center">
-        <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
-        <p>No hay datos de horarios disponibles</p>
-      </div>
-    </div>
-  ) : (
-    <ResponsiveContainer width="100%" height={350}>
-      <BarChart 
-        data={statsPersonal.porHorario}
-        layout="vertical"
-        margin={{ top: 5, right: 30, left: 20, bottom: 30 }}
-      >
-        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-        <XAxis 
-          type="number" 
-          stroke="#9CA3AF"
-          label={{ 
-            value: 'Cantidad', 
-            position: 'insideBottom',
-            offset: -10,
-            fill: '#9CA3AF',
-            style: { fontSize: '14px' }
-          }}
-        />
-        <YAxis 
-          type="category"
-          dataKey="name" 
-          width={150} 
-          stroke="#9CA3AF"
-          tick={{ fontSize: 14 }}
-        />
-        <Tooltip 
-          contentStyle={{ 
-            backgroundColor: '#1F2937', 
-            border: '1px solid #374151',
-            borderRadius: '8px',
-            color: '#fff'
-          }}
-          cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
-        />
-        <Bar 
-          dataKey="value" 
-          fill={COLORS.blue} 
-          radius={[0, 8, 8, 0]}
-          label={{ position: 'right', fill: '#9CA3AF', fontSize: 12 }}
-        />
-      </BarChart>
-    </ResponsiveContainer>
-  )}
-</div>
+          {/* Gráficos: Personal por Horario - Separados por Rol */}
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Inspectores - Distribución por Horario
+            </h3>
+            {!statsPersonal?.porHorarioInspectores || statsPersonal.porHorarioInspectores.length === 0 ? (
+              <div className="flex items-center justify-center h-[300px] text-gray-500 dark:text-gray-400">
+                <div className="text-center">
+                  <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No hay datos de horarios para inspectores</p>
+                </div>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart
+                  data={ordenarHorarios(statsPersonal.porHorarioInspectores)}
+                  layout="vertical"
+                  margin={{ top: 5, right: 30, left: 20, bottom: 30 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis
+                    type="number"
+                    stroke="#9CA3AF"
+                    label={{
+                      value: 'Cantidad',
+                      position: 'insideBottom',
+                      offset: -10,
+                      fill: '#9CA3AF',
+                      style: { fontSize: '14px' }
+                    }}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={120}
+                    stroke="#9CA3AF"
+                    tick={{ fontSize: 12 }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1F2937',
+                      border: '1px solid #374151',
+                      borderRadius: '8px',
+                      color: '#fff'
+                    }}
+                    cursor={{ fill: 'rgba(16, 185, 129, 0.1)' }}
+                  />
+                  <Bar
+                    dataKey="value"
+                    fill={COLORS.green}
+                    radius={[0, 8, 8, 0]}
+                    label={{ position: 'right', fill: '#9CA3AF', fontSize: 12 }}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* Gráfico: Supervisores */}
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Supervisores - Distribución por Horario
+            </h3>
+            {!statsPersonal?.porHorarioSupervisores || statsPersonal.porHorarioSupervisores.length === 0 ? (
+              <div className="flex items-center justify-center h-[300px] text-gray-500 dark:text-gray-400">
+                <div className="text-center">
+                  <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No hay datos de horarios para supervisores</p>
+                </div>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart
+                  data={ordenarHorarios(statsPersonal.porHorarioSupervisores)}
+                  layout="vertical"
+                  margin={{ top: 5, right: 30, left: 20, bottom: 30 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis
+                    type="number"
+                    stroke="#9CA3AF"
+                    label={{
+                      value: 'Cantidad',
+                      position: 'insideBottom',
+                      offset: -10,
+                      fill: '#9CA3AF',
+                      style: { fontSize: '14px' }
+                    }}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={120}
+                    stroke="#9CA3AF"
+                    tick={{ fontSize: 12 }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1F2937',
+                      border: '1px solid #374151',
+                      borderRadius: '8px',
+                      color: '#fff'
+                    }}
+                    cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
+                  />
+                  <Bar
+                    dataKey="value"
+                    fill={COLORS.blue}
+                    radius={[0, 8, 8, 0]}
+                    label={{ position: 'right', fill: '#9CA3AF', fontSize: 12 }}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         </div>
       </div>
 
@@ -470,9 +789,9 @@ const statsFaltas = useMemo(() => {
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="name" stroke="#9CA3AF" />
                 <YAxis stroke="#9CA3AF" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#1F2937', 
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1F2937',
                     border: '1px solid #374151',
                     borderRadius: '8px'
                   }}
@@ -482,28 +801,60 @@ const statsFaltas = useMemo(() => {
             </ResponsiveContainer>
           </div>
 
-          {/* Gráfico: Tendencia de Faltas (últimos 6 meses) */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 lg:col-span-2">
+          {/* Gráfico: Faltas por Día de la Semana */}
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Tendencia de Faltas (Últimos 6 Meses)
+              Faltas por Día de la Semana
             </h3>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={statsFaltas.faltasPorMes}>
+              <BarChart data={statsFaltas.faltasPorDiaSemana}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="mes" stroke="#9CA3AF" />
+                <XAxis dataKey="dia" stroke="#9CA3AF" />
                 <YAxis stroke="#9CA3AF" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#1F2937', 
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1F2937',
+                    border: '1px solid #374151',
+                    borderRadius: '8px'
+                  }}
+                />
+                <Bar dataKey="cantidad" fill={COLORS.purple} radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+              <p className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                Día con más faltas: <span className="font-semibold text-gray-900 dark:text-white">
+                  {statsFaltas.faltasPorDiaSemana.reduce((max, dia) =>
+                    dia.cantidad > max.cantidad ? dia : max
+                  ).dia}
+                </span>
+              </p>
+            </div>
+          </div>
+
+          {/* Gráfico: Tendencia de Faltas */}
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 lg:col-span-2">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Tendencia de Faltas ({selectedPeriod === 'mes' ? 'Últimos 30 días' : selectedPeriod === 'trimestre' ? 'Últimas 12 semanas' : 'Últimos 12 meses'})
+            </h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={statsFaltas.faltasPorPeriodo}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="periodo" stroke="#9CA3AF" />
+                <YAxis stroke="#9CA3AF" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1F2937',
                     border: '1px solid #374151',
                     borderRadius: '8px'
                   }}
                 />
                 <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="cantidad" 
-                  stroke={COLORS.red} 
+                <Line
+                  type="monotone"
+                  dataKey="cantidad"
+                  stroke={COLORS.red}
                   strokeWidth={3}
                   dot={{ fill: COLORS.red, r: 6 }}
                   activeDot={{ r: 8 }}
@@ -513,13 +864,164 @@ const statsFaltas = useMemo(() => {
             </ResponsiveContainer>
           </div>
 
+          {/* Gráfico: Comparativa Período Actual vs Anterior */}
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Comparativa de Períodos
+            </h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart
+                data={[
+                  {
+                    periodo: selectedPeriod === 'mes' ? 'Mes Anterior' :
+                      selectedPeriod === 'trimestre' ? 'Trimestre Anterior' :
+                        'Año Anterior',
+                    cantidad: statsFaltas.comparativaPeriodos.anterior
+                  },
+                  {
+                    periodo: selectedPeriod === 'mes' ? 'Mes Actual' :
+                      selectedPeriod === 'trimestre' ? 'Trimestre Actual' :
+                        'Año Actual',
+                    cantidad: statsFaltas.comparativaPeriodos.actual
+                  }
+                ]}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="periodo" stroke="#9CA3AF" />
+                <YAxis stroke="#9CA3AF" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1F2937',
+                    border: '1px solid #374151',
+                    borderRadius: '8px'
+                  }}
+                />
+                <Bar
+                  dataKey="cantidad"
+                  radius={[8, 8, 0, 0]}
+                >
+                  <Cell fill={COLORS.cyan} />
+                  <Cell fill={statsFaltas.comparativaPeriodos.mejoro ? COLORS.green : COLORS.red} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="mt-4 flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <div className="flex items-center gap-2">
+                {statsFaltas.comparativaPeriodos.mejoro ? (
+                  <>
+                    <TrendingDown className="h-5 w-5 text-green-500" />
+                    <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                      Mejora del {Math.abs(statsFaltas.comparativaPeriodos.porcentajeCambio).toFixed(1)}%
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <TrendingUp className="h-5 w-5 text-red-500" />
+                    <span className="text-sm font-medium text-red-700 dark:text-red-400">
+                      Incremento del {Math.abs(statsFaltas.comparativaPeriodos.porcentajeCambio).toFixed(1)}%
+                    </span>
+                  </>
+                )}
+              </div>
+              <div className="text-xs text-gray-600 dark:text-gray-400">
+                {statsFaltas.comparativaPeriodos.anterior} → {statsFaltas.comparativaPeriodos.actual} faltas
+              </div>
+            </div>
+          </div>
+
+          {/* Gráfico: Proyección de Faltas */}
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              Proyección de Faltas
+              <span className={`text-xs px-2 py-1 rounded-full ${statsFaltas.tendenciaProyeccion === 'creciente'
+                ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                : statsFaltas.tendenciaProyeccion === 'decreciente'
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                  : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                }`}>
+                Tendencia {statsFaltas.tendenciaProyeccion}
+              </span>
+            </h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={statsFaltas.datosConProyeccion}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="periodo" stroke="#9CA3AF" />
+                <YAxis stroke="#9CA3AF" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1F2937',
+                    border: '1px solid #374151',
+                    borderRadius: '8px'
+                  }}
+                  formatter={(value: any, name: any, props: any) => {
+                    if (props.payload.esIncompleto) {
+                      return [value, 'Faltas (ajustado)'];
+                    }
+                    if (props.payload.esProyeccion) {
+                      return [value, 'Proyección'];
+                    }
+                    return [value, 'Faltas'];
+                  }}
+                />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="cantidad"
+                  stroke={COLORS.blue}
+                  strokeWidth={2}
+                  dot={(props: any) => {
+                    const { cx, cy, payload } = props;
+                    if (payload.esIncompleto) {
+                      return (
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={6}
+                          fill={COLORS.cyan}
+                          stroke={COLORS.blue}
+                          strokeWidth={2}
+                          strokeDasharray="3 3"
+                        />
+                      );
+                    }
+                    return (
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={payload.esProyeccion ? 4 : 6}
+                        fill={payload.esProyeccion ? COLORS.yellow : COLORS.blue}
+                        stroke={payload.esProyeccion ? COLORS.orange : COLORS.blue}
+                        strokeWidth={2}
+                      />
+                    );
+                  }}
+                  name="Faltas"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+            <div className="mt-4 flex items-start gap-3 text-sm flex-wrap">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                <span className="text-gray-600 dark:text-gray-400">Real</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-cyan-500 border-2 border-blue-500 border-dashed"></div>
+                <span className="text-gray-600 dark:text-gray-400">Ajustado (incompleto)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-yellow-500 border-2 border-orange-500"></div>
+                <span className="text-gray-600 dark:text-gray-400">Proyección</span>
+              </div>
+            </div>
+          </div>
+
           {/* Top 10 Empleados con más Faltas */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 lg:col-span-2">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <Award className="h-5 w-5 text-yellow-500" />
               Top 10 - Empleados con Mayor Ausentismo
             </h3>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto relative">
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
@@ -539,7 +1041,18 @@ const statsFaltas = useMemo(() => {
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {statsFaltas.topFaltas.map((item, index) => (
-                    <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <tr
+                      key={index}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                      onMouseMove={(e) => {
+                        setHoveredEmpleado({
+                          empleadoId: item.empleadoId,
+                          x: e.clientX,
+                          y: e.clientY
+                        });
+                      }}
+                      onMouseLeave={() => setHoveredEmpleado(null)}
+                    >
                       <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-white">
                         #{index + 1}
                       </td>
@@ -550,13 +1063,12 @@ const statsFaltas = useMemo(() => {
                         {item.value}
                       </td>
                       <td className="px-4 py-3 text-sm text-right">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          item.value >= 5 
-                            ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' 
-                            : item.value >= 3 
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${item.value >= 5
+                          ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                          : item.value >= 3
                             ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                             : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                        }`}>
+                          }`}>
                           {item.value >= 5 ? 'Crítico' : item.value >= 3 ? 'Moderado' : 'Bajo'}
                         </span>
                       </td>
@@ -564,10 +1076,56 @@ const statsFaltas = useMemo(() => {
                   ))}
                 </tbody>
               </table>
+
+              {/* Tooltip flotante que sigue al mouse */}
+              {hoveredEmpleado && statsFaltas.topFaltas.find(item => item.empleadoId === hoveredEmpleado.empleadoId) && (
+                <div
+                  className="fixed z-50 pointer-events-none"
+                  style={{
+                    left: `${hoveredEmpleado.x + 15}px`,
+                    top: `${hoveredEmpleado.y + 15}px`
+                  }}
+                >
+                  <div className="bg-gray-900 dark:bg-gray-700 text-white px-4 py-3 rounded-lg shadow-xl border border-gray-700 dark:border-gray-600 min-w-[250px]">
+                    <p className="font-semibold text-sm mb-2 border-b border-gray-600 pb-2">
+                      Causas de las faltas:
+                    </p>
+                    <div className="space-y-1">
+                      {statsFaltas.topFaltas
+                        .find(item => item.empleadoId === hoveredEmpleado.empleadoId)
+                        ?.causas.map((causa, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-xs">
+                            <span className="text-gray-300 truncate max-w-[180px]">
+                              {causa.motivo}
+                            </span>
+                            <span className="font-bold text-blue-400 ml-2">
+                              {causa.cantidad}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                    <div className="mt-2 pt-2 border-t border-gray-600 flex justify-between text-xs">
+                      <span className="text-gray-400">Total:</span>
+                      <span className="font-bold text-white">
+                        {statsFaltas.topFaltas.find(item => item.empleadoId === hoveredEmpleado.empleadoId)?.value}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="mt-4 text-sm text-gray-500 dark:text-gray-400 italic">
+              💡 Pasa el mouse sobre cada empleado para ver el detalle de las causas
             </div>
           </div>
+
+
+
+
         </div>
       </div>
+
+
     </div>
   );
 }
