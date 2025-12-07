@@ -260,6 +260,29 @@ export default function FaltasPage() {
 
       {/* FILTROS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg mb-6 transition-colors">
+        
+        {/* 👇 Búsqueda - ocupa toda la línea */}
+        <div className="md:col-span-4">
+          <label className="flex items-center gap-2 font-semibold mb-2 text-gray-700 dark:text-gray-300">
+            <FileSearch className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            Buscar Empleado
+          </label>
+          <input
+            type="text"
+            placeholder="Escribe el nombre o apellido del empleado..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 
+        bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+        placeholder:text-gray-400 dark:placeholder:text-gray-500
+        focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 
+        focus:border-transparent transition-all"
+          />
+        </div>
+        
+        
+        
+        
         {/* Fecha */}
         <div>
           <label className="flex items-center gap-2 font-semibold mb-2 text-gray-700 dark:text-gray-300">
@@ -325,24 +348,7 @@ export default function FaltasPage() {
           </select>
         </div>
 
-        {/* 👇 Búsqueda - ocupa toda la línea */}
-        <div className="md:col-span-4">
-          <label className="flex items-center gap-2 font-semibold mb-2 text-gray-700 dark:text-gray-300">
-            <FileSearch className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            Buscar Empleado
-          </label>
-          <input
-            type="text"
-            placeholder="Escribe el nombre o apellido del empleado..."
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 
-        bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-        placeholder:text-gray-400 dark:placeholder:text-gray-500
-        focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 
-        focus:border-transparent transition-all"
-          />
-        </div>
+        
       </div>
 
       {/* === LISTADO === */}

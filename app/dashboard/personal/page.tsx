@@ -27,7 +27,7 @@ import { LoadingSpinner } from '@/app/components/LoadingSpinner';
 import { ExportData } from '@/app/components/ExportToPdf';
 import { useAuth } from '@/app/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
-import bcrypt from 'bcrypt';
+import bcryptjs from 'bcryptjs';
 
 
 // Types based on our Prisma schema
@@ -77,6 +77,10 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { can } = usePermissions();
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+
   const {
     empleados,
     isLoading,
@@ -89,7 +93,7 @@ export default function DashboardPage() {
   const employees = empleados || [];
 
   const horariosPorRol: Record<Rol, string[]> = {
-    INSPECTOR: ["04:00-14:00", "06:00-16:00", "10:00-20:00", "14:00-23:00", "19:00-05:00"],
+    INSPECTOR: ["04:00-14:00", "06:00-16:00", "10:00-20:00", "13:00-23:00", "19:00-05:00"],
     SUPERVISOR: ["05:00-14:00", "14:00-23:00", "23:00-05:00"],
     JEFE: ["05:00-17:00", "17:00-05:00"],
     ADMINISTRADOR: ["00:00-23:59"],
@@ -173,9 +177,27 @@ export default function DashboardPage() {
     return filtered;
   }, [searchTerm, selectedRole, selectedShift, selectedHorario, employees]);
 
+  // Calcular índices de paginación
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentEmployees = filteredEmployeesMemo.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredEmployeesMemo.length / itemsPerPage);
+
   useEffect(() => {
-    setFilteredEmployees(filteredEmployeesMemo);
-  }, [filteredEmployeesMemo]);
+    setFilteredEmployees(currentEmployees);
+    // Si la página actual es mayor al total de páginas, volver a la página 1
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [filteredEmployeesMemo, currentPage, itemsPerPage]);
+
+
+  // Resetear a página 1 cuando cambien los filtros
+useEffect(() => {
+  setCurrentPage(1);
+}, [searchTerm, selectedRole, selectedShift, selectedHorario]);
+
+
   // Calcular estadísticas
   const stats = useMemo(() => ({
     total: filteredEmployeesMemo.length,
@@ -342,7 +364,7 @@ export default function DashboardPage() {
         if (!confirmCreate) return;
 
         const validRol = (formData.rol || 'INSPECTOR') as Exclude<Rol, 'ADMINISTRADOR'>;
-        const hashedPassword = await bcrypt.hash(`${formData.nombre!.trim().charAt(0)}${formData.apellido!.trim()}25`,10);
+        const hashedPassword = await bcryptjs.hash(`${formData.nombre!.trim().charAt(0)}${formData.apellido!.trim()}25`, 10);
         console.log(hashedPassword);
         await createEmpleado({
           legajo: formData.legajo!,
@@ -481,7 +503,7 @@ export default function DashboardPage() {
     <div className="p-6 max-w-7xl mx-auto overflow-y-auto">
       {/* Header */}
       <div className="  ">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Gestión de Empleados</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Empleados</h1>
         <p className="text-gray-600 dark:text-gray-400 mt-1">Administra los empleados, turnos y permisos del sistema WorkShift</p>
       </div>
       <div className="flex justify-end mb-4 mt-4">
@@ -561,7 +583,7 @@ export default function DashboardPage() {
             <input
               type="text"
               placeholder="Buscar por nombre, email o Legajo..."
-              className="w-full pl-10 pr-4 py-2 dark:bg-gray-700 dark:border-gray-600 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+              className="w-full pl-10 pr-4 py-2 dark:bg-gray-700 dark:border-gray-600 border-gray-200 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -572,7 +594,7 @@ export default function DashboardPage() {
         <div className="flex flex-col sm:flex-wrap md:flex-row gap-3 md:gap-4 w-full justify-between items-stretch">
           {/* Rol */}
           <select
-            className="flex-1 dark:text-gray-500 min-w-[180px] px-4 py-2 dark:bg-gray-700 border dark:border-gray-600 border-gray-200 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 text-sm sm:text-base"
+            className="flex-1 dark:text-white min-w-[180px] px-4 py-2 dark:bg-gray-700 border dark:border-gray-600 border-gray-200 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 text-sm sm:text-base"
             value={selectedRole}
             onChange={(e) => setSelectedRole(e.target.value as Rol | 'TODOS')}
           >
@@ -584,7 +606,7 @@ export default function DashboardPage() {
 
           {/* Turno */}
           <select
-            className="flex-1 dark:text-gray-500 min-w-[160px] dark:bg-gray-700 border dark:border-gray-600 border-gray-200 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 text-sm sm:text-base"
+            className="flex-1 dark:text-white min-w-[160px] dark:bg-gray-700 border dark:border-gray-600 border-gray-200 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 text-sm sm:text-base"
             value={selectedShift}
             onChange={(e) => setSelectedShift(e.target.value as GrupoTurno | 'TODOS')}
           >
@@ -595,7 +617,7 @@ export default function DashboardPage() {
 
           {/* Horario */}
           <select
-            className="flex-1 min-w-[160px] px-4 pr-7 dark:text-gray-500 py-2 dark:bg-gray-700 dark:border-gray-600 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 text-sm sm:text-base disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
+            className="flex-1 min-w-[160px] px-4 pr-7 dark:text-white py-2 dark:bg-gray-700 dark:border-gray-600 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 text-sm sm:text-base disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
             value={selectedHorario}
             onChange={(e) => setSelectedHorario(e.target.value)}
             disabled={selectedRole === "TODOS"}
@@ -619,6 +641,76 @@ export default function DashboardPage() {
             <UserPlus className="h-4 w-4" />
             Nuevo Empleado
           </button>
+        </div>
+      </div>
+
+      {/* Controles de paginación */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-4">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+          {/* Selector de items por página */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600 dark:text-gray-400">
+              Mostrar:
+            </label>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              empleados por página
+            </span>
+          </div>
+
+          {/* Info de registros */}
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Mostrando {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, filteredEmployeesMemo.length)} de {filteredEmployeesMemo.length} empleados
+          </div>
+
+          {/* Botones de navegación */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+              className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+            >
+              Primera
+            </button>
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+            >
+              Anterior
+            </button>
+
+            <span className="px-3 py-1 text-sm text-gray-700 dark:text-gray-300">
+              Página {currentPage} de {totalPages || 1}
+            </span>
+
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages || totalPages === 0}
+              className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+            >
+              Siguiente
+            </button>
+            <button
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages || totalPages === 0}
+              className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+            >
+              Última
+            </button>
+          </div>
         </div>
       </div>
 
