@@ -1,41 +1,73 @@
 // app/lib/ia/gemini.ts
-// VERSIÓN CON AUTO-DETECCIÓN
+// USANDO SDK ESTABLE @google/generative-ai
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
+// Cache simple para evitar consultas repetidas
+const cache = new Map<string, { text: string; timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
 export async function createAnswer(prompt: string): Promise<string> {
-  // Lista de modelos a probar
+  // Verificar caché primero
+  const cached = cache.get(prompt);
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    console.log("📦 Respuesta desde caché");
+    return cached.text;
+  }
+
+  // Modelos disponibles (probados y funcionando)
   const modelsToTry = [
-    
-    "gemini-2.5-pro",
-    "models/gemini-2.5-pro",
-    "gemini-3.0",
-    "models/gemini-3.0",
-    "gemini-3.0-pro",
-    "models/gemini-3.0-pro"
+    "gemini-2.5-flash",
   ];
 
-  let lastError = null;
+  let lastError: any = null;
 
   for (const modelName of modelsToTry) {
     try {
       console.log(`🔍 Intentando modelo: ${modelName}`);
+      
       const model = genAI.getGenerativeModel({ model: modelName });
       
       const result = await model.generateContent(prompt);
-      const response = result.response;
+      const response = await result.response;
       const text = response.text();
       
-      console.log(`✅ ¡Funcionó con: ${modelName}!`);
+      console.log(`✅ Funcionó con: ${modelName}`);
+      
+      // Guardar en caché
+      cache.set(prompt, { text, timestamp: Date.now() });
+      
       return text;
+
     } catch (error: any) {
-      console.log(`❌ Falló ${modelName}`);
+      console.log(`❌ Falló ${modelName}:`, error.message);
       lastError = error;
+
+      // Si es error 429 (Too Many Requests)
+      if (error.status === 429) {
+        console.error('⏳ Límite de cuota excedido');
+        throw new Error('RATE_LIMIT_EXCEEDED');
+      }
+
+      // Si es error 400/401 (API Key inválida)
+      if (error.status === 400 || error.status === 401) {
+        console.error('🔑 API Key inválida o expirada');
+        throw new Error('INVALID_API_KEY');
+      }
+
+      // Continuar con el siguiente modelo
+      continue;
     }
   }
 
   console.error('❌ Ningún modelo funcionó');
-  throw lastError;
+  throw lastError || new Error('Todos los modelos fallaron');
+}
+
+// Función para limpiar caché
+export function clearCache() {
+  cache.clear();
+  console.log('🧹 Caché limpiado');
 }

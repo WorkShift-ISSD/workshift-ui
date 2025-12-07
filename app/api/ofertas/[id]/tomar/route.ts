@@ -19,31 +19,67 @@ export async function POST(
     console.log('🟢 ID de oferta:', id);
     console.log('🟢 ID del tomador:', tomadorId);
 
-    // Verificar que la oferta existe y esté disponible
+    // ✅ SOLUCIÓN FINAL: Solo verificar IS NULL (no comparar con string vacío)
     const [oferta] = await sql`
       SELECT * FROM ofertas 
-      WHERE id = ${id} AND estado = 'DISPONIBLE'
+      WHERE id = ${id} 
+        AND estado IN ('DISPONIBLE', 'SOLICITADO')
+        AND tomador_id IS NULL
     `;
 
     if (!oferta) {
+      // Verificar si existe pero con otro estado
+      const [ofertaExistente] = await sql`
+        SELECT estado, tomador_id FROM ofertas WHERE id = ${id}
+      `;
+      
+      if (!ofertaExistente) {
+        return NextResponse.json(
+          { error: 'Oferta no encontrada' },
+          { status: 404 }
+        );
+      }
+
+      if (ofertaExistente.tomador_id) {
+        return NextResponse.json(
+          { error: 'Esta oferta ya fue tomada por otro usuario' },
+          { status: 400 }
+        );
+      }
+
       return NextResponse.json(
-        { error: 'Oferta no disponible o ya tomada' },
-        { status: 404 }
+        { 
+          error: 'Oferta no disponible',
+          estadoActual: ofertaExistente.estado,
+          mensaje: `Esta oferta tiene estado "${ofertaExistente.estado}" y no puede ser tomada`
+        },
+        { status: 400 }
       );
     }
 
-    // Actualizar la oferta (solo columnas existentes)
+    // Verificar que el tomador no sea el mismo que el ofertante
+    if (oferta.ofertante_id === tomadorId) {
+      return NextResponse.json(
+        { error: 'No puedes tomar tu propia oferta' },
+        { status: 400 }
+      );
+    }
+
+    // ✅ ACTUALIZAR: Cambiar a APROBADO cuando alguien toma la oferta
     await sql`
       UPDATE ofertas 
       SET 
         tomador_id = ${tomadorId},
-        estado = 'ACEPTADA',
+        estado = 'APROBADO',
         updated_at = NOW()
       WHERE id = ${id};
     `;
 
+    console.log('✅ Oferta tomada exitosamente');
+
     return NextResponse.json({
       message: '✅ Oferta tomada exitosamente',
+      estado: 'APROBADO'
     });
   } catch (error: any) {
     console.error('💥 Error al tomar oferta:', error);
