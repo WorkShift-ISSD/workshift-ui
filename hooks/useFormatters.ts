@@ -1,18 +1,43 @@
-// En useFormatters.ts
 export const useFormatters = () => {
+
+  // Fechasin UTC ---
+  const parseFechaLocal = (fechaString: string) => {
+    const [y, m, d] = fechaString.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  };
+
+  // Formatear cualquier tipo de fecha ---
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-AR', { 
-      day: '2-digit', 
+
+    // Caso ISO: 2025-12-02T15:48:13.000Z
+    if (dateString.includes('T')) {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('es-AR', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+    }
+
+    // Caso YYYY-MM-DD (evita restar un día)
+    const date = parseFechaLocal(dateString);
+
+    return date.toLocaleDateString('es-AR', {
+      day: '2-digit',
       month: 'short',
       year: 'numeric'
     });
   };
 
+  // Por Tiempo
   const formatTimeAgo = (dateString: string) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
+
+    const date = dateString.includes('T')
+      ? new Date(dateString)
+      : parseFechaLocal(dateString);
+
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
@@ -24,6 +49,7 @@ export const useFormatters = () => {
     if (diffHours < 24) return `Hace ${diffHours}h`;
     if (diffDays < 7) return `Hace ${diffDays} días`;
     if (diffDays < 30) return `Hace ${Math.floor(diffDays / 7)} semanas`;
+
     return formatDate(dateString);
   };
 

@@ -79,7 +79,7 @@ const INITIAL_SOLICITUD_FORM: SolicitudDirectaForm = {
 const parseFechaLocal = (fechaString: string) => {
   // fechaString: "2025-11-29"
   const [y, m, d] = fechaString.split('-').map(Number);
-  return new Date(y, m - 1, d); // <-- LOCAL sin UTC
+  return new Date(y, m - 1, d);
 };
 
 
@@ -1247,7 +1247,6 @@ export default function CambiosTurnosPage() {
           )}
 
           {/* Tab Content: Histórico */}
-          {/* Tab Content: Histórico */}
           {activeMainTab === 'historico' && (
             <div>
               {(() => {
@@ -1334,7 +1333,7 @@ export default function CambiosTurnosPage() {
 
                     {/* OFERTAS en histórico */}
                     {ofertasHistorico
-                      .sort((a, b) => new Date(b.publicado).getTime() - new Date(a.publicado).getTime())
+                      .sort((a, b) => parseFechaLocal(b.publicado).getTime() - parseFechaLocal(a.publicado).getTime())
                       .map((oferta) => {
                         const esIntercambio = oferta.modalidadBusqueda === TipoSolicitud.INTERCAMBIO;
                         const soyOfertante = oferta.ofertante?.id === user?.id;
@@ -1705,7 +1704,14 @@ export default function CambiosTurnosPage() {
                               <div>
                                 <span className="text-gray-500 dark:text-gray-400">Fecha:</span>
                                 <p className="text-gray-900 dark:text-gray-100 font-medium">
-                                  {oferta.turnoOfrece?.fecha}
+                                  {oferta.turnoOfrece?.fecha
+                                      ? parseFechaLocal(oferta.turnoOfrece.fecha).toLocaleDateString("es-AR", {
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                        year: "numeric",
+                                      })
+                                      : 'N/A'
+                                    } 
                                 </p>
                               </div>
                               <div>
@@ -1742,7 +1748,7 @@ export default function CambiosTurnosPage() {
                                     <div>
                                       <span className="text-gray-500 dark:text-gray-400">Fecha:</span>
                                       <p className="text-gray-900 dark:text-gray-100 font-medium">
-                                        {turno.fecha}
+                                        {formatearFecha(turno.fecha)}
                                       </p>
                                     </div>
                                     <div>
