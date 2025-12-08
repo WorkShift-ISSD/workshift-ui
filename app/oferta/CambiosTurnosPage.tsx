@@ -76,12 +76,6 @@ const INITIAL_SOLICITUD_FORM: SolicitudDirectaForm = {
   prioridad: 'NORMAL',
 };
 
-const parseFechaLocal = (fechaString: string) => {
-  // fechaString: "2025-11-29"
-  const [y, m, d] = fechaString.split('-').map(Number);
-  return new Date(y, m - 1, d);
-};
-
 
 export default function CambiosTurnosPage() {
   // ✅ Auth y permisos (DENTRO del componente)
@@ -140,7 +134,7 @@ export default function CambiosTurnosPage() {
 
   const { modalType, isModalOpen, openModal, closeModal } = useModal();
   const { activeTab: solicitudesTab, setActiveTab: setSolicitudesTab } = useTabs<SolicitudesTabType>('estado');
-  const { formatTimeAgo, formatDate } = useFormatters();
+  const { parseFechaLocal, formatTimeAgo, formatDate } = useFormatters();
 
   // Estados locales
   const [usuarios, setUsuarios] = useState<any[]>([]);

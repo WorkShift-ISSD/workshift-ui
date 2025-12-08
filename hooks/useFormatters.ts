@@ -1,16 +1,14 @@
 export const useFormatters = () => {
 
-  // Fechasin UTC ---
+  // Fechas sin UTC ---
   const parseFechaLocal = (fechaString: string) => {
     const [y, m, d] = fechaString.split('-').map(Number);
     return new Date(y, m - 1, d);
   };
 
-  // Formatear cualquier tipo de fecha ---
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
 
-    // Caso ISO: 2025-12-02T15:48:13.000Z
     if (dateString.includes('T')) {
       const date = new Date(dateString);
       return date.toLocaleDateString('es-AR', {
@@ -20,7 +18,6 @@ export const useFormatters = () => {
       });
     }
 
-    // Caso YYYY-MM-DD (evita restar un día)
     const date = parseFechaLocal(dateString);
 
     return date.toLocaleDateString('es-AR', {
@@ -30,7 +27,6 @@ export const useFormatters = () => {
     });
   };
 
-  // Por Tiempo
   const formatTimeAgo = (dateString: string) => {
     if (!dateString) return '';
 
@@ -53,5 +49,6 @@ export const useFormatters = () => {
     return formatDate(dateString);
   };
 
-  return { formatDate, formatTimeAgo };
+  // ⬅️ Faltaba esto
+  return { parseFechaLocal, formatDate, formatTimeAgo };
 };
