@@ -56,14 +56,23 @@ export default function SideNav() {
 
         {/* INFORMACIÓN DEL USUARIO */}
         {user && (
-          <div className="hidden md:block px-4 py-4 border-b border-gray-200 dark:border-gray-700 relative">
-            <div className="flex items-center gap-3">
-
-              {/* Avatar */}
-              <button
-                onClick={() => setIsUserMenuOpen(prev => !prev)}
-                className="w-10 h-10 rounded-full hover:opacity-80 transition overflow-hidden border-2 border-gray-200 dark:border-gray-600"
-              >
+          <div className="hidden md:block px-4 py-2 border-b border-gray-200 dark:border-gray-700 relative">
+            {/* Contenedor clickeable completo */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => setIsUserMenuOpen(prev => !prev)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setIsUserMenuOpen(prev => !prev);
+                }
+              }}
+              className="flex items-center gap-3 cursor-pointer rounded-md
+                 hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors p-2"
+            >
+              {/* Avatar (ya no es button) */}
+              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-600">
                 {user.imagen ? (
                   <img
                     src={user.imagen}
@@ -75,7 +84,7 @@ export default function SideNav() {
                     <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   </div>
                 )}
-              </button>
+              </div>
 
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
@@ -139,6 +148,7 @@ export default function SideNav() {
             )}
           </div>
         )}
+
 
 
         {/* MENÚ PRINCIPAL */}

@@ -93,13 +93,13 @@ export default function CambiosTurnosPage() {
     if (!user) return ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '14:00-23:00'];
 
     if (user.rol === 'INSPECTOR') {
-      return ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '14:00-23:00'];
+      return ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '19:00-05:00'];
     } else if (user.rol === 'SUPERVISOR') {
       return ['05:00-14:00', '14:00-23:00', '23:00-05:00'];
     }
 
     // Fallback
-    return ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '14:00-23:00'];
+    return ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '19:00-05:00'];
   }, [user]);
 
   const FORM_INICIAL = useMemo(() => ({
@@ -151,6 +151,17 @@ export default function CambiosTurnosPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [solicitudEditandoId, setSolicitudEditandoId] = useState<string | null>(null);
   const [ofertaEditandoId, setOfertaEditandoId] = useState<string | null>(null);
+  const [ofertasIgnoradas, setOfertasIgnoradas] = useState<Set<string>>(new Set());
+
+  // Cargar ofertas ignoradas del localStorage al montar el componente
+  useEffect(() => {
+    if (user?.id) {
+      const ignoradasGuardadas = localStorage.getItem(`ofertas-ignoradas-${user.id}`);
+      if (ignoradasGuardadas) {
+        setOfertasIgnoradas(new Set(JSON.parse(ignoradasGuardadas)));
+      }
+    }
+  }, [user?.id]);
 
   type MainTab = 'mis-solicitudes' | 'historico' | 'recibidas' | 'ofertas-disponibles';
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('mis-solicitudes');
@@ -225,9 +236,10 @@ export default function CambiosTurnosPage() {
     return ofertas.filter(
       o => o.ofertante?.id !== user.id &&
         o.estado === 'DISPONIBLE' &&
-        o.ofertante?.rol === user.rol  // ✅ Solo ver ofertas del mismo rol
+        o.ofertante?.rol === user.rol &&
+        !ofertasIgnoradas.has(o.id)
     );
-  }, [ofertas, user]);
+  }, [ofertas, user, ofertasIgnoradas]);
 
   // Filtrar solicitudes directas
   const solicitudesEnviadas = useMemo(() => {
@@ -483,6 +495,27 @@ export default function CambiosTurnosPage() {
       alert('Error al cancelar la oferta');
     }
   }, [actualizarEstadoOferta, refetch]);
+
+
+  const handleIgnorarOferta = useCallback((ofertaId: string) => {
+    if (!user?.id) return;
+
+    if (!confirm('¿Deseas ignorar esta oferta? Ya no la verás, pero seguirá visible para otros usuarios.')) {
+      return;
+    }
+
+    const nuevasIgnoradas = new Set(ofertasIgnoradas);
+    nuevasIgnoradas.add(ofertaId);
+    setOfertasIgnoradas(nuevasIgnoradas);
+
+    localStorage.setItem(
+      `ofertas-ignoradas-${user.id}`,
+      JSON.stringify(Array.from(nuevasIgnoradas))
+    );
+
+    console.log('✅ Oferta ignorada localmente');
+  }, [ofertasIgnoradas, user?.id]);
+
 
   const handleTomarOferta = useCallback(async (ofertaId: string) => {
     try {
@@ -1419,7 +1452,7 @@ export default function CambiosTurnosPage() {
                                     ✓ Tomar Oferta
                                   </button>
                                   <button
-                                    onClick={() => handleCancelarOferta(oferta.id)}
+                                    onClick={() => handleIgnorarOferta(oferta.id)}
                                     className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors"
                                   >
                                     Ignorar
@@ -1764,7 +1797,7 @@ export default function CambiosTurnosPage() {
                               ✓ Tomar Oferta
                             </button>
                             <button
-                              onClick={() => handleCancelarOferta(oferta.id)}
+                              onClick={() => handleIgnorarOferta(oferta.id)}
                               className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors"
                             >
                               Ignorar
