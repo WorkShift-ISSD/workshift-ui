@@ -157,8 +157,8 @@ export const ExportData: React.FC<ExportDataProps> = ({
         const cards = [
           { label: "Total", value: stats.total, color: [37, 99, 235] },
           { label: "Activos", value: stats.activos, color: [34, 197, 94] },
-          { label: "Licencia", value: stats.enLicencia, color: [234, 179, 8] },
-          { label: "Ausentes", value: stats.ausentes, color: [239, 68, 68] },
+          { label: "En Licencia", value: stats.enLicencia, color: [234, 179, 8] },
+          { label: "Sancionados", value: stats.ausentes, color: [239, 68, 68] },
         ];
 
         const cardWidth = (pageWidth - 40) / 4;
@@ -378,7 +378,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
 
     // ===== ESTADÍSTICAS =====
     if (mode === 'personal') {
-      wsData.push(['', '', '', 'TOTAL', 'ACTIVOS', 'EN LICENCIA', 'AUSENTES']);
+      wsData.push(['', '', '', 'TOTAL', 'ACTIVOS', 'EN LICENCIA', 'SANCIONADOS']);
       wsData.push(['', '', '', stats.total, stats.activos, stats.enLicencia, stats.ausentes]);
     } else {
       const presentes = employees.length - (faltasDelDia?.length || 0);
@@ -681,7 +681,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
     if (mode === 'personal') {
       xml += `      <activos>${stats.activos}</activos>\n`;
       xml += `      <en_licencia>${stats.enLicencia}</en_licencia>\n`;
-      xml += `      <ausentes>${stats.ausentes}</ausentes>\n`;
+      xml += `      <sancionados>${stats.ausentes}</ausentes>\n`;
     } else {
       const presentes = employees.length - (faltasDelDia?.length || 0);
       xml += `      <presentes>${presentes}</presentes>\n`;
