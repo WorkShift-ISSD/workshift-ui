@@ -564,7 +564,7 @@ useEffect(() => {
         <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-2 sm:mb-4">
             <div className="flex-1 min-w-0">
-              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Ausentes</p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Sancionados</p>
               <p className="text-xl sm:text-2xl font-bold text-red-600 truncate">{stats.ausentes}</p>
             </div>
             <div className="p-2 sm:p-3 bg-red-100 dark:bg-red-900 rounded-lg ml-2 flex-shrink-0">
