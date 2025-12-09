@@ -958,6 +958,8 @@ export default function InformesPage() {
                     marginBottom: '4px'
                   }}
                   itemStyle={{ color: '#10B981' }}
+                  separator=": "
+                  formatter={(value, name) => [<span style={{ color: '#FFF' }}>{value}</span>, "Porcentaje de Asistencia"]}
                   cursor={{ fill: 'transparent' }}
                 />
                 <Bar
@@ -1025,7 +1027,7 @@ export default function InformesPage() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, promedio }: any) => `${name}: ${promedio}`}
+                  label={({ name, promedio }: any) => `${name} ${promedio}`}
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
@@ -1051,9 +1053,9 @@ export default function InformesPage() {
                       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-lg">
                         <p className="m-0">
                           <span style={{ color: color }} className="font-bold">
-                            {data.name}
+                            {data.name}:
                           </span>
-                          {': '}
+                          {' '}
                           <span className="text-gray-900 dark:text-white font-bold">
                             {data.value}
                           </span>
@@ -1342,11 +1344,19 @@ export default function InformesPage() {
                         <XAxis dataKey="nombre" stroke="#9CA3AF" />
                         <YAxis stroke="#9CA3AF" />
                         <Tooltip
-                          contentStyle={{
-                            backgroundColor: '#1F2937',
-                            border: '1px solid #374151',
-                            borderRadius: '8px',
-                            padding: '8px 12px'
+                          content={({ active, payload, label }) => {
+                            if (!active || !payload) return null;
+
+                            return (
+                              <div className="bg-gray-800 dark:bg-gray-700 border border-gray-600 dark:border-gray-500 rounded-lg shadow-lg px-3 py-2">
+                                <p className="text-white font-semibold mb-1">{label}</p>
+                                {payload.map((entry: any, index: number) => (
+                                  <p key={index} className="text-white">
+                                    <span style={{ color: entry.color }}>{entry.name}:</span> <span className="font-bold">{entry.value}</span>
+                                  </p>
+                                ))}
+                              </div>
+                            );
                           }}
                           cursor={{ fill: 'transparent' }}
                         />
@@ -1391,9 +1401,9 @@ export default function InformesPage() {
                         {payload.map((entry: any, index: number) => (
                           <p key={index} className="m-1">
                             <span style={{ color: colorMap[entry.name] }}>
-                              {entry.name}
+                              {entry.name}:
                             </span>
-                            {' : '}
+                            {' '}
                             <span className="text-gray-900 dark:text-white font-bold">
                               {entry.value}
                             </span>
@@ -1455,7 +1465,7 @@ export default function InformesPage() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }: any) => `${name}: ${percent ? (percent * 100).toFixed(0) : 0}%`}
+                    label={({ name, percent }: any) => `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
@@ -1484,9 +1494,9 @@ export default function InformesPage() {
                         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-lg">
                           <p className="m-0">
                             <span className="text-gray-900 dark:text-white font-bold">
-                              {data.name}
+                              {data.name}:
                             </span>
-                            {' : '}
+                            {' '}
                             <span style={{ color: color }} className="font-bold">
                               {data.value}
                             </span>
@@ -1509,7 +1519,7 @@ export default function InformesPage() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }: any) => `${name}: ${percent ? (percent * 100).toFixed(0) : 0}%`}
+                    label={({ name, percent }: any) => `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
@@ -1543,9 +1553,9 @@ export default function InformesPage() {
                         }}>
                           <p style={{ margin: 0 }}>
                             <span style={{ color: '#FFFFFF', fontWeight: 'bold' }}>
-                              {data.name}
+                              {data.name}:
                             </span>
-                            {' : '}
+                            {' '}
                             <span style={{ color: color, fontWeight: 'bold' }}>
                               {data.value}
                             </span>

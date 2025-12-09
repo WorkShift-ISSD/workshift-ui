@@ -25,9 +25,9 @@ export const CustomTooltip: React.FC<CustomTooltipProps> = ({
       {payload.map((entry: any, index: number) => (
         <p key={index} className="text-gray-900 dark:text-gray-100 text-sm">
           <span style={{ color: entry.color || labelColor }}>
-            {entry.name}
+            {entry.name}:
           </span>
-          {': '}
+          {' '}
           <span className="font-bold">
             {entry.value}
           </span>
