@@ -510,7 +510,7 @@ useEffect(() => {
         {/* Botón Exportar */}
 
         <ExportData
-          employees={filteredEmployees}
+          employees={filteredEmployeesMemo}
           stats={stats}
           filters={{
             searchTerm,
