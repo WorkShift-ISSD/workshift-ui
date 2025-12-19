@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/app/api/fetcher";
+import { useLicenciasDelDia } from "@/hooks/useLicenciasPorDia";
 import { useFaltas, useTodasLasFaltas } from "@/hooks/useFaltas";
 import { useEmpleados } from "@/hooks/useEmpleados";
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
@@ -56,6 +59,7 @@ export default function FaltasPage() {
   const [modalEmpleado, setModalEmpleado] = useState<any>(null);
   const [faltaEnEdicion, setFaltaEnEdicion] = useState<any>(null);
   const [modalConsultaOpen, setModalConsultaOpen] = useState(false);
+  const { licenciasDelDia } = useLicenciasDelDia(selectedDate);
 
   const [searchText, setSearchText] = useState("");
 
@@ -134,6 +138,13 @@ export default function FaltasPage() {
   // Lista de faltas del día
   const empleadosConFalta = (faltas || []).map((f) => f.empleadoId);
 
+  const empleadosConLicencia = useMemo(() => {
+    return new Set(
+      (licenciasDelDia || []).map((l: any) => l.empleado_id)
+    );
+  }, [licenciasDelDia]);
+
+
 
   // ==== EMPLEADOS PARA EXPORTAR (sin filtros) ====
   const empleadosParaExportar = useMemo(() => {
@@ -165,7 +176,7 @@ export default function FaltasPage() {
   // ==== CUANDO GUARDA FORM DE FALTA ====
   const handleFaltaSaved = () => {
     setModalEmpleado(null);
-    setFaltaEnEdicion(null); 
+    setFaltaEnEdicion(null);
     mutate();
   };
 
@@ -260,7 +271,7 @@ export default function FaltasPage() {
 
       {/* FILTROS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg mb-6 transition-colors">
-        
+
         {/* 👇 Búsqueda - ocupa toda la línea */}
         <div className="md:col-span-4">
           <label className="flex items-center gap-2 font-semibold mb-2 text-gray-700 dark:text-gray-300">
@@ -279,10 +290,10 @@ export default function FaltasPage() {
         focus:border-transparent transition-all"
           />
         </div>
-        
-        
-        
-        
+
+
+
+
         {/* Fecha */}
         <div>
           <label className="flex items-center gap-2 font-semibold mb-2 text-gray-700 dark:text-gray-300">
@@ -348,7 +359,7 @@ export default function FaltasPage() {
           </select>
         </div>
 
-        
+
       </div>
 
       {/* === LISTADO === */}
@@ -407,6 +418,7 @@ export default function FaltasPage() {
                 {empleadosDelDia.map((emp) => {
                   const falta = faltas?.find((f) => f.empleadoId === emp.id);
                   const enFalta = !!falta;
+                  const enLicencia = empleadosConLicencia.has(emp.id);
 
                   return (
                     <tr
@@ -428,45 +440,54 @@ export default function FaltasPage() {
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        {enFalta ? (
+                        {enLicencia ? (
                           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold
-                                      bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200">
+                                           bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-200">
+                            <Calendar className="w-4 h-4" />
+                            Licencia
+                          </span>
+                        ) : enFalta ? (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold
+                                           bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200">
                             <XCircle className="w-4 h-4" />
                             Falta
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold
-                                      bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200">
+                                           bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200">
                             <CheckCircle className="w-4 h-4" />
                             Presente
                           </span>
                         )}
                       </td>
 
+
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        {!enFalta ? (
+                        {enLicencia ? (
+                          <span className="text-sm text-gray-500 italic">
+                            En licencia
+                          </span>
+                        ) : !enFalta ? (
                           <button
                             onClick={() => setModalEmpleado(emp)}
                             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600
-                            text-white rounded-lg font-medium transition-colors
-                            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                            dark:focus:ring-offset-gray-800"
+                                       text-white rounded-lg font-medium transition-colors
+                                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                                       dark:focus:ring-offset-gray-800"
                           >
                             Registrar Falta
                           </button>
                         ) : (
-                          // 👇 CAMBIAR ESTO - Agregar dos botones
                           <div className="flex gap-2 justify-center">
                             <button
                               onClick={() => {
                                 setFaltaEnEdicion(falta);
                                 setModalEmpleado(falta.empleado || emp);
-                                
                               }}
                               className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-500 dark:hover:bg-yellow-600
-                              text-white rounded-lg font-medium transition-colors
-                              focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2
-                              dark:focus:ring-offset-gray-800"
+                                         text-white rounded-lg font-medium transition-colors
+                                         focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2
+                                         dark:focus:ring-offset-gray-800"
                             >
                               Editar
                             </button>
@@ -474,15 +495,16 @@ export default function FaltasPage() {
                             <button
                               onClick={() => handleEliminarFalta(falta.id)}
                               className="px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600
-                                text-white rounded-lg font-medium transition-colors
-                                focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
-                                dark:focus:ring-offset-gray-800"
+                                         text-white rounded-lg font-medium transition-colors
+                                         focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
+                                         dark:focus:ring-offset-gray-800"
                             >
                               Eliminar
                             </button>
                           </div>
                         )}
                       </td>
+
                     </tr>
                   );
                 })}
@@ -500,15 +522,15 @@ export default function FaltasPage() {
           open={true}
           onClose={() => {
             setModalEmpleado(null);
-            setFaltaEnEdicion(null); // 👈 Limpiar también la falta
+            setFaltaEnEdicion(null); 
           }}
           onSaved={() => {
             setModalEmpleado(null);
-            setFaltaEnEdicion(null); // 👈 Limpiar también la falta
+            setFaltaEnEdicion(null); 
             mutate();
           }}
-          falta={faltaEnEdicion} // 👈 Pasar la falta si existe
-          mode={faltaEnEdicion ? 'edit' : 'create'} // 👈 OPCIONAL: ser explícito
+          falta={faltaEnEdicion} 
+          mode={faltaEnEdicion ? 'edit' : 'create'} 
         />
       )}
 

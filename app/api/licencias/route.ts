@@ -9,8 +9,48 @@ const SECRET_KEY = new TextEncoder().encode(
 );
 
 // GET - listar licencias
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const fecha = searchParams.get("fecha");
+
+    // =========================
+    // MODO 1: licencias por fecha (FALTAS / ADMIN)
+    // =========================
+    if (fecha) {
+      const licencias = await sql`
+        SELECT
+          id::text,
+          empleado_id::text,
+          tipo,
+          articulo,
+          to_char(fecha_desde, 'YYYY-MM-DD') as fecha_desde,
+          to_char(fecha_hasta, 'YYYY-MM-DD') as fecha_hasta,
+          dias,
+          estado,
+          observaciones
+        FROM licencias
+        WHERE ${fecha}::date BETWEEN fecha_desde AND fecha_hasta
+          AND estado IN ('APROBADA', 'ACTIVA')
+        ORDER BY fecha_desde ASC;
+      `;
+
+      return NextResponse.json(licencias);
+    }
+
+    // =========================
+    // MODO 2: licencias DEL USUARIO LOGUEADO
+    // =========================
+    const cookieStore = await cookies();
+    const token = cookieStore.get("auth-token")?.value;
+
+    if (!token) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+
+    const { payload } = await jwtVerify(token, SECRET_KEY);
+    const empleadoId = payload.id as string;
+
     const licencias = await sql`
       SELECT
         id::text,
@@ -25,10 +65,12 @@ export async function GET() {
         to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS') as created_at,
         to_char(updated_at, 'YYYY-MM-DD"T"HH24:MI:SS') as updated_at
       FROM licencias
+      WHERE empleado_id = ${empleadoId}::uuid
       ORDER BY created_at DESC;
     `;
 
     return NextResponse.json(licencias);
+
   } catch (error) {
     console.error("❌ Error GET /api/licencias:", error);
     return NextResponse.json(
@@ -68,7 +110,7 @@ export async function POST(request: NextRequest) {
       Math.ceil(
         (new Date(fecha_hasta).getTime() -
           new Date(fecha_desde).getTime()) /
-          (1000 * 60 * 60 * 24)
+        (1000 * 60 * 60 * 24)
       ) + 1;
 
     const estado = tipo === "ORDINARIA" ? "PENDIENTE" : "APROBADA";

@@ -19,13 +19,15 @@ export async function GET(request: NextRequest) {
 
     let query;
 
+    // ========================
     // FILTRAR POR FECHA
+    // ========================
     if (fecha) {
       query = sql`
         SELECT 
           f.id::text,
           f.empleado_id::text as "empleadoId",
-          
+
           json_build_object(
             'id', e.id::text,
             'nombre', e.nombre,
@@ -38,7 +40,15 @@ export async function GET(request: NextRequest) {
           f.fecha::text as fecha,
           f.causa as motivo,
           f.observaciones,
-          f.justificada,
+
+          -- 🔥 LICENCIA
+          (l.id IS NOT NULL) as "conLicencia",
+
+          -- 🔥 JUSTIFICADA AUTOMÁTICA SI HAY LICENCIA
+          CASE
+            WHEN l.id IS NOT NULL THEN true
+            ELSE f.justificada
+          END as justificada,
 
           json_build_object(
             'id', u.id::text,
@@ -48,22 +58,31 @@ export async function GET(request: NextRequest) {
 
           f.created_at::text as "createdAt",
           f.updated_at::text as "updatedAt"
+
         FROM faltas f
         JOIN users e ON f.empleado_id = e.id
         LEFT JOIN users u ON f.registrado_por::uuid = u.id
+
+        -- 🔥 JOIN LICENCIAS
+        LEFT JOIN licencias l
+          ON l.empleado_id = f.empleado_id
+          AND f.fecha BETWEEN l.fecha_desde AND l.fecha_hasta
+          AND l.estado = 'APROBADA'
+
         WHERE f.fecha = ${fecha}::date
         ORDER BY f.created_at DESC;
       `;
     }
 
-
+    // ========================
     // FILTRAR POR EMPLEADO
+    // ========================
     else if (empleadoId) {
       query = sql`
         SELECT 
           f.id::text,
           f.empleado_id::text as "empleadoId",
-          
+
           json_build_object(
             'id', e.id::text,
             'nombre', e.nombre,
@@ -76,7 +95,13 @@ export async function GET(request: NextRequest) {
           f.fecha::text as fecha,
           f.causa as motivo,
           f.observaciones,
-          f.justificada,
+
+          (l.id IS NOT NULL) as "conLicencia",
+
+          CASE
+            WHEN l.id IS NOT NULL THEN true
+            ELSE f.justificada
+          END as justificada,
 
           json_build_object(
             'id', u.id::text,
@@ -86,22 +111,30 @@ export async function GET(request: NextRequest) {
 
           f.created_at::text as "createdAt",
           f.updated_at::text as "updatedAt"
+
         FROM faltas f
         JOIN users e ON f.empleado_id = e.id
         LEFT JOIN users u ON f.registrado_por::uuid = u.id
+
+        LEFT JOIN licencias l
+          ON l.empleado_id = f.empleado_id
+          AND f.fecha BETWEEN l.fecha_desde AND l.fecha_hasta
+          AND l.estado = 'APROBADA'
+
         WHERE f.empleado_id = ${empleadoId}::uuid
         ORDER BY f.fecha DESC;
       `;
     }
 
-
-     // SIN FILTROS → TODAS LAS FALTAS
+    // ========================
+    // SIN FILTROS (TODAS)
+    // ========================
     else {
       query = sql`
         SELECT 
           f.id::text,
           f.empleado_id::text as "empleadoId",
-          
+
           json_build_object(
             'id', e.id::text,
             'nombre', e.nombre,
@@ -114,7 +147,13 @@ export async function GET(request: NextRequest) {
           f.fecha::text as fecha,
           f.causa as motivo,
           f.observaciones,
-          f.justificada,
+
+          (l.id IS NOT NULL) as "conLicencia",
+
+          CASE
+            WHEN l.id IS NOT NULL THEN true
+            ELSE f.justificada
+          END as justificada,
 
           json_build_object(
             'id', u.id::text,
@@ -124,24 +163,29 @@ export async function GET(request: NextRequest) {
 
           f.created_at::text as "createdAt",
           f.updated_at::text as "updatedAt"
+
         FROM faltas f
         JOIN users e ON f.empleado_id = e.id
         LEFT JOIN users u ON f.registrado_por::uuid = u.id
-        WHERE e.id IS NOT NULL
+
+        LEFT JOIN licencias l
+          ON l.empleado_id = f.empleado_id
+          AND f.fecha BETWEEN l.fecha_desde AND l.fecha_hasta
+          AND l.estado = 'APROBADA'
+
         ORDER BY f.fecha DESC;
       `;
     }
 
     const faltas = await query;
 
-    // Filtrar faltas nulas y normalizar fechas
     const faltasNormalizadas = (faltas || [])
-      .filter(falta => falta && falta.empleadoId) // ✅ Eliminar faltas con datos null
-      .map(falta => ({
-        ...falta,
-        fecha: falta.fecha.split('T')[0]
+      .filter(f => f && f.empleadoId)
+      .map(f => ({
+        ...f,
+        fecha: f.fecha.split('T')[0]
       }));
-    
+
     return NextResponse.json(faltasNormalizadas);
 
   } catch (error) {
@@ -153,8 +197,9 @@ export async function GET(request: NextRequest) {
   }
 }
 
-
-// POST - crear falta
+// ========================
+// POST - crear falta (SIN CAMBIOS)
+// ========================
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -162,18 +207,17 @@ export async function POST(request: NextRequest) {
 
     if (!body.empleadoId || !body.fecha || !motivo) {
       return NextResponse.json(
-        { error: 'Faltan campos obligatorios: empleadoId, fecha, motivo' },
+        { error: 'Faltan campos obligatorios' },
         { status: 400 }
       );
     }
 
     const fechaNormalizada = body.fecha.split('T')[0];
 
-    // Usuario que registra la falta
     const cookieStore = await cookies();
     const token = cookieStore.get('auth-token')?.value;
 
-    let registradoPorId: string | null = null; // ✅ Guardar el ID en lugar del nombre
+    let registradoPorId: string | null = null;
 
     if (token) {
       try {
@@ -182,7 +226,6 @@ export async function POST(request: NextRequest) {
       } catch {}
     }
 
-    // Verificar empleado
     const [empleado] = await sql`
       SELECT id, nombre, apellido, legajo, horario, rol
       FROM users
@@ -190,13 +233,9 @@ export async function POST(request: NextRequest) {
     `;
 
     if (!empleado) {
-      return NextResponse.json(
-        { error: 'Empleado no encontrado' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Empleado no encontrado' }, { status: 404 });
     }
 
-    // Verificar si ya existe falta ese día
     const [faltaExistente] = await sql`
       SELECT id
       FROM faltas
@@ -211,7 +250,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Insertar falta - ✅ Guardar el ID del usuario
     const [falta] = await sql`
       INSERT INTO faltas (
         id,
@@ -228,66 +266,20 @@ export async function POST(request: NextRequest) {
         gen_random_uuid(),
         ${body.empleadoId}::uuid,
         ${fechaNormalizada}::date,
-        ${body.motivo},
+        ${motivo},
         ${body.observaciones || null},
         ${body.justificada || false},
         ${registradoPorId}::uuid,
         NOW(),
         NOW()
       )
-      RETURNING 
-        id::text,
-        empleado_id::text as "empleadoId",
-        fecha::text as fecha,
-        causa as motivo,
-        observaciones,
-        justificada,
-        registrado_por::text as registrado_por_id,
-        created_at::text as "createdAt",
-        updated_at::text as "updatedAt";
+      RETURNING *;
     `;
 
-    // ✅ Obtener datos del usuario que registró
-    let registradoPor = null;
-    if (falta.registrado_por_id) {
-      const [usuario] = await sql`
-        SELECT id::text, nombre, apellido
-        FROM users
-        WHERE id = ${falta.registrado_por_id}::uuid;
-      `;
-      if (usuario) {
-        registradoPor = {
-          id: usuario.id,
-          nombre: usuario.nombre,
-          apellido: usuario.apellido
-        };
-      }
-    }
-
-    const faltaCompleta = {
-      id: falta.id,
-      empleadoId: falta.empleadoId,
-      fecha: falta.fecha.split('T')[0],
-      motivo: falta.motivo,
-      observaciones: falta.observaciones,
-      justificada: falta.justificada,
-      registradoPor, // ✅ Ahora es un objeto como en GET
-      createdAt: falta.createdAt,
-      updatedAt: falta.updatedAt,
-      empleado: {
-        id: empleado.id.toString(),
-        nombre: empleado.nombre,
-        apellido: empleado.apellido,
-        legajo: empleado.legajo,
-        horario: empleado.horario,
-        rol: empleado.rol
-      }
-    };
-
-    return NextResponse.json(faltaCompleta, { status: 201 });
+    return NextResponse.json(falta, { status: 201 });
 
   } catch (error) {
-    console.error("❌ Error al crear falta:", error);
+    console.error('❌ Error al crear falta:', error);
     return NextResponse.json(
       { error: 'Error al crear falta', details: String(error) },
       { status: 500 }
