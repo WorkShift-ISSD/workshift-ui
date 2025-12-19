@@ -27,6 +27,21 @@ export const useFormatters = () => {
     });
   };
 
+  const formatDate2 = (dateString: string) => {
+    if (!dateString) return '';
+
+    const date = dateString.includes('T')
+      ? new Date(dateString)
+      : parseFechaLocal(dateString);
+
+    return date.toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+
   const formatTimeAgo = (dateString: string) => {
     if (!dateString) return '';
 
@@ -49,6 +64,15 @@ export const useFormatters = () => {
     return formatDate(dateString);
   };
 
+  /* FECHA HOY (AR) */
+  const getTodayDate = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+      d.getDate()
+    ).padStart(2, "0")}`;
+  };
+
   // ⬅️ Faltaba esto
-  return { parseFechaLocal, formatDate, formatTimeAgo };
+  return { parseFechaLocal, formatDate, formatDate2, formatTimeAgo, getTodayDate };
 };
+

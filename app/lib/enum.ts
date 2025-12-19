@@ -31,6 +31,24 @@ export enum GrupoTurno {
   ADMIN = 'ADMIN'
 }
 
+export enum EstadoLicencia {
+  PENDIENTE = "PENDIENTE",
+  APROBADA = "APROBADA",
+  ACTIVA = "ACTIVA",
+  FINALIZADA = "FINALIZADA",
+  CANCELADA = "CANCELADA",
+  RECHAZADA = "RECHAZADA",
+}
+
+export enum TipoLicencia {
+  ORDINARIA = "ORDINARIA",
+  ENFERMEDAD = "ENFERMEDAD",
+  ESPECIAL = "ESPECIAL",
+  ESTUDIO = "ESTUDIO",
+  SIN_GOCE = "SIN_GOCE",
+}
+
+
 export enum TipoTurno {
   MANANA = 'manana',
   TARDE = 'tarde',

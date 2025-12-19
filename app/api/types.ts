@@ -69,3 +69,32 @@ export interface SolicitudesDirectas {
   fechaSolicitud: string;
   prioridad: 'BAJA' | 'MEDIA' | 'ALTA';
 }
+
+export interface Licencia {
+  id: string;
+  empleado_id: string;
+  tipo: string;
+  articulo?: string;
+  fecha_desde: string;
+  fecha_hasta: string;
+  dias: number;
+  estado: "PENDIENTE" | "APROBADA" | "ACTIVA" | "FINALIZADA" | "CANCELADA" | "RECHAZADA";
+  observaciones?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface NuevaLicencia {
+  tipo: string;
+  articulo?: string;
+  fecha_desde: string;
+  fecha_hasta: string;
+  observaciones?: string;
+}
+
+export type TipoLicencia =
+  | "ORDINARIA"
+  | "ESPECIAL"
+  | "MEDICA"
+  | "ESTUDIO"
+  | "SIN_GOCE";

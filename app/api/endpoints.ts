@@ -10,7 +10,7 @@ export const endpoints = {
     update: (id: string) => `${API_BASE_URL}/cambios/${id}`,
     delete: (id: string) => `${API_BASE_URL}/cambios/${id}`,
   },
-  
+
   // Ofertas
   ofertas: {
     list: () => `${API_BASE_URL}/ofertas`,
@@ -31,8 +31,8 @@ export const endpoints = {
 
   // Faltas
   faltas: {
-    list: (fecha?: string) => fecha 
-      ? `${API_BASE_URL}/faltas?fecha=${fecha}` 
+    list: (fecha?: string) => fecha
+      ? `${API_BASE_URL}/faltas?fecha=${fecha}`
       : `${API_BASE_URL}/faltas`,
     byId: (id: string) => `${API_BASE_URL}/faltas/${id}`,
     byEmpleado: (empleadoId: string) => `${API_BASE_URL}/faltas/empleado/${empleadoId}`,
@@ -46,13 +46,13 @@ export const endpoints = {
     get: () => `${API_BASE_URL}/stats`,
     update: () => `${API_BASE_URL}/stats`,
   },
-  
+
   // Turnos Data
   turnosData: {
     get: () => `${API_BASE_URL}/turnosData`,
     update: () => `${API_BASE_URL}/turnosData`,
   },
-  
+
   // Users
   users: {
     list: () => `${API_BASE_URL}/users`,
@@ -61,7 +61,7 @@ export const endpoints = {
     update: (id: string) => `${API_BASE_URL}/users/${id}`,
     delete: (id: string) => `${API_BASE_URL}/users/${id}`,
   },
-  
+
   // Turnos
   turnos: {
     list: () => `${API_BASE_URL}/turnos`,
@@ -70,6 +70,16 @@ export const endpoints = {
     update: (id: string) => `${API_BASE_URL}/turnos/${id}`,
     delete: (id: string) => `${API_BASE_URL}/turnos/${id}`,
   },
+
+  // Licencias
+  licencias: {
+    list: () => `${API_BASE_URL}/licencias`,
+    byId: (id: string) => `${API_BASE_URL}/licencias/${id}`,
+    create: () => `${API_BASE_URL}/licencias`,
+    update: (id: string) => `${API_BASE_URL}/licencias/${id}`,
+    delete: (id: string) => `${API_BASE_URL}/licencias/${id}`,
+  },
+
 } as const;
 
 

@@ -91,8 +91,8 @@ const systemUsers = [
 async function seedUsers() {
   await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
 
- // LÍNEA 89-111 (DESPUÉS) - ✅ CON CAMPOS NUEVOS
-const createTableQuery = `
+  // LÍNEA 89-111 (DESPUÉS) - ✅ CON CAMPOS NUEVOS
+  const createTableQuery = `
   CREATE TABLE IF NOT EXISTS users (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     legajo INTEGER UNIQUE NOT NULL,
@@ -358,6 +358,34 @@ async function seedFaltas() {
   return true;
 }
 
+async function seedLicencias() {
+  await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS licencias (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      empleado_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      tipo VARCHAR(50) NOT NULL,
+      articulo VARCHAR(50),
+      fecha_desde DATE NOT NULL,
+      fecha_hasta DATE NOT NULL,
+      dias INTEGER NOT NULL,
+      estado VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE',
+      observaciones TEXT,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW(),
+      CHECK (fecha_hasta >= fecha_desde)
+    );
+  `;
+
+  await sql`CREATE INDEX IF NOT EXISTS idx_licencias_empleado ON licencias(empleado_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_licencias_fecha ON licencias(fecha_desde, fecha_hasta)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_licencias_estado ON licencias(estado)`;
+
+  console.log("✅ Tabla licencias creada");
+}
+
+
 async function seedStats() {
   await sql`
     CREATE TABLE IF NOT EXISTS stats (
@@ -405,7 +433,7 @@ async function seedTurnosData() {
   `;
 
   const currentMonth = new Date().toISOString().slice(0, 7);
-  
+
   // Obtener un usuario real de la base de datos
   const existingUsers = await sql`
     SELECT id FROM users LIMIT 1
@@ -449,7 +477,7 @@ async function seedTurnosData() {
 
 async function seedOfertas() {
   await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
-  
+
   // Eliminar tabla existente
   await sql`DROP TABLE IF EXISTS ofertas CASCADE`;
 
@@ -560,7 +588,7 @@ async function seedDocsHelp() {
   // Crear índices para búsqueda de texto
   await sql`CREATE INDEX IF NOT EXISTS idx_docs_help_title ON docs_help USING gin(to_tsvector('spanish', title))`;
   await sql`CREATE INDEX IF NOT EXISTS idx_docs_help_content ON docs_help USING gin(to_tsvector('spanish', content))`;
-  
+
   console.log("✅ Índices de búsqueda creados");
 
   // ✅ DOCUMENTACIÓN DEL MANUAL (sin embeddings)
@@ -932,7 +960,7 @@ PARA JEFES:
           ${doc.content}
         )
       `;
-      
+
       inserted++;
       console.log(`✅ ${doc.title}`);
     } catch (error) {
@@ -942,7 +970,7 @@ PARA JEFES:
   }
 
   console.log(`\n📊 Resultado: ${inserted}/${docsData.length} documentos insertados, ${failed} fallidos`);
-  
+
   return true;
 }
 
@@ -954,7 +982,7 @@ async function createRelations() {
 async function dropAllTables() {
   console.log('🗑️  Eliminando tablas existentes...');
 
-  await sql`DROP TABLE IF EXISTS password_reset_tokens CASCADE`;  // ✅ NUEVO
+  await sql`DROP TABLE IF EXISTS password_reset_tokens CASCADE`;
   await sql`DROP TABLE IF EXISTS solicitudes_directas CASCADE`;
   await sql`DROP TABLE IF EXISTS ofertas CASCADE`;
   await sql`DROP TABLE IF EXISTS turnos_data CASCADE`;
@@ -962,6 +990,7 @@ async function dropAllTables() {
   await sql`DROP TABLE IF EXISTS stats CASCADE`;
   await sql`DROP TABLE IF EXISTS turnos CASCADE`;
   await sql`DROP TABLE IF EXISTS faltas CASCADE`;
+  await sql`DROP TABLE IF EXISTS licencias CASCADE`;
   await sql`DROP TABLE IF EXISTS users CASCADE`;
 
   console.log('✅ Tablas eliminadas');
@@ -977,10 +1006,13 @@ export async function GET() {
       await seedUsers();
       console.log('✅ Usuarios creados');
 
-      await seedPasswordResetTokens();  // ✅ NUEVO
+      await seedPasswordResetTokens();
       console.log('✅ Tabla password_reset_tokens creada');
 
-      await seedFaltas();  
+      await seedLicencias();
+      console.log('✅ Licencias creadas');
+
+      await seedFaltas();
       console.log('✅ Faltas creadas');
 
       await seedTurnos();
@@ -996,11 +1028,13 @@ export async function GET() {
       console.log('✅ Datos de turnos creados');
 
       await seedOfertas();
+
       await seedSolicitudesDirectas();
 
       await seedDocsHelp();
 
       await createRelations();
+
     });
 
     return Response.json({
@@ -1029,9 +1063,9 @@ export async function GET() {
         },
         ofertas: {
           campos: [
-            'id', 'ofertante_id', 'tomador_id', 'tipo', 
+            'id', 'ofertante_id', 'tomador_id', 'tipo',
             'modalidad_busqueda', 'turno_ofrece', 'turnos_busca', 'fechas_disponibles',
-            'fecha_ofrece', 'horario_ofrece', 'grupo_ofrece', 
+            'fecha_ofrece', 'horario_ofrece', 'grupo_ofrece',
             'fecha_busca', 'horario_busca', 'grupo_busca',
             'fecha_desde', 'fecha_hasta', 'descripcion', 'prioridad', 'estado',
             'valido_hasta', 'publicado', 'created_at', 'updated_at'
@@ -1044,11 +1078,11 @@ export async function GET() {
         },
         solicitudes_directas: {
           campos: [
-            'id', 'solicitante_id', 'destinatario_id', 
+            'id', 'solicitante_id', 'destinatario_id',
             'turno_solicitante', 'turno_destinatario',
-            'fecha_solicitante', 'horario_solicitante', 'grupo_solicitante', 
-            'fecha_destinatario', 'horario_destinatario', 'grupo_destinatario', 
-            'motivo', 'prioridad', 'estado', 'fecha_solicitud', 
+            'fecha_solicitante', 'horario_solicitante', 'grupo_solicitante',
+            'fecha_destinatario', 'horario_destinatario', 'grupo_destinatario',
+            'motivo', 'prioridad', 'estado', 'fecha_solicitud',
             'created_at', 'updated_at'
           ],
           jsonb_fields: {
