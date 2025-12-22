@@ -4,19 +4,13 @@
 import { useState, useMemo } from "react";
 import { X, Search, Calendar, User, Filter } from "lucide-react";
 
-interface Falta {
+type TipoRegistro = "FALTA" | "LICENCIA";
+
+interface BaseRegistro {
   id: string;
+  tipo: TipoRegistro;
   empleadoId: string;
   fecha: string;
-  causa: string;
-  observaciones: string | null;
-  justificada: boolean;
-  registradoPor: {
-    id: string;
-    nombre: string;
-    apellido: string;
-  }
-  createdAt: string;
   empleado?: {
     id: string;
     nombre: string;
@@ -25,17 +19,36 @@ interface Falta {
   };
 }
 
+interface Falta extends BaseRegistro {
+  tipo: "FALTA";
+  causa: string;
+  observaciones: string | null;
+  justificada: boolean;
+  registradoPor: {
+    id: string;
+    nombre: string;
+    apellido: string;
+  };
+}
+
+interface Licencia extends BaseRegistro {
+  tipo: "LICENCIA";
+  motivo: string;
+}
+
+type Registro = Falta | Licencia;
+
 interface ModalConsultaFaltasProps {
   open: boolean;
   onClose: () => void;
-  faltas: Falta[];
+  registros: Registro[];
   empleados: any[];
 }
 
 export default function ModalConsultaFaltas({
   open,
   onClose,
-  faltas,
+  registros,
   empleados,
 }: ModalConsultaFaltasProps) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -43,54 +56,71 @@ export default function ModalConsultaFaltas({
   const [selectedJustificada, setSelectedJustificada] = useState("TODOS");
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
+  const [selectedEstado, setSelectedEstado] = useState<
+    "TODOS" | "JUSTIFICADA" | "NO_JUSTIFICADA" | "LICENCIA"
+  >("TODOS");
+
+
+  const registrosConEmpleado = useMemo(() => {
+    if (!registros || !empleados) return [];
+
+    return registros.map((r) => ({
+      ...r,
+      empleado: empleados.find((e) => e.id === r.empleadoId),
+    }));
+  }, [registros, empleados]);
+
 
   const faltasFiltradas = useMemo(() => {
-    if (!faltas) return [];
+    if (!registrosConEmpleado.length) return [];
 
-    // Normalizo y separo el texto de búsqueda en palabras
     const palabras = searchTerm?.toLowerCase().trim().split(/\s+/) ?? [];
 
-    return faltas.filter((falta) => {
-      // Normalización segura
-      const nombre = falta.empleado?.nombre?.toLowerCase() ?? "";
-      const apellido = falta.empleado?.apellido?.toLowerCase() ?? "";
-      const causa = falta.causa?.toLowerCase() ?? "";
+    return registrosConEmpleado.filter((r) => {
+      const nombre = r.empleado?.nombre?.toLowerCase() ?? "";
+      const apellido = r.empleado?.apellido?.toLowerCase() ?? "";
 
-      // Filtro por texto (multi-palabra)
+      const textoBase =
+        r.tipo === "FALTA"
+          ? (r.causa ?? "").toLowerCase()
+          : (r.motivo ?? "").toLowerCase();
+
       const textoCoincide =
         palabras.length === 0 ||
         palabras.every((p) =>
           nombre.includes(p) ||
           apellido.includes(p) ||
-          causa.includes(p)
+          textoBase.includes(p)
         );
 
-      // Filtro por empleado
       const empleadoCoincide =
         selectedEmpleado === "TODOS" ||
-        falta.empleadoId === selectedEmpleado;
+        r.empleadoId === selectedEmpleado;
 
-      // Filtro por justificada
-      const justificadaCoincide =
-        selectedJustificada === "TODOS" ||
-        (selectedJustificada === "SI" && falta.justificada) ||
-        (selectedJustificada === "NO" && !falta.justificada);
 
-      // Filtro por rango de fechas
       const fechaCoincide =
-        (!fechaDesde || falta.fecha >= fechaDesde) &&
-        (!fechaHasta || falta.fecha <= fechaHasta);
+        (!fechaDesde || r.fecha >= fechaDesde) &&
+        (!fechaHasta || r.fecha <= fechaHasta);
 
-      // retorno final
+      const estadoCoincide =
+        selectedEstado === "TODOS" ||
+        (selectedEstado === "LICENCIA" && r.tipo === "LICENCIA") ||
+        (r.tipo === "FALTA" &&
+          selectedEstado === "JUSTIFICADA" &&
+          r.justificada) ||
+        (r.tipo === "FALTA" &&
+          selectedEstado === "NO_JUSTIFICADA" &&
+          !r.justificada);
+
       return (
         textoCoincide &&
         empleadoCoincide &&
-        justificadaCoincide &&
+        estadoCoincide &&
         fechaCoincide
       );
     });
   }, [
-    faltas,
+    registrosConEmpleado,
     searchTerm,
     selectedEmpleado,
     selectedJustificada,
@@ -99,14 +129,24 @@ export default function ModalConsultaFaltas({
   ]);
 
 
+
   // Estadísticas
   const stats = useMemo(() => {
+    const soloFaltas = registrosConEmpleado.filter(
+      (r) => r.tipo === "FALTA"
+    );
+
     return {
-      total: faltasFiltradas.length,
-      justificadas: faltasFiltradas.filter((f) => f.justificada).length,
-      noJustificadas: faltasFiltradas.filter((f) => !f.justificada).length,
+      total: registrosConEmpleado.length,
+      justificadas: soloFaltas.filter(
+        (f) => f.tipo === "FALTA" && f.justificada
+      ).length,
+      noJustificadas: soloFaltas.filter(
+        (f) => f.tipo === "FALTA" && !f.justificada
+      ).length,
     };
-  }, [faltasFiltradas]);
+  }, [registrosConEmpleado]);
+
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "";
@@ -308,25 +348,29 @@ export default function ModalConsultaFaltas({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {faltasFiltradas.map((falta) => (
+                {faltasFiltradas.map((registro) => (
                   <tr
-                    key={falta.id}
+                    key={registro.id}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      {formatDate(falta.fecha)}
+                      {formatDate(registro.fecha)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      {falta.empleado?.apellido}, {falta.empleado?.nombre}
+                      {registro.empleado?.apellido}, {registro.empleado?.nombre}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                      {falta.causa}
+                      {registro.tipo === "FALTA" ? registro.causa : registro.motivo}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                      {falta.observaciones || "-"}
+                      {registro.tipo === "FALTA" ? (registro.observaciones || "-") : "-"}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-center">
-                      {falta.justificada ? (
+                      {registro.tipo === "LICENCIA" ? (
+                        <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs font-medium">
+                          Licencia
+                        </span>
+                      ) : registro.justificada ? (
                         <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full text-xs font-medium">
                           Justificada
                         </span>
@@ -336,8 +380,10 @@ export default function ModalConsultaFaltas({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      {`${falta.registradoPor.nombre} ${falta.registradoPor.apellido}`}
+                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                      {registro.tipo === "FALTA" && registro.registradoPor
+                        ? `${registro.registradoPor.nombre} ${registro.registradoPor.apellido}`
+                        : "-"}
                     </td>
                   </tr>
                 ))}

@@ -61,12 +61,28 @@ export default function FaltasPage() {
   const [modalConsultaOpen, setModalConsultaOpen] = useState(false);
   const { licenciasDelDia } = useLicenciasDelDia(selectedDate);
 
+  const abrirModalConsulta = async () => {
+    await refetchFaltas();
+    setModalConsultaOpen(true);
+  };
+
+
   const [searchText, setSearchText] = useState("");
 
   const { empleados, isLoading: loadingEmpleados, error: errorEmpleados } = useEmpleados();
   const { faltas, isLoading: loadingFaltas, error: errorFaltas, deleteFalta: eliminarFalta, mutate } = useFaltas(selectedDate);
-  const { faltas: todasLasFaltas } = useTodasLasFaltas();
+  const {
+    faltas: todasLasFaltas = [],
+    refetch: refetchFaltas,
+  } = useTodasLasFaltas();
 
+
+  const registrosAusencias = useMemo(() => {
+    return (todasLasFaltas || []).map((f) => ({
+      ...f,
+      tipo: "FALTA" as const,
+    }));
+  }, [todasLasFaltas]);
 
   // ==== VALIDAR FECHA FUTURA ====
   const esFechaFutura = useMemo(() => {
@@ -217,17 +233,19 @@ export default function FaltasPage() {
         </div>
 
         {/* Botones agrupados */}
+
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setModalConsultaOpen(true)}
+            onClick={abrirModalConsulta}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700
-               dark:bg-blue-500 dark:hover:bg-blue-600
-               text-white rounded-lg font-medium transition-colors shadow-lg
-               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              dark:bg-blue-500 dark:hover:bg-blue-600
+              text-white rounded-lg font-medium transition-colors shadow-lg
+              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
             <FileSearch className="w-5 h-5" />
             Consultar Faltas
           </button>
+
 
           <ExportData
             employees={empleadosParaExportar}
@@ -522,15 +540,15 @@ export default function FaltasPage() {
           open={true}
           onClose={() => {
             setModalEmpleado(null);
-            setFaltaEnEdicion(null); 
+            setFaltaEnEdicion(null);
           }}
           onSaved={() => {
             setModalEmpleado(null);
-            setFaltaEnEdicion(null); 
+            setFaltaEnEdicion(null);
             mutate();
           }}
-          falta={faltaEnEdicion} 
-          mode={faltaEnEdicion ? 'edit' : 'create'} 
+          falta={faltaEnEdicion}
+          mode={faltaEnEdicion ? 'edit' : 'create'}
         />
       )}
 
@@ -538,9 +556,10 @@ export default function FaltasPage() {
       <ModalConsultaFaltas
         open={modalConsultaOpen}
         onClose={() => setModalConsultaOpen(false)}
-        faltas={todasLasFaltas}
+        registros={registrosAusencias}
         empleados={empleados || []}
       />
+
     </div>
   );
 }

@@ -201,7 +201,7 @@ async function seedUsers() {
             grupo_turno,
             calificacion,
             total_intercambios,
-            primer_ingreso,                    -- ✅ NUEVO
+            primer_ingreso,                    
             ultimo_cambio_password
           )
           VALUES (
@@ -220,7 +220,7 @@ async function seedUsers() {
             ${user.grupoTurno || GrupoTurno.A},
             ${4.5},
             ${0},
-            ${true},                           -- ✅ NUEVO (todos requieren cambio)
+            ${true},                          
             ${null}
           )
           ON CONFLICT (id) DO UPDATE SET
@@ -383,6 +383,30 @@ async function seedLicencias() {
   await sql`CREATE INDEX IF NOT EXISTS idx_licencias_estado ON licencias(estado)`;
 
   console.log("✅ Tabla licencias creada");
+}
+
+async function seedSanciones() {
+  await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS sanciones (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      empleado_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      motivo TEXT NOT NULL,
+      fecha_desde DATE NOT NULL,
+      fecha_hasta DATE NOT NULL,
+      estado VARCHAR(20) NOT NULL DEFAULT 'ACTIVA',
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW(),
+      CHECK (fecha_hasta >= fecha_desde)
+    );
+  `;
+
+  await sql`CREATE INDEX IF NOT EXISTS idx_sanciones_empleado ON sanciones(empleado_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_sanciones_fecha ON sanciones(fecha_desde, fecha_hasta)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_sanciones_estado ON sanciones(estado)`;
+
+  console.log("✅ Tabla sanciones creada");
 }
 
 
@@ -1011,6 +1035,9 @@ export async function GET() {
 
       await seedLicencias();
       console.log('✅ Licencias creadas');
+
+      await seedSanciones();
+      console.log('✅ Sanciones creadas');
 
       await seedFaltas();
       console.log('✅ Faltas creadas');

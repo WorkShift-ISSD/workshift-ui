@@ -28,6 +28,7 @@ export interface TurnosData {
 export interface User {
   id: string;
   nombre: string;
+  apellido: String;
   email: string;
   rol: string;
   horario: string;
@@ -98,3 +99,21 @@ export type TipoLicencia =
   | "MEDICA"
   | "ESTUDIO"
   | "SIN_GOCE";
+
+  export interface Sancion {
+  id: string;
+  empleado_id: string;
+  motivo: string;
+  fecha_desde: string;
+  fecha_hasta: string;
+  estado: "ACTIVA" | "FINALIZADA" | "ANULADA";
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface NuevaSancion {
+  empleado_id: string;
+  motivo: string;
+  fecha_desde: string;
+  fecha_hasta: string;
+}

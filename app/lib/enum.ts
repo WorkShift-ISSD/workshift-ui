@@ -80,6 +80,12 @@ export enum EstadoCambio {
   COMPLETADO = 'COMPLETADO'
 }
 
+export enum EstadoSancion {
+  ACTIVA = 'ACTIVA',
+  FINALIZADA = 'FINALIZADA',
+  CANCELADA = 'CANCELADA'
+}
+
 // Helper para obtener valores como string SQL
 export const getEnumSqlString = (enumObj: Record<string, string>): string => {
   return Object.values(enumObj).map(v => `'${v}'`).join(', ');

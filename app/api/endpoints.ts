@@ -80,6 +80,18 @@ export const endpoints = {
     delete: (id: string) => `${API_BASE_URL}/licencias/${id}`,
   },
 
+  // Sanciones
+  sanciones: {
+    list: () => `${API_BASE_URL}/sanciones`,
+    byId: (id: string) => `${API_BASE_URL}/sanciones/${id}`,
+    byEmpleado: (empleadoId: string) =>
+      `${API_BASE_URL}/sanciones/empleado/${empleadoId}`,
+    create: () => `${API_BASE_URL}/sanciones`,
+    update: (id: string) => `${API_BASE_URL}/sanciones/${id}`,
+    delete: (id: string) => `${API_BASE_URL}/sanciones/${id}`,
+  },
+
+
 } as const;
 
 
