@@ -392,7 +392,7 @@ async function seedSanciones() {
     CREATE TABLE IF NOT EXISTS sanciones (
       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
       empleado_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      motivo TEXT NOT NULL,
+      motivo TEXT,
       fecha_desde DATE NOT NULL,
       fecha_hasta DATE NOT NULL,
       estado VARCHAR(20) NOT NULL DEFAULT 'ACTIVA',
@@ -1016,6 +1016,7 @@ async function dropAllTables() {
   await sql`DROP TABLE IF EXISTS faltas CASCADE`;
   await sql`DROP TABLE IF EXISTS licencias CASCADE`;
   await sql`DROP TABLE IF EXISTS users CASCADE`;
+  await sql`DROP TABLE IF EXISTS sanciones CASCADE`;
 
   console.log('✅ Tablas eliminadas');
 }

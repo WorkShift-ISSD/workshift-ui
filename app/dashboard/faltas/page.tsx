@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/app/api/fetcher";
 import { useLicenciasDelDia } from "@/hooks/useLicenciasPorDia";
+import { useSancionesDelDia } from "@/hooks/useSancionesDelDia";
 import { useFaltas, useTodasLasFaltas } from "@/hooks/useFaltas";
 import { useEmpleados } from "@/hooks/useEmpleados";
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
@@ -60,6 +61,7 @@ export default function FaltasPage() {
   const [faltaEnEdicion, setFaltaEnEdicion] = useState<any>(null);
   const [modalConsultaOpen, setModalConsultaOpen] = useState(false);
   const { licenciasDelDia } = useLicenciasDelDia(selectedDate);
+  const { sancionesDelDia } = useSancionesDelDia(selectedDate);
 
   const abrirModalConsulta = async () => {
     await refetchFaltas();
@@ -160,7 +162,10 @@ export default function FaltasPage() {
     );
   }, [licenciasDelDia]);
 
-
+  const empleadosConSancion = useMemo(() => {
+    const data = Array.isArray(sancionesDelDia) ? sancionesDelDia : [];
+    return new Set(data.map(s => String(s?.empleado_id || s?.empleadoId || '')).filter(id => id !== ''));
+  }, [sancionesDelDia]);
 
   // ==== EMPLEADOS PARA EXPORTAR (sin filtros) ====
   const empleadosParaExportar = useMemo(() => {
@@ -437,6 +442,7 @@ export default function FaltasPage() {
                   const falta = faltas?.find((f) => f.empleadoId === emp.id);
                   const enFalta = !!falta;
                   const enLicencia = empleadosConLicencia.has(emp.id);
+                  const enSancion = empleadosConSancion.has(emp.id);
 
                   return (
                     <tr
@@ -459,31 +465,31 @@ export default function FaltasPage() {
 
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         {enLicencia ? (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold
-                                           bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-200">
-                            <Calendar className="w-4 h-4" />
-                            Licencia
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-200">
+                            <Calendar className="w-4 h-4" /> Licencia
+                          </span>
+                        ) : enSancion ? (
+                          // 4. Mostrar Badge de Sanción
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-200">
+                            <AlertCircle className="w-4 h-4" /> Sancionado
                           </span>
                         ) : enFalta ? (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold
-                                           bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200">
-                            <XCircle className="w-4 h-4" />
-                            Falta
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200">
+                            <XCircle className="w-4 h-4" /> Falta
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold
-                                           bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200">
-                            <CheckCircle className="w-4 h-4" />
-                            Presente
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200">
+                            <CheckCircle className="w-4 h-4" /> Presente
                           </span>
                         )}
                       </td>
 
 
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        {enLicencia ? (
+                        {/* 5. Bloquear acciones si está en licencia o sanción */}
+                        {(enLicencia || enSancion) ? (
                           <span className="text-sm text-gray-500 italic">
-                            En licencia
+                            {enLicencia ? "En licencia" : "Sancionado"}
                           </span>
                         ) : !enFalta ? (
                           <button
