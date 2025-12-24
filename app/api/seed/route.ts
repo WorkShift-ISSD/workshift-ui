@@ -31,7 +31,7 @@ const systemUsers = [
     rol: RolUsuario.ADMINISTRADOR,
     grupoTurno: GrupoTurno.ADMIN,
     horario: '00:00-23:59',
-    primerIngreso: false  // ✅ NUEVO - Admin no requiere cambio
+    primerIngreso: false 
   },
   {
     legajo: 300002,
@@ -42,7 +42,7 @@ const systemUsers = [
     rol: RolUsuario.JEFE,
     grupoTurno: GrupoTurno.A,
     horario: '05:00-17:00',
-    primerIngreso: true  // ✅ NUEVO - Jefe debe cambiar en primer ingreso
+    primerIngreso: true 
   },
   {
     legajo: 300003,
@@ -53,7 +53,7 @@ const systemUsers = [
     rol: RolUsuario.SUPERVISOR,
     grupoTurno: GrupoTurno.A,
     horario: '23:00-05:00',
-    primerIngreso: true  // ✅ NUEVO - Supervisor debe cambiar en primer ingreso
+    primerIngreso: true 
   },
   {
     legajo: 300004,
@@ -64,7 +64,7 @@ const systemUsers = [
     rol: RolUsuario.SUPERVISOR,
     grupoTurno: GrupoTurno.B,
     horario: '05:00-14:00',
-    primerIngreso: true  // ✅ NUEVO - Supervisor debe cambiar en primer ingreso
+    primerIngreso: true 
   },
   {
     legajo: 300005,
@@ -75,7 +75,7 @@ const systemUsers = [
     rol: RolUsuario.INSPECTOR,
     grupoTurno: GrupoTurno.A,
     horario: '19:00-05:00',
-    primerIngreso: true  // ✅ NUEVO - Inspector debe cambiar en primer ingreso
+    primerIngreso: true 
   },
   {
     legajo: 300006,
@@ -86,7 +86,7 @@ const systemUsers = [
     rol: RolUsuario.INSPECTOR,
     grupoTurno: GrupoTurno.B,
     horario: '14:00-23:00',
-    primerIngreso: true  // ✅ NUEVO - Inspector debe cambiar en primer ingreso
+    primerIngreso: true  
   }
 ];
 
@@ -414,15 +414,19 @@ async function seedSanciones() {
 async function seedAutorizaciones() {
   await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
 
-  await sql`
+  // ✅ CORRECCIÓN: Construir el string del CHECK constraint fuera del template
+  const tiposPermitidos = Object.values(TipoAutorizacion).map(v => `'${v}'`).join(', ');
+  const estadosPermitidos = Object.values(EstadoAutorizacion).map(v => `'${v}'`).join(', ');
+
+  const createTableQuery = `
     CREATE TABLE IF NOT EXISTS autorizaciones (
       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-      tipo VARCHAR(30) NOT NULL CHECK (tipo IN (${getEnumSqlString(TipoAutorizacion)})),
+      tipo VARCHAR(30) NOT NULL CHECK (tipo IN (${tiposPermitidos})),
       empleado_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       solicitud_id UUID,
       oferta_id UUID,
       licencia_id UUID,
-      estado VARCHAR(20) NOT NULL DEFAULT '${EstadoAutorizacion.PENDIENTE}' CHECK (estado IN (${getEnumSqlString(EstadoAutorizacion)})),
+      estado VARCHAR(20) NOT NULL DEFAULT '${EstadoAutorizacion.PENDIENTE}' CHECK (estado IN (${estadosPermitidos})),
       observaciones TEXT,
       aprobado_por UUID REFERENCES users(id) ON DELETE SET NULL,
       fecha_aprobacion TIMESTAMP,
@@ -435,6 +439,8 @@ async function seedAutorizaciones() {
       )
     );
   `;
+
+  await sql.unsafe(createTableQuery);
 
   await sql`CREATE INDEX IF NOT EXISTS idx_autorizaciones_empleado ON autorizaciones(empleado_id)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_autorizaciones_estado ON autorizaciones(estado)`;

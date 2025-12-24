@@ -173,6 +173,8 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Autorización creada:', nuevaAutorizacion.id);
 
+    
+
     return NextResponse.json(nuevaAutorizacion, { status: 201 });
   } catch (error) {
     console.error('❌ Error POST /api/autorizaciones:', error);

@@ -68,6 +68,68 @@ export async function PATCH(
             { status: 403 }
           );
         }
+
+        // ✅ CREAR AUTORIZACIÓN AUTOMÁTICAMENTE
+        console.log('🔄 Creando autorización para solicitud:', id);
+
+        // Verificar si el solicitante tiene sanciones o licencias activas
+        const hoy = new Date().toISOString().split('T')[0];
+
+        const [sancionActiva] = await sql`
+          SELECT 1 FROM sanciones
+          WHERE empleado_id = ${solicitudExistente.solicitante_id}::uuid
+            AND estado = 'ACTIVA'
+            AND ${hoy}::date BETWEEN fecha_desde AND fecha_hasta
+          LIMIT 1;
+        `;
+
+        if (sancionActiva) {
+          return NextResponse.json(
+            { error: 'El solicitante tiene una sanción activa y no puede realizar cambios' },
+            { status: 400 }
+          );
+        }
+
+        const [licenciaActiva] = await sql`
+          SELECT 1 FROM licencias
+          WHERE empleado_id = ${solicitudExistente.solicitante_id}::uuid
+            AND estado IN ('APROBADA', 'ACTIVA')
+            AND ${hoy}::date BETWEEN fecha_desde AND fecha_hasta
+          LIMIT 1;
+        `;
+
+        if (licenciaActiva) {
+          return NextResponse.json(
+            { error: 'El solicitante tiene una licencia activa y no puede realizar cambios' },
+            { status: 400 }
+          );
+        }
+
+        // Crear la autorización
+        try {
+          const [autorizacion] = await sql`
+            INSERT INTO autorizaciones (
+              tipo,
+              empleado_id,
+              solicitud_id,
+              estado
+            ) VALUES (
+              'CAMBIO_TURNO',
+              ${solicitudExistente.solicitante_id}::uuid,
+              ${id}::uuid,
+              'PENDIENTE'
+            )
+            RETURNING id::text;
+          `;
+
+          console.log('✅ Autorización creada:', autorizacion.id);
+        } catch (authError) {
+          console.error('❌ Error creando autorización:', authError);
+          return NextResponse.json(
+            { error: 'Error al crear la autorización. La solicitud no fue aprobada.' },
+            { status: 500 }
+          );
+        }
       } else {
         // Otros estados solo el destinatario
         if (solicitudExistente.destinatario_id !== userId) {

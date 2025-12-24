@@ -1,26 +1,38 @@
-// api/ofertas/[id]/tomar/route.ts
+// app/api/ofertas/[id]/tomar/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/app/lib/postgres';
+import { cookies } from 'next/headers';
+import { jwtVerify } from 'jose';
+
+const SECRET_KEY = new TextEncoder().encode(
+  process.env.JWT_SECRET || 'Workshift25'
+);
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { tomadorId } = await request.json();
     const { id } = await params;
 
-    if (!tomadorId) {
+    // Verificar autenticación
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth-token')?.value;
+
+    if (!token) {
       return NextResponse.json(
-        { error: 'ID del tomador es requerido' },
-        { status: 400 }
+        { error: 'No autenticado' },
+        { status: 401 }
       );
     }
+
+    const { payload } = await jwtVerify(token, SECRET_KEY);
+    const tomadorId = payload.id as string;
 
     console.log('🟢 ID de oferta:', id);
     console.log('🟢 ID del tomador:', tomadorId);
 
-    // ✅ SOLUCIÓN FINAL: Solo verificar IS NULL (no comparar con string vacío)
+    // Verificar la oferta
     const [oferta] = await sql`
       SELECT * FROM ofertas 
       WHERE id = ${id} 
@@ -29,7 +41,6 @@ export async function POST(
     `;
 
     if (!oferta) {
-      // Verificar si existe pero con otro estado
       const [ofertaExistente] = await sql`
         SELECT estado, tomador_id FROM ofertas WHERE id = ${id}
       `;
@@ -66,7 +77,40 @@ export async function POST(
       );
     }
 
-    // ✅ ACTUALIZAR: Cambiar a APROBADO cuando alguien toma la oferta
+    // ✅ VALIDAR: Verificar sanciones y licencias activas del ofertante
+    const hoy = new Date().toISOString().split('T')[0];
+
+    const [sancionActiva] = await sql`
+      SELECT 1 FROM sanciones
+      WHERE empleado_id = ${oferta.ofertante_id}::uuid
+        AND estado = 'ACTIVA'
+        AND ${hoy}::date BETWEEN fecha_desde AND fecha_hasta
+      LIMIT 1;
+    `;
+
+    if (sancionActiva) {
+      return NextResponse.json(
+        { error: 'El ofertante tiene una sanción activa y no puede realizar cambios' },
+        { status: 400 }
+      );
+    }
+
+    const [licenciaActiva] = await sql`
+      SELECT 1 FROM licencias
+      WHERE empleado_id = ${oferta.ofertante_id}::uuid
+        AND estado IN ('APROBADA', 'ACTIVA')
+        AND ${hoy}::date BETWEEN fecha_desde AND fecha_hasta
+      LIMIT 1;
+    `;
+
+    if (licenciaActiva) {
+      return NextResponse.json(
+        { error: 'El ofertante tiene una licencia activa y no puede realizar cambios' },
+        { status: 400 }
+      );
+    }
+
+    // ✅ ACTUALIZAR OFERTA
     await sql`
       UPDATE ofertas 
       SET 
@@ -76,10 +120,49 @@ export async function POST(
       WHERE id = ${id};
     `;
 
+    // ✅ CREAR AUTORIZACIÓN AUTOMÁTICAMENTE
+    console.log('🔄 Creando autorización para oferta:', id);
+
+    try {
+      const [autorizacion] = await sql`
+        INSERT INTO autorizaciones (
+          tipo,
+          empleado_id,
+          oferta_id,
+          estado
+        ) VALUES (
+          'CAMBIO_TURNO',
+          ${oferta.ofertante_id}::uuid,
+          ${id}::uuid,
+          'PENDIENTE'
+        )
+        RETURNING id::text;
+      `;
+
+      console.log('✅ Autorización creada:', autorizacion.id);
+    } catch (authError) {
+      console.error('❌ Error creando autorización:', authError);
+      
+      // Revertir la actualización de la oferta
+      await sql`
+        UPDATE ofertas 
+        SET 
+          tomador_id = NULL,
+          estado = 'DISPONIBLE',
+          updated_at = NOW()
+        WHERE id = ${id};
+      `;
+
+      return NextResponse.json(
+        { error: 'Error al crear la autorización. La oferta no fue tomada.' },
+        { status: 500 }
+      );
+    }
+
     console.log('✅ Oferta tomada exitosamente');
 
     return NextResponse.json({
-      message: '✅ Oferta tomada exitosamente',
+      message: '✅ Oferta tomada exitosamente. Pendiente de autorización del Jefe.',
       estado: 'APROBADO'
     });
   } catch (error: any) {

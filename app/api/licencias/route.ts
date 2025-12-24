@@ -105,6 +105,44 @@ export async function POST(request: NextRequest) {
     const { payload } = await jwtVerify(token, SECRET_KEY);
     const empleadoId = payload.id as string;
 
+    // ✅ VALIDAR: Verificar sanciones y licencias activas
+    const hoy = new Date().toISOString().split('T')[0];
+
+    const [sancionActiva] = await sql`
+      SELECT 1 FROM sanciones
+      WHERE empleado_id = ${empleadoId}::uuid
+        AND estado = 'ACTIVA'
+        AND ${hoy}::date BETWEEN fecha_desde AND fecha_hasta
+      LIMIT 1;
+    `;
+
+    if (sancionActiva) {
+      return NextResponse.json(
+        { error: 'Tienes una sanción activa y no puedes solicitar licencias' },
+        { status: 400 }
+      );
+    }
+
+    // Verificar si ya tiene una licencia en esas fechas
+    const [licenciaSuperpuesta] = await sql`
+      SELECT 1 FROM licencias
+      WHERE empleado_id = ${empleadoId}::uuid
+        AND estado IN ('PENDIENTE', 'APROBADA', 'ACTIVA')
+        AND (
+          (fecha_desde <= ${fecha_desde}::date AND fecha_hasta >= ${fecha_desde}::date) OR
+          (fecha_desde <= ${fecha_hasta}::date AND fecha_hasta >= ${fecha_hasta}::date) OR
+          (fecha_desde >= ${fecha_desde}::date AND fecha_hasta <= ${fecha_hasta}::date)
+        )
+      LIMIT 1;
+    `;
+
+    if (licenciaSuperpuesta) {
+      return NextResponse.json(
+        { error: 'Ya tienes una licencia solicitada o activa en esas fechas' },
+        { status: 400 }
+      );
+    }
+
     // Calcular días
     const dias =
       Math.ceil(
@@ -113,6 +151,9 @@ export async function POST(request: NextRequest) {
         (1000 * 60 * 60 * 24)
       ) + 1;
 
+    // ✅ DETERMINAR ESTADO
+    // ORDINARIA → PENDIENTE (requiere autorización del Jefe)
+    // Otras → APROBADA (no requieren autorización)
     const estado = tipo === "ORDINARIA" ? "PENDIENTE" : "APROBADA";
 
     const [licencia] = await sql`
@@ -151,6 +192,42 @@ export async function POST(request: NextRequest) {
         estado,
         observaciones;
     `;
+
+    // ✅ CREAR AUTORIZACIÓN AUTOMÁTICAMENTE SI ES ORDINARIA
+    if (tipo === "ORDINARIA") {
+      console.log('🔄 Creando autorización para licencia ordinaria:', licencia.id);
+
+      try {
+        const [autorizacion] = await sql`
+          INSERT INTO autorizaciones (
+            tipo,
+            empleado_id,
+            licencia_id,
+            estado
+          ) VALUES (
+            'LICENCIA_ORDINARIA',
+            ${empleadoId}::uuid,
+            ${licencia.id}::uuid,
+            'PENDIENTE'
+          )
+          RETURNING id::text;
+        `;
+
+        console.log('✅ Autorización creada:', autorizacion.id);
+      } catch (authError) {
+        console.error('❌ Error creando autorización:', authError);
+        
+        // Eliminar la licencia si falla la autorización
+        await sql`
+          DELETE FROM licencias WHERE id = ${licencia.id}::uuid;
+        `;
+
+        return NextResponse.json(
+          { error: 'Error al crear la autorización. La licencia no fue registrada.' },
+          { status: 500 }
+        );
+      }
+    }
 
     return NextResponse.json(licencia, { status: 201 });
   } catch (error) {
