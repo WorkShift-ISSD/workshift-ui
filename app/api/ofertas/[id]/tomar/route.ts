@@ -1,3 +1,4 @@
+// api/ofertas/[id]/tomar/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/app/lib/postgres';
 

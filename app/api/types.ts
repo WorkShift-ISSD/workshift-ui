@@ -117,3 +117,38 @@ export interface NuevaSancion {
   fecha_desde: string;
   fecha_hasta: string;
 }
+
+export interface Autorizacion {
+  id: string;
+  tipo: 'CAMBIO_TURNO' | 'LICENCIA_ORDINARIA';
+  empleadoId: string;
+  empleado?: {
+    id: string;
+    nombre: string;
+    apellido: string;
+    rol: string;
+  };
+  solicitudId?: string;
+  ofertaId?: string;
+  licenciaId?: string;
+  estado: 'PENDIENTE' | 'APROBADA' | 'RECHAZADA' | 'CANCELADA';
+  observaciones?: string;
+  aprobadoPor?: string;
+  aprobador?: {
+    id: string;
+    nombre: string;
+    apellido: string;
+  };
+  fechaAprobacion?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NuevaAutorizacion {
+  tipo: 'CAMBIO_TURNO' | 'LICENCIA_ORDINARIA';
+  empleadoId: string;
+  solicitudId?: string;
+  ofertaId?: string;
+  licenciaId?: string;
+  observaciones?: string;
+}

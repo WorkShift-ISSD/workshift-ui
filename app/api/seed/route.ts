@@ -13,7 +13,9 @@ import {
   Prioridad,
   EstadoCambio,
   getEnumSqlString,
-  TipoSolicitud
+  TipoSolicitud,
+  TipoAutorizacion,
+  EstadoAutorizacion
 } from '../../lib/enum';
 
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
@@ -111,8 +113,8 @@ async function seedUsers() {
     ultimo_login TIMESTAMP,
     calificacion DECIMAL(3,2) DEFAULT 4.5,
     total_intercambios INTEGER DEFAULT 0,
-    primer_ingreso BOOLEAN DEFAULT true,            -- ✅ NUEVO
-    ultimo_cambio_password TIMESTAMP,               -- ✅ NUEVO
+    primer_ingreso BOOLEAN DEFAULT true, 
+    ultimo_cambio_password TIMESTAMP,               
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
   );
@@ -146,8 +148,8 @@ async function seedUsers() {
             activo,
             calificacion,
             total_intercambios,
-            primer_ingreso,                    -- ✅ NUEVO
-            ultimo_cambio_password             -- ✅ NUEVO
+            primer_ingreso,     
+            ultimo_cambio_password 
           )
           VALUES (
             ${user.legajo},
@@ -161,8 +163,8 @@ async function seedUsers() {
             ${true},
             ${5.0},
             ${0},
-            ${user.primerIngreso},            -- ✅ NUEVO
-            ${user.primerIngreso ? null : sql`NOW()`}      -- ✅ NUEVO
+            ${user.primerIngreso}, 
+            ${user.primerIngreso ? null : sql`NOW()`}  
           )
           ON CONFLICT (email) DO UPDATE SET
             password = EXCLUDED.password,
@@ -409,6 +411,41 @@ async function seedSanciones() {
   console.log("✅ Tabla sanciones creada");
 }
 
+async function seedAutorizaciones() {
+  await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS autorizaciones (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      tipo VARCHAR(30) NOT NULL CHECK (tipo IN (${getEnumSqlString(TipoAutorizacion)})),
+      empleado_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      solicitud_id UUID,
+      oferta_id UUID,
+      licencia_id UUID,
+      estado VARCHAR(20) NOT NULL DEFAULT '${EstadoAutorizacion.PENDIENTE}' CHECK (estado IN (${getEnumSqlString(EstadoAutorizacion)})),
+      observaciones TEXT,
+      aprobado_por UUID REFERENCES users(id) ON DELETE SET NULL,
+      fecha_aprobacion TIMESTAMP,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW(),
+      CHECK (
+        (solicitud_id IS NOT NULL AND oferta_id IS NULL AND licencia_id IS NULL) OR
+        (solicitud_id IS NULL AND oferta_id IS NOT NULL AND licencia_id IS NULL) OR
+        (solicitud_id IS NULL AND oferta_id IS NULL AND licencia_id IS NOT NULL)
+      )
+    );
+  `;
+
+  await sql`CREATE INDEX IF NOT EXISTS idx_autorizaciones_empleado ON autorizaciones(empleado_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_autorizaciones_estado ON autorizaciones(estado)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_autorizaciones_tipo ON autorizaciones(tipo)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_autorizaciones_solicitud ON autorizaciones(solicitud_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_autorizaciones_oferta ON autorizaciones(oferta_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_autorizaciones_licencia ON autorizaciones(licencia_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_autorizaciones_aprobado_por ON autorizaciones(aprobado_por)`;
+
+  console.log("✅ Tabla autorizaciones creada");
+}
 
 async function seedStats() {
   await sql`
@@ -1017,6 +1054,7 @@ async function dropAllTables() {
   await sql`DROP TABLE IF EXISTS licencias CASCADE`;
   await sql`DROP TABLE IF EXISTS users CASCADE`;
   await sql`DROP TABLE IF EXISTS sanciones CASCADE`;
+  await sql`DROP TABLE IF EXISTS autorizaciones CASCADE`;
 
   console.log('✅ Tablas eliminadas');
 }
@@ -1039,6 +1077,9 @@ export async function GET() {
 
       await seedSanciones();
       console.log('✅ Sanciones creadas');
+
+      await seedAutorizaciones();
+      console.log('✅ Autorizaciones creadas');
 
       await seedFaltas();
       console.log('✅ Faltas creadas');

@@ -91,6 +91,17 @@ export const endpoints = {
     delete: (id: string) => `${API_BASE_URL}/sanciones/${id}`,
   },
 
+  // Autorizaciones
+  autorizaciones: {
+    list: (estado?: string) => estado
+      ? `${API_BASE_URL}/autorizaciones?estado=${estado}`
+      : `${API_BASE_URL}/autorizaciones`,
+    byId: (id: string) => `${API_BASE_URL}/autorizaciones/${id}`,
+    create: () => `${API_BASE_URL}/autorizaciones`,
+    aprobar: (id: string) => `${API_BASE_URL}/autorizaciones/${id}/aprobar`,
+    rechazar: (id: string) => `${API_BASE_URL}/autorizaciones/${id}/rechazar`,
+  },
+
 
 } as const;
 

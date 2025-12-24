@@ -86,6 +86,18 @@ export enum EstadoSancion {
   CANCELADA = 'CANCELADA'
 }
 
+export enum EstadoAutorizacion {
+  PENDIENTE = 'PENDIENTE',
+  APROBADA = 'APROBADA',
+  RECHAZADA = 'RECHAZADA',
+  CANCELADA = 'CANCELADA'
+}
+
+export enum TipoAutorizacion {
+  CAMBIO_TURNO = 'CAMBIO_TURNO',
+  LICENCIA_ORDINARIA = 'LICENCIA_ORDINARIA'
+}
+
 // Helper para obtener valores como string SQL
 export const getEnumSqlString = (enumObj: Record<string, string>): string => {
   return Object.values(enumObj).map(v => `'${v}'`).join(', ');
@@ -139,4 +151,12 @@ export const isValidPrioridad = (prioridad: string): prioridad is Prioridad => {
 
 export const isValidEstadoCambio = (estado: string): estado is EstadoCambio => {
   return isValidEnumValue(EstadoCambio, estado);
+};
+
+export const isValidEstadoAutorizacion = (estado: string): estado is EstadoAutorizacion => {
+  return isValidEnumValue(EstadoAutorizacion, estado);
+};
+
+export const isValidTipoAutorizacion = (tipo: string): tipo is TipoAutorizacion => {
+  return isValidEnumValue(TipoAutorizacion, tipo);
 };
