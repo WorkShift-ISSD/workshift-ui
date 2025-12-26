@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, Calendar, Clock, User, AlertCircle, CheckCircle, XCircle, Loader } from 'lucide-react';
+import { useFormatters } from '@/hooks/useFormatters';
+
 
 // Tipos
 type EstadoSolicitud = 'SOLICITADO' | 'APROBADO' | 'COMPLETADO' | 'CANCELADO' | 'VENCIDO';
@@ -44,6 +46,8 @@ const ModalConsultarSolicitudes: React.FC<ModalConsultarSolicitudesProps> = ({ i
   const [error, setError] = useState<string>('');
   const [filtroEstado, setFiltroEstado] = useState<EstadoSolicitud | 'TODOS'>('TODOS');
   const [busqueda, setBusqueda] = useState('');
+  const { formatFechaSafe } = useFormatters();
+
 
   // Cargar solicitudes
   useEffect(() => {
@@ -84,17 +88,6 @@ const ModalConsultarSolicitudes: React.FC<ModalConsultarSolicitudesProps> = ({ i
   });
 
   // Utilidades
-  const formatearFecha = (fecha: string) => {
-    if (!fecha) return "Fecha inválida";
-
-    // Fecha esperada: "2025-12-01"
-    const partes = fecha.split("-");
-    if (partes.length !== 3) return "Fecha inválida";
-
-    const [year, month, day] = partes;
-    return `${day}/${month}/${year}`;
-  };
-
   const getEstadoColor = (estado: EstadoSolicitud) => {
     switch (estado) {
       case 'SOLICITADO':
@@ -258,7 +251,7 @@ const ModalConsultarSolicitudes: React.FC<ModalConsultarSolicitudesProps> = ({ i
                         <div className="flex items-center gap-2 text-sm">
                           <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                           <span className="text-gray-900 dark:text-gray-100">
-                            {formatearFecha(solicitud.turnoSolicitante.fecha)}
+                            {formatFechaSafe(solicitud.turnoSolicitante.fecha)}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
@@ -282,7 +275,7 @@ const ModalConsultarSolicitudes: React.FC<ModalConsultarSolicitudesProps> = ({ i
                         <div className="flex items-center gap-2 text-sm">
                           <Calendar className="h-4 w-4 text-green-600 dark:text-green-400" />
                           <span className="text-gray-900 dark:text-gray-100">
-                            {formatearFecha(solicitud.turnoDestinatario.fecha)}
+                            {formatFechaSafe(solicitud.turnoDestinatario.fecha)}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
@@ -310,9 +303,9 @@ const ModalConsultarSolicitudes: React.FC<ModalConsultarSolicitudesProps> = ({ i
 
                   {/* Footer */}
                   <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 pt-3 border-t border-gray-200 dark:border-gray-700">
-                    <span>Solicitado: {formatearFecha(solicitud.fechaSolicitud)}</span>
+                    <span>Solicitado: {formatFechaSafe(solicitud.fechaSolicitud)}</span>
                     {solicitud.fechaRespuesta && (
-                      <span>Respondido: {formatearFecha(solicitud.fechaRespuesta)}</span>
+                      <span>Respondido: {formatFechaSafe(solicitud.fechaRespuesta)}</span>
                     )}
                   </div>
                 </div>

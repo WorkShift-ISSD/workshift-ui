@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { X, Check, XCircle, Calendar, User, FileText, Clock } from "lucide-react";
+import { X, Check, XCircle, Calendar, User, FileText, ArrowRightLeft } from "lucide-react";
 import { Autorizacion } from "@/app/api/types";
+import { useFormatters } from '@/hooks/useFormatters';
 import { toast } from "react-toastify";
 
 interface Props {
@@ -24,18 +25,7 @@ export function ModalAutorizacion({
   const [showConfirmAprobar, setShowConfirmAprobar] = useState(false);
   const [showConfirmRechazar, setShowConfirmRechazar] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  const formatearFecha = (fecha: string) => {
-    if (!fecha) return "-";
-    const date = new Date(fecha);
-    return date.toLocaleDateString("es-AR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  const { formatFechaSafe, formatTimeAgo, formatDiaYHorario } = useFormatters();
 
   const getTipoLabel = (tipo: string) => {
     switch (tipo) {
@@ -92,11 +82,18 @@ export function ModalAutorizacion({
   if (!open || !autorizacion) return null;
 
   const isPendiente = autorizacion.estado === "PENDIENTE";
+  const solicitud = (autorizacion as any).solicitudDirecta;
+  const oferta = (autorizacion as any).oferta;
+
+  // 🔍 AGREGAR ESTO TEMPORALMENTE:
+  console.log('🔍 Autorización completa:', autorizacion);
+  console.log('🔍 Solicitud Directa:', solicitud);
+  console.log('🔍 Oferta:', oferta);
 
   return (
     <>
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
           {/* Header */}
           <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
             <div>
@@ -117,33 +114,7 @@ export function ModalAutorizacion({
 
           {/* Content */}
           <div className="p-6 space-y-6">
-            {/* Información del Empleado */}
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <User className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                <h4 className="font-semibold text-gray-900 dark:text-white">
-                  Empleado Solicitante
-                </h4>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Nombre</p>
-                  <p className="font-medium text-gray-900 dark:text-white">
-                    {autorizacion.empleado
-                      ? `${autorizacion.empleado.apellido}, ${autorizacion.empleado.nombre}`
-                      : "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Rol</p>
-                  <p className="font-medium text-gray-900 dark:text-white">
-                    {autorizacion.empleado?.rol || "N/A"}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Información de la Solicitud */}
+            {/* Información General */}
             <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-3">
                 <FileText className="w-5 h-5 text-gray-600 dark:text-gray-400" />
@@ -151,6 +122,7 @@ export function ModalAutorizacion({
                   Información de la Solicitud
                 </h4>
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Tipo</p>
@@ -159,15 +131,15 @@ export function ModalAutorizacion({
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Fecha Solicitud</p>
-                  <p className="font-medium text-gray-900 dark:text-white">
-                    {formatearFecha(autorizacion.createdAt)}
-                  </p>
-                </div>
-                <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Estado</p>
                   <p className="font-medium text-gray-900 dark:text-white">
                     {autorizacion.estado}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Fecha Solicitud</p>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {formatFechaSafe(autorizacion.createdAt)}
                   </p>
                 </div>
                 {autorizacion.fechaAprobacion && (
@@ -176,21 +148,267 @@ export function ModalAutorizacion({
                       Fecha de Respuesta
                     </p>
                     <p className="font-medium text-gray-900 dark:text-white">
-                      {formatearFecha(autorizacion.fechaAprobacion)}
+                      {formatTimeAgo(autorizacion.fechaAprobacion)}
                     </p>
                   </div>
                 )}
               </div>
-
-              {/* IDs de referencia */}
-              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {autorizacion.solicitudId && `Solicitud ID: ${autorizacion.solicitudId}`}
-                  {autorizacion.ofertaId && `Oferta ID: ${autorizacion.ofertaId}`}
-                  {autorizacion.licenciaId && `Licencia ID: ${autorizacion.licenciaId}`}
-                </p>
-              </div>
             </div>
+
+            {/* ============= SOLICITUD DIRECTA ============= */}
+            {solicitud && (() => {
+              // 🔧 Parsear turnos si vienen como string
+              const turnoSolicitante = typeof solicitud.turnoSolicitante === 'string'
+                ? JSON.parse(solicitud.turnoSolicitante)
+                : solicitud.turnoSolicitante;
+
+              const turnoDestinatario = typeof solicitud.turnoDestinatario === 'string'
+                ? JSON.parse(solicitud.turnoDestinatario)
+                : solicitud.turnoDestinatario;
+
+              return (
+                <>
+                  {/* Título del Cambio */}
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <ArrowRightLeft className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                        <h4 className="font-semibold text-blue-900 dark:text-blue-300">
+                          Cambio de Turno - Solicitud Directa
+                        </h4>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${solicitud.prioridad === 'ALTA' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                        solicitud.prioridad === 'MEDIA' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                          'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                        }`}>
+                        {solicitud.prioridad}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Tabla Comparativa Mejorada */}
+                  <div className="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <div className="grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-700">
+                      {/* Solicitante */}
+                      <div className="p-4 bg-blue-50 dark:bg-blue-900/20">
+                        <div className="text-center mb-4">
+                          <User className="w-5 h-5 mx-auto mb-1 text-blue-600 dark:text-blue-400" />
+                          <p className="font-semibold text-gray-900 dark:text-white">
+                            {solicitud.solicitante.apellido}, {solicitud.solicitante.nombre}
+                          </p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">{solicitud.solicitante.rol}</p>
+                          <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mt-1">SOLICITANTE</p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">Fecha que ofrece</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">
+                              {formatFechaSafe(turnoSolicitante.fecha)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">Horario</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">
+                              {turnoSolicitante.horario}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">Grupo</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">
+                              {turnoSolicitante.grupoTurno}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Destinatario */}
+                      <div className="p-4 bg-green-50 dark:bg-green-900/20">
+                        <div className="text-center mb-4">
+                          <User className="w-5 h-5 mx-auto mb-1 text-green-600 dark:text-green-400" />
+                          <p className="font-semibold text-gray-900 dark:text-white">
+                            {solicitud.destinatario.apellido}, {solicitud.destinatario.nombre}
+                          </p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">{solicitud.destinatario.rol}</p>
+                          <p className="text-xs font-medium text-green-600 dark:text-green-400 mt-1">DESTINATARIO</p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">Fecha que ofrece</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">
+                              {formatFechaSafe(turnoDestinatario.fecha)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">Horario</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">
+                              {turnoDestinatario.horario}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">Grupo</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">
+                              {turnoDestinatario.grupoTurno}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Motivo */}
+                  {solicitud.motivo && (
+                    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+                        Motivo del Cambio:
+                      </p>
+                      <p className="text-gray-900 dark:text-white">
+                        {solicitud.motivo}
+                      </p>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+
+            {/* ============= OFERTA DE TURNO ============= */}
+            {oferta && (() => {
+              // 🔧 Parsear turnoOfrece si es string
+              const turnoOfrece = typeof oferta.turnoOfrece === 'string'
+                ? JSON.parse(oferta.turnoOfrece)
+                : oferta.turnoOfrece;
+
+              // 🔧 Parsear turnosBusca si es string
+              const turnosBusca = typeof oferta.turnosBusca === 'string'
+                ? JSON.parse(oferta.turnosBusca)
+                : oferta.turnosBusca;
+
+              return (
+                <>
+                  {/* Título del Cambio */}
+                  <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <ArrowRightLeft className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                        <h4 className="font-semibold text-purple-900 dark:text-purple-300">
+                          Cambio de Turno - Oferta Tomada
+                        </h4>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${oferta.prioridad === 'ALTA' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                        oferta.prioridad === 'MEDIA' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                          'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                        }`}>
+                        {oferta.prioridad}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Tabla de Participantes */}
+                  <div className="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <div className="grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-700">
+                      {/* Ofertante */}
+                      <div className="p-4 bg-purple-50 dark:bg-purple-900/20">
+                        <div className="text-center mb-4">
+                          <User className="w-5 h-5 mx-auto mb-1 text-purple-600 dark:text-purple-400" />
+                          <p className="font-semibold text-gray-900 dark:text-white">
+                            {oferta.ofertante.apellido}, {oferta.ofertante.nombre}
+                          </p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">{oferta.ofertante.rol}</p>
+                          <p className="text-xs font-medium text-purple-600 dark:text-purple-400 mt-1">OFERTANTE</p>
+                        </div>
+
+                        {turnoOfrece && (
+                          <div className="space-y-2">
+                            <div>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">Fecha que ofrece</p>
+                              <p className="font-semibold text-gray-900 dark:text-white">
+                                {formatFechaSafe(turnoOfrece.fecha)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">Horario</p>
+                              <p className="font-semibold text-gray-900 dark:text-white">
+                                {turnoOfrece.horario}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">Grupo</p>
+                              <p className="font-semibold text-gray-900 dark:text-white">
+                                {turnoOfrece.grupoTurno}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Tomador */}
+                      <div className="p-4 bg-green-50 dark:bg-green-900/20">
+                        {oferta.tomador ? (
+                          <>
+                            <div className="text-center mb-4">
+                              <User className="w-5 h-5 mx-auto mb-1 text-green-600 dark:text-green-400" />
+                              <p className="font-semibold text-gray-900 dark:text-white">
+                                {oferta.tomador.apellido}, {oferta.tomador.nombre}
+                              </p>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">{oferta.tomador.rol}</p>
+                              <p className="text-xs font-medium text-green-600 dark:text-green-400 mt-1">TOMADOR</p>
+                            </div>
+
+                            {turnosBusca && Array.isArray(turnosBusca) && turnosBusca.length > 0 ? (
+                              <div className="space-y-4">
+                                {turnosBusca.map((turno: any, i: number) => (
+                                  <div key={i} className={`space-y-2 ${i > 0 ? 'border-t border-gray-200 dark:border-gray-700 pt-4' : ''}`}>
+                                    <div>
+                                      <p className="text-xs text-gray-600 dark:text-gray-400">Fecha que ofrece</p>
+                                      <p className="font-semibold text-gray-900 dark:text-white">
+                                        {formatFechaSafe(turno.fecha)}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-gray-600 dark:text-gray-400">Horario</p>
+                                      <p className="font-semibold text-gray-900 dark:text-white">
+                                        {turno.horario}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-gray-600 dark:text-gray-400">Grupo</p>
+                                      <p className="font-semibold text-gray-900 dark:text-white">
+                                        {turno.grupoTurno || 'N/A'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-center text-gray-500 dark:text-gray-400">
+                                <p className="text-sm">Sin fechas ofrecidas</p>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="text-center text-gray-500 dark:text-gray-400 flex items-center justify-center h-full">
+                            <p className="text-sm">Sin tomador asignado</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Descripción */}
+                  {oferta.descripcion && (
+                    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+                        Descripción:
+                      </p>
+                      <p className="text-gray-900 dark:text-white">
+                        {oferta.descripcion}
+                      </p>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
 
             {/* Observaciones existentes */}
             {autorizacion.observaciones && (
@@ -204,7 +422,7 @@ export function ModalAutorizacion({
               </div>
             )}
 
-            {/* Aprobador (si ya fue procesada) */}
+            {/* Aprobador */}
             {autorizacion.aprobador && (
               <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
@@ -216,7 +434,7 @@ export function ModalAutorizacion({
               </div>
             )}
 
-            {/* Campo de observaciones para aprobar/rechazar */}
+            {/* Campo de observaciones */}
             {isPendiente && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -237,6 +455,7 @@ export function ModalAutorizacion({
               </div>
             )}
           </div>
+
 
           {/* Footer */}
           <div className="sticky bottom-0 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-6 py-4">

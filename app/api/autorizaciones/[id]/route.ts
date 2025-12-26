@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/app/lib/postgres';
 
-// GET - Obtener autorización por ID
+// GET - Obtener autorización por ID con datos completos del cambio
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -24,12 +24,16 @@ export async function GET(
         a.fecha_aprobacion as "fechaAprobacion",
         a.created_at as "createdAt",
         a.updated_at as "updatedAt",
+        
+        -- Empleado solicitante
         json_build_object(
           'id', e.id,
           'nombre', e.nombre,
           'apellido', e.apellido,
           'rol', e.rol
         ) as empleado,
+        
+        -- Aprobador (si existe)
         CASE 
           WHEN a.aprobado_por IS NOT NULL THEN
             json_build_object(
@@ -38,10 +42,81 @@ export async function GET(
               'apellido', ap.apellido
             )
           ELSE NULL
-        END as aprobador
+        END as aprobador,
+        
+        -- Datos de SOLICITUD DIRECTA (si aplica)
+        CASE 
+          WHEN a.solicitud_id IS NOT NULL THEN
+            json_build_object(
+              'id', sd.id,
+              'motivo', sd.motivo,
+              'prioridad', sd.prioridad,
+              'fechaSolicitud', sd.fecha_solicitud,
+              'solicitante', json_build_object(
+                'id', us.id,
+                'nombre', us.nombre,
+                'apellido', us.apellido,
+                'rol', us.rol
+              ),
+              'destinatario', json_build_object(
+                'id', ud.id,
+                'nombre', ud.nombre,
+                'apellido', ud.apellido,
+                'rol', ud.rol
+              ),
+              'turnoSolicitante', sd.turno_solicitante,
+              'turnoDestinatario', sd.turno_destinatario
+            )
+          ELSE NULL
+        END as solicitudDirecta,
+        
+        -- Datos de OFERTA (si aplica)
+        CASE 
+          WHEN a.oferta_id IS NOT NULL THEN
+            json_build_object(
+              'id', of.id,
+              'tipo', of.tipo,
+              'modalidadBusqueda', of.modalidad_busqueda,
+              'descripcion', of.descripcion,
+              'prioridad', of.prioridad,
+              'publicado', of.publicado,
+              'ofertante', json_build_object(
+                'id', uof.id,
+                'nombre', uof.nombre,
+                'apellido', uof.apellido,
+                'rol', uof.rol
+              ),
+              'tomador', CASE 
+                WHEN of.tomador_id IS NOT NULL THEN
+                  json_build_object(
+                    'id', ut.id,
+                    'nombre', ut.nombre,
+                    'apellido', ut.apellido,
+                    'rol', ut.rol
+                  )
+                ELSE NULL
+              END,
+              'turnoOfrece', of.turno_ofrece,
+              'turnosBusca', of.turnos_busca,
+              'fechasDisponibles', of.fechas_disponibles
+            )
+          ELSE NULL
+        END as oferta
+        
       FROM autorizaciones a
       JOIN users e ON a.empleado_id = e.id
       LEFT JOIN users ap ON a.aprobado_por = ap.id
+      
+      -- JOIN con solicitud directa
+      LEFT JOIN solicitudes_directas sd ON a.solicitud_id = sd.id
+      LEFT JOIN users us ON sd.solicitante_id = us.id
+      LEFT JOIN users ud ON sd.destinatario_id = ud.id
+      
+      -- JOIN con oferta
+      LEFT JOIN ofertas of ON a.oferta_id = of.id
+      LEFT JOIN users uof ON of.ofertante_id = uof.id
+      LEFT JOIN users ut ON of.tomador_id = ut.id
+      
       WHERE a.id = ${id}::uuid;
     `;
 
@@ -62,7 +137,7 @@ export async function GET(
   }
 }
 
-// PUT - Actualizar autorización (solo observaciones o estado manual)
+// PUT - Actualizar autorización
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

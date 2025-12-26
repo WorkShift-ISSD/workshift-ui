@@ -6,10 +6,11 @@ import { fetcher } from "@/app/api/fetcher";
 import { useLicenciasDelDia } from "@/hooks/useLicenciasPorDia";
 import { useSancionesDelDia } from "@/hooks/useSancionesDelDia";
 import { useFaltas, useTodasLasFaltas } from "@/hooks/useFaltas";
+import { useFormatters } from "@/hooks/useFormatters";
 import { useEmpleados } from "@/hooks/useEmpleados";
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
-import ModalFalta from '@/app/components/ModalFalta';
-import ModalConsultaFaltas from '@/app/components/ModalConsultaFaltas';
+import ModalFalta from '@/app/components/faltas/ModalFalta';
+import ModalConsultaFaltas from '@/app/components/faltas/ModalConsultaFaltas';
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {
@@ -24,38 +25,17 @@ import {
 import { calcularGrupoTrabaja, type GrupoTurno } from "@/app/lib/turnosUtils";
 import { ExportData } from "@/app/components/ExportToPdf";
 
-// ==== FECHA LOCAL ARGENTINA ====
-const getTodayDate = () => {
-  const today = new Date();
-  // Obtener fecha en zona horaria local sin conversión UTC
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-// ==== FORMATO DE FECHA ====
-const formatDate = (dateString: string) => {
-  try {
-    // Crear fecha sin conversión de zona horaria
-    const [year, month, day] = dateString.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
-
-    return date.toLocaleDateString("es-AR", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  } catch {
-    return dateString;
-  }
-};
 
 export default function FaltasPage() {
+    const {
+    getTodayDate,
+    formatDate,
+    parseFechaLocal,
+  } = useFormatters();
+
   const [selectedRole, setSelectedRole] = useState("TODOS");
   const [selectedTurno, setSelectedTurno] = useState("TODOS");
-  const today = getTodayDate();
+  const today = useMemo(() => getTodayDate(), [getTodayDate]);
   const [selectedDate, setSelectedDate] = useState(today);
   const [modalEmpleado, setModalEmpleado] = useState<any>(null);
   const [faltaEnEdicion, setFaltaEnEdicion] = useState<any>(null);
@@ -88,10 +68,12 @@ export default function FaltasPage() {
 
   // ==== VALIDAR FECHA FUTURA ====
   const esFechaFutura = useMemo(() => {
-    const fechaSeleccionada = new Date(selectedDate);
-    const hoy = new Date(today);
+    const fechaSeleccionada = parseFechaLocal(selectedDate);
+    const hoy = parseFechaLocal(today);
+    if (!fechaSeleccionada || !hoy) return false;
+
     return fechaSeleccionada > hoy;
-  }, [selectedDate, today]);
+  }, [selectedDate, today, parseFechaLocal]);
 
   // Calcular qué grupo trabaja en la fecha seleccionada
   const grupoQueTrabaja = useMemo(() => {

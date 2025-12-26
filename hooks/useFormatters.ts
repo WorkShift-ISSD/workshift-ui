@@ -1,8 +1,6 @@
 export const useFormatters = () => {
 
-  /* =========================
-     Parse fecha SIN UTC
-  ========================= */
+  /* Parse fecha SIN UTC */
   const parseFechaLocal = (fechaString: string) => {
     if (!fechaString) return null;
 
@@ -14,14 +12,12 @@ export const useFormatters = () => {
     return new Date(y, m - 1, d);
   };
 
-  /* =========================
-     Fecha larga (12 sep 2025)
-  ========================= */
+  /* Fecha larga (12 sep 2025) */
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
 
     const date = parseFechaLocal(dateString);
-    if (!date) return '';
+    if (!date || isNaN(date.getTime())) return '';
 
     return date.toLocaleDateString('es-AR', {
       day: '2-digit',
@@ -30,14 +26,12 @@ export const useFormatters = () => {
     });
   };
 
-  /* =========================
-     Fecha corta (12/09/2025)
-  ========================= */
+  /* Fecha corta (12/09/2025) */
   const formatDate2 = (dateString: string) => {
     if (!dateString) return '';
 
     const date = parseFechaLocal(dateString);
-    if (!date) return '';
+    if (!date || isNaN(date.getTime())) return '';
 
     return date.toLocaleDateString('es-AR', {
       day: '2-digit',
@@ -46,9 +40,28 @@ export const useFormatters = () => {
     });
   };
 
-  /* =========================
-     Hace X tiempo
-  ========================= */
+  /* Fecha segura (ISO o YYYY-MM-DD) → reemplaza formatearFecha */
+  const formatFechaSafe = (fecha?: string | null) => {
+    if (!fecha) return 'Fecha no disponible';
+
+    try {
+      const date = fecha.includes('T')
+        ? new Date(fecha)
+        : parseFechaLocal(fecha);
+
+      if (!date || isNaN(date.getTime())) return 'Fecha inválida';
+
+      return date.toLocaleDateString('es-AR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
+    } catch {
+      return 'Error en fecha';
+    }
+  };
+
+  /*  Hace X tiempo */
   const formatTimeAgo = (dateString: string) => {
     if (!dateString) return '';
 
@@ -70,9 +83,7 @@ export const useFormatters = () => {
     return formatDate(dateString);
   };
 
-  /* =========================
-     Fecha hoy (YYYY-MM-DD)
-  ========================= */
+  /* Fecha hoy (YYYY-MM-DD) */
   const getTodayDate = () => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
@@ -80,11 +91,44 @@ export const useFormatters = () => {
     ).padStart(2, '0')}`;
   };
 
+  /* Día + fecha + horario */
+const formatDiaYHorario = (
+  fecha?: string | null,
+  horario?: string | null
+) => {
+  if (!fecha) return 'Fecha no disponible';
+
+  try {
+    const date = fecha.includes('T')
+      ? new Date(fecha)
+      : parseFechaLocal(fecha);
+
+    if (!date || isNaN(date.getTime())) return 'Fecha inválida';
+
+    const dia = date.toLocaleDateString('es-AR', {
+      weekday: 'short',
+    });
+
+    const fechaFormateada = date.toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+
+    return `${dia} ${fechaFormateada}${horario ? ` • 🕐 ${horario}` : ''}`;
+  } catch {
+    return 'Error en fecha';
+  }
+};
+
+
   return {
     parseFechaLocal,
     formatDate,
     formatDate2,
+    formatFechaSafe, 
     formatTimeAgo,
     getTodayDate,
+    formatDiaYHorario
   };
 };

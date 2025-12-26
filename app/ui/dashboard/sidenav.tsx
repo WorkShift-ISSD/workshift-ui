@@ -6,9 +6,9 @@ import MigraLogo from "@/app/ui/MigraLogo";
 import LogoutButton from "@/app/components/LogoutButton";
 import { MenuIcon, Lock, User, UserCog, Image } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
-import ChangePasswordModal from "@/app/components/ChangePasswordModal";
-import ChangeImageModal from "@/app/components/ChangeImageModal";
-import EditProfileModal from "@/app/components/EditProfileModal";
+import ChangePasswordModal from "@/app/components/editar datos usuario/ChangePasswordModal";
+import ChangeImageModal from "@/app/components/editar datos usuario/ChangeImageModal";
+import EditProfileModal from "@/app/components/editar datos usuario/EditProfileModal";
 
 
 

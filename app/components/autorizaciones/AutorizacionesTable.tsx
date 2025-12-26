@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, X, Eye, Clock, AlertTriangle } from "lucide-react";
 import { Autorizacion } from "@/app/api/types";
+import { useFormatters } from "@/hooks/useFormatters";
 import { ModalAutorizacion } from "./ModalAutorizacion";
 
 interface Props {
@@ -21,20 +22,12 @@ export function AutorizacionesTable({
   const [modalOpen, setModalOpen] = useState(false);
   const [autorizacionSeleccionada, setAutorizacionSeleccionada] =
     useState<Autorizacion | null>(null);
+  
+  const { formatFechaSafe, formatTimeAgo, formatDiaYHorario } = useFormatters();
 
   const abrirDetalle = (autorizacion: Autorizacion) => {
     setAutorizacionSeleccionada(autorizacion);
     setModalOpen(true);
-  };
-
-  const formatearFecha = (fecha: string) => {
-    if (!fecha) return "-";
-    const date = new Date(fecha);
-    return date.toLocaleDateString("es-AR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
   };
 
   const getTipoLabel = (tipo: string) => {
@@ -145,7 +138,7 @@ export function AutorizacionesTable({
                       : "N/A"}
                   </td>
                   <td className="p-3 text-gray-900 dark:text-white">
-                    {formatearFecha(auth.createdAt)}
+                    {formatFechaSafe(auth.createdAt)}
                   </td>
                   <td className="p-3 flex justify-center">
                     {getEstadoBadge(auth.estado)}

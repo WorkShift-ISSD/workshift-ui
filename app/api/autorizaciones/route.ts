@@ -9,67 +9,243 @@ const SECRET_KEY = new TextEncoder().encode(
   process.env.JWT_SECRET || 'Workshift25'
 );
 
-// GET - Listar autorizaciones
+// GET - Obtener todas las autorizaciones con datos completos
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const estado = searchParams.get('estado');
-    const tipo = searchParams.get('tipo');
 
-    let whereClause = sql`WHERE 1=1`;
+    let query;
 
     if (estado) {
-      whereClause = sql`${whereClause} AND a.estado = ${estado}`;
+      query = sql`
+        SELECT 
+          a.id::text,
+          a.tipo,
+          a.empleado_id::text as "empleadoId",
+          a.solicitud_id::text as "solicitudId",
+          a.oferta_id::text as "ofertaId",
+          a.licencia_id::text as "licenciaId",
+          a.estado,
+          a.observaciones,
+          a.aprobado_por::text as "aprobadoPor",
+          a.fecha_aprobacion as "fechaAprobacion",
+          a.created_at as "createdAt",
+          a.updated_at as "updatedAt",
+          
+          -- Empleado solicitante
+          json_build_object(
+            'id', e.id,
+            'nombre', e.nombre,
+            'apellido', e.apellido,
+            'rol', e.rol
+          ) as empleado,
+          
+          -- Aprobador
+          CASE 
+            WHEN a.aprobado_por IS NOT NULL THEN
+              json_build_object(
+                'id', ap.id,
+                'nombre', ap.nombre,
+                'apellido', ap.apellido
+              )
+            ELSE NULL
+          END as aprobador,
+          
+          -- Datos de SOLICITUD DIRECTA
+          CASE 
+            WHEN a.solicitud_id IS NOT NULL THEN
+              json_build_object(
+                'id', sd.id,
+                'motivo', sd.motivo,
+                'prioridad', sd.prioridad,
+                'fechaSolicitud', sd.fecha_solicitud,
+                'solicitante', json_build_object(
+                  'id', us.id,
+                  'nombre', us.nombre,
+                  'apellido', us.apellido,
+                  'rol', us.rol
+                ),
+                'destinatario', json_build_object(
+                  'id', ud.id,
+                  'nombre', ud.nombre,
+                  'apellido', ud.apellido,
+                  'rol', ud.rol
+                ),
+                'turnoSolicitante', sd.turno_solicitante,
+                'turnoDestinatario', sd.turno_destinatario
+              )
+            ELSE NULL
+          END as "solicitudDirecta",
+          
+          -- Datos de OFERTA
+          CASE 
+            WHEN a.oferta_id IS NOT NULL THEN
+              json_build_object(
+                'id', of.id,
+                'tipo', of.tipo,
+                'modalidadBusqueda', of.modalidad_busqueda,
+                'descripcion', of.descripcion,
+                'prioridad', of.prioridad,
+                'publicado', of.publicado,
+                'ofertante', json_build_object(
+                  'id', uof.id,
+                  'nombre', uof.nombre,
+                  'apellido', uof.apellido,
+                  'rol', uof.rol
+                ),
+                'tomador', CASE 
+                  WHEN of.tomador_id IS NOT NULL THEN
+                    json_build_object(
+                      'id', ut.id,
+                      'nombre', ut.nombre,
+                      'apellido', ut.apellido,
+                      'rol', ut.rol
+                    )
+                  ELSE NULL
+                END,
+                'turnoOfrece', of.turno_ofrece,
+                'turnosBusca', of.turnos_busca,
+                'fechasDisponibles', of.fechas_disponibles
+              )
+            ELSE NULL
+          END as oferta
+          
+        FROM autorizaciones a
+        JOIN users e ON a.empleado_id = e.id
+        LEFT JOIN users ap ON a.aprobado_por = ap.id
+        
+        -- JOIN con solicitud directa
+        LEFT JOIN solicitudes_directas sd ON a.solicitud_id = sd.id
+        LEFT JOIN users us ON sd.solicitante_id = us.id
+        LEFT JOIN users ud ON sd.destinatario_id = ud.id
+        
+        -- JOIN con oferta
+        LEFT JOIN ofertas of ON a.oferta_id = of.id
+        LEFT JOIN users uof ON of.ofertante_id = uof.id
+        LEFT JOIN users ut ON of.tomador_id = ut.id
+        
+        WHERE a.estado = ${estado}
+        ORDER BY a.created_at DESC;
+      `;
+    } else {
+      query = sql`
+        SELECT 
+          a.id::text,
+          a.tipo,
+          a.empleado_id::text as "empleadoId",
+          a.solicitud_id::text as "solicitudId",
+          a.oferta_id::text as "ofertaId",
+          a.licencia_id::text as "licenciaId",
+          a.estado,
+          a.observaciones,
+          a.aprobado_por::text as "aprobadoPor",
+          a.fecha_aprobacion as "fechaAprobacion",
+          a.created_at as "createdAt",
+          a.updated_at as "updatedAt",
+          
+          -- Empleado solicitante
+          json_build_object(
+            'id', e.id,
+            'nombre', e.nombre,
+            'apellido', e.apellido,
+            'rol', e.rol
+          ) as empleado,
+          
+          -- Aprobador
+          CASE 
+            WHEN a.aprobado_por IS NOT NULL THEN
+              json_build_object(
+                'id', ap.id,
+                'nombre', ap.nombre,
+                'apellido', ap.apellido
+              )
+            ELSE NULL
+          END as aprobador,
+          
+          -- Datos de SOLICITUD DIRECTA
+          CASE 
+            WHEN a.solicitud_id IS NOT NULL THEN
+              json_build_object(
+                'id', sd.id,
+                'motivo', sd.motivo,
+                'prioridad', sd.prioridad,
+                'fechaSolicitud', sd.fecha_solicitud,
+                'solicitante', json_build_object(
+                  'id', us.id,
+                  'nombre', us.nombre,
+                  'apellido', us.apellido,
+                  'rol', us.rol
+                ),
+                'destinatario', json_build_object(
+                  'id', ud.id,
+                  'nombre', ud.nombre,
+                  'apellido', ud.apellido,
+                  'rol', ud.rol
+                ),
+                'turnoSolicitante', sd.turno_solicitante,
+                'turnoDestinatario', sd.turno_destinatario
+              )
+            ELSE NULL
+          END as "solicitudDirecta",
+          
+          -- Datos de OFERTA
+          CASE 
+            WHEN a.oferta_id IS NOT NULL THEN
+              json_build_object(
+                'id', of.id,
+                'tipo', of.tipo,
+                'modalidadBusqueda', of.modalidad_busqueda,
+                'descripcion', of.descripcion,
+                'prioridad', of.prioridad,
+                'publicado', of.publicado,
+                'ofertante', json_build_object(
+                  'id', uof.id,
+                  'nombre', uof.nombre,
+                  'apellido', uof.apellido,
+                  'rol', uof.rol
+                ),
+                'tomador', CASE 
+                  WHEN of.tomador_id IS NOT NULL THEN
+                    json_build_object(
+                      'id', ut.id,
+                      'nombre', ut.nombre,
+                      'apellido', ut.apellido,
+                      'rol', ut.rol
+                    )
+                  ELSE NULL
+                END,
+                'turnoOfrece', of.turno_ofrece,
+                'turnosBusca', of.turnos_busca,
+                'fechasDisponibles', of.fechas_disponibles
+              )
+            ELSE NULL
+          END as oferta
+          
+        FROM autorizaciones a
+        JOIN users e ON a.empleado_id = e.id
+        LEFT JOIN users ap ON a.aprobado_por = ap.id
+        
+        -- JOIN con solicitud directa
+        LEFT JOIN solicitudes_directas sd ON a.solicitud_id = sd.id
+        LEFT JOIN users us ON sd.solicitante_id = us.id
+        LEFT JOIN users ud ON sd.destinatario_id = ud.id
+        
+        -- JOIN con oferta
+        LEFT JOIN ofertas of ON a.oferta_id = of.id
+        LEFT JOIN users uof ON of.ofertante_id = uof.id
+        LEFT JOIN users ut ON of.tomador_id = ut.id
+        
+        ORDER BY a.created_at DESC;
+      `;
     }
 
-    if (tipo) {
-      whereClause = sql`${whereClause} AND a.tipo = ${tipo}`;
-    }
-
-    const autorizaciones = await sql`
-      SELECT 
-        a.id::text,
-        a.tipo,
-        a.empleado_id::text as "empleadoId",
-        a.solicitud_id::text as "solicitudId",
-        a.oferta_id::text as "ofertaId",
-        a.licencia_id::text as "licenciaId",
-        a.estado,
-        a.observaciones,
-        a.aprobado_por::text as "aprobadoPor",
-        a.fecha_aprobacion as "fechaAprobacion",
-        a.created_at as "createdAt",
-        a.updated_at as "updatedAt",
-        json_build_object(
-          'id', e.id,
-          'nombre', e.nombre,
-          'apellido', e.apellido,
-          'rol', e.rol
-        ) as empleado,
-        CASE 
-          WHEN a.aprobado_por IS NOT NULL THEN
-            json_build_object(
-              'id', ap.id,
-              'nombre', ap.nombre,
-              'apellido', ap.apellido
-            )
-          ELSE NULL
-        END as aprobador
-      FROM autorizaciones a
-      JOIN users e ON a.empleado_id = e.id
-      LEFT JOIN users ap ON a.aprobado_por = ap.id
-      ${whereClause}
-      ORDER BY a.created_at DESC;
-    `;
-
+    const autorizaciones = await query;
     return NextResponse.json(autorizaciones);
   } catch (error) {
     console.error('❌ Error GET /api/autorizaciones:', error);
     return NextResponse.json(
-      { 
-        error: 'Error al obtener autorizaciones',
-        details: error instanceof Error ? error.message : String(error)
-      },
+      { error: 'Error al obtener autorizaciones' },
       { status: 500 }
     );
   }
@@ -79,7 +255,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
+
     const {
       tipo,
       empleadoId,
@@ -108,7 +284,7 @@ export async function POST(request: NextRequest) {
 
     // ✅ VALIDACIÓN: Verificar que el empleado NO tenga sanciones activas
     const hoy = new Date().toISOString().split('T')[0];
-    
+
     const [sancionActiva] = await sql`
       SELECT 1 FROM sanciones
       WHERE empleado_id = ${empleadoId}::uuid
@@ -173,13 +349,13 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Autorización creada:', nuevaAutorizacion.id);
 
-    
+
 
     return NextResponse.json(nuevaAutorizacion, { status: 201 });
   } catch (error) {
     console.error('❌ Error POST /api/autorizaciones:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Error al crear autorización',
         details: error instanceof Error ? error.message : String(error)
       },

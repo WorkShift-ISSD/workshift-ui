@@ -33,6 +33,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import Can from '../components/Can';
 import { calcularGrupoTrabaja, esFechaValidaParaGrupo } from '../lib/turnosUtils';
 import ModalConsultarSolicitudes from '../components/ModalConsultarSolicitudes';
+import { ModalSeleccionarTurno } from '../components/ModalSeleccionarTurno';
 import { formatFechaHoraLocal, formatFechaLocal } from '../lib/utils';
 import { CustomDatePicker } from '../components/CustomDatePicker';
 import {
@@ -134,7 +135,7 @@ export default function CambiosTurnosPage() {
 
   const { modalType, isModalOpen, openModal, closeModal } = useModal();
   const { activeTab: solicitudesTab, setActiveTab: setSolicitudesTab } = useTabs<SolicitudesTabType>('estado');
-  const { parseFechaLocal, formatTimeAgo, formatDate } = useFormatters();
+  const { formatFechaSafe, formatTimeAgo, formatDate, formatDate2, getTodayDate } = useFormatters();
 
   // Estados locales
   const [usuarios, setUsuarios] = useState<any[]>([]);
@@ -146,6 +147,8 @@ export default function CambiosTurnosPage() {
   const [solicitudEditandoId, setSolicitudEditandoId] = useState<string | null>(null);
   const [ofertaEditandoId, setOfertaEditandoId] = useState<string | null>(null);
   const [ofertasIgnoradas, setOfertasIgnoradas] = useState<Set<string>>(new Set());
+  const [modalSeleccionarTurno, setModalSeleccionarTurno] = useState(false);
+  const [ofertaParaSeleccionar, setOfertaParaSeleccionar] = useState<any>(null);
 
   // Cargar ofertas ignoradas del localStorage al montar el componente
   useEffect(() => {
@@ -518,6 +521,21 @@ export default function CambiosTurnosPage() {
         return;
       }
 
+      // Buscar la oferta
+      const oferta = ofertas.find(o => o.id === ofertaId);
+      if (!oferta) {
+        alert('Oferta no encontrada');
+        return;
+      }
+
+      // ✅ SI TIENE MÚLTIPLES OPCIONES → Abrir modal de selección
+      if (oferta.turnosBusca && Array.isArray(oferta.turnosBusca) && oferta.turnosBusca.length > 1) {
+        setOfertaParaSeleccionar(oferta);
+        setModalSeleccionarTurno(true);
+        return;
+      }
+
+      // ✅ SI TIENE UNA SOLA OPCIÓN → Tomar directamente
       if (!confirm('¿Estás seguro de que quieres tomar esta oferta?')) {
         return;
       }
@@ -530,12 +548,6 @@ export default function CambiosTurnosPage() {
         body: JSON.stringify({ tomadorId: user.id }),
       });
 
-      console.log('📤 ENVIANDO AL BACKEND:', {
-        horarioOfrece: nuevaOfertaForm.horarioOfrece,
-        userHorario: user?.horario,
-        formCompleto: nuevaOfertaForm
-      });
-
       if (!res.ok) {
         const data = await res.json();
         console.error('❌ Error del servidor:', data);
@@ -546,15 +558,13 @@ export default function CambiosTurnosPage() {
       console.log('✅ Respuesta exitosa:', data);
 
       alert('¡Oferta tomada exitosamente! Pendiente de autorización del jefe.');
-
-      // ✅ Recargar la página para ver los cambios
       await refetch();
 
     } catch (error) {
       console.error('❌ Error al tomar oferta:', error);
       alert(error instanceof Error ? error.message : 'Error al tomar la oferta. Intenta nuevamente.');
     }
-  }, [user?.id, refetch]);
+  }, [user?.id, ofertas, refetch]);
 
   // Handlers para solicitudes
   const handleAceptarSolicitud = useCallback(async (id: string) => {
@@ -592,38 +602,42 @@ export default function CambiosTurnosPage() {
     }
   }, []);
 
-  // Utilidades
-  const formatearFecha = useCallback((fecha: string | null | undefined) => {
-    if (!fecha) return 'Fecha no disponible';
+  const handleConfirmarSeleccion = useCallback(async (turnoSeleccionado: { fecha: string; horario: string }) => {
+    if (!ofertaParaSeleccionar || !user?.id) return;
 
     try {
-      // Si viene un ISO completo: 2025-12-02T15:48:13.000Z
-      if (fecha.includes('T')) {
-        const date = new Date(fecha);
-        if (isNaN(date.getTime())) return 'Fecha inválida';
+      console.log('🔵 Tomando oferta con turno seleccionado:', {
+        ofertaId: ofertaParaSeleccionar.id,
+        tomadorId: user.id,
+        turnoSeleccionado
+      });
 
-        return date.toLocaleDateString("es-AR", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        });
+      const res = await fetch(`/api/ofertas/${ofertaParaSeleccionar.id}/tomar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tomadorId: user.id,
+          turnoSeleccionado // ✅ Enviar el turno específico seleccionado
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Error al tomar la oferta');
       }
 
-      // Si viene YYYY-MM-DD (tu caso para los turnos)
-      const date = parseFechaLocal(fecha);
-      if (isNaN(date.getTime())) return 'Fecha inválida';
+      alert('¡Oferta tomada exitosamente! Pendiente de autorización del jefe.');
+      setModalSeleccionarTurno(false);
+      setOfertaParaSeleccionar(null);
+      await refetch();
 
-      return date.toLocaleDateString("es-AR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
     } catch (error) {
-      return 'Error en fecha';
+      console.error('❌ Error:', error);
+      alert(error instanceof Error ? error.message : 'Error al tomar la oferta');
     }
-  }, []);
+  }, [ofertaParaSeleccionar, user?.id, refetch]);
 
-
+  // Utilidades
   const validarFechaGrupo = useCallback((fecha: string): boolean => {
     if (!fecha || !user) return false;
     const fechaObj = new Date(fecha + 'T00:00:00');
@@ -1033,15 +1047,9 @@ export default function CambiosTurnosPage() {
                                   <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">
                                     {oferta.tipo === "OFREZCO" ? "Turno disponible:" : "Turno que busco:"}
                                   </p>
+
                                   <p className="text-xs text-gray-900 dark:text-gray-100">
-                                    📅 {oferta.turnoOfrece?.fecha
-                                      ? parseFechaLocal(oferta.turnoOfrece.fecha).toLocaleDateString("es-AR", {
-                                        day: "2-digit",
-                                        month: "2-digit",
-                                        year: "numeric",
-                                      })
-                                      : 'N/A'
-                                    } •
+                                    📅 {formatFechaSafe(oferta.turnoOfrece?.fecha)} •
                                     🕐 {oferta.turnoOfrece?.horario || user?.horario || 'N/A'} •
                                     Grupo {oferta.turnoOfrece?.grupoTurno || user?.grupoTurno || 'N/A'}
                                   </p>
@@ -1056,7 +1064,7 @@ export default function CambiosTurnosPage() {
                                     <div className="space-y-1">
                                       {oferta.turnosBusca.map((turno: any, idx: number) => (
                                         <p key={idx} className="text-xs text-gray-900 dark:text-gray-100">
-                                          📅 {formatearFecha(turno.fecha)} • 🕐 {turno.horario}
+                                          📅 {formatFechaSafe(turno.fecha)} • 🕐 {turno.horario}
                                         </p>
                                       ))}
                                     </div>
@@ -1072,7 +1080,7 @@ export default function CambiosTurnosPage() {
                                     <div className="space-y-1">
                                       {oferta.fechasDisponibles.map((fecha: any, idx: number) => (
                                         <p key={idx} className="text-xs text-gray-900 dark:text-gray-100">
-                                          📅 {formatearFecha(fecha.fecha)} • 🕐 {fecha.horario}
+                                          📅 {formatFechaSafe(fecha.fecha)} • 🕐 {fecha.horario}
                                         </p>
                                       ))}
                                     </div>
@@ -1327,7 +1335,7 @@ export default function CambiosTurnosPage() {
 
                     {/* OFERTAS en histórico */}
                     {ofertasHistorico
-                      .sort((a, b) => parseFechaLocal(b.publicado).getTime() - parseFechaLocal(a.publicado).getTime())
+                      .sort((a, b) => new Date(b.publicado).getTime() - new Date(a.publicado).getTime())
                       .map((oferta) => {
                         const esIntercambio = oferta.modalidadBusqueda === TipoSolicitud.INTERCAMBIO;
                         const soyOfertante = oferta.ofertante?.id === user?.id;
@@ -1581,7 +1589,7 @@ export default function CambiosTurnosPage() {
                               {solicitud.solicitante.nombre} {solicitud.solicitante.apellido}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {formatearFecha(solicitud.fechaSolicitud)}
+                              {formatFechaSafe(solicitud.fechaSolicitud)}
                             </p>
                           </div>
                           <span className={`px-2 py-1 rounded text-xs font-medium ${solicitud.prioridad === 'URGENTE'
@@ -1596,7 +1604,7 @@ export default function CambiosTurnosPage() {
                           <div className="bg-blue-50 dark:bg-blue-900/10 rounded p-3 border border-blue-200 dark:border-blue-800">
                             <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">Te ofrece:</p>
                             <p className="text-xs text-gray-900 dark:text-gray-100">
-                              📅 {parseFechaLocal(solicitud.turnoSolicitante.fecha).toLocaleDateString("es-AR")}
+                              📅 {formatFechaSafe(solicitud.turnoSolicitante.fecha)}
                             </p>
                             <p className="text-xs text-gray-700 dark:text-gray-300">
                               🕐 {solicitud.turnoSolicitante.horario} - Grupo {solicitud.turnoSolicitante.grupoTurno}
@@ -1606,7 +1614,7 @@ export default function CambiosTurnosPage() {
                           <div className="bg-green-50 dark:bg-green-900/10 rounded p-3 border border-green-200 dark:border-green-800">
                             <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-1">Por tu turno:</p>
                             <p className="text-xs text-gray-900 dark:text-gray-100">
-                              📅 {parseFechaLocal(solicitud.turnoDestinatario.fecha).toLocaleDateString("es-AR")}
+                              📅 {formatFechaSafe(solicitud.turnoDestinatario.fecha)}
 
                             </p>
                             <p className="text-xs text-gray-700 dark:text-gray-300">
@@ -1679,7 +1687,7 @@ export default function CambiosTurnosPage() {
                                 {oferta.ofertante?.nombre} {oferta.ofertante?.apellido}
                               </p>
                               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                Publicado: {formatearFecha(oferta.publicado)}
+                                Publicado: {formatFechaSafe(oferta.publicado)}
                               </p>
                             </div>
                             <span className={`px-2 py-1 rounded text-xs font-medium ${oferta.prioridad === 'URGENTE'
@@ -1699,13 +1707,9 @@ export default function CambiosTurnosPage() {
                                 <span className="text-gray-500 dark:text-gray-400">Fecha:</span>
                                 <p className="text-gray-900 dark:text-gray-100 font-medium">
                                   {oferta.turnoOfrece?.fecha
-                                      ? parseFechaLocal(oferta.turnoOfrece.fecha).toLocaleDateString("es-AR", {
-                                        day: "2-digit",
-                                        month: "2-digit",
-                                        year: "numeric",
-                                      })
-                                      : 'N/A'
-                                    } 
+                                    ? formatFechaSafe(oferta.turnoOfrece.fecha)
+                                    : 'N/A'
+                                  }
                                 </p>
                               </div>
                               <div>
@@ -1742,7 +1746,7 @@ export default function CambiosTurnosPage() {
                                     <div>
                                       <span className="text-gray-500 dark:text-gray-400">Fecha:</span>
                                       <p className="text-gray-900 dark:text-gray-100 font-medium">
-                                        {formatearFecha(turno.fecha)}
+                                        {formatFechaSafe(turno.fecha)}
                                       </p>
                                     </div>
                                     <div>
@@ -2001,7 +2005,7 @@ export default function CambiosTurnosPage() {
                         <label htmlFor="fecha-ofrece" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           {nuevaOfertaForm.fechaOfrece && (
                             <span className={`text-xs ml-2 px-2 py-1 rounded ${nuevaOfertaForm.fechaOfrece && user &&
-                              esFechaValidaParaGrupo(parseFechaLocal(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno)
+                              esFechaValidaParaGrupo(new Date(nuevaOfertaForm.fechaOfrece + 'T00:00:00'), user.grupoTurno)
                               ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                               : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
                               }`}>
@@ -2795,6 +2799,15 @@ export default function CambiosTurnosPage() {
         onClose={() => setIsConsultarModalOpen(false)}
       />
 
+      <ModalSeleccionarTurno
+        isOpen={modalSeleccionarTurno}
+        onClose={() => {
+          setModalSeleccionarTurno(false);
+          setOfertaParaSeleccionar(null);
+        }}
+        onConfirmar={handleConfirmarSeleccion}
+        oferta={ofertaParaSeleccionar}
+      />
     </div>
 
   );
