@@ -14,6 +14,18 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+    const body = await request.json(); // ✅ LEER EL BODY
+    const { turnoSeleccionado } = body; // ✅ EXTRAER TURNO SELECCIONADO
+
+    // ✅ VALIDAR que se envió el turno seleccionado
+    if (!turnoSeleccionado || !turnoSeleccionado.fecha || !turnoSeleccionado.horario) {
+      return NextResponse.json(
+        { error: 'Debe seleccionar un turno' },
+        { status: 400 }
+      );
+    }
+
+    console.log('🎯 Turno seleccionado por el tomador:', turnoSeleccionado);
 
     // Verificar autenticación
     const cookieStore = await cookies();
@@ -110,18 +122,33 @@ export async function POST(
       );
     }
 
-    // ✅ ACTUALIZAR OFERTA
+    // ✅ Obtener grupo_turno del tomador
+    const [tomador] = await sql`
+      SELECT grupo_turno FROM users WHERE id = ${tomadorId}::uuid;
+    `;
+
+    // ✅ Construir el objeto completo del turno seleccionado
+    const turnoSeleccionadoCompleto = {
+      fecha: turnoSeleccionado.fecha,
+      horario: turnoSeleccionado.horario,
+      grupoTurno: tomador?.grupo_turno || 'N/A'
+    };
+
+    console.log('💾 Guardando turno seleccionado:', turnoSeleccionadoCompleto);
+
+    // ✅ ACTUALIZAR OFERTA CON TURNO SELECCIONADO
     await sql`
       UPDATE ofertas 
       SET 
         tomador_id = ${tomadorId},
+        turno_seleccionado = ${JSON.stringify(turnoSeleccionadoCompleto)}::jsonb,
         estado = 'APROBADO',
         updated_at = NOW()
       WHERE id = ${id};
     `;
 
     // ✅ CREAR AUTORIZACIÓN AUTOMÁTICAMENTE
-    console.log('🔄 Creando autorización para oferta:', id);
+    console.log('📄 Creando autorización para oferta:', id);
 
     try {
       const [autorizacion] = await sql`
@@ -148,6 +175,7 @@ export async function POST(
         UPDATE ofertas 
         SET 
           tomador_id = NULL,
+          turno_seleccionado = NULL,
           estado = 'DISPONIBLE',
           updated_at = NOW()
         WHERE id = ${id};
@@ -159,11 +187,12 @@ export async function POST(
       );
     }
 
-    console.log('✅ Oferta tomada exitosamente');
+    console.log('✅ Oferta tomada exitosamente con turno seleccionado');
 
     return NextResponse.json({
       message: '✅ Oferta tomada exitosamente. Pendiente de autorización del Jefe.',
-      estado: 'APROBADO'
+      estado: 'APROBADO',
+      turnoSeleccionado: turnoSeleccionadoCompleto
     });
   } catch (error: any) {
     console.error('💥 Error al tomar oferta:', error);

@@ -97,6 +97,7 @@ export async function GET(
                 ELSE NULL
               END,
               'turnoOfrece', of.turno_ofrece,
+              'turnoSeleccionado', of.turno_seleccionado,
               'turnosBusca', of.turnos_busca,
               'fechasDisponibles', of.fechas_disponibles
             )

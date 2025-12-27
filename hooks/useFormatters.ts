@@ -65,8 +65,8 @@ export const useFormatters = () => {
   const formatTimeAgo = (dateString: string) => {
     if (!dateString) return '';
 
-    const date = parseFechaLocal(dateString);
-    if (!date) return '';
+    const date = new Date(dateString); 
+    if (isNaN(date.getTime())) return '';
 
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -92,41 +92,41 @@ export const useFormatters = () => {
   };
 
   /* Día + fecha + horario */
-const formatDiaYHorario = (
-  fecha?: string | null,
-  horario?: string | null
-) => {
-  if (!fecha) return 'Fecha no disponible';
+  const formatDiaYHorario = (
+    fecha?: string | null,
+    horario?: string | null
+  ) => {
+    if (!fecha) return 'Fecha no disponible';
 
-  try {
-    const date = fecha.includes('T')
-      ? new Date(fecha)
-      : parseFechaLocal(fecha);
+    try {
+      const date = fecha.includes('T')
+        ? new Date(fecha)
+        : parseFechaLocal(fecha);
 
-    if (!date || isNaN(date.getTime())) return 'Fecha inválida';
+      if (!date || isNaN(date.getTime())) return 'Fecha inválida';
 
-    const dia = date.toLocaleDateString('es-AR', {
-      weekday: 'short',
-    });
+      const dia = date.toLocaleDateString('es-AR', {
+        weekday: 'short',
+      });
 
-    const fechaFormateada = date.toLocaleDateString('es-AR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
+      const fechaFormateada = date.toLocaleDateString('es-AR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
 
-    return `${dia} ${fechaFormateada}${horario ? ` • 🕐 ${horario}` : ''}`;
-  } catch {
-    return 'Error en fecha';
-  }
-};
+      return `${dia} ${fechaFormateada}${horario ? ` • 🕐 ${horario}` : ''}`;
+    } catch {
+      return 'Error en fecha';
+    }
+  };
 
 
   return {
     parseFechaLocal,
     formatDate,
     formatDate2,
-    formatFechaSafe, 
+    formatFechaSafe,
     formatTimeAgo,
     getTodayDate,
     formatDiaYHorario

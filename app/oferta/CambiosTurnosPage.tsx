@@ -616,8 +616,7 @@ export default function CambiosTurnosPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tomadorId: user.id,
-          turnoSeleccionado // ✅ Enviar el turno específico seleccionado
+          turnoSeleccionado // ✅ ENVIAR EL TURNO SELECCIONADO
         }),
       });
 

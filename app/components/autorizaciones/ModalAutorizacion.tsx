@@ -355,36 +355,41 @@ export function ModalAutorizacion({
                               <p className="text-xs font-medium text-green-600 dark:text-green-400 mt-1">TOMADOR</p>
                             </div>
 
-                            {turnosBusca && Array.isArray(turnosBusca) && turnosBusca.length > 0 ? (
-                              <div className="space-y-4">
-                                {turnosBusca.map((turno: any, i: number) => (
-                                  <div key={i} className={`space-y-2 ${i > 0 ? 'border-t border-gray-200 dark:border-gray-700 pt-4' : ''}`}>
-                                    <div>
-                                      <p className="text-xs text-gray-600 dark:text-gray-400">Fecha que ofrece</p>
-                                      <p className="font-semibold text-gray-900 dark:text-white">
-                                        {formatFechaSafe(turno.fecha)}
-                                      </p>
-                                    </div>
-                                    <div>
-                                      <p className="text-xs text-gray-600 dark:text-gray-400">Horario</p>
-                                      <p className="font-semibold text-gray-900 dark:text-white">
-                                        {turno.horario}
-                                      </p>
-                                    </div>
-                                    <div>
-                                      <p className="text-xs text-gray-600 dark:text-gray-400">Grupo</p>
-                                      <p className="font-semibold text-gray-900 dark:text-white">
-                                        {turno.grupoTurno || 'N/A'}
-                                      </p>
-                                    </div>
+                            {(() => {
+                              // ✅ PARSEAR turno_seleccionado
+                              const turnoSeleccionado = typeof oferta.turnoSeleccionado === 'string'
+                                ? JSON.parse(oferta.turnoSeleccionado)
+                                : oferta.turnoSeleccionado;
+
+                              console.log('🔍 Turno seleccionado:', turnoSeleccionado);
+
+                              return turnoSeleccionado ? (
+                                <div className="space-y-2">
+                                  <div>
+                                    <p className="text-xs text-gray-600 dark:text-gray-400">Fecha que ofrece:</p>
+                                    <p className="font-semibold text-gray-900 dark:text-white">
+                                      {formatFechaSafe(turnoSeleccionado.fecha)}
+                                    </p>
                                   </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="text-center text-gray-500 dark:text-gray-400">
-                                <p className="text-sm">Sin fechas ofrecidas</p>
-                              </div>
-                            )}
+                                  <div>
+                                    <p className="text-xs text-gray-600 dark:text-gray-400">Horario</p>
+                                    <p className="font-semibold text-gray-900 dark:text-white">
+                                      {turnoSeleccionado.horario}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-600 dark:text-gray-400">Grupo</p>
+                                    <p className="font-semibold text-gray-900 dark:text-white">
+                                      {turnoSeleccionado.grupoTurno || 'N/A'}
+                                    </p>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-center text-gray-500 dark:text-gray-400">
+                                  <p className="text-sm">Sin turno seleccionado</p>
+                                </div>
+                              );
+                            })()}
                           </>
                         ) : (
                           <div className="text-center text-gray-500 dark:text-gray-400 flex items-center justify-center h-full">

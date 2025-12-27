@@ -105,6 +105,7 @@ export async function GET(request: NextRequest) {
                   ELSE NULL
                 END,
                 'turnoOfrece', of.turno_ofrece,
+                'turnoSeleccionado', of.turno_seleccionado,
                 'turnosBusca', of.turnos_busca,
                 'fechasDisponibles', of.fechas_disponibles
               )
@@ -216,6 +217,7 @@ export async function GET(request: NextRequest) {
                   ELSE NULL
                 END,
                 'turnoOfrece', of.turno_ofrece,
+                'turnoSeleccionado', of.turno_seleccionado,
                 'turnosBusca', of.turnos_busca,
                 'fechasDisponibles', of.fechas_disponibles
               )

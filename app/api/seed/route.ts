@@ -31,7 +31,7 @@ const systemUsers = [
     rol: RolUsuario.ADMINISTRADOR,
     grupoTurno: GrupoTurno.ADMIN,
     horario: '00:00-23:59',
-    primerIngreso: false 
+    primerIngreso: false
   },
   {
     legajo: 300002,
@@ -42,7 +42,7 @@ const systemUsers = [
     rol: RolUsuario.JEFE,
     grupoTurno: GrupoTurno.A,
     horario: '05:00-17:00',
-    primerIngreso: true 
+    primerIngreso: true
   },
   {
     legajo: 300003,
@@ -53,7 +53,7 @@ const systemUsers = [
     rol: RolUsuario.SUPERVISOR,
     grupoTurno: GrupoTurno.A,
     horario: '23:00-05:00',
-    primerIngreso: true 
+    primerIngreso: true
   },
   {
     legajo: 300004,
@@ -64,7 +64,7 @@ const systemUsers = [
     rol: RolUsuario.SUPERVISOR,
     grupoTurno: GrupoTurno.B,
     horario: '05:00-14:00',
-    primerIngreso: true 
+    primerIngreso: true
   },
   {
     legajo: 300005,
@@ -75,7 +75,7 @@ const systemUsers = [
     rol: RolUsuario.INSPECTOR,
     grupoTurno: GrupoTurno.A,
     horario: '19:00-05:00',
-    primerIngreso: true 
+    primerIngreso: true
   },
   {
     legajo: 300006,
@@ -86,7 +86,7 @@ const systemUsers = [
     rol: RolUsuario.INSPECTOR,
     grupoTurno: GrupoTurno.B,
     horario: '14:00-23:00',
-    primerIngreso: true  
+    primerIngreso: true
   }
 ];
 
@@ -557,6 +557,7 @@ async function seedOfertas() {
       modalidad_busqueda VARCHAR(20) CHECK (modalidad_busqueda IN (${getEnumSqlString(TipoSolicitud)})),
       turno_ofrece JSONB,
       turnos_busca JSONB,
+      turno_seleccionado JSONB,
       fechas_disponibles JSONB,
       fecha_ofrece DATE,
       horario_ofrece VARCHAR(20),
@@ -587,7 +588,7 @@ async function seedOfertas() {
   await sql`CREATE INDEX IF NOT EXISTS idx_ofertas_prioridad ON ofertas(prioridad)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_ofertas_valido_hasta ON ofertas(valido_hasta)`;
 
-  console.log('✅ Tabla ofertas creada');
+  console.log('✅ Tabla ofertas creada con turno_seleccionado');
   return true;
 }
 
