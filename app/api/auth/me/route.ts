@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
         grupo_turno as "grupoTurno",
         horario,
         activo,
-        imagen,
+        foto_perfil as imagen,
         cloudinary_public_id,
         telefono,
         direccion,

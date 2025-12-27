@@ -93,7 +93,6 @@ const systemUsers = [
 async function seedUsers() {
   await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
 
-  // LÍNEA 89-111 (DESPUÉS) - ✅ CON CAMPOS NUEVOS
   const createTableQuery = `
   CREATE TABLE IF NOT EXISTS users (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -110,6 +109,7 @@ async function seedUsers() {
     activo BOOLEAN DEFAULT true,
     grupo_turno VARCHAR(10) NOT NULL DEFAULT '${GrupoTurno.A}' CHECK (grupo_turno IN (${getEnumSqlString(GrupoTurno)})),
     foto_perfil TEXT,
+    cloudinary_public_id TEXT,
     ultimo_login TIMESTAMP,
     calificacion DECIMAL(3,2) DEFAULT 4.5,
     total_intercambios INTEGER DEFAULT 0,
@@ -126,7 +126,6 @@ async function seedUsers() {
   await sql`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_users_rol ON users(rol)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_users_activo ON users(activo)`;
-  // DESPUÉS DE LA LÍNEA 118
   await sql`CREATE INDEX IF NOT EXISTS idx_users_primer_ingreso ON users(primer_ingreso)`;
 
   // Insertar usuarios del sistema primero
@@ -240,7 +239,6 @@ async function seedUsers() {
 
   return [...insertedSystemUsers, ...insertedUsers].filter(Boolean);
 }
-
 
 
 // ✅ NUEVA FUNCIÓN: CREAR TABLA DE PASSWORD RESET TOKENS
