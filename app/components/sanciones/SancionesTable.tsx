@@ -6,18 +6,19 @@ import { Sancion } from "@/app/api/types";
 import { ModalSancion } from "./ModalSancion";
 import { useEmpleados } from "@/hooks/useEmpleados";
 import { useSanciones } from "@/hooks/useSanciones";
-import { useFormatters} from "@/hooks/useFormatters"
+import { useFormatters } from "@/hooks/useFormatters"
 
 interface Props {
     sanciones: Sancion[];
     loading: boolean;
+    onRecargar: () => void;
 }
 
 type ModalMode = "create" | "view" | "edit";
 
-export function SancionesTable({
-    sanciones,
-    loading,
+export function SancionesTable({ 
+    sanciones, 
+    loading, onRecargar 
 }: Props) {
     const { empleados } = useEmpleados();
     const { cargarSanciones } = useSanciones();
@@ -117,13 +118,12 @@ export function SancionesTable({
                                         </td>
                                         <td className="p-3 text-center">
                                             <span
-                                                className={`px-2 py-1 rounded text-xs font-medium ${
-                                                    s.estado === "ACTIVA"
+                                                className={`px-2 py-1 rounded text-xs font-medium ${s.estado === "ACTIVA"
                                                         ? "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400"
                                                         : s.estado === "FINALIZADA"
-                                                        ? "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-                                                        : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400"
-                                                }`}
+                                                            ? "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                                                            : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400"
+                                                    }`}
                                             >
                                                 {s.estado}
                                             </span>
@@ -158,7 +158,7 @@ export function SancionesTable({
                 onClose={() => setModalOpen(false)}
                 modo={modo}
                 sancion={sancionSeleccionada}
-                onSancionCreada={cargarSanciones}
+                onSancionCreada={onRecargar}
             />
         </>
     );

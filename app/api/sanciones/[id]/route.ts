@@ -9,25 +9,26 @@ const sql = postgres(process.env.POSTGRES_URL!, { ssl: "require" });
  */
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const {
       fecha_desde,
       fecha_hasta,
       motivo,
-      estado,
     } = await req.json();
+
+    console.log('Valores recibidos:', { fecha_desde, fecha_hasta, motivo });
 
     const [updated] = await sql`
       UPDATE sanciones
       SET
-        fecha_desde = COALESCE(${fecha_desde}, fecha_desde),
-        fecha_hasta = COALESCE(${fecha_hasta}, fecha_hasta),
-        motivo = COALESCE(${motivo}, motivo),
-        estado = COALESCE(${estado}, estado),
+        fecha_desde = COALESCE(${fecha_desde ?? null}, fecha_desde),
+        fecha_hasta = COALESCE(${fecha_hasta ?? null}, fecha_hasta),
+        motivo = COALESCE(${motivo ?? null}, motivo),
         updated_at = NOW()
-      WHERE id = ${params.id}
+      WHERE id = ${id}
       RETURNING *
     `;
 
@@ -40,20 +41,19 @@ export async function PUT(
     );
   }
 }
-
 /**
  * DELETE /api/sanciones/:id
  */
 export async function DELETE(
-  _: Request,
-  { params }: { params: { id: string } }
+  _: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     await sql`
       DELETE FROM sanciones
-      WHERE id = ${params.id}
+      WHERE id = ${id}
     `;
-
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error(error);

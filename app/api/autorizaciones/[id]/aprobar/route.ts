@@ -67,7 +67,7 @@ export async function POST(
         estado = ${EstadoAutorizacion.APROBADA},
         aprobado_por = ${jefeId}::uuid,
         fecha_aprobacion = NOW(),
-        observaciones = COALESCE(${observaciones}, observaciones),
+        observaciones = COALESCE(${observaciones ?? null}, observaciones),
         updated_at = NOW()
       WHERE id = ${id}::uuid;
     `;
@@ -75,21 +75,84 @@ export async function POST(
     // ✅ ACTUALIZAR ESTADO DE LA SOLICITUD/OFERTA/LICENCIA VINCULADA
     if (autorizacion.solicitud_id) {
       await sql`
-        UPDATE solicitudes_directas
-        SET estado = 'COMPLETADO', updated_at = NOW()
-        WHERE id = ${autorizacion.solicitud_id}::uuid;
+    UPDATE solicitudes_directas
+    SET estado = 'COMPLETADO', updated_at = NOW()
+    WHERE id = ${autorizacion.solicitud_id}::uuid;
+  `;
+
+      // Obtener datos de la solicitud para crear los turnos efectivos
+      const [solicitud] = await sql`
+    SELECT * FROM solicitudes_directas 
+    WHERE id = ${autorizacion.solicitud_id}::uuid;
+  `;
+
+      if (solicitud) {
+        // Turno efectivo para el solicitante
+        await sql`
+      INSERT INTO turnos_efectivos (
+        id,
+        empleado_id,
+        fecha,
+        horario_original,
+        horario_efectivo,
+        grupo_original,
+        grupo_efectivo,
+        tipo_cambio,
+        autorizacion_id,
+        empleado_intercambio_id,
+        estado,
+        created_at
+      ) VALUES (
+  gen_random_uuid(),
+  ${solicitud.solicitante_id}::uuid,
+  ${solicitud.fecha_destinatario}::date,  
+  ${solicitud.horario_solicitante},
+  ${solicitud.horario_destinatario || solicitud.horario_solicitante},
+  ${solicitud.grupo_solicitante},
+  ${solicitud.grupo_destinatario || solicitud.grupo_solicitante},
+  ${solicitud.fecha_destinatario ? 'INTERCAMBIO' : 'COBERTURA'},
+  ${id}::uuid,
+  ${solicitud.destinatario_id}::uuid,
+  'PENDIENTE',
+  NOW()
+);
+    `;
+
+        // Si es intercambio (no cobertura), crear también el turno del destinatario
+        if (solicitud.fecha_destinatario) {
+          await sql`
+        INSERT INTO turnos_efectivos (
+          id,
+          empleado_id,
+          fecha,
+          horario_original,
+          horario_efectivo,
+          grupo_original,
+          grupo_efectivo,
+          tipo_cambio,
+          autorizacion_id,
+          empleado_intercambio_id,
+          estado,
+          created_at
+        ) VALUES (
+  gen_random_uuid(),
+  ${solicitud.destinatario_id}::uuid,
+  ${solicitud.fecha_solicitante}::date,
+  ${solicitud.horario_destinatario},
+  ${solicitud.horario_solicitante},
+  ${solicitud.grupo_destinatario},
+  ${solicitud.grupo_solicitante},
+  'INTERCAMBIO',
+  ${id}::uuid,
+  ${solicitud.solicitante_id}::uuid,
+  'PENDIENTE',
+  NOW()
+);
       `;
-      console.log('✅ Solicitud directa actualizada a COMPLETADO');
+        }
+      }
     }
 
-    if (autorizacion.oferta_id) {
-      await sql`
-        UPDATE ofertas
-        SET estado = 'COMPLETADO', updated_at = NOW()
-        WHERE id = ${autorizacion.oferta_id}::uuid;
-      `;
-      console.log('✅ Oferta actualizada a COMPLETADO');
-    }
 
     if (autorizacion.licencia_id) {
       await sql`
@@ -106,7 +169,7 @@ export async function POST(
   } catch (error) {
     console.error('❌ Error al aprobar autorización:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Error al aprobar autorización',
         details: error instanceof Error ? error.message : String(error)
       },

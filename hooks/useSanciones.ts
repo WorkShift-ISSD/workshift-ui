@@ -50,8 +50,8 @@ export function useSanciones() {
     );
 
     setSanciones((prev) =>
-      prev.map((s) => (s.id === id ? actualizada : s))
-    );
+  prev.map((s) => (s.id === id ? actualizada : s))
+);
   };
 
   

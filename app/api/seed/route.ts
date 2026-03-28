@@ -183,7 +183,8 @@ async function seedUsers() {
   console.log('👥 Insertando usuarios de placeholder...');
   const insertedUsers = await Promise.all(
     users.map(async (user) => {
-      const hashedPassword = await bcryptjs.hash(user.legajo?.toString() || 'password123', 10);
+      const hashedPassword = await bcryptjs.hash(user.legajo?.toString() || 'Seed2025!', 10);
+
       try {
         return await sql`
           INSERT INTO users (

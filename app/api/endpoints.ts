@@ -71,6 +71,10 @@ export const endpoints = {
     delete: (id: string) => `${API_BASE_URL}/turnos/${id}`,
   },
 
+  turnosEfectivos: {
+    list: () => `${API_BASE_URL}/turnos-efectivos`,
+  },
+
   // Licencias
   licencias: {
     list: () => `${API_BASE_URL}/licencias`,
@@ -101,6 +105,14 @@ export const endpoints = {
     aprobar: (id: string) => `${API_BASE_URL}/autorizaciones/${id}/aprobar`,
     rechazar: (id: string) => `${API_BASE_URL}/autorizaciones/${id}/rechazar`,
   },
+
+
+  //mensajes
+  mensajes: {
+  list: (ofertaId: string) => `${API_BASE_URL}/mensajes?ofertaId=${ofertaId}`,
+  create: () => `${API_BASE_URL}/mensajes`,
+  conversaciones: () => `${API_BASE_URL}/mensajes/conversaciones`,
+},
 
 
 } as const;

@@ -17,7 +17,7 @@ import { useEmpleados } from "@/hooks/useEmpleados";
 
 
 export default function SancionesPage() {
-  const { sanciones, loading } = useSanciones();
+  const { sanciones, loading, cargarSanciones } = useSanciones()
 
   const stats = useMemo(() => {
     return {
@@ -68,7 +68,7 @@ export default function SancionesPage() {
       </div>
 
       {/* TABLA + MODAL (todo vive adentro) */}
-      <SancionesTable sanciones={sanciones} loading={loading} />
+      <SancionesTable sanciones={sanciones} loading={loading} onRecargar={cargarSanciones} />
     </div>
   );
 }

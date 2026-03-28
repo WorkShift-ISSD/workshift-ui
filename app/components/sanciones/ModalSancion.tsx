@@ -187,15 +187,16 @@ export function ModalSancion({
   };
 
   const handleConfirmarGuardado = async () => {
-    try {
-      if (modo === "create") {
-        await crearSancion(form);
-        toast.success("Sanción creada exitosamente");
-        onSancionCreada?.();
-      }
+  try {
+    if (modo === "create") {
+      await crearSancion(form);
+      toast.success("Sanción creada exitosamente");
+      onSancionCreada?.();
+    }
 
-      if (modo === "edit" && sancion) {
-        await actualizarSancion(sancion.id, form);
+    if (modo === "edit" && sancion) {
+      console.log('Form que se manda:', form); // ← agregá esto
+      await actualizarSancion(sancion.id, form);
         toast.success("Sanción actualizada exitosamente");
         onSancionCreada?.();
       }

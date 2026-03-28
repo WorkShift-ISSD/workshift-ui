@@ -5,13 +5,14 @@ import { useLicencias } from "@/hooks/useLicencias";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useFormatters } from "@/hooks/useFormatters";
+import type { TipoLicencia } from "@/app/api/types";
 
 export function LicenciaForm() {
   const { crearLicencia } = useLicencias();
 
   const today = new Date().toISOString().split("T")[0];
 
-  const [tipo, setTipo] = useState("ORDINARIA");
+  const [tipo, setTipo] = useState<TipoLicencia>("ORDINARIA");
   const [fechaDesde, setFechaDesde] = useState(today);
   const [fechaHasta, setFechaHasta] = useState(today);
   const [observaciones, setObservaciones] = useState("");
@@ -73,7 +74,7 @@ export function LicenciaForm() {
             </label>
             <select
               value={tipo}
-              onChange={(e) => setTipo(e.target.value)}
+              onChange={(e) => setTipo(e.target.value as TipoLicencia)}
               className="w-full border rounded-lg p-2.5
                 bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                 border-gray-300 dark:border-gray-600"

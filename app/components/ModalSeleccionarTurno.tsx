@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, Calendar, Clock, CheckCircle } from "lucide-react";
+import type { Oferta } from '@/hooks/useOfertas';
 
 interface TurnoOpcion {
   fecha: string;
@@ -12,15 +13,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onConfirmar: (turnoSeleccionado: TurnoOpcion) => void;
-  oferta: {
-    id: string;
-    ofertante: {
-      nombre: string;
-      apellido: string;
-    };
-    turnoOfrece?: TurnoOpcion;
-    turnosBusca?: TurnoOpcion[];
-  } | null;
+  oferta: Oferta | null;
 }
 
 export function ModalSeleccionarTurno({ isOpen, onClose, onConfirmar, oferta }: Props) {
