@@ -135,10 +135,11 @@ export default function DashboardHome() {
 
   // Función para formatear fecha
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const day = date.getDate();
-    const month = date.toLocaleDateString('es-ES', { month: 'short' });
-    return { day, month };
+    const [year, month, day] = dateString.split('-');
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    const dayNum = date.getDate();
+    const month2 = date.toLocaleDateString('es-ES', { month: 'short' });
+    return { day: dayNum, month: month2 };
   };
 
   // Función para obtener color según estado
@@ -152,81 +153,81 @@ export default function DashboardHome() {
   };
 
   // Estadísticas reales basadas en ofertas y solicitudes
-// Type guard - ACTUALIZAR para incluir CANCELADO
-type SolicitudDirectaEstado = 'SOLICITADO' | 'APROBADO' | 'RECHAZADO' | 'CANCELADO';
+  // Type guard - ACTUALIZAR para incluir CANCELADO
+  type SolicitudDirectaEstado = 'SOLICITADO' | 'APROBADO' | 'RECHAZADO' | 'CANCELADO';
 
-// Estadísticas reales basadas en ofertas y solicitudes
-const statsReales = useMemo(() => {
-    
-  const turnosDisponibles = ofertas?.filter(o => o.estado === 'DISPONIBLE').length || 0;
-  
-  const aprobadosDelMes = solicitudes?.filter(sol => {
-    const fechaSol = new Date(sol.fechaSolicitud);
-    const estado = sol.estado as SolicitudDirectaEstado;
-    return (
-      estado === 'APROBADO' &&
-      fechaSol.getFullYear() === monthInfo.year &&
-      fechaSol.getMonth() === monthInfo.month
-    );
-  }).length || 0;
+  // Estadísticas reales basadas en ofertas y solicitudes
+  const statsReales = useMemo(() => {
 
+    const turnosDisponibles = ofertas?.filter(o => o.estado === 'DISPONIBLE').length || 0;
 
-
-  const pendientesParaMi = solicitudes?.filter(sol => {
-  const estado = String(sol.estado).toUpperCase();
-    const coincide = sol.destinatario.id === user?.id;
-    const esSolicitado = estado === 'SOLICITADO' || estado === 'PENDIENTE';
-    
-  
-    
-    return coincide && esSolicitado;
-  }).length || 0;
-
-  const rechazadosDelMes = solicitudes?.filter(sol => {
-    const fechaSol = new Date(sol.fechaSolicitud);
-    const estado = sol.estado as SolicitudDirectaEstado;
-    return (
-      sol.solicitante.id === user?.id &&
-      (estado === 'RECHAZADO' || estado === 'CANCELADO') &&
-      fechaSol.getFullYear() === monthInfo.year &&
-      fechaSol.getMonth() === monthInfo.month
-    );
-  }).length || 0;
-
-  return {
-    turnosOferta: turnosDisponibles,
-    aprobados: aprobadosDelMes,
-    pendientes: pendientesParaMi,
-    rechazados: rechazadosDelMes,
-  };
-}, [ofertas, solicitudes, user, monthInfo]); // ← Asegúrate de tener todas estas dependencias
-
-useEffect(() => {
-  
-  
-  if (solicitudes) {
-    
-    // Ver específicamente las rechazadas
-    const rechazadas = solicitudes.filter(sol => {
-      const estado = sol.estado as SolicitudDirectaEstado;
-      return estado === 'RECHAZADO';
-    });
-    
-    
-    // Ver las del mes
-    const rechazadasDelMes = solicitudes.filter(sol => {
+    const aprobadosDelMes = solicitudes?.filter(sol => {
       const fechaSol = new Date(sol.fechaSolicitud);
       const estado = sol.estado as SolicitudDirectaEstado;
-      
       return (
-        estado === 'RECHAZADO' &&
+        estado === 'APROBADO' &&
         fechaSol.getFullYear() === monthInfo.year &&
         fechaSol.getMonth() === monthInfo.month
       );
-    });
-    
-  }
-}, [solicitudes, monthInfo]);
+    }).length || 0;
+
+
+
+    const pendientesParaMi = solicitudes?.filter(sol => {
+      const estado = String(sol.estado).toUpperCase();
+      const coincide = sol.destinatario.id === user?.id;
+      const esSolicitado = estado === 'SOLICITADO' || estado === 'PENDIENTE';
+
+
+
+      return coincide && esSolicitado;
+    }).length || 0;
+
+    const rechazadosDelMes = solicitudes?.filter(sol => {
+      const fechaSol = new Date(sol.fechaSolicitud);
+      const estado = sol.estado as SolicitudDirectaEstado;
+      return (
+        sol.solicitante.id === user?.id &&
+        (estado === 'RECHAZADO' || estado === 'CANCELADO') &&
+        fechaSol.getFullYear() === monthInfo.year &&
+        fechaSol.getMonth() === monthInfo.month
+      );
+    }).length || 0;
+
+    return {
+      turnosOferta: turnosDisponibles,
+      aprobados: aprobadosDelMes,
+      pendientes: pendientesParaMi,
+      rechazados: rechazadosDelMes,
+    };
+  }, [ofertas, solicitudes, user, monthInfo]); // ← Asegúrate de tener todas estas dependencias
+
+  useEffect(() => {
+
+
+    if (solicitudes) {
+
+      // Ver específicamente las rechazadas
+      const rechazadas = solicitudes.filter(sol => {
+        const estado = sol.estado as SolicitudDirectaEstado;
+        return estado === 'RECHAZADO';
+      });
+
+
+      // Ver las del mes
+      const rechazadasDelMes = solicitudes.filter(sol => {
+        const fechaSol = new Date(sol.fechaSolicitud);
+        const estado = sol.estado as SolicitudDirectaEstado;
+
+        return (
+          estado === 'RECHAZADO' &&
+          fechaSol.getFullYear() === monthInfo.year &&
+          fechaSol.getMonth() === monthInfo.month
+        );
+      });
+
+    }
+  }, [solicitudes, monthInfo]);
 
   // Manejar creación de cambio
   const handleCreate = async (e: React.FormEvent) => {
@@ -412,63 +413,63 @@ useEffect(() => {
       )}
 
       {/* Stats Cards */}
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-  {/* Turnos en Oferta */}
-  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
-    <div className="flex items-center justify-between mb-4">
-      <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
-        <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-      </div>
-      <span className="text-sm text-gray-500 dark:text-gray-400">En oferta</span>
-    </div>
-    <p className="text-3xl font-bold text-blue-400 dark:text-blue-400">
-      {statsReales.turnosOferta}
-    </p>
-    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Turnos disponibles</p>
-  </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Turnos en Oferta */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
+              <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            <span className="text-sm text-gray-500 dark:text-gray-400">En oferta</span>
+          </div>
+          <p className="text-3xl font-bold text-blue-400 dark:text-blue-400">
+            {statsReales.turnosOferta}
+          </p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Turnos disponibles</p>
+        </div>
 
-  {/* Aprobados */}
-  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
-    <div className="flex items-center justify-between mb-4">
-      <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
-        <CheckCircle className="h-6 w-6 text-green-500" />
-      </div>
-      <span className="text-sm text-gray-500">Este mes</span>
-    </div>
-    <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-      {statsReales.aprobados}
-    </p>
-    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes aprobadas</p>
-  </div>
+        {/* Aprobados */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
+              <CheckCircle className="h-6 w-6 text-green-500" />
+            </div>
+            <span className="text-sm text-gray-500">Este mes</span>
+          </div>
+          <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+            {statsReales.aprobados}
+          </p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes aprobadas</p>
+        </div>
 
-  {/* Pendientes */}
-  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
-    <div className="flex items-center justify-between mb-4">
-      <div className="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
-        <Clock className="h-6 w-6 text-yellow-500" />
-      </div>
-      <span className="text-sm text-gray-500">Para ti</span>
-    </div>
-    <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
-      {statsReales.pendientes}
-    </p>
-    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes pendientes</p>
-  </div>
+        {/* Pendientes */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
+              <Clock className="h-6 w-6 text-yellow-500" />
+            </div>
+            <span className="text-sm text-gray-500">Para ti</span>
+          </div>
+          <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
+            {statsReales.pendientes}
+          </p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes pendientes</p>
+        </div>
 
-  {/* Rechazados */}
-  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
-    <div className="flex items-center justify-between mb-4">
-      <div className="p-3 bg-red-100 dark:bg-red-900 rounded-lg">
-        <XCircle className="h-6 w-6 text-red-500" />
+        {/* Rechazados */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-red-100 dark:bg-red-900 rounded-lg">
+              <XCircle className="h-6 w-6 text-red-500" />
+            </div>
+            <span className="text-sm text-gray-500">Este mes</span>
+          </div>
+          <p className="text-3xl font-bold text-red-600 dark:text-red-400">
+            {statsReales.rechazados}
+          </p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes rechazadas</p>
+        </div>
       </div>
-      <span className="text-sm text-gray-500">Este mes</span>
-    </div>
-    <p className="text-3xl font-bold text-red-600 dark:text-red-400">
-      {statsReales.rechazados}
-    </p>
-    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes rechazadas</p>
-  </div>
-</div>
 
       {/* Sección Principal: Gráfico y Próximos Cambios */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -537,7 +538,7 @@ useEffect(() => {
                 {turnosData?.guardiasQueMeCubrieron || 0}
               </span>
             </div>
-                        <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-red-500"></div>
                 <span className="text-sm text-gray-600 dark:text-gray-400">Faltas (hasta hoy)</span>
@@ -582,7 +583,7 @@ useEffect(() => {
                         {cambio.turno}
                       </p>
                       <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">
-                        {cambio.solicitante} → {cambio.destinatario}
+                        {cambio.solicitante}
                       </p>
                     </div>
 

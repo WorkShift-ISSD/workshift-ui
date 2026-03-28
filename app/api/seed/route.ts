@@ -13,7 +13,9 @@ import {
   Prioridad,
   EstadoCambio,
   getEnumSqlString,
-  TipoSolicitud
+  TipoSolicitud,
+  TipoAutorizacion,
+  EstadoAutorizacion
 } from '../../lib/enum';
 
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
@@ -29,7 +31,7 @@ const systemUsers = [
     rol: RolUsuario.ADMINISTRADOR,
     grupoTurno: GrupoTurno.ADMIN,
     horario: '00:00-23:59',
-    primerIngreso: false  // ✅ NUEVO - Admin no requiere cambio
+    primerIngreso: false
   },
   {
     legajo: 300002,
@@ -40,7 +42,7 @@ const systemUsers = [
     rol: RolUsuario.JEFE,
     grupoTurno: GrupoTurno.A,
     horario: '05:00-17:00',
-    primerIngreso: true  // ✅ NUEVO - Jefe debe cambiar en primer ingreso
+    primerIngreso: true
   },
   {
     legajo: 300003,
@@ -51,7 +53,7 @@ const systemUsers = [
     rol: RolUsuario.SUPERVISOR,
     grupoTurno: GrupoTurno.A,
     horario: '23:00-05:00',
-    primerIngreso: true  // ✅ NUEVO - Supervisor debe cambiar en primer ingreso
+    primerIngreso: true
   },
   {
     legajo: 300004,
@@ -62,7 +64,7 @@ const systemUsers = [
     rol: RolUsuario.SUPERVISOR,
     grupoTurno: GrupoTurno.B,
     horario: '05:00-14:00',
-    primerIngreso: true  // ✅ NUEVO - Supervisor debe cambiar en primer ingreso
+    primerIngreso: true
   },
   {
     legajo: 300005,
@@ -73,7 +75,7 @@ const systemUsers = [
     rol: RolUsuario.INSPECTOR,
     grupoTurno: GrupoTurno.A,
     horario: '19:00-05:00',
-    primerIngreso: true  // ✅ NUEVO - Inspector debe cambiar en primer ingreso
+    primerIngreso: true
   },
   {
     legajo: 300006,
@@ -84,15 +86,14 @@ const systemUsers = [
     rol: RolUsuario.INSPECTOR,
     grupoTurno: GrupoTurno.B,
     horario: '14:00-23:00',
-    primerIngreso: true  // ✅ NUEVO - Inspector debe cambiar en primer ingreso
+    primerIngreso: true
   }
 ];
 
 async function seedUsers() {
   await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
 
- // LÍNEA 89-111 (DESPUÉS) - ✅ CON CAMPOS NUEVOS
-const createTableQuery = `
+  const createTableQuery = `
   CREATE TABLE IF NOT EXISTS users (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     legajo INTEGER UNIQUE NOT NULL,
@@ -108,11 +109,12 @@ const createTableQuery = `
     activo BOOLEAN DEFAULT true,
     grupo_turno VARCHAR(10) NOT NULL DEFAULT '${GrupoTurno.A}' CHECK (grupo_turno IN (${getEnumSqlString(GrupoTurno)})),
     foto_perfil TEXT,
+    cloudinary_public_id TEXT,
     ultimo_login TIMESTAMP,
     calificacion DECIMAL(3,2) DEFAULT 4.5,
     total_intercambios INTEGER DEFAULT 0,
-    primer_ingreso BOOLEAN DEFAULT true,            -- ✅ NUEVO
-    ultimo_cambio_password TIMESTAMP,               -- ✅ NUEVO
+    primer_ingreso BOOLEAN DEFAULT true, 
+    ultimo_cambio_password TIMESTAMP,               
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
   );
@@ -124,7 +126,6 @@ const createTableQuery = `
   await sql`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_users_rol ON users(rol)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_users_activo ON users(activo)`;
-  // DESPUÉS DE LA LÍNEA 118
   await sql`CREATE INDEX IF NOT EXISTS idx_users_primer_ingreso ON users(primer_ingreso)`;
 
   // Insertar usuarios del sistema primero
@@ -146,8 +147,8 @@ const createTableQuery = `
             activo,
             calificacion,
             total_intercambios,
-            primer_ingreso,                    -- ✅ NUEVO
-            ultimo_cambio_password             -- ✅ NUEVO
+            primer_ingreso,     
+            ultimo_cambio_password 
           )
           VALUES (
             ${user.legajo},
@@ -161,8 +162,8 @@ const createTableQuery = `
             ${true},
             ${5.0},
             ${0},
-            ${user.primerIngreso},            -- ✅ NUEVO
-            ${user.primerIngreso ? null : sql`NOW()`}      -- ✅ NUEVO
+            ${user.primerIngreso}, 
+            ${user.primerIngreso ? null : sql`NOW()`}  
           )
           ON CONFLICT (email) DO UPDATE SET
             password = EXCLUDED.password,
@@ -182,7 +183,8 @@ const createTableQuery = `
   console.log('👥 Insertando usuarios de placeholder...');
   const insertedUsers = await Promise.all(
     users.map(async (user) => {
-      const hashedPassword = await bcryptjs.hash(user.legajo?.toString() || 'password123', 10);
+      const hashedPassword = await bcryptjs.hash(user.legajo?.toString() || 'Seed2025!', 10);
+
       try {
         return await sql`
           INSERT INTO users (
@@ -201,7 +203,7 @@ const createTableQuery = `
             grupo_turno,
             calificacion,
             total_intercambios,
-            primer_ingreso,                    -- ✅ NUEVO
+            primer_ingreso,                    
             ultimo_cambio_password
           )
           VALUES (
@@ -220,7 +222,7 @@ const createTableQuery = `
             ${user.grupoTurno || GrupoTurno.A},
             ${4.5},
             ${0},
-            ${true},                           -- ✅ NUEVO (todos requieren cambio)
+            ${true},                          
             ${null}
           )
           ON CONFLICT (id) DO UPDATE SET
@@ -238,7 +240,6 @@ const createTableQuery = `
 
   return [...insertedSystemUsers, ...insertedUsers].filter(Boolean);
 }
-
 
 
 // ✅ NUEVA FUNCIÓN: CREAR TABLA DE PASSWORD RESET TOKENS
@@ -358,6 +359,99 @@ async function seedFaltas() {
   return true;
 }
 
+async function seedLicencias() {
+  await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS licencias (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      empleado_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      tipo VARCHAR(50) NOT NULL,
+      articulo VARCHAR(50),
+      fecha_desde DATE NOT NULL,
+      fecha_hasta DATE NOT NULL,
+      dias INTEGER NOT NULL,
+      estado VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE',
+      observaciones TEXT,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW(),
+      CHECK (fecha_hasta >= fecha_desde)
+    );
+  `;
+
+  await sql`CREATE INDEX IF NOT EXISTS idx_licencias_empleado ON licencias(empleado_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_licencias_fecha ON licencias(fecha_desde, fecha_hasta)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_licencias_estado ON licencias(estado)`;
+
+  console.log("✅ Tabla licencias creada");
+}
+
+async function seedSanciones() {
+  await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS sanciones (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      empleado_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      motivo TEXT,
+      fecha_desde DATE NOT NULL,
+      fecha_hasta DATE NOT NULL,
+      estado VARCHAR(20) NOT NULL DEFAULT 'ACTIVA',
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW(),
+      CHECK (fecha_hasta >= fecha_desde)
+    );
+  `;
+
+  await sql`CREATE INDEX IF NOT EXISTS idx_sanciones_empleado ON sanciones(empleado_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_sanciones_fecha ON sanciones(fecha_desde, fecha_hasta)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_sanciones_estado ON sanciones(estado)`;
+
+  console.log("✅ Tabla sanciones creada");
+}
+
+async function seedAutorizaciones() {
+  await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+
+  // ✅ CORRECCIÓN: Construir el string del CHECK constraint fuera del template
+  const tiposPermitidos = Object.values(TipoAutorizacion).map(v => `'${v}'`).join(', ');
+  const estadosPermitidos = Object.values(EstadoAutorizacion).map(v => `'${v}'`).join(', ');
+
+  const createTableQuery = `
+    CREATE TABLE IF NOT EXISTS autorizaciones (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      tipo VARCHAR(30) NOT NULL CHECK (tipo IN (${tiposPermitidos})),
+      empleado_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      solicitud_id UUID,
+      oferta_id UUID,
+      licencia_id UUID,
+      estado VARCHAR(20) NOT NULL DEFAULT '${EstadoAutorizacion.PENDIENTE}' CHECK (estado IN (${estadosPermitidos})),
+      observaciones TEXT,
+      aprobado_por UUID REFERENCES users(id) ON DELETE SET NULL,
+      fecha_aprobacion TIMESTAMP,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW(),
+      CHECK (
+        (solicitud_id IS NOT NULL AND oferta_id IS NULL AND licencia_id IS NULL) OR
+        (solicitud_id IS NULL AND oferta_id IS NOT NULL AND licencia_id IS NULL) OR
+        (solicitud_id IS NULL AND oferta_id IS NULL AND licencia_id IS NOT NULL)
+      )
+    );
+  `;
+
+  await sql.unsafe(createTableQuery);
+
+  await sql`CREATE INDEX IF NOT EXISTS idx_autorizaciones_empleado ON autorizaciones(empleado_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_autorizaciones_estado ON autorizaciones(estado)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_autorizaciones_tipo ON autorizaciones(tipo)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_autorizaciones_solicitud ON autorizaciones(solicitud_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_autorizaciones_oferta ON autorizaciones(oferta_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_autorizaciones_licencia ON autorizaciones(licencia_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_autorizaciones_aprobado_por ON autorizaciones(aprobado_por)`;
+
+  console.log("✅ Tabla autorizaciones creada");
+}
+
 async function seedStats() {
   await sql`
     CREATE TABLE IF NOT EXISTS stats (
@@ -405,7 +499,7 @@ async function seedTurnosData() {
   `;
 
   const currentMonth = new Date().toISOString().slice(0, 7);
-  
+
   // Obtener un usuario real de la base de datos
   const existingUsers = await sql`
     SELECT id FROM users LIMIT 1
@@ -449,7 +543,7 @@ async function seedTurnosData() {
 
 async function seedOfertas() {
   await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
-  
+
   // Eliminar tabla existente
   await sql`DROP TABLE IF EXISTS ofertas CASCADE`;
 
@@ -462,6 +556,7 @@ async function seedOfertas() {
       modalidad_busqueda VARCHAR(20) CHECK (modalidad_busqueda IN (${getEnumSqlString(TipoSolicitud)})),
       turno_ofrece JSONB,
       turnos_busca JSONB,
+      turno_seleccionado JSONB,
       fechas_disponibles JSONB,
       fecha_ofrece DATE,
       horario_ofrece VARCHAR(20),
@@ -492,7 +587,7 @@ async function seedOfertas() {
   await sql`CREATE INDEX IF NOT EXISTS idx_ofertas_prioridad ON ofertas(prioridad)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_ofertas_valido_hasta ON ofertas(valido_hasta)`;
 
-  console.log('✅ Tabla ofertas creada');
+  console.log('✅ Tabla ofertas creada con turno_seleccionado');
   return true;
 }
 
@@ -560,7 +655,7 @@ async function seedDocsHelp() {
   // Crear índices para búsqueda de texto
   await sql`CREATE INDEX IF NOT EXISTS idx_docs_help_title ON docs_help USING gin(to_tsvector('spanish', title))`;
   await sql`CREATE INDEX IF NOT EXISTS idx_docs_help_content ON docs_help USING gin(to_tsvector('spanish', content))`;
-  
+
   console.log("✅ Índices de búsqueda creados");
 
   // ✅ DOCUMENTACIÓN DEL MANUAL (sin embeddings)
@@ -932,7 +1027,7 @@ PARA JEFES:
           ${doc.content}
         )
       `;
-      
+
       inserted++;
       console.log(`✅ ${doc.title}`);
     } catch (error) {
@@ -942,7 +1037,7 @@ PARA JEFES:
   }
 
   console.log(`\n📊 Resultado: ${inserted}/${docsData.length} documentos insertados, ${failed} fallidos`);
-  
+
   return true;
 }
 
@@ -954,7 +1049,7 @@ async function createRelations() {
 async function dropAllTables() {
   console.log('🗑️  Eliminando tablas existentes...');
 
-  await sql`DROP TABLE IF EXISTS password_reset_tokens CASCADE`;  // ✅ NUEVO
+  await sql`DROP TABLE IF EXISTS password_reset_tokens CASCADE`;
   await sql`DROP TABLE IF EXISTS solicitudes_directas CASCADE`;
   await sql`DROP TABLE IF EXISTS ofertas CASCADE`;
   await sql`DROP TABLE IF EXISTS turnos_data CASCADE`;
@@ -962,7 +1057,10 @@ async function dropAllTables() {
   await sql`DROP TABLE IF EXISTS stats CASCADE`;
   await sql`DROP TABLE IF EXISTS turnos CASCADE`;
   await sql`DROP TABLE IF EXISTS faltas CASCADE`;
+  await sql`DROP TABLE IF EXISTS licencias CASCADE`;
   await sql`DROP TABLE IF EXISTS users CASCADE`;
+  await sql`DROP TABLE IF EXISTS sanciones CASCADE`;
+  await sql`DROP TABLE IF EXISTS autorizaciones CASCADE`;
 
   console.log('✅ Tablas eliminadas');
 }
@@ -977,10 +1075,19 @@ export async function GET() {
       await seedUsers();
       console.log('✅ Usuarios creados');
 
-      await seedPasswordResetTokens();  // ✅ NUEVO
+      await seedPasswordResetTokens();
       console.log('✅ Tabla password_reset_tokens creada');
 
-      await seedFaltas();  
+      await seedLicencias();
+      console.log('✅ Licencias creadas');
+
+      await seedSanciones();
+      console.log('✅ Sanciones creadas');
+
+      await seedAutorizaciones();
+      console.log('✅ Autorizaciones creadas');
+
+      await seedFaltas();
       console.log('✅ Faltas creadas');
 
       await seedTurnos();
@@ -996,11 +1103,13 @@ export async function GET() {
       console.log('✅ Datos de turnos creados');
 
       await seedOfertas();
+
       await seedSolicitudesDirectas();
 
       await seedDocsHelp();
 
       await createRelations();
+
     });
 
     return Response.json({
@@ -1029,9 +1138,9 @@ export async function GET() {
         },
         ofertas: {
           campos: [
-            'id', 'ofertante_id', 'tomador_id', 'tipo', 
+            'id', 'ofertante_id', 'tomador_id', 'tipo',
             'modalidad_busqueda', 'turno_ofrece', 'turnos_busca', 'fechas_disponibles',
-            'fecha_ofrece', 'horario_ofrece', 'grupo_ofrece', 
+            'fecha_ofrece', 'horario_ofrece', 'grupo_ofrece',
             'fecha_busca', 'horario_busca', 'grupo_busca',
             'fecha_desde', 'fecha_hasta', 'descripcion', 'prioridad', 'estado',
             'valido_hasta', 'publicado', 'created_at', 'updated_at'
@@ -1044,11 +1153,11 @@ export async function GET() {
         },
         solicitudes_directas: {
           campos: [
-            'id', 'solicitante_id', 'destinatario_id', 
+            'id', 'solicitante_id', 'destinatario_id',
             'turno_solicitante', 'turno_destinatario',
-            'fecha_solicitante', 'horario_solicitante', 'grupo_solicitante', 
-            'fecha_destinatario', 'horario_destinatario', 'grupo_destinatario', 
-            'motivo', 'prioridad', 'estado', 'fecha_solicitud', 
+            'fecha_solicitante', 'horario_solicitante', 'grupo_solicitante',
+            'fecha_destinatario', 'horario_destinatario', 'grupo_destinatario',
+            'motivo', 'prioridad', 'estado', 'fecha_solicitud',
             'created_at', 'updated_at'
           ],
           jsonb_fields: {

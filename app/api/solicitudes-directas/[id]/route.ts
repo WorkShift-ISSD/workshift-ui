@@ -48,9 +48,9 @@ export async function PATCH(
     // Determinar qué tipo de actualización es
     if (body.estado && Object.keys(body).length === 1) {
       // ✅ CASO 1: Solo actualizar estado (aceptar/rechazar/cancelar solicitud)
-      
+
       const nuevoEstado = body.estado;
-      
+
       // Validar permisos según el rol y estado
       if (nuevoEstado === 'CANCELADO') {
         // El solicitante puede cancelar su propia solicitud
@@ -66,6 +66,101 @@ export async function PATCH(
           return NextResponse.json(
             { error: 'Solo el destinatario puede aprobar la solicitud' },
             { status: 403 }
+          );
+        }
+
+        // ✅ CREAR AUTORIZACIÓN AUTOMÁTICAMENTE
+        console.log('🔄 Creando autorización para solicitud:', id);
+
+        // Verificar si el solicitante tiene sanciones o licencias activas
+        const hoy = new Date().toISOString().split('T')[0];
+
+        const [sancionActiva] = await sql`
+          SELECT 1 FROM sanciones
+          WHERE empleado_id = ${solicitudExistente.solicitante_id}::uuid
+            AND estado = 'ACTIVA'
+            AND ${hoy}::date BETWEEN fecha_desde AND fecha_hasta
+          LIMIT 1;
+        `;
+
+        if (sancionActiva) {
+          return NextResponse.json(
+            { error: 'El solicitante tiene una sanción activa y no puede realizar cambios' },
+            { status: 400 }
+          );
+        }
+
+        const [licenciaActiva] = await sql`
+          SELECT 1 FROM licencias
+          WHERE empleado_id = ${solicitudExistente.solicitante_id}::uuid
+            AND estado IN ('APROBADA', 'ACTIVA')
+            AND ${hoy}::date BETWEEN fecha_desde AND fecha_hasta
+          LIMIT 1;
+        `;
+
+        if (licenciaActiva) {
+          return NextResponse.json(
+            { error: 'El solicitante tiene una licencia activa y no puede realizar cambios' },
+            { status: 400 }
+          );
+        }
+
+
+        // Sanción del destinatario en la fecha que va a trabajar
+        const fechaAValidar = solicitudExistente.fecha_destinatario || solicitudExistente.fecha_solicitante;
+        const [sancionDestinatarioHoy] = await sql`
+  SELECT 1 FROM sanciones
+  WHERE empleado_id = ${userId}::uuid
+    AND estado = 'ACTIVA'
+    AND ${fechaAValidar}::date BETWEEN fecha_desde AND fecha_hasta
+  LIMIT 1;
+`;
+        if (sancionDestinatarioHoy) {
+          return NextResponse.json(
+            { error: 'Tenés una sanción activa y no podés aceptar solicitudes de cambio' },
+            { status: 400 }
+          );
+        }
+
+        // Licencia del destinatario en la fecha que va a trabajar
+        const [licenciaDestinatario] = await sql`
+  SELECT 1 FROM licencias
+  WHERE empleado_id = ${userId}::uuid
+    AND estado IN ('APROBADA', 'ACTIVA')
+    AND ${fechaAValidar}::date BETWEEN fecha_desde AND fecha_hasta
+  LIMIT 1;
+`;
+        if (licenciaDestinatario) {
+          return NextResponse.json(
+            { error: 'Tenés una licencia para ese día y no podés aceptar este cambio' },
+            { status: 400 }
+          );
+        }
+
+
+        // Crear la autorización
+        try {
+          const [autorizacion] = await sql`
+            INSERT INTO autorizaciones (
+              tipo,
+              empleado_id,
+              solicitud_id,
+              estado
+            ) VALUES (
+              'CAMBIO_TURNO',
+              ${solicitudExistente.solicitante_id}::uuid,
+              ${id}::uuid,
+              'PENDIENTE'
+            )
+            RETURNING id::text;
+          `;
+
+          console.log('✅ Autorización creada:', autorizacion.id);
+        } catch (authError) {
+          console.error('❌ Error creando autorización:', authError);
+          return NextResponse.json(
+            { error: 'Error al crear la autorización. La solicitud no fue aprobada.' },
+            { status: 500 }
           );
         }
       } else {
@@ -247,7 +342,7 @@ export async function PATCH(
   } catch (error) {
     console.error('Error en PATCH /api/solicitudes-directas/[id]:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Error al actualizar solicitud',
         details: error instanceof Error ? error.message : String(error)
       },
@@ -307,7 +402,7 @@ export async function DELETE(
   } catch (error) {
     console.error('Error al eliminar solicitud:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Error al eliminar solicitud',
         details: error instanceof Error ? error.message : String(error)
       },

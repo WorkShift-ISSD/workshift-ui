@@ -4,9 +4,9 @@ import postgres from 'postgres';
 import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
 
-const sql = postgres(process.env.POSTGRES_URL!, { 
-  ssl: 'require', 
-  prepare: false 
+const sql = postgres(process.env.POSTGRES_URL!, {
+  ssl: 'require',
+  prepare: false
 });
 
 const SECRET_KEY = new TextEncoder().encode(
@@ -18,6 +18,43 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const estado = searchParams.get('estado');
+    const usuario = searchParams.get('usuario');
+
+    // Si pide solo sus movimientos
+    if (usuario === 'yo') {
+      const cookieStore = await cookies();
+      const token = cookieStore.get('auth-token')?.value;
+
+      if (!token) {
+        return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+      }
+
+      const { payload } = await jwtVerify(token, SECRET_KEY);
+      const userId = payload.id as string;
+
+      const solicitudes = await sql`
+        SELECT 
+          sd.id, sd.estado, sd.motivo, sd.prioridad, sd.fecha_solicitud,
+          sd.turno_solicitante, sd.turno_destinatario,
+          json_build_object('id', us.id, 'nombre', us.nombre, 'apellido', us.apellido, 'rol', us.rol, 'horario', us.horario) as solicitante,
+          json_build_object('id', ud.id, 'nombre', ud.nombre, 'apellido', ud.apellido, 'rol', ud.rol, 'horario', ud.horario) as destinatario
+        FROM solicitudes_directas sd
+        JOIN users us ON sd.solicitante_id = us.id
+        JOIN users ud ON sd.destinatario_id = ud.id
+        WHERE sd.solicitante_id = ${userId}::uuid 
+           OR sd.destinatario_id = ${userId}::uuid
+        ORDER BY sd.fecha_solicitud DESC;
+      `;
+
+      return NextResponse.json(solicitudes.map((s: any) => ({
+        id: s.id, estado: s.estado, motivo: s.motivo, prioridad: s.prioridad,
+        fechaSolicitud: s.fecha_solicitud, fechaRespuesta: null,
+        solicitante: s.solicitante, destinatario: s.destinatario,
+        turnoSolicitante: typeof s.turno_solicitante === 'string' ? JSON.parse(s.turno_solicitante) : s.turno_solicitante,
+        turnoDestinatario: typeof s.turno_destinatario === 'string' ? JSON.parse(s.turno_destinatario) : s.turno_destinatario,
+      })));
+    }
+
 
     let query;
     if (estado) {
@@ -93,9 +130,9 @@ export async function GET(request: NextRequest) {
       fechaRespuesta: null, // La tabla original no tiene esta columna
       solicitante: s.solicitante,
       destinatario: s.destinatario,
-      turnoSolicitante: typeof s.turno_solicitante === 'string' ? 
+      turnoSolicitante: typeof s.turno_solicitante === 'string' ?
         JSON.parse(s.turno_solicitante) : s.turno_solicitante,
-      turnoDestinatario: typeof s.turno_destinatario === 'string' ? 
+      turnoDestinatario: typeof s.turno_destinatario === 'string' ?
         JSON.parse(s.turno_destinatario) : s.turno_destinatario,
     }));
 
@@ -104,7 +141,7 @@ export async function GET(request: NextRequest) {
     console.error('❌ Error fetching solicitudes:', error);
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
     return NextResponse.json(
-      { 
+      {
         error: 'Error al obtener solicitudes',
         details: error instanceof Error ? error.message : String(error)
       },
@@ -145,6 +182,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
+
+    const hoy = new Date().toISOString().split('T')[0];
+
+    const [sancionSolicitante] = await sql`
+  SELECT 1 FROM sanciones
+  WHERE empleado_id = ${solicitanteId}::uuid
+    AND estado = 'ACTIVA'
+    AND ${hoy}::date BETWEEN fecha_desde AND fecha_hasta
+  LIMIT 1;
+`;
+    if (sancionSolicitante) {
+      return NextResponse.json(
+        { error: 'Tenés una sanción activa y no podés realizar solicitudes de cambio' },
+        { status: 400 }
+      );
+    }
+
+
+    const [licenciaSolicitante] = await sql`
+  SELECT 1 FROM licencias
+  WHERE empleado_id = ${solicitanteId}::uuid
+    AND estado IN ('APROBADA', 'ACTIVA')
+    AND ${hoy}::date BETWEEN fecha_desde AND fecha_hasta
+  LIMIT 1;
+`;
+    if (licenciaSolicitante) {
+      return NextResponse.json(
+        { error: 'Tenés una licencia activa y no podés realizar solicitudes de cambio' },
+        { status: 400 }
+      );
+    }
+
+
+
     const {
       destinatarioId,
       fechaSolicitante,
@@ -157,22 +228,73 @@ export async function POST(request: NextRequest) {
       prioridad
     } = body;
 
-    // Validar campos obligatorios
+
+    // La fecha a validar para el destinatario es:
+    // - En intercambio: fechaDestinatario (el turno que él da a cambio)
+    // - En cobertura: fechaSolicitante (el día que va a cubrir)
+    const fechaAValidarDestinatario = fechaDestinatario || fechaSolicitante;
+
+    const [sancionDestinatario] = await sql`
+  SELECT 1 FROM sanciones
+  WHERE empleado_id = ${destinatarioId}::uuid
+    AND estado = 'ACTIVA'
+    AND ${fechaAValidarDestinatario}::date BETWEEN fecha_desde AND fecha_hasta
+  LIMIT 1;
+`;
+    if (sancionDestinatario) {
+      return NextResponse.json(
+        { error: 'El compañero tiene una sanción para ese día y no puede realizar cambios de turno' },
+        { status: 400 }
+      );
+    }
+
+    const [licenciaDestinatario] = await sql`
+  SELECT 1 FROM licencias
+  WHERE empleado_id = ${destinatarioId}::uuid
+    AND estado IN ('APROBADA', 'ACTIVA')
+    AND ${fechaAValidarDestinatario}::date BETWEEN fecha_desde AND fecha_hasta
+  LIMIT 1;
+`;
+    if (licenciaDestinatario) {
+      return NextResponse.json(
+        { error: 'El compañero tiene una licencia para ese día y no puede realizar cambios de turno' },
+        { status: 400 }
+      );
+    }
+
+
+
+    // Licencia del solicitante en la fecha de su turno
+    if (fechaSolicitante) {
+      const [licenciaSolicitanteEnFecha] = await sql`
+    SELECT 1 FROM licencias
+    WHERE empleado_id = ${solicitanteId}::uuid
+      AND estado IN ('APROBADA', 'ACTIVA')
+      AND ${fechaSolicitante}::date BETWEEN fecha_desde AND fecha_hasta
+    LIMIT 1;
+  `;
+      if (licenciaSolicitanteEnFecha) {
+        return NextResponse.json(
+          { error: 'Tenés una licencia aprobada para ese día y no podés ofrecerlo a cambio' },
+          { status: 400 }
+        );
+      }
+    }
+
+
+    // Validar campos obligatorios — fechaDestinatario es opcional (cobertura)
     const camposFaltantes = [];
     if (!destinatarioId) camposFaltantes.push('destinatarioId');
     if (!fechaSolicitante) camposFaltantes.push('fechaSolicitante');
     if (!horarioSolicitante) camposFaltantes.push('horarioSolicitante');
     if (!grupoSolicitante) camposFaltantes.push('grupoSolicitante');
-    if (!fechaDestinatario) camposFaltantes.push('fechaDestinatario');
-    if (!horarioDestinatario) camposFaltantes.push('horarioDestinatario');
-    if (!grupoDestinatario) camposFaltantes.push('grupoDestinatario');
     if (!motivo) camposFaltantes.push('motivo');
     if (!prioridad) camposFaltantes.push('prioridad');
 
     if (camposFaltantes.length > 0) {
       console.error('❌ Campos faltantes:', camposFaltantes);
       return NextResponse.json(
-        { 
+        {
           error: 'Faltan campos obligatorios',
           camposFaltantes
         },
@@ -195,7 +317,7 @@ export async function POST(request: NextRequest) {
       [solicitante] = await sql`
         SELECT id, nombre, apellido, rol FROM users WHERE id = ${solicitanteId}::uuid;
       `;
-      
+
       [destinatario] = await sql`
         SELECT id, nombre, apellido, rol FROM users WHERE id = ${destinatarioId}::uuid;
       `;
@@ -235,11 +357,11 @@ export async function POST(request: NextRequest) {
       grupoTurno: grupoSolicitante
     };
 
-    const turnoDestinatario = {
+    const turnoDestinatario = fechaDestinatario ? {
       fecha: fechaDestinatario,
       horario: horarioDestinatario,
       grupoTurno: grupoDestinatario
-    };
+    } : null;
 
     console.log('📅 Turnos a intercambiar:', {
       turnoSolicitante,
@@ -250,54 +372,54 @@ export async function POST(request: NextRequest) {
     let nuevaSolicitud;
     try {
       [nuevaSolicitud] = await sql`
-        INSERT INTO solicitudes_directas (
-          solicitante_id,
-          destinatario_id,
-          turno_solicitante,
-          turno_destinatario,
-          fecha_solicitante,
-          horario_solicitante,
-          grupo_solicitante,
-          fecha_destinatario,
-          horario_destinatario,
-          grupo_destinatario,
-          motivo,
-          prioridad,
-          estado,
-          fecha_solicitud
-        ) VALUES (
-          ${solicitanteId}::uuid,
-          ${destinatarioId}::uuid,
-          ${JSON.stringify(turnoSolicitante)}::jsonb,
-          ${JSON.stringify(turnoDestinatario)}::jsonb,
-          ${fechaSolicitante}::date,
-          ${horarioSolicitante},
-          ${grupoSolicitante},
-          ${fechaDestinatario}::date,
-          ${horarioDestinatario},
-          ${grupoDestinatario},
-          ${motivo},
-          ${prioridad},
-          'SOLICITADO',
-          NOW()
-        )
-        RETURNING *;
-      `;
+  INSERT INTO solicitudes_directas (
+    solicitante_id,
+    destinatario_id,
+    turno_solicitante,
+    turno_destinatario,
+    fecha_solicitante,
+    horario_solicitante,
+    grupo_solicitante,
+    fecha_destinatario,
+    horario_destinatario,
+    grupo_destinatario,
+    motivo,
+    prioridad,
+    estado,
+    fecha_solicitud
+  ) VALUES (
+    ${solicitanteId}::uuid,
+    ${destinatarioId}::uuid,
+    ${JSON.stringify(turnoSolicitante)}::jsonb,
+    ${turnoDestinatario ? JSON.stringify(turnoDestinatario) : null},
+    ${fechaSolicitante}::date,
+    ${horarioSolicitante},
+    ${grupoSolicitante},
+    ${fechaDestinatario || null},
+    ${horarioDestinatario || null},
+    ${grupoDestinatario || null},
+    ${motivo},
+    ${prioridad},
+    'SOLICITADO',
+    NOW()
+  )
+  RETURNING *;
+`;
     } catch (insertError) {
       console.error('❌ Error insertando solicitud:', insertError);
       console.error('Error stack:', insertError instanceof Error ? insertError.stack : 'No stack');
-      
+
       // Si es un error de constraint, dar más detalles
       if (insertError instanceof Error && insertError.message.includes('constraint')) {
         return NextResponse.json(
-          { 
+          {
             error: 'Error de validación en la base de datos',
             details: insertError.message
           },
           { status: 400 }
         );
       }
-      
+
       throw insertError; // Re-lanzar para el catch general
     }
 
@@ -328,9 +450,9 @@ export async function POST(request: NextRequest) {
     };
 
     return NextResponse.json(
-      { 
-        message: 'Solicitud creada correctamente', 
-        solicitud: respuesta 
+      {
+        message: 'Solicitud creada correctamente',
+        solicitud: respuesta
       },
       { status: 201 }
     );
@@ -339,9 +461,9 @@ export async function POST(request: NextRequest) {
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
     console.error('Error name:', error instanceof Error ? error.name : 'Unknown');
     console.error('Error details:', error instanceof Error ? error.message : String(error));
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Error al procesar la solicitud',
         details: error instanceof Error ? error.message : String(error)
       },

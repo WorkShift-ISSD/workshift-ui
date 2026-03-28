@@ -31,6 +31,24 @@ export enum GrupoTurno {
   ADMIN = 'ADMIN'
 }
 
+export enum EstadoLicencia {
+  PENDIENTE = "PENDIENTE",
+  APROBADA = "APROBADA",
+  ACTIVA = "ACTIVA",
+  FINALIZADA = "FINALIZADA",
+  CANCELADA = "CANCELADA",
+  RECHAZADA = "RECHAZADA",
+}
+
+export enum TipoLicencia {
+  ORDINARIA = "ORDINARIA",
+  ENFERMEDAD = "ENFERMEDAD",
+  ESPECIAL = "ESPECIAL",
+  ESTUDIO = "ESTUDIO",
+  SIN_GOCE = "SIN_GOCE",
+}
+
+
 export enum TipoTurno {
   MANANA = 'manana',
   TARDE = 'tarde',
@@ -60,6 +78,24 @@ export enum EstadoCambio {
   RECHAZADO = 'RECHAZADO',
   CANCELADO = 'CANCELADO',
   COMPLETADO = 'COMPLETADO'
+}
+
+export enum EstadoSancion {
+  ACTIVA = 'ACTIVA',
+  FINALIZADA = 'FINALIZADA',
+  CANCELADA = 'CANCELADA'
+}
+
+export enum EstadoAutorizacion {
+  PENDIENTE = 'PENDIENTE',
+  APROBADA = 'APROBADA',
+  RECHAZADA = 'RECHAZADA',
+  CANCELADA = 'CANCELADA'
+}
+
+export enum TipoAutorizacion {
+  CAMBIO_TURNO = 'CAMBIO_TURNO',
+  LICENCIA_ORDINARIA = 'LICENCIA_ORDINARIA'
 }
 
 // Helper para obtener valores como string SQL
@@ -115,4 +151,12 @@ export const isValidPrioridad = (prioridad: string): prioridad is Prioridad => {
 
 export const isValidEstadoCambio = (estado: string): estado is EstadoCambio => {
   return isValidEnumValue(EstadoCambio, estado);
+};
+
+export const isValidEstadoAutorizacion = (estado: string): estado is EstadoAutorizacion => {
+  return isValidEnumValue(EstadoAutorizacion, estado);
+};
+
+export const isValidTipoAutorizacion = (tipo: string): tipo is TipoAutorizacion => {
+  return isValidEnumValue(TipoAutorizacion, tipo);
 };

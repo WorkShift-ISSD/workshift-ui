@@ -1047,7 +1047,7 @@ export default function InformesPage() {
                       'B': '#10B981'     // Verde para grupo B
                     };
 
-                    const color = colorMap[data.name] || '#6B7280';
+                    const color = colorMap[data.name ?? ''] ?? '#6B7280';
 
                     return (
                       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-lg">
@@ -1488,7 +1488,7 @@ export default function InformesPage() {
                         'INSPECTOR': '#10B981'
                       };
 
-                      const color = colorMap[data.name] || '#6B7280';
+                      const color = colorMap[data.name ?? ''] ?? '#6B7280';
 
                       return (
                         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-lg">
@@ -1542,7 +1542,7 @@ export default function InformesPage() {
                         'INSPECTOR': '#34D399'    // Verde
                       };
 
-                      const color = colorMap[data.name] || '#E5E7EB';
+                      const color = colorMap[data.name ?? ''] ?? '#E5E7EB';
 
                       return (
                         <div style={{

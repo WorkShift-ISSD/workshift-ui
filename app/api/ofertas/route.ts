@@ -102,11 +102,11 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     console.log('📥 Body recibido:', {
-  horarioOfrece: body.horarioOfrece,
-  fechaOfrece: body.fechaOfrece,
-  tipo: body.tipo,
-  bodyCompleto: body
-});
+      horarioOfrece: body.horarioOfrece,
+      fechaOfrece: body.fechaOfrece,
+      tipo: body.tipo,
+      bodyCompleto: body
+    });
 
     const cookieStore = await cookies();
     const token = cookieStore.get('auth-token')?.value;
@@ -164,14 +164,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const hoy = new Date().toISOString().split('T')[0];
 
-console.log('🔧 Creando turnoOfrece con:', {
-  fechaOfrece: body.fechaOfrece,
-  horarioOfrece: body.horarioOfrece,
-  grupoOfrece: body.grupoOfrece,
-  usuarioHorario: usuario.horario,
-  horarioFinal: body.horarioOfrece || usuario.horario
-});
+    const [sancionUsuario] = await sql`
+  SELECT 1 FROM sanciones
+  WHERE empleado_id = ${userId}::uuid
+    AND estado = 'ACTIVA'
+    AND ${hoy}::date BETWEEN fecha_desde AND fecha_hasta
+  LIMIT 1;
+`;
+    if (sancionUsuario) {
+      return NextResponse.json(
+        { error: 'Tenés una sanción activa y no podés publicar ofertas' },
+        { status: 400 }
+      );
+    }
+
+    const [licenciaUsuario] = await sql`
+  SELECT 1 FROM licencias
+  WHERE empleado_id = ${userId}::uuid
+    AND estado IN ('APROBADA', 'ACTIVA')
+    AND ${hoy}::date BETWEEN fecha_desde AND fecha_hasta
+  LIMIT 1;
+`;
+    if (licenciaUsuario) {
+      return NextResponse.json(
+        { error: 'Tenés una licencia activa y no podés publicar ofertas' },
+        { status: 400 }
+      );
+    }
 
 
     // Calcular valido_hasta
@@ -184,11 +205,11 @@ console.log('🔧 Creando turnoOfrece con:', {
     let turnosBusca = null;
     let fechasDisponibles = null;
     console.log('🔧 Creando turnoOfrece con:', {
-  fechaOfrece: body.fechaOfrece,
-  horarioOfrece: body.horarioOfrece,
-  usuarioHorario: usuario.horario,
-  horarioFinal: body.horarioOfrece || usuario.horario
-});
+      fechaOfrece: body.fechaOfrece,
+      horarioOfrece: body.horarioOfrece,
+      usuarioHorario: usuario.horario,
+      horarioFinal: body.horarioOfrece || usuario.horario
+    });
 
     if (body.modalidadBusqueda === TipoSolicitud.INTERCAMBIO) {
       // Para INTERCAMBIO: guardar turno que ofrece y turnos que busca
@@ -209,6 +230,8 @@ console.log('🔧 Creando turnoOfrece con:', {
         fechasDisponibles = body.fechasDisponibles;
       }
     }
+
+    
 
     console.log('📅 Datos procesados:', {
       userId,
@@ -251,12 +274,12 @@ console.log('🔧 Creando turnoOfrece con:', {
     `;
 
     console.log('💾 GUARDADO EN BD:', {
-  turno_ofrece: resultado[0].turno_ofrece,
-  tipo: typeof resultado[0].turno_ofrece,
-  parseado: typeof resultado[0].turno_ofrece === 'string' 
-    ? JSON.parse(resultado[0].turno_ofrece)
-    : resultado[0].turno_ofrece
-});
+      turno_ofrece: resultado[0].turno_ofrece,
+      tipo: typeof resultado[0].turno_ofrece,
+      parseado: typeof resultado[0].turno_ofrece === 'string'
+        ? JSON.parse(resultado[0].turno_ofrece)
+        : resultado[0].turno_ofrece
+    });
 
     const oferta = resultado[0];
     console.log('✅ Oferta insertada con ID:', oferta.id);

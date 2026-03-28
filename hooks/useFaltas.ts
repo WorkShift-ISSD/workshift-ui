@@ -36,12 +36,12 @@ const normalizarFecha = (fecha: string): string => {
   if (/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
     return fecha;
   }
-  
+
   // Si viene con timestamp ISO (ejemplo: "2024-12-05T03:00:00.000Z"), extraer solo la fecha
   if (fecha.includes('T')) {
     return fecha.split('T')[0];
   }
-  
+
   // Si viene en otro formato, intentar extraer la fecha manualmente
   try {
     const match = fecha.match(/(\d{4})-(\d{2})-(\d{2})/);
@@ -51,7 +51,7 @@ const normalizarFecha = (fecha: string): string => {
   } catch (error) {
     console.error('Error normalizando fecha:', error);
   }
-  
+
   // Si todo falla, devolver la fecha original
   return fecha;
 };
@@ -60,7 +60,7 @@ const normalizarFecha = (fecha: string): string => {
 export function useFaltas(fecha?: string) {
   // Normalizar la fecha antes de hacer la petición
   const fechaNormalizada = fecha ? normalizarFecha(fecha) : undefined;
-  
+
   const { data, error, isLoading, mutate } = useSWR<Falta[]>(
     fechaNormalizada ? endpoints.faltas.list(fechaNormalizada) : null,
     fetcher,
@@ -76,12 +76,12 @@ export function useFaltas(fecha?: string) {
       ...falta,
       fecha: normalizarFecha(falta.fecha)
     };
-    
+
     const newFalta = await poster<Falta>(
       endpoints.faltas.create(),
       faltaConFechaNormalizada
     );
-    
+
     // Actualizar cache local
     mutate([...(data || []), newFalta], false);
     return newFalta;
@@ -89,15 +89,15 @@ export function useFaltas(fecha?: string) {
 
   const updateFalta = async (id: string, falta: Partial<Falta>) => {
     // Normalizar la fecha si está presente
-    const faltaConFechaNormalizada = falta.fecha 
+    const faltaConFechaNormalizada = falta.fecha
       ? { ...falta, fecha: normalizarFecha(falta.fecha) }
       : falta;
-    
+
     const updated = await putter<Falta>(
       endpoints.faltas.update(id),
       faltaConFechaNormalizada
     );
-    
+
     mutate(
       data?.map((f) => (f.id === id ? updated : f)),
       false
@@ -135,12 +135,11 @@ export function useTodasLasFaltas() {
     }
   );
 
-
-
   return {
     faltas: data || [],
     isLoading,
     error,
-    mutate,
+    refetch: mutate,
   };
+
 }

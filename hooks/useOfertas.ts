@@ -128,7 +128,7 @@ export const useOfertas = () => {
     const data = await res.json();
     console.log('📥 Respuesta del servidor:', data);
 
-    if (!res.ok) throw new Error(data.details || "Error al crear oferta");
+    if (!res.ok) throw new Error(data.error || data.details || "Error al crear oferta");
 
     mutate();
     return data;
