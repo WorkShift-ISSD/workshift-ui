@@ -32,6 +32,7 @@ import bcryptjs from 'bcryptjs';
 
 // Types based on our Prisma schema
 type Rol = 'SUPERVISOR' | 'INSPECTOR' | 'JEFE' | 'ADMINISTRADOR';
+type RolEmpleado = Exclude<Rol, 'ADMINISTRADOR'>;
 type GrupoTurno = 'A' | 'B';
 type EstadoEmpleado = 'ACTIVO' | 'LICENCIA' | 'AUSENTE' | 'INACTIVO';
 
@@ -199,12 +200,15 @@ useEffect(() => {
 
 
   // Calcular estadísticas
-  const stats = useMemo(() => ({
-    total: filteredEmployeesMemo.length,
-    activos: filteredEmployeesMemo.filter(e => e.activo && calcularEstado(e) === 'ACTIVO').length,
-    enLicencia: filteredEmployeesMemo.filter(e => calcularEstado(e) === 'LICENCIA').length,
-    ausentes: filteredEmployeesMemo.filter(e => calcularEstado(e) === 'AUSENTE').length
-  }), [filteredEmployeesMemo]);
+  const stats = useMemo(() => {
+  const sinAdmin = filteredEmployeesMemo.filter(e => (e.rol as string) !== 'ADMINISTRADOR');
+  return {
+    total: sinAdmin.length,
+    activos: sinAdmin.filter(e => e.activo && calcularEstado(e) === 'ACTIVO').length,
+    enLicencia: sinAdmin.filter(e => calcularEstado(e) === 'LICENCIA').length,
+    ausentes: sinAdmin.filter(e => calcularEstado(e) === 'AUSENTE').length
+  };
+}, [filteredEmployeesMemo]);
   // Modal handlers
   const openModal = (mode: 'view' | 'edit' | 'create', employee?: Inspector) => {
     setModalMode(mode);
