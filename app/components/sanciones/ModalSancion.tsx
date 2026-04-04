@@ -73,8 +73,8 @@ export function ModalSancion({
       setForm({
         empleado_id: sancion.empleado_id,
         motivo: sancion.motivo,
-        fecha_desde: sancion.fecha_desde,
-        fecha_hasta: sancion.fecha_hasta,
+        fecha_desde: sancion.fecha_desde ? sancion.fecha_desde.split('T')[0] : '',
+        fecha_hasta: sancion.fecha_hasta ? sancion.fecha_hasta.split('T')[0] : '',
       });
       // Cargar nombre del empleado para mostrar
       const emp = (empleados || []).find((e) => e.id === sancion.empleado_id);
@@ -150,15 +150,10 @@ export function ModalSancion({
 
     let isValid = true;
 
-    if (!form.empleado_id) {
-      newErrors.empleado_id = "Debe seleccionar un empleado";
-      isValid = false;
-    }
-
     if (!form.fecha_desde) {
       newErrors.fecha_desde = "La fecha desde es requerida";
       isValid = false;
-    } else if (form.fecha_desde < hoy) {
+    } else if (modo === "create" && form.fecha_desde < hoy) {
       newErrors.fecha_desde = "La fecha no puede ser anterior a hoy";
       isValid = false;
     }
@@ -166,7 +161,7 @@ export function ModalSancion({
     if (!form.fecha_hasta) {
       newErrors.fecha_hasta = "La fecha hasta es requerida";
       isValid = false;
-    } else if (form.fecha_hasta < hoy) {
+    } else if (modo === "create" && form.fecha_hasta < hoy) {
       newErrors.fecha_hasta = "La fecha no puede ser anterior a hoy";
       isValid = false;
     } else if (form.fecha_hasta < form.fecha_desde) {
@@ -187,16 +182,16 @@ export function ModalSancion({
   };
 
   const handleConfirmarGuardado = async () => {
-  try {
-    if (modo === "create") {
-      await crearSancion(form);
-      toast.success("Sanción creada exitosamente");
-      onSancionCreada?.();
-    }
+    try {
+      if (modo === "create") {
+        await crearSancion(form);
+        toast.success("Sanción creada exitosamente");
+        onSancionCreada?.();
+      }
 
-    if (modo === "edit" && sancion) {
-      console.log('Form que se manda:', form); // ← agregá esto
-      await actualizarSancion(sancion.id, form);
+      if (modo === "edit" && sancion) {
+        console.log('Form que se manda:', form); // ← agregá esto
+        await actualizarSancion(sancion.id, form);
         toast.success("Sanción actualizada exitosamente");
         onSancionCreada?.();
       }
