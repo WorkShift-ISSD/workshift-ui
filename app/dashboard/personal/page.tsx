@@ -114,7 +114,7 @@ export default function DashboardPage() {
       const ahora = new Date();
       const diasSinAcceso = Math.floor((ahora.getTime() - ultimoAcceso.getTime()) / (1000 * 60 * 60 * 24));
 
-      if (diasSinAcceso > 7) return 'AUSENTE';
+    // if (diasSinAcceso > 7) return 'AUSENTE'; VER SI VAMOS A UTILIZAR, LO DEJO COMENTADO
     }
 
     return 'ACTIVO';
@@ -206,7 +206,7 @@ useEffect(() => {
     total: sinAdmin.length,
     activos: sinAdmin.filter(e => e.activo && calcularEstado(e) === 'ACTIVO').length,
     enLicencia: sinAdmin.filter(e => calcularEstado(e) === 'LICENCIA').length,
-    ausentes: sinAdmin.filter(e => calcularEstado(e) === 'AUSENTE').length
+    inactivo: sinAdmin.filter(e => calcularEstado(e) === 'INACTIVO').length
   };
 }, [filteredEmployeesMemo]);
   // Modal handlers
@@ -568,8 +568,8 @@ useEffect(() => {
         <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-2 sm:mb-4">
             <div className="flex-1 min-w-0">
-              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Sancionados</p>
-              <p className="text-xl sm:text-2xl font-bold text-red-600 truncate">{stats.ausentes}</p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Inactivo/Bloqueado</p>
+              <p className="text-xl sm:text-2xl font-bold text-red-600 truncate">{stats.inactivo}</p>
             </div>
             <div className="p-2 sm:p-3 bg-red-100 dark:bg-red-900 rounded-lg ml-2 flex-shrink-0">
               <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
