@@ -7,6 +7,9 @@ import { useAuth } from '@/app/context/AuthContext';
 import { GrupoTurno } from '@/app/lib/turnosUtils';
 import type { SolicitudDirectaForm } from '@/hooks/useSolicitudesDirectas';
 import { useTurnosEfectivos } from '@/hooks/useTurnosEfectivos';
+import { useFechasBloqueadas } from '@/hooks/useFechasBloqueadas';
+import { useRef } from 'react';
+import { Search } from 'lucide-react';
 
 
 type TipoCambio = 'INTERCAMBIO' | 'COBERTURA';
@@ -53,6 +56,8 @@ export function ModalSolicitudDirecta({ isOpen, onClose, onSubmit, solicitudEdit
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const { turnosEfectivos, fechasCedidas } = useTurnosEfectivos();
+  const { fechasBloqueadas: fechasBloqueadasPropias } = useFechasBloqueadas();
+
 
   // Fechas extra del usuario — días que ganó por intercambios previos
   const fechasExtraUsuario = useMemo(
@@ -126,6 +131,37 @@ export function ModalSolicitudDirecta({ isOpen, onClose, onSubmit, solicitudEdit
       }));
     }
   }, [esCobertura]);
+
+
+  const [searchCompanero, setSearchCompanero] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputCompaneroRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  const usuariosFiltrados = useMemo(() => {
+    if (!searchCompanero) return usuarios;
+    const palabras = searchCompanero.toLowerCase().trim().split(/\s+/);
+    return usuarios.filter(u => {
+      const nombre = u.nombre.toLowerCase();
+      const apellido = u.apellido.toLowerCase();
+      return palabras.every(p => nombre.includes(p) || apellido.includes(p));
+    });
+  }, [usuarios, searchCompanero]);
+
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node) &&
+        inputCompaneroRef.current && !inputCompaneroRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -256,23 +292,53 @@ export function ModalSolicitudDirecta({ isOpen, onClose, onSubmit, solicitudEdit
             >
               Compañero
             </label>
-            <select
-              id="companero"
-              required
-              disabled={loadingUsuarios || esEdicion}
-              value={form.destinatarioId}
-              onChange={e => setForm(prev => ({ ...prev, destinatarioId: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              <option value="">
-                {loadingUsuarios ? 'Cargando...' : 'Seleccioná un compañero...'}
-              </option>
-              {usuarios.map(u => (
-                <option key={u.id} value={u.id}>
-                  {u.apellido}, {u.nombre} — Guardia {u.grupoTurno}
-                </option>
-              ))}
-            </select>
+            {esEdicion ? (
+              <input
+                value={searchCompanero}
+                disabled
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+              />
+            ) : (
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  ref={inputCompaneroRef}
+                  type="text"
+                  value={searchCompanero}
+                  onChange={e => {
+                    setSearchCompanero(e.target.value);
+                    setShowSuggestions(true);
+                    if (!e.target.value) setForm(prev => ({ ...prev, destinatarioId: '' }));
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  placeholder={loadingUsuarios ? 'Cargando...' : 'Buscá por nombre, apellido o legajo...'}
+                  disabled={loadingUsuarios}
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
+                />
+                {showSuggestions && searchCompanero && usuariosFiltrados.length > 0 && (
+                  <div
+                    ref={suggestionsRef}
+                    className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+                  >
+                    {usuariosFiltrados.map(u => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() => {
+                          setForm(prev => ({ ...prev, destinatarioId: u.id }));
+                          setSearchCompanero(`${u.apellido}, ${u.nombre} — Guardia ${u.grupoTurno}`);
+                          setShowSuggestions(false);
+                        }}
+                        className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-gray-900 dark:text-white ${form.destinatarioId === u.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                          }`}
+                      >
+                        {u.apellido}, {u.nombre} — Guardia {u.grupoTurno}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             {companeroSeleccionado && (
               <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
                 Horario: {companeroSeleccionado.horario} · Guardia {companeroSeleccionado.grupoTurno}
@@ -318,7 +384,7 @@ export function ModalSolicitudDirecta({ isOpen, onClose, onSubmit, solicitudEdit
                 }}
                 grupoObjetivo={user?.grupoTurno as GrupoTurno}
                 fechasExtra={fechasExtraUsuario}
-                fechasBloqueadas={fechasCedidas}
+                fechasBloqueadas={[...fechasCedidas, ...fechasBloqueadasPropias]}
                 minDate={new Date()}
                 className="w-full px-2 py-1.5 text-sm border border-blue-300 dark:border-blue-700 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               />
@@ -373,6 +439,7 @@ export function ModalSolicitudDirecta({ isOpen, onClose, onSubmit, solicitudEdit
                   value={form.fechaDestinatario}
                   onChange={v => setForm(prev => ({ ...prev, fechaDestinatario: v }))}
                   grupoObjetivo={companeroSeleccionado?.grupoTurno as GrupoTurno | undefined}
+                  fechasBloqueadas={fechasBloqueadasPropias}
                   minDate={new Date()}
                   className={`w-full px-2 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 ${companeroSeleccionado
                     ? 'border-green-300 dark:border-green-700'

@@ -8,6 +8,7 @@ import { GrupoTurno, esFechaValidaParaGrupo } from '@/app/lib/turnosUtils';
 import { TipoSolicitud } from '@/app/lib/enum';
 import type { NuevaOfertaForm, TipoOferta, Prioridad, ModalidadBusqueda } from '@/hooks/useOfertas';
 import { useTurnosEfectivos } from '@/hooks/useTurnosEfectivos';
+import { useFechasBloqueadas } from '@/hooks/useFechasBloqueadas';
 
 // Las 4 opciones combinadas en una sola elección
 type ModoOferta =
@@ -146,9 +147,6 @@ export function ModalNuevaOferta({ isOpen, onClose, onSubmit, ofertaEditando }: 
 
   const validate = useCallback((): string => {
 
-    console.log('Form al validar:', form);
-    console.log('esIntercambio:', esIntercambio);
-    console.log('modo:', modo);
 
     if (esIntercambio) {
       if (!form.fechaOfrece) return 'Seleccioná la fecha de tu turno';
@@ -197,6 +195,8 @@ export function ModalNuevaOferta({ isOpen, onClose, onSubmit, ofertaEditando }: 
       return { ...prev, fechasBusca: updated };
     });
   };
+
+  const { fechasBloqueadas: fechasBloqueadasPropias } = useFechasBloqueadas();
 
   const updateFechaDisponible = (index: number, field: 'fecha' | 'horario', value: string) => {
     setForm(prev => {
@@ -295,6 +295,7 @@ export function ModalNuevaOferta({ isOpen, onClose, onSubmit, ofertaEditando }: 
                         id="fecha-busca-0"
                         value={form.fechasBusca[0]?.fecha || ''}
                         onChange={v => updateFechaBusca(0, 'fecha', v)}
+                        fechasBloqueadas={fechasBloqueadasPropias}
                         minDate={new Date()}
                         className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                       />
@@ -338,7 +339,7 @@ export function ModalNuevaOferta({ isOpen, onClose, onSubmit, ofertaEditando }: 
                         }}
                         grupoObjetivo={user?.grupoTurno as GrupoTurno}
                         fechasExtra={fechasExtraUsuario}
-                        fechasBloqueadas={fechasCedidas}
+                        fechasBloqueadas={[...fechasCedidas, ...fechasBloqueadasPropias]}
                         minDate={new Date()}
                         className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                       />
@@ -375,7 +376,7 @@ export function ModalNuevaOferta({ isOpen, onClose, onSubmit, ofertaEditando }: 
                             }}
                             grupoObjetivo={user?.grupoTurno as GrupoTurno}
                             fechasExtra={fechasExtraUsuario}
-                            fechasBloqueadas={fechasCedidas}
+                            fechasBloqueadas={[...fechasCedidas, ...fechasBloqueadasPropias]}
                             minDate={new Date()}
                             className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                           />
@@ -419,6 +420,8 @@ export function ModalNuevaOferta({ isOpen, onClose, onSubmit, ofertaEditando }: 
                 )}
               </div>
 
+
+
               {/* OFREZCO_INTERCAMBIO: fechas que quiere a cambio */}
               {modo === 'OFREZCO_INTERCAMBIO' && (
                 <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
@@ -444,12 +447,12 @@ export function ModalNuevaOferta({ isOpen, onClose, onSubmit, ofertaEditando }: 
                       <div key={index} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
                         <div>
                           <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Fecha</label>
-                          <input
-                            type="date"
-                            required
-                            min={new Date().toISOString().split('T')[0]}
+                          <CustomDatePicker
+                            id={`fecha-busca-${index}`}
                             value={item.fecha}
-                            onChange={e => updateFechaBusca(index, 'fecha', e.target.value)}
+                            onChange={v => updateFechaBusca(index, 'fecha', v)}
+                            fechasBloqueadas={fechasBloqueadasPropias}
+                            minDate={new Date()}
                             className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                           />
                         </div>
@@ -519,7 +522,7 @@ export function ModalNuevaOferta({ isOpen, onClose, onSubmit, ofertaEditando }: 
                           }
                         }}
                         fechasExtra={fechasExtraUsuario}
-                        fechasBloqueadas={fechasCedidas}
+                        fechasBloqueadas={[...fechasCedidas, ...fechasBloqueadasPropias]}
                         minDate={new Date()}
                         className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                       />
@@ -589,7 +592,7 @@ export function ModalNuevaOferta({ isOpen, onClose, onSubmit, ofertaEditando }: 
                         }}
                         grupoObjetivo={user?.grupoTurno as GrupoTurno}
                         fechasExtra={fechasExtraUsuario}
-                        fechasBloqueadas={fechasCedidas}
+                        fechasBloqueadas={[...fechasCedidas, ...fechasBloqueadasPropias]}
                         minDate={new Date()}
                         className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                       />
