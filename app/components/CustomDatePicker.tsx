@@ -136,8 +136,8 @@ export function CustomDatePicker({
       const esFechaExtra = fechasExtra?.includes(dateStr) ?? false;
       const esGrupoIncorrecto = grupoObjetivo ? grupoDelDia !== grupoObjetivo : false;
       const esFechaCedida = fechasBloqueadas?.includes(dateStr) ?? false;
-      const isDisabled = isPasado || (esGrupoIncorrecto && !esFechaExtra) || esFechaCedida;
-
+      const esFechaBloqueada = fechasBloqueadas?.includes(dateStr) ?? false;
+      const isDisabled = isPasado || (esGrupoIncorrecto && !esFechaExtra) || esFechaCedida || esFechaBloqueada;
       const isSelected = value === date.toISOString().split('T')[0];
       const isCurrentDay = isToday(date);
 
@@ -158,7 +158,9 @@ export function CustomDatePicker({
               isDisabled
                 ? isPasado
                   ? 'Fecha pasada'
-                  : `Día del Grupo ${grupoDelDia} — solo podés seleccionar días del Grupo ${grupoObjetivo}`
+                  : esGrupoIncorrecto && !esFechaExtra && !esFechaCedida && !esFechaBloqueada
+                    ? `Día del Grupo ${grupoDelDia} — solo podés seleccionar días del Grupo ${grupoObjetivo}`
+                    : 'Fecha no disponible por cambio, licencia o sanción'
                 : esFechaExtra
                   ? `${day} — Turno efectivo (Grupo ${grupoDelDia})`
                   : `${day} — Grupo ${grupoDelDia}`

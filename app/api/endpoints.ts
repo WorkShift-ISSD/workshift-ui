@@ -29,6 +29,13 @@ export const endpoints = {
     delete: (id: string) => `${API_BASE_URL}/solicitudes-directas/${id}`,
   },
 
+
+  fechasBloqueadas: {
+    list: () => `${API_BASE_URL}/fechas-bloqueadas`,
+  },
+
+
+
   // Faltas
   faltas: {
     list: (fecha?: string) => fecha
@@ -109,10 +116,10 @@ export const endpoints = {
 
   //mensajes
   mensajes: {
-  list: (ofertaId: string) => `${API_BASE_URL}/mensajes?ofertaId=${ofertaId}`,
-  create: () => `${API_BASE_URL}/mensajes`,
-  conversaciones: () => `${API_BASE_URL}/mensajes/conversaciones`,
-},
+    list: (ofertaId: string) => `${API_BASE_URL}/mensajes?ofertaId=${ofertaId}`,
+    create: () => `${API_BASE_URL}/mensajes`,
+    conversaciones: () => `${API_BASE_URL}/mensajes/conversaciones`,
+  },
 
 
 } as const;

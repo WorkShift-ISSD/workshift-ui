@@ -200,6 +200,45 @@ export async function POST(request: NextRequest) {
     const validoHasta = new Date();
     validoHasta.setDate(validoHasta.getDate() + diasValidez);
 
+
+    // Validar licencia en la fecha que ofrece (intercambio)
+    if (body.fechaOfrece) {
+      const [licenciaEnFecha] = await sql`
+    SELECT 1 FROM licencias
+    WHERE empleado_id = ${userId}::uuid
+      AND estado IN ('APROBADA', 'ACTIVA')
+      AND ${body.fechaOfrece}::date BETWEEN fecha_desde AND fecha_hasta
+    LIMIT 1;
+  `;
+      if (licenciaEnFecha) {
+        return NextResponse.json(
+          { error: 'Tenés una licencia aprobada para ese día y no podés ofrecerlo' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validar licencia en fechas disponibles (abierto)
+    if (body.fechasDisponibles?.length > 0) {
+      for (const fd of body.fechasDisponibles) {
+        if (!fd.fecha) continue;
+        const [licenciaEnFecha] = await sql`
+      SELECT 1 FROM licencias
+      WHERE empleado_id = ${userId}::uuid
+        AND estado IN ('APROBADA', 'ACTIVA')
+        AND ${fd.fecha}::date BETWEEN fecha_desde AND fecha_hasta
+      LIMIT 1;
+    `;
+        if (licenciaEnFecha) {
+          return NextResponse.json(
+            { error: `Tenés una licencia aprobada para el ${fd.fecha} y no podés publicar esa fecha` },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
+
     // Construir datos según modalidad
     let turnoOfrece = null;
     let turnosBusca = null;
@@ -231,7 +270,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    
+
 
     console.log('📅 Datos procesados:', {
       userId,
