@@ -53,6 +53,7 @@ interface ExportDataProps {
     activos: number;
     enLicencia: number;
     inactivo: number;
+    ausentes?: number;
   };
   filters?: {
     searchTerm?: string;
@@ -159,7 +160,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
           { label: "Total", value: stats.total, color: [37, 99, 235] },
           { label: "Activos", value: stats.activos, color: [34, 197, 94] },
           { label: "En Licencia", value: stats.enLicencia, color: [234, 179, 8] },
-          { label: "Inactivos/Bloqueados", value: stats.inactivo, color: [239, 68, 68] },
+          { label: "Inactivos", value: stats.inactivo ?? stats.ausentes ?? 0, color: [239, 68, 68] },
         ];
 
         const cardWidth = (pageWidth - 40) / 4;
@@ -681,7 +682,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
     } else {
       const presentes = employees.length - (faltasDelDia?.length || 0);
       xml += `      <presentes>${presentes}</presentes>\n`;
-      xml += `      <faltas>${faltasDelDia?.length || 0}</faltas>\n`;
+      xml += `      <inactivos>${stats.inactivo ?? stats.ausentes ?? 0}</inactivos>\n`;
     }
 
     xml += `    </estadisticas>\n`;

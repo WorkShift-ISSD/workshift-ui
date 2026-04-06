@@ -241,6 +241,7 @@ export default function FaltasPage() {
               activos: empleadosParaExportar.filter(emp => !empleadosConFalta.includes(emp.id)).length,
               ausentes: empleadosConFalta.length,
               enLicencia: 0,
+               inactivo: 0,
             }}
             faltasDelDia={(faltas ?? []).map(f => ({
               ...f,
