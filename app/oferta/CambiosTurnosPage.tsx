@@ -35,7 +35,7 @@ export default function CambiosTurnosPage() {
 
   const {
     ofertas,
-    stats,
+    //stats, NO LO UTILIZO
     agregarOferta,
     actualizarEstado: actualizarEstadoOferta,
     eliminarOferta,
@@ -86,6 +86,19 @@ export default function CambiosTurnosPage() {
         o.estado === 'DISPONIBLE' &&
         o.ofertante?.rol === user.rol
     );
+  }, [ofertas, user]);
+
+  const statsLocales = useMemo(() => {
+    if (!user) return { total: 0, busco: 0, ofrezco: 0, urgentes: 0 };
+    const ofertasDelRol = ofertas.filter(
+      o => o.ofertante?.rol === user.rol && o.estado === 'DISPONIBLE'
+    );
+    return {
+      total: ofertasDelRol.length,
+      busco: ofertasDelRol.filter(o => o.modalidadBusqueda === 'INTERCAMBIO').length,
+      ofrezco: ofertasDelRol.filter(o => o.ofertante?.id === user.id).length,
+      urgentes: ofertasDelRol.filter(o => o.prioridad === 'URGENTE').length,
+    };
   }, [ofertas, user]);
 
   const solicitudesEnviadas = useMemo(
@@ -270,10 +283,10 @@ export default function CambiosTurnosPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Total ofertas', value: stats.total, icon: TrendingUp, color: 'blue' },
-          { label: 'Intercambios', value: stats.busco, icon: RefreshCw, color: 'green' },
-          { label: 'Ofrezco', value: stats.ofrezco, icon: Gift, color: 'purple' },
-          { label: 'Urgentes', value: stats.urgentes, icon: Flame, color: 'red' },
+          { label: 'Total ofertas', value: statsLocales.total, icon: TrendingUp, color: 'blue' },
+          { label: 'Intercambios', value: statsLocales.busco, icon: RefreshCw, color: 'green' },
+          { label: 'Ofrezco', value: statsLocales.ofrezco, icon: Gift, color: 'purple' },
+          { label: 'Urgentes', value: statsLocales.urgentes, icon: Flame, color: 'red' },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between">
             <div>
