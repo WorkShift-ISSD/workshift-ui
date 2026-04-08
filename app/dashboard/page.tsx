@@ -159,7 +159,8 @@ export default function DashboardHome() {
   // Estadísticas reales basadas en ofertas y solicitudes
   const statsReales = useMemo(() => {
 
-    const turnosDisponibles = ofertas?.filter(o => o.estado === 'DISPONIBLE').length || 0;
+    const turnosDisponibles = ofertas?.filter(
+      o => o.estado === 'DISPONIBLE' && o.ofertante?.rol === user?.rol).length || 0;
 
     const aprobadosDelMes = solicitudes?.filter(sol => {
       const fechaSol = new Date(sol.fechaSolicitud);
@@ -171,14 +172,10 @@ export default function DashboardHome() {
       );
     }).length || 0;
 
-
-
     const pendientesParaMi = solicitudes?.filter(sol => {
       const estado = String(sol.estado).toUpperCase();
       const coincide = sol.destinatario.id === user?.id;
       const esSolicitado = estado === 'SOLICITADO' || estado === 'PENDIENTE';
-
-
 
       return coincide && esSolicitado;
     }).length || 0;
