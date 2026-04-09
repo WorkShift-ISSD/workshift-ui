@@ -25,7 +25,7 @@ export function ModalSancion({
   sancion,
   onSancionCreada
 }: Props) {
-  const { crearSancion, actualizarSancion } = useSanciones();
+  const { crearSancion, actualizarSancion, sanciones } = useSanciones();
   const { empleados } = useEmpleados();
 
   const [form, setForm] = useState({
@@ -96,7 +96,7 @@ export function ModalSancion({
   }, [sancion, open, empleados]);
 
   // Filtrar empleados mientras escribe
-  const empleadosFiltrados = (empleados || []).filter((emp) => {
+  const empleadosFiltrados = (empleados || []).filter((emp) => (emp.rol as string) !== 'ADMINISTRADOR').filter((emp) => {
     if (!searchEmpleado) return true;
 
     const searchLower = searchEmpleado.toLowerCase().trim();
@@ -167,6 +167,25 @@ export function ModalSancion({
     } else if (form.fecha_hasta < form.fecha_desde) {
       newErrors.fecha_hasta = "La fecha hasta debe ser posterior a la fecha desde";
       isValid = false;
+    }
+
+    if (form.empleado_id && form.fecha_desde && form.fecha_hasta) {
+      const sancionesDelEmpleado = sanciones.filter(s =>
+        s.empleado_id === form.empleado_id &&
+        s.estado !== 'ANULADA' &&
+        (modo === 'edit' ? s.id !== sancion?.id : true) // excluir la sanción actual si es edición
+      );
+
+      const haySuperpuesta = sancionesDelEmpleado.some(s => {
+        const desdeExistente = s.fecha_desde.split('T')[0];
+        const hastaExistente = s.fecha_hasta.split('T')[0];
+        return form.fecha_desde <= hastaExistente && form.fecha_hasta >= desdeExistente;
+      });
+
+      if (haySuperpuesta) {
+        newErrors.fecha_desde = "Ya existe una sanción activa en ese período para este empleado";
+        isValid = false;
+      }
     }
 
     setErrors(newErrors);

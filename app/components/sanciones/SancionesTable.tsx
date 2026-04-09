@@ -7,6 +7,7 @@ import { ModalSancion } from "./ModalSancion";
 import { useEmpleados } from "@/hooks/useEmpleados";
 import { useSanciones } from "@/hooks/useSanciones";
 import { useFormatters } from "@/hooks/useFormatters"
+import { toast } from "react-toastify";
 
 interface Props {
     sanciones: Sancion[];
@@ -16,9 +17,9 @@ interface Props {
 
 type ModalMode = "create" | "view" | "edit";
 
-export function SancionesTable({ 
-    sanciones, 
-    loading, onRecargar 
+export function SancionesTable({
+    sanciones,
+    loading, onRecargar
 }: Props) {
     const { empleados } = useEmpleados();
     const { cargarSanciones } = useSanciones();
@@ -40,6 +41,10 @@ export function SancionesTable({
     };
 
     const abrirEditar = (s: Sancion) => {
+        if (s.estado === "FINALIZADA") {
+            toast.warn("No se puede editar una sanción finalizada");
+            return;
+        }
         setModo("edit");
         setSancionSeleccionada(s);
         setModalOpen(true);
@@ -119,10 +124,10 @@ export function SancionesTable({
                                         <td className="p-3 text-center">
                                             <span
                                                 className={`px-2 py-1 rounded text-xs font-medium ${s.estado === "ACTIVA"
-                                                        ? "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400"
-                                                        : s.estado === "FINALIZADA"
-                                                            ? "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-                                                            : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400"
+                                                    ? "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400"
+                                                    : s.estado === "FINALIZADA"
+                                                        ? "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                                                        : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400"
                                                     }`}
                                             >
                                                 {s.estado}
