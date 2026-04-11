@@ -11,6 +11,7 @@ export interface OtroParticipante {
 
 export interface Conversacion {
     id: string; // oferta_id
+    ofertanteId: string;
     ofertaEstado: string;
     ofertaTipo: string;
     modalidadBusqueda: string;

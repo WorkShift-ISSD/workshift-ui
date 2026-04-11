@@ -88,35 +88,39 @@ export async function POST(
 
       if (solicitud) {
         // Turno efectivo para el solicitante
+        // Para cobertura: el que trabaja es el destinatario (quien cubre)
+        // Para intercambio: el solicitante trabaja el día del destinatario
+        const esCobertura = !solicitud.fecha_destinatario;
+
         await sql`
-      INSERT INTO turnos_efectivos (
-        id,
-        empleado_id,
-        fecha,
-        horario_original,
-        horario_efectivo,
-        grupo_original,
-        grupo_efectivo,
-        tipo_cambio,
-        autorizacion_id,
-        empleado_intercambio_id,
-        estado,
-        created_at
-      ) VALUES (
-  gen_random_uuid(),
-  ${solicitud.solicitante_id}::uuid,
-  ${solicitud.fecha_destinatario}::date,  
-  ${solicitud.horario_solicitante},
-  ${solicitud.horario_destinatario || solicitud.horario_solicitante},
-  ${solicitud.grupo_solicitante},
-  ${solicitud.grupo_destinatario || solicitud.grupo_solicitante},
-  ${solicitud.fecha_destinatario ? 'INTERCAMBIO' : 'COBERTURA'},
-  ${id}::uuid,
-  ${solicitud.destinatario_id}::uuid,
-  'PENDIENTE',
-  NOW()
-);
-    `;
+  INSERT INTO turnos_efectivos (
+    id,
+    empleado_id,
+    fecha,
+    horario_original,
+    horario_efectivo,
+    grupo_original,
+    grupo_efectivo,
+    tipo_cambio,
+    autorizacion_id,
+    empleado_intercambio_id,
+    estado,
+    created_at
+  ) VALUES (
+    gen_random_uuid(),
+    ${esCobertura ? solicitud.destinatario_id : solicitud.solicitante_id}::uuid,
+    ${esCobertura ? solicitud.fecha_solicitante : solicitud.fecha_destinatario}::date,
+    ${esCobertura ? solicitud.horario_destinatario : solicitud.horario_solicitante},
+    ${esCobertura ? solicitud.horario_destinatario : solicitud.horario_destinatario || solicitud.horario_solicitante},
+    ${esCobertura ? solicitud.grupo_destinatario : solicitud.grupo_solicitante},
+    ${esCobertura ? solicitud.grupo_destinatario : solicitud.grupo_destinatario || solicitud.grupo_solicitante},
+    ${esCobertura ? 'COBERTURA' : 'INTERCAMBIO'},
+    ${id}::uuid,
+    ${esCobertura ? solicitud.solicitante_id : solicitud.destinatario_id}::uuid,
+    'PENDIENTE',
+    NOW()
+  );
+`;
 
         // Si es intercambio (no cobertura), crear también el turno del destinatario
         if (solicitud.fecha_destinatario) {

@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
         const conversaciones = await sql`
       SELECT DISTINCT ON (m.oferta_id)
         m.oferta_id::text as id,
+        o.ofertante_id::text as ofertante_id,
         o.estado as oferta_estado,
         o.tipo as oferta_tipo,
         o.modalidad_busqueda,
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
         ELSE m.emisor_id
       END
       WHERE m.emisor_id = ${userId}::uuid 
-         OR m.receptor_id = ${userId}::uuid
+        OR m.receptor_id = ${userId}::uuid
       ORDER BY m.oferta_id, m.created_at DESC;
     `;
 
@@ -68,6 +69,7 @@ export async function GET(request: NextRequest) {
             ultimoMensaje: c.ultimo_mensaje,
             ultimoMensajeAt: c.ultimo_mensaje_at,
             sinLeer: c.sin_leer,
+            ofertanteId: c.ofertante_id,
             otroParticipante: {
                 id: c.otro_participante_id,
                 nombre: c.otro_nombre,

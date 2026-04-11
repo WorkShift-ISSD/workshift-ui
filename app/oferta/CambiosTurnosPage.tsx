@@ -1,39 +1,26 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
-import { TrendingUp, RefreshCw, Gift, Flame, Search } from 'lucide-react';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { Search } from 'lucide-react';
+import { ToastContainer } from 'react-toastify';
 
-import { useAuth } from '../context/AuthContext';
-import { useOfertas, NuevaOfertaForm } from '@/hooks/useOfertas';
-import { useSolicitudesDirectas, SolicitudDirectaForm } from '@/hooks/useSolicitudesDirectas';
 
 import Can from '../components/Can';
 import { ModalSolicitudDirecta } from '../components/cambios/ModalSolicitudDirecta';
 import { ModalNuevaOferta } from '../components/cambios/ModalNuevaOferta';
 import ModalConsultarSolicitudes from '../components/ModalConsultarSolicitudes';
 import { ModalSeleccionarTurno } from '../components/ModalSeleccionarTurno';
-
 import { MisSolicitudesTab } from '../components/cambios/MisSolicitudesTab';
 import { OfertasDisponiblesTab } from '../components/cambios/OfertasDisponiblesTab';
 import { RecibidasTab } from '../components/cambios/RecibidasTab';
 import { HistoricoTab } from '../components/cambios/HistoricoTab';
-import { TipoSolicitud } from '../lib/enum';
 import { SeccionMensajes } from '../components/mensajes/SeccionMensajes';
-
-
-import type { SolicitudDirecta } from '@/app/api/types';
-import type { Oferta } from '@/hooks/useOfertas';
-
-
-type ModalTipo = 'solicitud-directa' | 'nueva-oferta' | null;
-type MainTab = 'mis-solicitudes' | 'historico' | 'recibidas' | 'ofertas-disponibles';
+import { StatsBar } from '../components/cambios/StatsBar';
+import { AccionesPrincipales } from '../components/cambios/AccionesPrincipales';
+import { useCambiosPage } from '@/hooks/useCambiosPage';
 
 export default function CambiosTurnosPage() {
-  const { user } = useAuth();
-
   const {
+    user,
     ofertas,
     //stats, NO LO UTILIZO
     agregarOferta,
@@ -254,9 +241,9 @@ export default function CambiosTurnosPage() {
       label: 'Mis solicitudes',
       badge: misOfertas.length + solicitudesEnviadas.filter(s => ['SOLICITADO', 'APROBADO'].includes(s.estado)).length || undefined,
     },
-    { id: 'historico', label: 'Histórico' },
-    { id: 'recibidas', label: 'Recibidas', badge: solicitudesRecibidas.length || undefined, can: 'recibir_solicitud_directa' },
-    { id: 'ofertas-disponibles', label: 'Disponibles', badge: ofertasDisponibles.length || undefined, can: 'pedir_turno' },
+    { id: 'historico' as const, label: 'Histórico' },
+    { id: 'recibidas' as const, label: 'Recibidas', badge: solicitudesRecibidas.length || undefined },
+    { id: 'ofertas-disponibles' as const, label: 'Disponibles', badge: ofertasDisponibles.length || undefined },
   ];
 
   return (
@@ -267,9 +254,7 @@ export default function CambiosTurnosPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Cambios de guardia</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Gestioná tus intercambios y solicitudes
-          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Gestioná tus intercambios y solicitudes</p>
         </div>
         <button
           onClick={() => setIsConsultarOpen(true)}
@@ -301,33 +286,10 @@ export default function CambiosTurnosPage() {
       </div>
 
       {/* Acciones principales */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Can do="ofertar_turno">
-          <button
-            onClick={() => { setOfertaEditando(null); setActiveModal('nueva-oferta'); }}
-            className="bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 rounded-xl p-6 text-center transition-all group"
-          >
-            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-              <Gift className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <p className="font-semibold text-gray-900 dark:text-gray-100">Nueva oferta</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Publicá en el tablero</p>
-          </button>
-        </Can>
-
-        <Can do="enviar_solicitud_directa">
-          <button
-            onClick={() => { setSolicitudEditando(null); setActiveModal('solicitud-directa'); }}
-            className="bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 hover:border-green-400 dark:hover:border-green-500 rounded-xl p-6 text-center transition-all group"
-          >
-            <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-              <RefreshCw className="h-6 w-6 text-green-600 dark:text-green-400" />
-            </div>
-            <p className="font-semibold text-gray-900 dark:text-gray-100">Solicitud de cambio de turno</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">A un compañero específico</p>
-          </button>
-        </Can>
-      </div>
+      <AccionesPrincipales
+        onNuevaOferta={() => { setOfertaEditando(null); setActiveModal('nueva-oferta'); }}
+        onNuevaSolicitud={() => { setSolicitudEditando(null); setActiveModal('solicitud-directa'); }}
+      />
 
       {/* Tabs */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
@@ -384,7 +346,6 @@ export default function CambiosTurnosPage() {
                     alert(err instanceof Error ? err.message : 'Error al aceptar la solicitud');
                   }
                 }}
-
                 onRechazar={id => actualizarEstado(id, 'CANCELADO')}
               />
             </Can>
@@ -393,25 +354,7 @@ export default function CambiosTurnosPage() {
             <Can do="pedir_turno">
               <OfertasDisponiblesTab
                 ofertas={ofertasDisponibles}
-                onMeInteresa={async (id) => {
-                  const oferta = ofertas.find(o => o.id === id);
-                  if (!oferta || !user) return;
-
-                  setOfertaChatId(null); // ← resetear primero
-
-                  await fetch('/api/mensajes', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({
-                      ofertaId: id,
-                      receptorId: oferta.ofertante.id,
-                      contenido: `Hola, me interesa tu oferta del ${oferta.turnoOfrece?.fecha || oferta.fechasDisponibles?.[0]?.fecha || ''}`,
-                    }),
-                  });
-
-                  setOfertaChatId(id);
-                }}
+                onMeInteresa={handleMeInteresa}
               />
             </Can>
           )}
@@ -425,22 +368,19 @@ export default function CambiosTurnosPage() {
         onSubmit={handleSubmitSolicitud}
         solicitudEditando={solicitudEditando}
       />
-
       <ModalNuevaOferta
         isOpen={activeModal === 'nueva-oferta'}
         onClose={() => { setActiveModal(null); setOfertaEditando(null); }}
         onSubmit={handleSubmitOferta}
         ofertaEditando={ofertaEditando}
       />
-
       <ModalConsultarSolicitudes
         isOpen={isConsultarOpen}
         onClose={() => setIsConsultarOpen(false)}
       />
-
       <ModalSeleccionarTurno
         isOpen={modalSeleccionarTurno}
-        onClose={() => { setModalSeleccionarTurno(false); setOfertaParaSeleccionar(null); }}
+        onClose={() => { setModalSeleccionarTurno(false); }}
         onConfirmar={handleConfirmarSeleccion}
         oferta={ofertaParaSeleccionar}
       />
@@ -448,8 +388,9 @@ export default function CambiosTurnosPage() {
       {/* Mensajes */}
       <SeccionMensajes
         ofertaAbrirId={ofertaChatId}
-        onChatAbierto={() => setOfertaChatId(null)} />
-
+        turnoSeleccionadoChatRef={turnoSeleccionadoChatRef}
+        onChatAbierto={() => setOfertaChatId(null)}
+      />
     </div>
   );
 }

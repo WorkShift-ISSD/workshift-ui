@@ -234,24 +234,45 @@ export function ModalAutorizacion({
                         </div>
 
                         <div className="space-y-2">
-                          <div>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">Fecha que ofrece</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              {formatFechaSafe(turnoDestinatario.fecha)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">Horario</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              {turnoDestinatario.horario}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">Grupo</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              {turnoDestinatario.grupoTurno}
-                            </p>
-                          </div>
+                          {turnoDestinatario ? (
+                            <div>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">Fecha que ofrece</p>
+                              <p className="font-semibold text-gray-900 dark:text-white">
+                                {formatFechaSafe(turnoDestinatario.fecha)}
+                              </p>
+                            </div>
+                          ) : (
+                            <div>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">Tipo</p>
+                              <p className="font-semibold text-gray-900 dark:text-white">Cobertura</p>
+                            </div>
+                          )}
+                          {turnoDestinatario ? (
+                            <div>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">Fecha que ofrece</p>
+                              <p className="font-semibold text-gray-900 dark:text-white">
+                                {formatFechaSafe(turnoDestinatario.horario)}
+                              </p>
+                            </div>
+                          ) : (
+                            <div>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">Tipo</p>
+                              <p className="font-semibold text-gray-900 dark:text-white">Cobertura</p>
+                            </div>
+                          )}
+                          {turnoDestinatario ? (
+                            <div>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">Fecha que ofrece</p>
+                              <p className="font-semibold text-gray-900 dark:text-white">
+                                {formatFechaSafe(turnoDestinatario.grupoTurno)}
+                              </p>
+                            </div>
+                          ) : (
+                            <div>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">Tipo</p>
+                              <p className="font-semibold text-gray-900 dark:text-white">Cobertura</p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

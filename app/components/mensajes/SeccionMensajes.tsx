@@ -25,10 +25,11 @@ const ITEMS_POR_PAGINA = 5;
 
 interface Props {
     ofertaAbrirId?: string | null;
+    turnoSeleccionadoChatRef?: React.MutableRefObject<{ fecha: string; horario: string } | null>;
     onChatAbierto?: () => void;
 }
 
-export function SeccionMensajes({ ofertaAbrirId, onChatAbierto }: Props) {
+export function SeccionMensajes({ ofertaAbrirId, turnoSeleccionadoChatRef, onChatAbierto }: Props) {
     const { user } = useAuth();
     const { conversaciones, isLoading, recargar } = useConversaciones();
     const { formatTimeAgo } = useFormatters();
@@ -44,7 +45,7 @@ export function SeccionMensajes({ ofertaAbrirId, onChatAbierto }: Props) {
     const pusherRef = useRef<Pusher | null>(null);
     const recargarRef = useRef(recargar);
 
-useEffect(() => { recargarRef.current = recargar; }, [recargar]);
+    useEffect(() => { recargarRef.current = recargar; }, [recargar]);
 
 
 
@@ -227,7 +228,16 @@ useEffect(() => { recargarRef.current = recargar; }, [recargar]);
                             : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                             }`}
                     >
-                        {tab === 'activos' ? 'Activos' : 'Cerrados'}
+                        {tab === 'activos' ? 'Activos' : (
+                            <span className="flex items-center gap-1">
+                                Cerrados
+                                {conversaciones.filter(c =>
+                                    !estadosActivos.includes(c.ofertaEstado) && c.sinLeer > 0
+                                ).length > 0 && (
+                                        <span className="w-2 h-2 bg-red-500 rounded-full inline-block" />
+                                    )}
+                            </span>
+                        )}
                         {tabActivo === tab && (
                             <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
                         )}
@@ -246,120 +256,190 @@ useEffect(() => { recargarRef.current = recargar; }, [recargar]);
                         </p>
                     </div>
                 ) : (
-                    conversacionesPaginadas.map(conv => (
-                        <div key={conv.id} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                            {/* Card de conversación */}
-                            <button
-                                onClick={() => toggleChat(conv.id)}
-                                className="w-full p-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left"
-                            >
-                                {/* Avatar */}
-                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                                    {conv.otroParticipante.nombre[0]}{conv.otroParticipante.apellido[0]}
-                                </div>
+                    conversacionesPaginadas.map(conv => {
+                        const soyElOfertante = conv.ofertanteId === user?.id;
+                        return (
 
-                                {/* Info */}
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between mb-0.5">
-                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                                            {conv.otroParticipante.nombre} {conv.otroParticipante.apellido}
-                                        </p>
-                                        <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 ml-2">
-                                            {formatTimeAgo(conv.ultimoMensajeAt)}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                            {conv.ultimoMensaje}
-                                        </p>
-                                        {conv.sinLeer > 0 && (
-                                            <span className="ml-2 px-1.5 py-0.5 bg-blue-600 text-white rounded-full text-xs flex-shrink-0">
-                                                {conv.sinLeer}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
-                                        {formatUltimaConexion(conv.otroParticipante.ultimoLogin)}
-                                    </p>
-                                </div>
-
-                                {/* Chevron */}
-                                {chatAbierto === conv.id
-                                    ? <ChevronUp className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                                    : <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                                }
-                            </button>
-
-                            {/* Chat expandido */}
-                            {chatAbierto === conv.id && (
-                                <div className="border-t border-gray-200 dark:border-gray-700">
-                                    {/* Info de la oferta */}
-                                    <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700/50 text-xs text-gray-500 dark:text-gray-400">
-                                        {conv.turnoOfrece
-                                            ? `Oferta: ${conv.turnoOfrece.fecha} · ${conv.turnoOfrece.horario}`
-                                            : conv.fechasDisponibles?.length
-                                                ? `Cobertura: ${conv.fechasDisponibles.map(f => f.fecha).join(', ')}`
-                                                : 'Oferta'}
+                            <div key={conv.id} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                                {/* Card de conversación */}
+                                <button
+                                    onClick={() => toggleChat(conv.id)}
+                                    className="w-full p-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left"
+                                >
+                                    {/* Avatar */}
+                                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                                        {conv.otroParticipante.nombre[0]}{conv.otroParticipante.apellido[0]}
                                     </div>
 
-                                    {/* Mensajes */}
-                                    <div className="h-64 overflow-y-auto p-3 space-y-2">
-                                        {loadingMensajes ? (
-                                            <p className="text-center text-xs text-gray-400 mt-8">Cargando mensajes...</p>
-                                        ) : mensajes.length === 0 ? (
-                                            <p className="text-center text-xs text-gray-400 mt-8">
-                                                Empezá la conversación
+                                    {/* Info */}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between mb-0.5">
+                                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                                {conv.otroParticipante.nombre} {conv.otroParticipante.apellido}
                                             </p>
-                                        ) : (
-                                            mensajes.map(msg => {
-                                                const esMio = msg.emisor.id === user?.id;
-                                                return (
-                                                    <div key={msg.id} className={`flex ${esMio ? 'justify-end' : 'justify-start'}`}>
-                                                        <div className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm ${esMio
-                                                            ? 'bg-blue-600 text-white rounded-br-sm'
-                                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-bl-sm'
-                                                            }`}>
-                                                            <p>{msg.contenido}</p>
-                                                            <div className={`flex items-center gap-1 mt-0.5 ${esMio ? 'justify-end' : 'justify-start'}`}>
-                                                                <span className={`text-[10px] ${esMio ? 'text-blue-200' : 'text-gray-400'}`}>
-                                                                    {new Date(msg.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                                                                </span>
-                                                                {esMio && (
-                                                                    msg.leido
-                                                                        ? <CheckCheck className="h-3 w-3 text-blue-200" />
-                                                                        : <Check className="h-3 w-3 text-blue-200" />
-                                                                )}
+                                            <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 ml-2">
+                                                {formatTimeAgo(conv.ultimoMensajeAt)}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                {conv.ultimoMensaje}
+                                            </p>
+                                            {conv.sinLeer > 0 && (
+                                                <span className="ml-2 px-1.5 py-0.5 bg-blue-600 text-white rounded-full text-xs flex-shrink-0">
+                                                    {conv.sinLeer}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
+                                            {formatUltimaConexion(conv.otroParticipante.ultimoLogin)}
+                                        </p>
+                                    </div>
+
+                                    {/* Chevron */}
+                                    {chatAbierto === conv.id
+                                        ? <ChevronUp className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                        : <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                    }
+                                </button>
+
+                                {/* Chat expandido */}
+                                {chatAbierto === conv.id && (
+                                    <div className="border-t border-gray-200 dark:border-gray-700">
+                                        {/* Info de la oferta */}
+                                        <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700/50 text-xs text-gray-500 dark:text-gray-400">
+                                            {conv.turnoOfrece
+                                                ? `Oferta: ${conv.turnoOfrece.fecha} · ${conv.turnoOfrece.horario}`
+                                                : conv.fechasDisponibles?.length
+                                                    ? `Cobertura: ${conv.fechasDisponibles.map(f => f.fecha).join(', ')}`
+                                                    : 'Oferta'}
+                                        </div>
+
+                                        {/* Mensajes */}
+                                        <div className="h-64 overflow-y-auto p-3 space-y-2">
+                                            {loadingMensajes ? (
+                                                <p className="text-center text-xs text-gray-400 mt-8">Cargando mensajes...</p>
+                                            ) : mensajes.length === 0 ? (
+                                                <p className="text-center text-xs text-gray-400 mt-8">
+                                                    Empezá la conversación
+                                                </p>
+                                            ) : (
+                                                mensajes.map(msg => {
+                                                    const esMio = msg.emisor.id === user?.id;
+                                                    return (
+                                                        <div key={msg.id} className={`flex ${esMio ? 'justify-end' : 'justify-start'}`}>
+                                                            <div className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm ${esMio
+                                                                ? 'bg-blue-600 text-white rounded-br-sm'
+                                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-bl-sm'
+                                                                }`}>
+                                                                <p>{msg.contenido}</p>
+                                                                <div className={`flex items-center gap-1 mt-0.5 ${esMio ? 'justify-end' : 'justify-start'}`}>
+                                                                    <span className={`text-[10px] ${esMio ? 'text-blue-200' : 'text-gray-400'}`}>
+                                                                        {new Date(msg.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                                                                    </span>
+                                                                    {esMio && (
+                                                                        msg.leido
+                                                                            ? <CheckCheck className="h-3 w-3 text-blue-200" />
+                                                                            : <Check className="h-3 w-3 text-blue-200" />
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                );
-                                            })
-                                        )}
-                                        <div ref={mensajesEndRef} />
-                                    </div>
+                                                    );
+                                                })
+                                            )}
+                                            <div ref={mensajesEndRef} />
+                                        </div>
 
-                                    {/* Input */}
-                                    <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 flex gap-2">
-                                        <input
-                                            type="text"
-                                            value={texto}
-                                            onChange={e => setTexto(e.target.value)}
-                                            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleEnviar()}
-                                            placeholder="Escribí un mensaje..."
-                                            className="flex-1 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        />
-                                        <button
-                                            onClick={handleEnviar}
-                                            disabled={!texto.trim() || enviando}
-                                            className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            <Send className="h-4 w-4" />
-                                        </button>
+
+                                        {/* Botones Aceptar/Rechazar — solo para el ofertante */}
+                                        {soyElOfertante && ['DISPONIBLE', 'SOLICITADO'].includes(conv.ofertaEstado) && (
+                                            <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 flex gap-2">
+                                                <button
+                                                    onClick={async () => {
+
+                                                        const mensajeInteresado = [...mensajes].reverse().find(m => m.emisor.id !== conv.ofertanteId);
+                                                        const fechaDelMensaje = mensajeInteresado?.contenido.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+
+                                                        const turnoParaEnviar = fechaDelMensaje
+                                                            ? { fecha: fechaDelMensaje, horario: conv.fechasDisponibles?.find(f => f.fecha === fechaDelMensaje)?.horario || conv.fechasDisponibles?.[0]?.horario || '' }
+                                                            : conv.fechasDisponibles?.[0]
+                                                                ? { fecha: conv.fechasDisponibles[0].fecha, horario: conv.fechasDisponibles[0].horario }
+                                                                : null;
+                                                        const res = await fetch(`/api/ofertas/${conv.id}/tomar`, {
+                                                            method: 'POST',
+                                                            headers: { 'Content-Type': 'application/json' },
+                                                            credentials: 'include',
+                                                            body: JSON.stringify({
+                                                                tomadorId: conv.otroParticipante.id,
+                                                                turnoSeleccionado: turnoParaEnviar,
+                                                            }),
+                                                        });
+                                                        if (res.ok) {
+                                                            await recargar();
+                                                        } else {
+                                                            const data = await res.json();
+                                                            alert(data.error || 'Error al aceptar');
+                                                        }
+                                                    }}
+                                                    className="flex-1 px-3 py-1.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                                                >
+                                                    Aceptar propuesta
+                                                </button>
+                                                <button
+                                                    onClick={async () => {
+                                                        const res = await fetch(`/api/ofertas/${conv.id}`, {
+                                                            method: 'PATCH',
+                                                            headers: { 'Content-Type': 'application/json' },
+                                                            credentials: 'include',
+                                                            body: JSON.stringify({ estado: 'CANCELADO' }),
+                                                        });
+                                                        if (res.ok) {
+                                                            await recargar();
+                                                        }
+                                                    }}
+                                                    className="flex-1 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                                >
+                                                    Rechazar propuesta
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {/* Input */}
+                                        {['DISPONIBLE', 'SOLICITADO'].includes(conv.ofertaEstado) ? (
+                                            <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={texto}
+                                                    onChange={e => setTexto(e.target.value)}
+                                                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleEnviar()}
+                                                    placeholder="Escribí un mensaje..."
+                                                    className="flex-1 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                />
+                                                <button
+                                                    onClick={handleEnviar}
+                                                    disabled={!texto.trim() || enviando}
+                                                    className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    <Send className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700">
+                                                <p className="text-xs text-center text-gray-400 dark:text-gray-500">
+                                                    {conv.ofertaEstado === 'CANCELADO'
+                                                        ? '❌ Esta oferta fue rechazada — la conversación está cerrada'
+                                                        : conv.ofertaEstado === 'COMPLETADO'
+                                                            ? '✅ Esta oferta fue aceptada — la conversación está cerrada'
+                                                            : 'Conversación cerrada'}
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                            )}
-                        </div>
-                    ))
+                                )}
+                            </div>
+                        );
+                    })
                 )}
 
                 {/* Paginación */}

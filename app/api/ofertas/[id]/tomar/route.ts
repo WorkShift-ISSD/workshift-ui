@@ -26,7 +26,12 @@ export async function POST(
     }
 
     const { payload } = await jwtVerify(token, SECRET_KEY);
-    const tomadorId = payload.id as string;
+    const usuarioLogueadoId = payload.id as string;
+
+    // Si el body trae tomadorId y el usuario logueado es el ofertante, usar el del body
+    const tomadorId = body.tomadorId && body.tomadorId !== usuarioLogueadoId
+      ? body.tomadorId
+      : usuarioLogueadoId;
 
 
     // Obtener la oferta
@@ -179,7 +184,11 @@ export async function POST(
       fecha: turnoSeleccionado.fecha,
       horario: turnoSeleccionado.horario || tomador.horario,
       grupoTurno: tomador.grupo_turno
-    } : null;
+    } : {
+      fecha: fechaTurnoOfertante, // el día que va a cubrir
+      horario: tomador.horario,
+      grupoTurno: tomador.grupo_turno
+    };
 
     // Turno del ofertante (lo que recibe el tomador)
     const turnoDestinatarioObj = turnoOfertanteRaw ? {
