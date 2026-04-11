@@ -22,222 +22,38 @@ export default function CambiosTurnosPage() {
   const {
     user,
     ofertas,
-    //stats, NO LO UTILIZO
-    agregarOferta,
-    actualizarEstado: actualizarEstadoOferta,
-    eliminarOferta,
-    refetch,
-    isLoading: isLoadingOfertas,
-    error: errorOfertas,
-  } = useOfertas();
-
-  const {
-    solicitudes: solicitudesDirectas,
-    agregarSolicitud,
+    ofertasDisponibles,
+    ofertasUrgentes,
+    misOfertas,
+    solicitudesDirectas,
+    solicitudesEnviadas,
+    solicitudesRecibidas,
+    totalSinLeer,
+    enNegociacionComoOfertante,
+    enNegociacionComoInteresado,
+    activeModal, setActiveModal,
+    activeTab, setActiveTab,
+    isConsultarOpen, setIsConsultarOpen,
+    modalSeleccionarTurno, setModalSeleccionarTurno,
+    ofertaParaSeleccionar,
+    turnoSeleccionadoChatRef,
+    ofertaChatId, setOfertaChatId,
+    solicitudEditando, setSolicitudEditando,
+    ofertaEditando, setOfertaEditando,
+    handleSubmitSolicitud,
+    handleEditarSolicitud,
+    handleSubmitOferta,
+    handleEditarOferta,
+    handleTomarOferta,
+    handleConfirmarSeleccion,
+    handleMeInteresa,
+    actualizarEstadoOferta,
     actualizarEstado,
-    actualizarSolicitud,
-    isLoading: isLoadingSolicitudes,
-    error: errorSolicitudes,
-  } = useSolicitudesDirectas();
+  } = useCambiosPage();
 
-  const [activeModal, setActiveModal] = useState<ModalTipo>(null);
-  const [activeTab, setActiveTab] = useState<MainTab>('mis-solicitudes');
-  const [isConsultarOpen, setIsConsultarOpen] = useState(false);
-  const [modalSeleccionarTurno, setModalSeleccionarTurno] = useState(false);
-  const [ofertaParaSeleccionar, setOfertaParaSeleccionar] = useState<Oferta | null>(null);
-  const [ofertaChatId, setOfertaChatId] = useState<string | null>(null);
-
-
-  // Estado de edición
-  const [solicitudEditando, setSolicitudEditando] = useState<{
-    id: string;
-    form: SolicitudDirectaForm;
-    nombreDestinatario: string;
-  } | null>(null);
-  const [ofertaEditando, setOfertaEditando] = useState<{
-    id: string;
-    form: NuevaOfertaForm;
-  } | null>(null);
-
-  // Derived data
-  const misOfertas = useMemo(
-    () => ofertas.filter(o => o.ofertante?.id === user?.id && o.estado === 'DISPONIBLE'),
-    [ofertas, user?.id]
-  );
-
-  const ofertasDisponibles = useMemo(() => {
-    if (!user) return [];
-    return ofertas.filter(
-      o =>
-        o.ofertante?.id !== user.id &&
-        o.estado === 'DISPONIBLE' &&
-        o.ofertante?.rol === user.rol
-    );
-  }, [ofertas, user]);
-
-  const statsLocales = useMemo(() => {
-    if (!user) return { total: 0, busco: 0, ofrezco: 0, urgentes: 0 };
-    const ofertasDelRol = ofertas.filter(
-      o => o.ofertante?.rol === user.rol && o.estado === 'DISPONIBLE'
-    );
-    return {
-      total: ofertasDelRol.length,
-      busco: ofertasDelRol.filter(o => o.modalidadBusqueda === 'INTERCAMBIO').length,
-      ofrezco: ofertasDelRol.filter(o => o.ofertante?.id === user.id).length,
-      urgentes: ofertasDelRol.filter(o => o.prioridad === 'URGENTE').length,
-    };
-  }, [ofertas, user]);
-
-  const solicitudesEnviadas = useMemo(
-    () => solicitudesDirectas.filter(s => s.solicitante.id === user?.id),
-    [solicitudesDirectas, user?.id]
-  );
-
-  const solicitudesRecibidas = useMemo(
-    () =>
-      solicitudesDirectas.filter(
-        s => s.destinatario.id === user?.id && s.estado === 'SOLICITADO'
-      ),
-    [solicitudesDirectas, user?.id]
-  );
-
-  // Handlers solicitud directa
-  const handleSubmitSolicitud = useCallback(
-    async (form: SolicitudDirectaForm) => {
-      if (solicitudEditando) {
-        await actualizarSolicitud(solicitudEditando.id, form);
-        toast.success('Solicitud actualizada');
-      } else {
-        await agregarSolicitud(form);
-        toast.success('Solicitud enviada');
-      }
-      setSolicitudEditando(null);
-    },
-    [solicitudEditando, actualizarSolicitud, agregarSolicitud]
-  );
-
-  const handleEditarSolicitud = useCallback(
-    (solicitud: SolicitudDirecta) => {
-      setSolicitudEditando({
-        id: solicitud.id,
-        nombreDestinatario: `${solicitud.destinatario.nombre} ${solicitud.destinatario.apellido}`,
-        form: {
-          solicitanteId: solicitud.solicitante.id,  // ← este era el que faltaba
-          destinatarioId: solicitud.destinatario.id,
-          fechaSolicitante: solicitud.turnoSolicitante.fecha,
-          horarioSolicitante: solicitud.turnoSolicitante.horario,
-          grupoSolicitante: solicitud.turnoSolicitante.grupoTurno,
-          fechaDestinatario: solicitud.turnoDestinatario.fecha,
-          horarioDestinatario: solicitud.turnoDestinatario.horario,
-          grupoDestinatario: solicitud.turnoDestinatario.grupoTurno,
-          motivo: solicitud.motivo,
-          prioridad: solicitud.prioridad,
-        },
-      });
-      setActiveModal('solicitud-directa');
-    },
-    []
-  );
-
-  // Handlers oferta
-  const handleSubmitOferta = useCallback(
-    async (form: NuevaOfertaForm) => {
-      if (ofertaEditando) {
-        const res = await fetch(`/api/ofertas/${ofertaEditando.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(form),
-        });
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || 'Error al actualizar la oferta');
-        }
-        await refetch();
-        toast.success('Oferta actualizada');
-      } else {
-        await agregarOferta(form);
-        toast.success('Oferta publicada');
-      }
-      setOfertaEditando(null);
-    },
-    [ofertaEditando, agregarOferta, refetch]
-  );
-
-  const handleEditarOferta = useCallback((oferta: Oferta) => {
-    setOfertaEditando({
-      id: oferta.id,
-      form: {
-        tipo: oferta.tipo,
-        modalidadBusqueda: oferta.modalidadBusqueda ?? 'INTERCAMBIO',
-        fechaOfrece: oferta.turnoOfrece?.fecha || '',
-        horarioOfrece: oferta.turnoOfrece?.horario || '',
-        grupoOfrece: oferta.turnoOfrece?.grupoTurno ?? 'A',
-        descripcion: oferta.descripcion || '',
-        prioridad: oferta.prioridad,
-        fechasBusca: oferta.turnosBusca?.length
-          ? oferta.turnosBusca
-          : [{ fecha: '', horario: '' }],
-        fechasDisponibles: oferta.fechasDisponibles?.length
-          ? oferta.fechasDisponibles
-          : [{ fecha: '', horario: '' }],
-      },
-    });
-    setActiveModal('nueva-oferta');
-  }, []);
-
-  const handleTomarOferta = useCallback(
-    async (ofertaId: string) => {
-      const oferta = ofertas.find(o => o.id === ofertaId);
-      if (!oferta || !user?.id) return;
-
-      if (
-        oferta.turnosBusca &&
-        Array.isArray(oferta.turnosBusca) &&
-        oferta.turnosBusca.length > 1
-      ) {
-        setOfertaParaSeleccionar(oferta);
-        setModalSeleccionarTurno(true);
-        return;
-      }
-
-      const res = await fetch(`/api/ofertas/${ofertaId}/tomar`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tomadorId: user.id }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Error al tomar la oferta');
-      }
-      toast.success('¡Oferta tomada! Pendiente de autorización del jefe.');
-      await refetch();
-    },
-    [ofertas, user?.id, refetch]
-  );
-
-  const handleConfirmarSeleccion = useCallback(
-    async (turnoSeleccionado: { fecha: string; horario: string }) => {
-      if (!ofertaParaSeleccionar || !user?.id) return;
-      const res = await fetch(`/api/ofertas/${ofertaParaSeleccionar.id}/tomar`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tomadorId: user.id, turnoSeleccionado }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error);
-      }
-      toast.success('¡Oferta tomada! Pendiente de autorización del jefe.');
-      setModalSeleccionarTurno(false);
-      setOfertaParaSeleccionar(null);
-      await refetch();
-    },
-    [ofertaParaSeleccionar, user?.id, refetch]
-  );
-
-  const tabs: { id: MainTab; label: string; badge?: number; can?: string }[] = [
+  const tabs = [
     {
-      id: 'mis-solicitudes',
+      id: 'mis-solicitudes' as const,
       label: 'Mis solicitudes',
       badge: misOfertas.length + solicitudesEnviadas.filter(s => ['SOLICITADO', 'APROBADO'].includes(s.estado)).length || undefined,
     },
@@ -266,24 +82,15 @@ export default function CambiosTurnosPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: 'Total ofertas', value: statsLocales.total, icon: TrendingUp, color: 'blue' },
-          { label: 'Intercambios', value: statsLocales.busco, icon: RefreshCw, color: 'green' },
-          { label: 'Ofrezco', value: statsLocales.ofrezco, icon: Gift, color: 'purple' },
-          { label: 'Urgentes', value: statsLocales.urgentes, icon: Flame, color: 'red' },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
-              <p className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-0.5">{value}</p>
-            </div>
-            <div className={`w-9 h-9 rounded-full bg-${color}-100 dark:bg-${color}-900/30 flex items-center justify-center`}>
-              <Icon className={`h-5 w-5 text-${color}-600 dark:text-${color}-400`} />
-            </div>
-          </div>
-        ))}
-      </div>
+      <StatsBar
+        totalSinLeer={totalSinLeer}
+        enNegociacionComoOfertante={enNegociacionComoOfertante}
+        enNegociacionComoInteresado={enNegociacionComoInteresado}
+        solicitudesRecibidas={solicitudesRecibidas.length}
+        misOfertas={misOfertas.length}
+        ofertasDisponibles={ofertasDisponibles.length}
+        ofertasUrgentes={ofertasUrgentes}
+      />
 
       {/* Acciones principales */}
       <AccionesPrincipales
