@@ -239,8 +239,8 @@ export async function POST(
           ${turnoDestinatarioObj?.fecha || null},
           ${turnoDestinatarioObj?.horario || null},
           ${turnoDestinatarioObj?.grupoTurno || null},
-          ${'Cambio acordado a través del tablero de ofertas'},
-          ${'NORMAL'},
+          ${oferta.descripcion || 'Cambio acordado a través del tablero de ofertas'},
+          ${oferta.prioridad || 'NORMAL'},
           'APROBADO',
           NOW()
         )
