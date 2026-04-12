@@ -154,38 +154,42 @@ export default function DashboardHome() {
   };
 
   // Estadísticas reales basadas en ofertas y solicitudes
-  // Type guard - ACTUALIZAR para incluir CANCELADO
   type SolicitudDirectaEstado = 'SOLICITADO' | 'APROBADO' | 'RECHAZADO' | 'CANCELADO';
 
-  // Estadísticas reales basadas en ofertas y solicitudes
   const statsReales = useMemo(() => {
 
     const turnosDisponibles = ofertas?.filter(
-      o => o.estado === 'DISPONIBLE' && o.ofertante?.rol === user?.rol).length || 0;
+      o => o.estado === 'DISPONIBLE' && o.ofertante?.rol === user?.rol
+    ).length || 0;
 
+    // Aprobadas donde el usuario es solicitante O destinatario
     const aprobadosDelMes = solicitudes?.filter(sol => {
       const fechaSol = new Date(sol.fechaSolicitud);
       const estado = sol.estado as SolicitudDirectaEstado;
+      const involucraAlUsuario =
+        sol.solicitante.id === user?.id || sol.destinatario.id === user?.id; // 👈
       return (
+        involucraAlUsuario &&
         estado === 'APROBADO' &&
         fechaSol.getFullYear() === monthInfo.year &&
         fechaSol.getMonth() === monthInfo.month
       );
     }).length || 0;
 
+    // Pendientes de autorización del jefe donde el usuario es solicitante
     const pendientesParaMi = solicitudes?.filter(sol => {
       const estado = String(sol.estado).toUpperCase();
-      const coincide = sol.destinatario.id === user?.id;
+      const esSolicitante = sol.solicitante.id === user?.id; // 👈 era destinatario
       const esSolicitado = estado === 'SOLICITADO' || estado === 'PENDIENTE';
-
-      return coincide && esSolicitado;
+      return esSolicitante && esSolicitado;
     }).length || 0;
 
+    // Rechazadas donde el usuario es solicitante
     const rechazadosDelMes = solicitudes?.filter(sol => {
       const fechaSol = new Date(sol.fechaSolicitud);
       const estado = sol.estado as SolicitudDirectaEstado;
       return (
-        sol.solicitante.id === user?.id &&
+        sol.solicitante.id === user?.id && // ya estaba correcto
         (estado === 'RECHAZADO' || estado === 'CANCELADO') &&
         fechaSol.getFullYear() === monthInfo.year &&
         fechaSol.getMonth() === monthInfo.month
@@ -198,7 +202,7 @@ export default function DashboardHome() {
       pendientes: pendientesParaMi,
       rechazados: rechazadosDelMes,
     };
-  }, [ofertas, solicitudes, user, monthInfo]); // ← Asegúrate de tener todas estas dependencias
+  }, [ofertas, solicitudes, user, monthInfo]);
 
   useEffect(() => {
 
@@ -379,105 +383,105 @@ export default function DashboardHome() {
         </div>
       </div>
 
-{/* Sección Principal: Gráfico, Calendario y Próximos Cambios */}
-<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-  {/* Gráfico Circular - Turnos Cubiertos */}
-  <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors">
-    <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Turnos cubiertos del mes</h2>
+      {/* Sección Principal: Gráfico, Calendario y Próximos Cambios */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Gráfico Circular - Turnos Cubiertos */}
+        <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Turnos cubiertos del mes</h2>
 
-    <div className="flex items-center justify-center mb-6">
-      <div className="relative">
-        <svg width="200" height="200" viewBox="0 0 200 200" className="transform -rotate-90">
-          <circle cx="100" cy="100" r="80" fill="none" stroke="#e5e7eb" strokeWidth="20" />
-          <circle
-            cx="100" cy="100" r="80" fill="none" stroke="#3b82f6" strokeWidth="20"
-            strokeDasharray={`${porcentajeCubierto * 5.024} 502.4`}
-            strokeLinecap="round"
-          />
-        </svg>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <p className="text-4xl font-bold text-gray-900 dark:text-gray-100">{porcentajeCubierto}%</p>
-        </div>
-      </div>
-    </div>
-
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-sky-400"></div>
-          <span className="text-sm text-gray-600 dark:text-gray-400">Guardias del mes</span>
-        </div>
-        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{misGuardiasReales}</span>
-      </div>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-blue-600"></div>
-          <span className="text-sm text-gray-600 dark:text-gray-400">Trabajadas (hasta hoy)</span>
-        </div>
-        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{guardiasTrabajadas}</span>
-      </div>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-gray-600"></div>
-          <span className="text-sm text-gray-600 dark:text-gray-400">Me cubrieron</span>
-        </div>
-        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{turnosData?.guardiasQueMeCubrieron || 0}</span>
-      </div>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-red-500"></div>
-          <span className="text-sm text-gray-600 dark:text-gray-400">Faltas (hasta hoy)</span>
-        </div>
-        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{faltasDelMes}</span>
-      </div>
-    </div>
-  </div>
-
-  {/* Calendario */}
-  <div className="lg:col-span-1">
-    <CalendarioTurnos />
-  </div>
-
-  {/* Próximos Cambios */}
-  <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors">
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-      <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">Próximos cambios</h2>
-      <span className="text-sm text-gray-500 dark:text-gray-400">{cambios?.length || 0} cambios</span>
-    </div>
-
-    <div className="space-y-3">
-      {cambios && [...cambios]
-        .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
-        .map((cambio: TipoCambio) => {
-          const { day, month } = formatDate(cambio.fecha);
-          return (
-            <div key={cambio.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 dark:bg-slate-700 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors">
-              <div className="flex flex-col items-center justify-center bg-blue-600 text-white rounded-lg p-2 sm:p-3 min-w-[50px] sm:min-w-[60px] flex-shrink-0">
-                <span className="text-xl sm:text-2xl font-bold">{day}</span>
-                <span className="text-xs uppercase">{month}</span>
-              </div>
-              <div className="flex-1 min-w-0 w-full sm:w-auto">
-                <p className="font-semibold text-gray-900 dark:text-gray-100 truncate text-sm sm:text-base">{cambio.turno}</p>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">{cambio.solicitante}</p>
-              </div>
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-end sm:justify-start">
-                <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${getEstadoColor(cambio.estado)}`}>
-                  {cambio.estado}
-                </span>
+          <div className="flex items-center justify-center mb-6">
+            <div className="relative">
+              <svg width="200" height="200" viewBox="0 0 200 200" className="transform -rotate-90">
+                <circle cx="100" cy="100" r="80" fill="none" stroke="#e5e7eb" strokeWidth="20" />
+                <circle
+                  cx="100" cy="100" r="80" fill="none" stroke="#3b82f6" strokeWidth="20"
+                  strokeDasharray={`${porcentajeCubierto * 5.024} 502.4`}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <p className="text-4xl font-bold text-gray-900 dark:text-gray-100">{porcentajeCubierto}%</p>
               </div>
             </div>
-          );
-        })}
-    </div>
+          </div>
 
-    {cambios && cambios.length === 0 && (
-      <div className="text-center py-8 sm:py-12">
-        <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-3" />
-        <p className="text-gray-600 text-sm sm:text-base">No hay cambios próximos</p>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-sky-400"></div>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Guardias del mes</span>
+              </div>
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{misGuardiasReales}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-blue-600"></div>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Trabajadas (hasta hoy)</span>
+              </div>
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{guardiasTrabajadas}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-gray-600"></div>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Me cubrieron</span>
+              </div>
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{turnosData?.guardiasQueMeCubrieron || 0}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Faltas (hasta hoy)</span>
+              </div>
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{faltasDelMes}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Calendario */}
+        <div className="lg:col-span-1">
+          <CalendarioTurnos />
+        </div>
+
+        {/* Próximos Cambios */}
+        <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">Próximos cambios</h2>
+            <span className="text-sm text-gray-500 dark:text-gray-400">{cambios?.length || 0} cambios</span>
+          </div>
+
+          <div className="space-y-3">
+            {cambios && [...cambios]
+              .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
+              .map((cambio: TipoCambio) => {
+                const { day, month } = formatDate(cambio.fecha);
+                return (
+                  <div key={cambio.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 dark:bg-slate-700 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors">
+                    <div className="flex flex-col items-center justify-center bg-blue-600 text-white rounded-lg p-2 sm:p-3 min-w-[50px] sm:min-w-[60px] flex-shrink-0">
+                      <span className="text-xl sm:text-2xl font-bold">{day}</span>
+                      <span className="text-xs uppercase">{month}</span>
+                    </div>
+                    <div className="flex-1 min-w-0 w-full sm:w-auto">
+                      <p className="font-semibold text-gray-900 dark:text-gray-100 truncate text-sm sm:text-base">{cambio.turno}</p>
+                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">{cambio.solicitante}</p>
+                    </div>
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end sm:justify-start">
+                      <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${getEstadoColor(cambio.estado)}`}>
+                        {cambio.estado}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+
+          {cambios && cambios.length === 0 && (
+            <div className="text-center py-8 sm:py-12">
+              <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-gray-600 text-sm sm:text-base">No hay cambios próximos</p>
+            </div>
+          )}
+        </div>
       </div>
-    )}
-  </div>
-</div>
 
       {/* Sección de Estadísticas Rápidas */}
       <div className="mt-6 bg-gradient-to-r from-blue-600 to-blue-700 p-6 rounded-lg shadow-sm text-white">
