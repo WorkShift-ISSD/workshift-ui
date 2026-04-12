@@ -7,12 +7,14 @@ import { useOfertas, NuevaOfertaForm, Oferta } from '@/hooks/useOfertas';
 import { useSolicitudesDirectas, SolicitudDirectaForm } from '@/hooks/useSolicitudesDirectas';
 import { useConversaciones } from '@/hooks/useConversaciones';
 import type { SolicitudDirecta } from '@/app/api/types';
+import { useFormatters } from '@/hooks/useFormatters';
 
 type ModalTipo = 'solicitud-directa' | 'nueva-oferta' | null;
 export type MainTab = 'mis-solicitudes' | 'historico' | 'recibidas' | 'ofertas-disponibles';
 
 export function useCambiosPage() {
     const { user } = useAuth();
+    const { formatDate } = useFormatters();
 
     const {
         ofertas,
@@ -194,7 +196,7 @@ export function useCambiosPage() {
                     body: JSON.stringify({
                         ofertaId: ofertaParaSeleccionar.id,
                         receptorId: ofertaParaSeleccionar.ofertante.id,
-                        contenido: `Hola, me interesa cubrir tu turno del ${turnoSeleccionado.fecha}`,
+                        contenido: `Hola, me interesa cubrir tu turno del ${formatDate(turnoSeleccionado.fecha)}`,
                     }),
                 });
                 setOfertaChatId(ofertaParaSeleccionar.id);
@@ -248,7 +250,7 @@ export function useCambiosPage() {
             body: JSON.stringify({
                 ofertaId: id,
                 receptorId: oferta.ofertante.id,
-                contenido: `Hola, me interesa tu oferta del ${fechaDirecta || ''}`,
+                contenido: `Hola, me interesa tu oferta del ${formatDate(fechaDirecta || '')}`,
             }),
         });
         setOfertaChatId(id);
