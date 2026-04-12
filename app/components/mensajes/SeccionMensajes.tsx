@@ -32,7 +32,7 @@ interface Props {
 export function SeccionMensajes({ ofertaAbrirId, turnoSeleccionadoChatRef, onChatAbierto }: Props) {
     const { user } = useAuth();
     const { conversaciones, isLoading, recargar } = useConversaciones();
-    const { formatTimeAgo, formatDate } = useFormatters();
+    const { formatTimeAgo } = useFormatters();
 
     const [tabActivo, setTabActivo] = useState<TabMensajes>('activos');
     const [pagina, setPagina] = useState(1);
@@ -283,7 +283,7 @@ export function SeccionMensajes({ ofertaAbrirId, turnoSeleccionadoChatRef, onCha
                                         </div>
                                         <div className="flex items-center justify-between">
                                             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                                {conv.ultimoMensaje?.replace(/\d{4}-\d{2}-\d{2}/g, (fecha) => formatDate(fecha))}
+                                                {conv.ultimoMensaje}
                                             </p>
                                             {conv.sinLeer > 0 && (
                                                 <span className="ml-2 px-1.5 py-0.5 bg-blue-600 text-white rounded-full text-xs flex-shrink-0">
@@ -309,9 +309,9 @@ export function SeccionMensajes({ ofertaAbrirId, turnoSeleccionadoChatRef, onCha
                                         {/* Info de la oferta */}
                                         <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700/50 text-xs text-gray-500 dark:text-gray-400">
                                             {conv.turnoOfrece
-                                                ? `Oferta: ${formatDate(conv.turnoOfrece.fecha)} · ${conv.turnoOfrece.horario}`
+                                                ? `Oferta: ${conv.turnoOfrece.fecha} · ${conv.turnoOfrece.horario}`
                                                 : conv.fechasDisponibles?.length
-                                                    ? `Cobertura: ${conv.fechasDisponibles.map(f => formatDate(f.fecha)).join(', ')}`
+                                                    ? `Cobertura: ${conv.fechasDisponibles.map(f => f.fecha).join(', ')}`
                                                     : 'Oferta'}
                                         </div>
 
@@ -332,7 +332,7 @@ export function SeccionMensajes({ ofertaAbrirId, turnoSeleccionadoChatRef, onCha
                                                                 ? 'bg-blue-600 text-white rounded-br-sm'
                                                                 : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-bl-sm'
                                                                 }`}>
-                                                                <p>{msg.contenido.replace(/\d{4}-\d{2}-\d{2}/g, (fecha) => formatDate(fecha))}</p>
+                                                                <p>{msg.contenido}</p>
                                                                 <div className={`flex items-center gap-1 mt-0.5 ${esMio ? 'justify-end' : 'justify-start'}`}>
                                                                     <span className={`text-[10px] ${esMio ? 'text-blue-200' : 'text-gray-400'}`}>
                                                                         {new Date(msg.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
