@@ -35,14 +35,14 @@ export async function GET(request: NextRequest) {
       const solicitudes = await sql`
         SELECT 
           sd.id, sd.estado, sd.motivo, sd.prioridad, sd.fecha_solicitud,
-          sd.turno_solicitante, sd.turno_destinatario,
+          sd.turno_solicitante, sd.turno_destinatario, sd.origen,
           json_build_object('id', us.id, 'nombre', us.nombre, 'apellido', us.apellido, 'rol', us.rol, 'horario', us.horario) as solicitante,
           json_build_object('id', ud.id, 'nombre', ud.nombre, 'apellido', ud.apellido, 'rol', ud.rol, 'horario', ud.horario) as destinatario
         FROM solicitudes_directas sd
         JOIN users us ON sd.solicitante_id = us.id
         JOIN users ud ON sd.destinatario_id = ud.id
         WHERE sd.solicitante_id = ${userId}::uuid 
-           OR sd.destinatario_id = ${userId}::uuid
+            OR sd.destinatario_id = ${userId}::uuid
         ORDER BY sd.fecha_solicitud DESC;
       `;
 
@@ -52,6 +52,7 @@ export async function GET(request: NextRequest) {
         solicitante: s.solicitante, destinatario: s.destinatario,
         turnoSolicitante: typeof s.turno_solicitante === 'string' ? JSON.parse(s.turno_solicitante) : s.turno_solicitante,
         turnoDestinatario: typeof s.turno_destinatario === 'string' ? JSON.parse(s.turno_destinatario) : s.turno_destinatario,
+        origen: s.origen, 
       })));
     }
 
@@ -97,6 +98,7 @@ export async function GET(request: NextRequest) {
           sd.fecha_solicitud,
           sd.turno_solicitante,
           sd.turno_destinatario,
+          sd.origen,
           json_build_object(
             'id', us.id,
             'nombre', us.nombre,
@@ -134,6 +136,7 @@ export async function GET(request: NextRequest) {
         JSON.parse(s.turno_solicitante) : s.turno_solicitante,
       turnoDestinatario: typeof s.turno_destinatario === 'string' ?
         JSON.parse(s.turno_destinatario) : s.turno_destinatario,
+        origen: s.origen,
     }));
 
     return NextResponse.json(solicitudesFormateadas);
@@ -281,6 +284,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Verificar si ya hay una autorización pendiente para esa fecha
+    console.log('Verificando autorizacion pendiente para:', fechaSolicitante, 'solicitanteId:', solicitanteId);
+    const [autorizacionPendiente] = await sql`
+  SELECT 1 FROM autorizaciones a
+  JOIN solicitudes_directas sd ON a.solicitud_id = sd.id
+  WHERE a.estado = 'PENDIENTE'
+  AND (
+    (sd.solicitante_id = ${solicitanteId}::uuid AND sd.fecha_solicitante = ${fechaSolicitante}::date)
+    OR
+    (sd.destinatario_id = ${solicitanteId}::uuid AND sd.fecha_destinatario = ${fechaDestinatario}::date)
+    OR
+    (sd.destinatario_id = ${solicitanteId}::uuid AND sd.fecha_destinatario IS NULL AND sd.fecha_solicitante = ${fechaSolicitante}::date)
+  )
+  LIMIT 1;
+`;
+    console.log('resultado:', autorizacionPendiente);
+    if (autorizacionPendiente) {
+      return NextResponse.json(
+        { error: 'Ya tenés una autorización pendiente para esa fecha' },
+        { status: 400 }
+      );
+    }
 
     // Validar campos obligatorios — fechaDestinatario es opcional (cobertura)
     const camposFaltantes = [];
@@ -446,7 +471,7 @@ export async function POST(request: NextRequest) {
         rol: destinatario.rol
       },
       turnoSolicitante,
-      turnoDestinatario
+      turnoDestinatario,
     };
 
     return NextResponse.json(

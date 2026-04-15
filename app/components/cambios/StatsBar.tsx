@@ -30,8 +30,7 @@ export function StatsBar({
                     <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{totalSinLeer}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Mensajes sin leer</p>
                 </div>
-                <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                    <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center relative">                    <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     {totalSinLeer > 0 && (
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center font-bold">
                             {totalSinLeer > 9 ? '9+' : totalSinLeer}

@@ -38,10 +38,12 @@ export async function GET() {
           'id', ui.id,
           'nombre', ui.nombre,
           'apellido', ui.apellido
-        ) as destinatario
+        ) as destinatario,
+        a.updated_at as fecha_aprobacion
       FROM turnos_efectivos te
       JOIN users us ON te.empleado_id = us.id
       LEFT JOIN users ui ON te.empleado_intercambio_id = ui.id
+      LEFT JOIN autorizaciones a ON a.solicitud_id = te.autorizacion_id
       WHERE te.empleado_id = ${userId}::uuid
       ORDER BY te.fecha ASC;
     `;
@@ -50,9 +52,12 @@ export async function GET() {
       id: c.id,
       fecha: c.fecha,
       turno: c.turno,
-      solicitante: `Cubrís a ${c.destinatario.nombre} ${c.destinatario.apellido}`,
-      destinatario: '',
       estado: c.estado,
+      tipoCambio: c.tipo_cambio,
+      createdAt: c.created_at,
+      fechaAprobacion: c.fecha_aprobacion,
+      solicitante: c.solicitante,
+      destinatario: c.destinatario?.id ? c.destinatario : null,
     })));
 
   } catch (error) {
