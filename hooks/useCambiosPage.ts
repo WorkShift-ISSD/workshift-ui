@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useAuth } from '@/app/context/AuthContext';
 import { useOfertas, NuevaOfertaForm, Oferta } from '@/hooks/useOfertas';
@@ -16,7 +16,6 @@ export function useCambiosPage() {
 
     const {
         ofertas,
-        stats,
         agregarOferta,
         actualizarEstado: actualizarEstadoOferta,
         refetch,
@@ -29,7 +28,7 @@ export function useCambiosPage() {
         actualizarSolicitud,
     } = useSolicitudesDirectas();
 
-    const { conversaciones } = useConversaciones();
+    const { conversaciones, recargar: recargarConversaciones } = useConversaciones();
 
     // Estados UI
     const [activeModal, setActiveModal] = useState<ModalTipo>(null);
@@ -254,7 +253,6 @@ export function useCambiosPage() {
         setOfertaChatId(id);
     }, [ofertas, user]);
 
-
     return {
         user,
         ofertas,
@@ -285,5 +283,6 @@ export function useCambiosPage() {
         handleMeInteresa,
         actualizarEstadoOferta,
         actualizarEstado,
+        recargarConversaciones,
     };
 }

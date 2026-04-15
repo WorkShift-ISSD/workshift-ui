@@ -3,10 +3,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/app/lib/postgres';
 import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
+import Pusher from 'pusher';
 
 const SECRET_KEY = new TextEncoder().encode(
   process.env.JWT_SECRET || 'Workshift25'
 );
+
+const pusher = new Pusher({
+  appId: process.env.PUSHER_APP_ID!,
+  key: process.env.PUSHER_KEY!,
+  secret: process.env.PUSHER_SECRET!,
+  cluster: process.env.PUSHER_CLUSTER!,
+  useTLS: true,
+});
 
 export async function POST(
   request: NextRequest,
@@ -15,7 +24,7 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { turnoSeleccionado } = body; // Opcional — solo para intercambios
+    const { turnoSeleccionado, cancelarOferta } = body;
 
     // Verificar autenticación
     const cookieStore = await cookies();
@@ -95,7 +104,18 @@ export async function POST(
         ? JSON.parse(oferta.turno_ofrece)
         : oferta.turno_ofrece)
       : null;
-    const fechaTurnoOfertante = turnoOfertanteRaw?.fecha || hoy;
+
+    // Para cobertura, la fecha viene del turnoSeleccionado o de fechas_disponibles
+    const fechaDisponibles = oferta.fechas_disponibles
+      ? (typeof oferta.fechas_disponibles === 'string'
+        ? JSON.parse(oferta.fechas_disponibles)
+        : oferta.fechas_disponibles)
+      : null;
+
+    const fechaTurnoOfertante = turnoOfertanteRaw?.fecha
+      || turnoSeleccionado?.fecha
+      || fechaDisponibles?.[0]?.fecha
+      || hoy;
 
     // Fecha que ofrece el tomador a cambio (solo en intercambio)
     const fechaTurnoTomador = turnoSeleccionado?.fecha || null;
@@ -134,9 +154,43 @@ export async function POST(
       }
     }
 
+    // 3. Para cobertura: validar sanción/licencia en la fecha que va a cubrir
+    const esCobertura = oferta.modalidad_busqueda === 'ABIERTO';
+    if (esCobertura) {
+      const fechaCobertura = turnoSeleccionado?.fecha || fechaTurnoOfertante;
+
+      const [sancionTomadorEnFecha] = await sql`
+    SELECT 1 FROM sanciones
+    WHERE empleado_id = ${tomadorId}::uuid
+      AND estado = 'ACTIVA'
+      AND ${fechaCobertura}::date BETWEEN fecha_desde AND fecha_hasta
+    LIMIT 1;
+  `;
+      if (sancionTomadorEnFecha) {
+        return NextResponse.json(
+          { error: 'El compañero tiene una sanción para ese día y no puede cubrir ese turno' },
+          { status: 400 }
+        );
+      }
+
+      const [licenciaTomadorEnFecha] = await sql`
+    SELECT 1 FROM licencias
+    WHERE empleado_id = ${tomadorId}::uuid
+      AND estado IN ('APROBADA', 'ACTIVA')
+      AND ${fechaCobertura}::date BETWEEN fecha_desde AND fecha_hasta
+    LIMIT 1;
+  `;
+      if (licenciaTomadorEnFecha) {
+        return NextResponse.json(
+          { error: 'El compañero tiene una licencia para ese día y no puede cubrir ese turno' },
+          { status: 400 }
+        );
+      }
+    }
+
     // ── Validaciones del OFERTANTE ────────────────────────────────────────
 
-    // 3. Sanción en la fecha de su turno
+    // 4. Sanción en la fecha de su turno
     const [sancionOfertante] = await sql`
       SELECT 1 FROM sanciones
       WHERE empleado_id = ${oferta.ofertante_id}::uuid
@@ -151,7 +205,7 @@ export async function POST(
       );
     }
 
-    // 4. Licencia en la fecha de su turno
+    // 5. Licencia en la fecha de su turno
     const [licenciaOfertante] = await sql`
       SELECT 1 FROM licencias
       WHERE empleado_id = ${oferta.ofertante_id}::uuid
@@ -185,7 +239,7 @@ export async function POST(
       horario: turnoSeleccionado.horario || tomador.horario,
       grupoTurno: tomador.grupo_turno
     } : {
-      fecha: fechaTurnoOfertante, // el día que va a cubrir
+      fecha: fechaTurnoOfertante,
       horario: tomador.horario,
       grupoTurno: tomador.grupo_turno
     };
@@ -199,14 +253,85 @@ export async function POST(
 
     // ── Marcar oferta como COMPLETADO ─────────────────────────────────────
 
-    await sql`
-      UPDATE ofertas 
-      SET 
-        tomador_id = ${tomadorId},
-        estado = 'COMPLETADO',
+    if (cancelarOferta) {
+      // Cancelar la oferta completa
+      await sql`
+        UPDATE ofertas 
+        SET 
+          tomador_id = ${tomadorId},
+          estado = 'COMPLETADO',
+          updated_at = NOW()
+        WHERE id = ${id};
+      `;
+
+      // Limpiar fechas_disponibles cuando se completa la oferta
+      await sql`
+        UPDATE ofertas 
+        SET fechas_disponibles = NULL
+        WHERE id = ${id};
+      `;
+
+      // Marcar todas las conversaciones de la oferta como CANCELADA (excepto la del aceptado que va como ACEPTADA)
+      await sql`
+        UPDATE conversaciones
+        SET estado = CASE 
+          WHEN participante_id = ${tomadorId}::uuid 
+            OR (participante_id = ${oferta.ofertante_id}::uuid AND otro_participante_id = ${tomadorId}::uuid)
+          THEN 'ACEPTADA'
+          ELSE 'CANCELADA'
+        END,
+        visto = false,
         updated_at = NOW()
-      WHERE id = ${id};
-    `;
+        WHERE oferta_id = ${id}::uuid;
+      `;
+
+      // Notificar a todos los participantes que el estado cambió
+      await pusher.trigger(
+        `usuario-${oferta.ofertante_id}`,
+        'conversacion-actualizada',
+        { ofertaId: id }
+      );
+
+    } else {
+      // Mantener oferta activa pero sacar la fecha aceptada de fechasDisponibles
+      const fechaAceptada = turnoSeleccionado?.fecha;
+      await sql`
+  UPDATE ofertas 
+  SET 
+    fechas_disponibles = (
+      SELECT jsonb_agg(f)
+      FROM jsonb_array_elements(
+        CASE 
+          WHEN jsonb_typeof(fechas_disponibles::jsonb) = 'array' 
+          THEN fechas_disponibles::jsonb
+          ELSE (fechas_disponibles#>>'{}')::jsonb
+        END
+      ) f
+      WHERE f->>'fecha' != ${fechaAceptada}
+    ),
+    updated_at = NOW()
+  WHERE id = ${id};
+`;
+      // Marcar conversación del tomador y del ofertante como ACEPTADA
+      await sql`
+        UPDATE conversaciones
+        SET estado = 'ACEPTADA', updated_at = NOW(), visto = false
+        WHERE oferta_id = ${id}::uuid
+    AND (
+      (participante_id = ${tomadorId}::uuid)
+      OR
+      (participante_id = ${oferta.ofertante_id}::uuid AND otro_participante_id = ${tomadorId}::uuid)
+    );
+`;
+
+    }
+
+    // Notificar al tomador que fue aceptado
+    await pusher.trigger(
+      `usuario-${tomadorId}`,
+      'oferta-completada',
+      { ofertaId: id }
+    );
 
     // ── Crear solicitud directa entre tomador y ofertante ─────────────────
     // Estado APROBADO porque ambos ya acordaron — va directo al jefe
@@ -224,7 +349,9 @@ export async function POST(
           fecha_destinatario,
           horario_destinatario,
           grupo_destinatario,
+          oferta_id,
           motivo,
+          origen,
           prioridad,
           estado,
           fecha_solicitud
@@ -239,7 +366,9 @@ export async function POST(
           ${turnoDestinatarioObj?.fecha || null},
           ${turnoDestinatarioObj?.horario || null},
           ${turnoDestinatarioObj?.grupoTurno || null},
+          ${id}::uuid,
           ${oferta.descripcion || 'Cambio acordado a través del tablero de ofertas'},
+          'TABLERO',
           ${oferta.prioridad || 'NORMAL'},
           'APROBADO',
           NOW()
@@ -264,6 +393,44 @@ export async function POST(
 
     } catch (solicitudError) {
       console.error('❌ Error creando solicitud directa:', solicitudError);
+
+      // Notificar a los otros interesados que la oferta fue tomada
+      const otrosInteresados = await sql`
+  SELECT DISTINCT 
+    CASE WHEN emisor_id = ${oferta.ofertante_id}::uuid THEN receptor_id ELSE emisor_id END as interesado_id
+  FROM mensajes
+  WHERE oferta_id = ${id}::uuid
+    AND emisor_id != ${oferta.ofertante_id}::uuid
+    AND receptor_id != ${tomadorId}::uuid
+    AND emisor_id != ${tomadorId}::uuid;
+`;
+
+      for (const otro of otrosInteresados) {
+        // Insertar mensaje automático
+        await sql`
+    INSERT INTO mensajes (oferta_id, emisor_id, receptor_id, contenido)
+    VALUES (
+      ${id}::uuid,
+      ${oferta.ofertante_id}::uuid,
+      ${otro.interesado_id}::uuid,
+      'El ofertante ya acordó con otra persona. Esta conversación está cerrada.'
+    );
+  `;
+
+        // Notificar por Pusher
+        await pusher.trigger(
+          `oferta-${id}`,
+          'nuevo-mensaje',
+          {
+            id: 'auto',
+            contenido: 'El ofertante ya acordó con otra persona. Esta conversación está cerrada.',
+            leido: false,
+            created_at: new Date().toISOString(),
+            emisor: { id: oferta.ofertante_id, nombre: 'Sistema', apellido: '' }
+          }
+        );
+      }
+
 
       // Revertir la oferta si falla
       await sql`

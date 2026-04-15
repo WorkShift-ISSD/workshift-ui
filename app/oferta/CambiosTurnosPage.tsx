@@ -49,6 +49,7 @@ export default function CambiosTurnosPage() {
     handleMeInteresa,
     actualizarEstadoOferta,
     actualizarEstado,
+    recargarConversaciones,
   } = useCambiosPage();
 
   const tabs = [
@@ -194,9 +195,10 @@ export default function CambiosTurnosPage() {
 
       {/* Mensajes */}
       <SeccionMensajes
+        onNuevoMensaje={recargarConversaciones}
         ofertaAbrirId={ofertaChatId}
-        turnoSeleccionadoChatRef={turnoSeleccionadoChatRef}
         onChatAbierto={() => setOfertaChatId(null)}
+        onMensajesLeidos={recargarConversaciones}
       />
     </div>
   );
