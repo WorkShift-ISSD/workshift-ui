@@ -10,7 +10,10 @@ export interface OtroParticipante {
 }
 
 export interface Conversacion {
-    id: string; // oferta_id
+    id: string;
+    ofertaId: string; 
+    ofertanteId: string;
+    conversacionEstado: string;
     ofertaEstado: string;
     ofertaTipo: string;
     modalidadBusqueda: string;
@@ -20,6 +23,8 @@ export interface Conversacion {
     ultimoMensajeAt: string;
     sinLeer: number;
     otroParticipante: OtroParticipante;
+    visto: boolean;
+    ultimoMensajeMioLeido: boolean | null;
 }
 
 export function useConversaciones() {
