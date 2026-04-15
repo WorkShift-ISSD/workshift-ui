@@ -26,7 +26,7 @@ export const users = [
     rol: 'INSPECTOR',
     telefono: '+54 11 5555-6666',
     direccion: 'Calle Falsa 123, Buenos Aires',
-    horario: '14:00-22:00',
+    horario: '13:00-22:00',
     fechaNacimiento: '1985-03-20',
     activo: true,
     grupoTurno: 'B'
@@ -41,7 +41,7 @@ export const users = [
     rol: 'SUPERVISOR',
     telefono: '+54 11 6666-7777',
     direccion: 'Av. Santa Fe 4567, Buenos Aires',
-    horario: '06:00-14:00',
+    horario: '05:00-14:00',
     fechaNacimiento: '1988-11-10',
     activo: true,
     grupoTurno: 'A'
