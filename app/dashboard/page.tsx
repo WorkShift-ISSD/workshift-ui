@@ -31,7 +31,7 @@ import CalendarioTurnos from '@/app/components/CalendarioTurnos';
 
 
 export default function DashboardHome() {
-  const { user } = useAuth();
+  const userName = 'Emanuel';
 
   // Hooks SWR
   const {
@@ -63,6 +63,8 @@ export default function DashboardHome() {
     destinatario: '',
     estado: 'PENDIENTE' as 'PENDIENTE' | 'APROBADO' | 'RECHAZADO'
   });
+
+  const { user } = useAuth();
 
   // Información del mes actual
   const monthInfo = useMemo(() => {
@@ -165,7 +167,7 @@ export default function DashboardHome() {
       const fechaSol = new Date(sol.fechaSolicitud);
       const estado = sol.estado as SolicitudDirectaEstado;
       const involucraAlUsuario =
-        sol.solicitante.id === user?.id || sol.destinatario.id === user?.id;
+        sol.solicitante.id === user?.id || sol.destinatario.id === user?.id; // 👈
       return (
         involucraAlUsuario &&
         estado === 'APROBADO' &&
@@ -177,7 +179,7 @@ export default function DashboardHome() {
     // Pendientes de autorización del jefe donde el usuario es solicitante
     const pendientesParaMi = solicitudes?.filter(sol => {
       const estado = String(sol.estado).toUpperCase();
-      const esSolicitante = sol.solicitante.id === user?.id;
+      const esSolicitante = sol.solicitante.id === user?.id; // 👈 era destinatario
       const esSolicitado = estado === 'SOLICITADO' || estado === 'PENDIENTE';
       return esSolicitante && esSolicitado;
     }).length || 0;
@@ -322,280 +324,175 @@ export default function DashboardHome() {
         </button> */}
       </div>
 
-      {/* GRID PRINCIPAL */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Turnos en Oferta */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
+              <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            <span className="text-sm text-gray-500 dark:text-gray-400">En oferta</span>
+          </div>
+          <p className="text-3xl font-bold text-blue-400 dark:text-blue-400">
+            {statsReales.turnosOferta}
+          </p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Turnos disponibles</p>
+        </div>
 
-        {/* ================= IZQUIERDA (2/3) ================= */}
-        <div className="xl:col-span-2 space-y-6">
+        {/* Aprobados */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
+              <CheckCircle className="h-6 w-6 text-green-500" />
+            </div>
+            <span className="text-sm text-gray-500">Este mes</span>
+          </div>
+          <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+            {statsReales.aprobados}
+          </p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes aprobadas</p>
+        </div>
 
-          {/* ===== FILA 1: Mi Semana + Calendario ===== */}
-          <div className="bg-white dark:bg-gray-800 p-3 rounded-xl shadow border space-y-6">
+        {/* Pendientes */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
+              <Clock className="h-6 w-6 text-yellow-500" />
+            </div>
+            <span className="text-sm text-gray-500">Para ti</span>
+          </div>
+          <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
+            {statsReales.pendientes}
+          </p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes pendientes</p>
+        </div>
 
-            {/* Mi Semana */}
-            <div>
-              <h2 className="text-lg font-semibold mb-3">Mi Semana</h2>
-              <div className="grid grid-cols-5 gap-2 text-center text-sm">
-                {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sab', 'Dom'].map((d, i) => (
-                  <div key={i} className="p-2 rounded bg-gray-100 dark:bg-gray-700">
-                    {d}
+        {/* Rechazados */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-red-100 dark:bg-red-900 rounded-lg">
+              <XCircle className="h-6 w-6 text-red-500" />
+            </div>
+            <span className="text-sm text-gray-500">Este mes</span>
+          </div>
+          <p className="text-3xl font-bold text-red-600 dark:text-red-400">
+            {statsReales.rechazados}
+          </p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes rechazadas</p>
+        </div>
+      </div>
+
+      {/* Sección Principal: Gráfico, Calendario y Próximos Cambios */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Gráfico Circular - Turnos Cubiertos */}
+        <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Turnos cubiertos del mes</h2>
+
+          <div className="flex items-center justify-center mb-6">
+            <div className="relative">
+              <svg width="200" height="200" viewBox="0 0 200 200" className="transform -rotate-90">
+                <circle cx="100" cy="100" r="80" fill="none" stroke="#e5e7eb" strokeWidth="20" />
+                <circle
+                  cx="100" cy="100" r="80" fill="none" stroke="#3b82f6" strokeWidth="20"
+                  strokeDasharray={`${porcentajeCubierto * 5.024} 502.4`}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <p className="text-4xl font-bold text-gray-900 dark:text-gray-100">{porcentajeCubierto}%</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-sky-400"></div>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Guardias del mes</span>
+              </div>
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{misGuardiasReales}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-blue-600"></div>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Trabajadas (hasta hoy)</span>
+              </div>
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{guardiasTrabajadas}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-gray-600"></div>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Me cubrieron</span>
+              </div>
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{turnosData?.guardiasQueMeCubrieron || 0}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Faltas (hasta hoy)</span>
+              </div>
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{faltasDelMes}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Calendario */}
+        <div className="lg:col-span-1">
+          <CalendarioTurnos />
+        </div>
+
+        {/* Próximos Cambios */}
+        <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">Próximos cambios</h2>
+            <span className="text-sm text-gray-500 dark:text-gray-400">{cambios?.length || 0} cambios</span>
+          </div>
+
+          <div className="space-y-3">
+            {cambios && [...cambios]
+              .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
+              .map((cambio: TipoCambio) => {
+                const { day, month } = formatDate(cambio.fecha);
+                return (
+                  <div key={cambio.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 dark:bg-slate-700 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors">
+                    <div className="flex flex-col items-center justify-center bg-blue-600 text-white rounded-lg p-2 sm:p-3 min-w-[50px] sm:min-w-[60px] flex-shrink-0">
+                      <span className="text-xl sm:text-2xl font-bold">{day}</span>
+                      <span className="text-xs uppercase">{month}</span>
+                    </div>
+                    <div className="flex-1 min-w-0 w-full sm:w-auto">
+                      <p className="font-semibold text-gray-900 dark:text-gray-100 truncate text-sm sm:text-base">{cambio.turno}</p>
+                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">{cambio.solicitante}</p>
+                    </div>
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end sm:justify-start">
+                      <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${getEstadoColor(cambio.estado)}`}>
+                        {cambio.estado}
+                      </span>
+                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Calendario */}
-            <div className="max-w-[720px] mx-auto">
-              <CalendarioTurnos />
-            </div>
-
+                );
+              })}
           </div>
 
-          {/* ===== FILA 2: 2 columnas ===== */}
-          <div className="grid md:grid-cols-2 gap-6">
-
-            {/* Mis Intercambios */}
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border">
-              <h2 className="text-lg font-semibold mb-4">Mis intercambios</h2>
-
-              {cambios?.slice(0, 3).map(c => (
-                <div key={c.id} className="mb-3 text-sm">
-                  <p className="font-medium">{c.turno}</p>
-                  <p className="text-xs text-gray-500">{c.solicitante}</p>
-                  <span className={`text-xs px-2 py-1 rounded ${getEstadoColor(c.estado)}`}>
-                    {c.estado}
-                  </span>
-                </div>
-              ))}
+          {cambios && cambios.length === 0 && (
+            <div className="text-center py-8 sm:py-12">
+              <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-gray-600 text-sm sm:text-base">No hay cambios próximos</p>
             </div>
-
-            {/* Solicitudes */}
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border">
-              <h2 className="text-lg font-semibold mb-4">Solicitudes</h2>
-
-              {solicitudes?.slice(0, 2).map(s => (
-                <div key={s.id} className="mb-3 text-sm">
-                  {s.solicitante.nombre} quiere tu turno
-                </div>
-              ))}
-
-              <div className="flex gap-2 mt-4">
-                <button className="flex-1 bg-green-500 text-white py-1 rounded">
-                  Aceptar
-                </button>
-                <button className="flex-1 bg-red-500 text-white py-1 rounded">
-                  Rechazar
-                </button>
-              </div>
-            </div>
-
-          </div>
-
+          )}
         </div>
-
-        {/* ================= DERECHA (1/3) ================= */}
-        <div className="xl:col-span-1 space-y-6">
-
-          {/* Turnos cubiertos */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border border-gray-200 dark:border-gray-700">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              Turnos cubiertos del mes
-            </h2>
-
-            {/* gráfico */}
-            <div className="flex items-center justify-center mb-6">
-              <div className="relative">
-                <svg width="180" height="180" viewBox="0 0 200 200" className="transform -rotate-90">
-                  <circle cx="100" cy="100" r="80" fill="none" stroke="#e5e7eb" strokeWidth="20" />
-                  <circle
-                    cx="100"
-                    cy="100"
-                    r="80"
-                    fill="none"
-                    stroke="#3b82f6"
-                    strokeWidth="20"
-                    strokeDasharray={`${porcentajeCubierto * 5.024} 502.4`}
-                    strokeLinecap="round"
-                  />
-                </svg>
-
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                    {porcentajeCubierto}%
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">Guardias del mes</span>
-                <span className="font-semibold text-gray-900 dark:text-gray-100">{misGuardiasReales}</span>
-              </div>
-
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">Trabajadas (hasta hoy)</span>
-                <span className="font-semibold text-gray-900 dark:text-gray-100">{guardiasTrabajadas}</span>
-              </div>
-
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">Me cubrieron</span>
-                <span className="font-semibold text-gray-900 dark:text-gray-100">
-                  {turnosData?.guardiasQueMeCubrieron || 0}
-                </span>
-              </div>
-
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">Faltas (hasta hoy)</span>
-                <span className="font-semibold text-gray-900 dark:text-gray-100">{faltasDelMes}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Próximos cambios */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border border-gray-200 dark:border-gray-700">
-
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                Próximos cambios
-              </h2>
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                {cambios?.length || 0} cambios
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              {cambios && cambios.length > 0 ? (
-                [...cambios]
-                  .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
-                  .slice(0, 3)
-                  .map((cambio: TipoCambio) => {
-                    const { day, month } = formatDate(cambio.fecha);
-                    return (
-                      <div key={cambio.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-700 rounded-lg">
-                        <div className="bg-blue-600 text-white rounded-lg p-2 text-center min-w-[50px]">
-                          <span className="text-lg font-bold">{day}</span>
-                          <span className="text-xs uppercase">{month}</span>
-                        </div>
-
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                            {cambio.turno}
-                          </p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">
-                            {cambio.solicitante}
-                          </p>
-                        </div>
-
-                        <span className={`text-xs px-2 py-1 rounded ${getEstadoColor(cambio.estado)}`}>
-                          {cambio.estado}
-                        </span>
-                      </div>
-                    );
-                  })
-              ) : (
-                <div className="text-center py-8">
-                  <AlertCircle className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-600 dark:text-gray-400">
-                    No hay cambios próximos
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Stats Cards (versión original adaptada) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-            {/* Turnos en Oferta */}
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
-              <div className="flex items-center justify-between mb-2">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                  <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <span className="text-xs text-gray-500 dark:text-gray-400">En oferta</span>
-              </div>
-
-              <p className="text-2xl font-bold text-blue-400 dark:text-blue-400">
-                {statsReales.turnosOferta}
-              </p>
-
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                Turnos disponibles
-              </p>
-            </div>
-
-            {/* Aprobados */}
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
-              <div className="flex items-center justify-between mb-2">
-                <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                </div>
-                <span className="text-xs text-gray-500">Este mes</span>
-              </div>
-
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {statsReales.aprobados}
-              </p>
-
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                Solicitudes aprobadas
-              </p>
-            </div>
-
-            {/* Pendientes */}
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
-              <div className="flex items-center justify-between mb-2">
-                <div className="p-2 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
-                  <Clock className="h-5 w-5 text-yellow-500" />
-                </div>
-                <span className="text-xs text-gray-500">Para ti</span>
-              </div>
-
-              <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-                {statsReales.pendientes}
-              </p>
-
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                Solicitudes pendientes
-              </p>
-            </div>
-
-            {/* Rechazados */}
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
-              <div className="flex items-center justify-between mb-2">
-                <div className="p-2 bg-red-100 dark:bg-red-900 rounded-lg">
-                  <XCircle className="h-5 w-5 text-red-500" />
-                </div>
-                <span className="text-xs text-gray-500">Este mes</span>
-              </div>
-
-              <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                {statsReales.rechazados}
-              </p>
-
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                Solicitudes rechazadas
-              </p>
-            </div>
-
-          </div>
-
-        </div>
-
       </div>
 
       {/* Sección de Estadísticas Rápidas */}
-      <div className="mt-6 bg-gradient-to-r from-blue-600 to-blue-700 p-6 rounded-xl shadow-sm text-white">
+      <div className="mt-6 bg-gradient-to-r from-blue-600 to-blue-700 p-6 rounded-lg shadow-sm text-white">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-blue-100 text-sm">Rendimiento del mes</p>
-
             <p className="text-2xl font-bold mt-1">
               {porcentajeCubierto >= 95 ? 'Excelente trabajo' :
                 porcentajeCubierto >= 85 ? 'Buen trabajo' :
                   'Mejorá tu asistencia'}
             </p>
-
             <p className="text-blue-100 text-sm mt-1">
               Has trabajado {guardiasTrabajadas} de {misGuardiasReales} turnos
               {turnosData && turnosData.guardiasQueMeCubrieron > 0 &&
@@ -603,7 +500,6 @@ export default function DashboardHome() {
               }
             </p>
           </div>
-
           <div className="p-4 bg-white/10 rounded-lg">
             <TrendingUp className="h-8 w-8" />
           </div>
