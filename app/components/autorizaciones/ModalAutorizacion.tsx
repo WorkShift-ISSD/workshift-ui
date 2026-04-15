@@ -249,9 +249,9 @@ export function ModalAutorizacion({
                           )}
                           {turnoDestinatario ? (
                             <div>
-                              <p className="text-xs text-gray-600 dark:text-gray-400">Fecha que ofrece</p>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">Horario</p>
                               <p className="font-semibold text-gray-900 dark:text-white">
-                                {formatFechaSafe(turnoDestinatario.horario)}
+                                {turnoDestinatario.horario}
                               </p>
                             </div>
                           ) : (
@@ -262,9 +262,9 @@ export function ModalAutorizacion({
                           )}
                           {turnoDestinatario ? (
                             <div>
-                              <p className="text-xs text-gray-600 dark:text-gray-400">Fecha que ofrece</p>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">Grupo</p>
                               <p className="font-semibold text-gray-900 dark:text-white">
-                                {formatFechaSafe(turnoDestinatario.grupoTurno)}
+                                {turnoDestinatario.grupoTurno}
                               </p>
                             </div>
                           ) : (
