@@ -25,7 +25,7 @@ const MODOS: {
 }[] = [
     { value: 'OFREZCO_COBERTURA', label: 'Me ofrezco a cubrir', desc: 'Estoy disponible para cubrir turnos', icon: Shield, color: 'blue' },
     { value: 'BUSCO_COBERTURA', label: 'Necesito que me cubran', desc: 'Busco a alguien que cubra mi turno', icon: Search, color: 'orange' },
-    { value: 'OFREZCO_INTERCAMBIO', label: 'Ofrezco intercambio', desc: 'Doy mi turno y pido otro a cambio', icon: RefreshCw, color: 'green' },
+    { value: 'OFREZCO_INTERCAMBIO', label: 'Ofrezco intercambio', desc: 'Me ofrezco a cambiar mi turno', icon: RefreshCw, color: 'green' },
     { value: 'BUSCO_INTERCAMBIO', label: 'Necesito intercambio', desc: 'Busco cambiar mi turno por otro', icon: HandHelping, color: 'purple' },
   ];
 
@@ -108,9 +108,9 @@ export function ModalNuevaOferta({ isOpen, onClose, onSubmit, ofertaEditando }: 
 
   const validate = useCallback((): string => {
     if (esIntercambio) {
-      if (!form.fechaOfrece) return 'Seleccioná la fecha de tu turno';
-      if (user && !esFechaValidaParaGrupo(new Date(form.fechaOfrece + 'T00:00:00'), user.grupoTurno as GrupoTurno)) {
-        return `Ese día no corresponde a tu Guardia ${user.grupoTurno}`;
+      if (modo === 'OFREZCO_INTERCAMBIO' && !form.fechaOfrece) return 'Seleccioná la fecha de tu turno';
+      if (modo === 'OFREZCO_INTERCAMBIO' && user && !esFechaValidaParaGrupo(new Date(form.fechaOfrece + 'T00:00:00'), user.grupoTurno as GrupoTurno)) {
+    return `Ese día no corresponde a tu Guardia ${user.grupoTurno}`;
       }
       const fechasValidas = form.fechasBusca.filter(f => f.fecha.trim() !== '');
       if (fechasValidas.length === 0) return 'Agregá al menos una fecha';
@@ -217,13 +217,10 @@ export function ModalNuevaOferta({ isOpen, onClose, onSubmit, ofertaEditando }: 
             fechasCedidas={fechasCedidas}
             fechasBloqueadasPropias={fechasBloqueadasPropias}
             onFechaOfrecerChange={(v: string) => {
-              const turnoEfectivo = turnosEfectivos.find((t: any) => t.fecha === v);
-              setForm(prev => ({
-                ...prev,
-                fechaOfrece: v,
-                horarioOfrece: turnoEfectivo?.horario_efectivo || user?.horario || '',
-                grupoOfrece: (turnoEfectivo?.grupo_efectivo || user?.grupoTurno || 'A') as GrupoTurno,
-              }));
+              setForm(prev => ({ ...prev, fechaOfrece: v }));
+            }}
+            onHorarioOfrecerChange={(v: string) => {
+              setForm(prev => ({ ...prev, horarioOfrece: v }));
             }}
             onUpdateFechaBusca={(index: number, field: 'fecha' | 'horario', value: string) => {
               setForm(prev => {

@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
     const ofertasFormateadas = ofertas.map(o => ({
       id: o.id,
       ofertante: o.ofertante,
-      tomador: o.tomador?.id ? o.tomador : null, 
+      tomador: o.tomador?.id ? o.tomador : null,
       tipo: o.tipo,
       modalidadBusqueda: o.modalidad_busqueda,
       turnoOfrece: o.turno_ofrece ?
@@ -171,6 +171,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log('body.fechaOfrece:', body.fechaOfrece);
+    console.log('body.tipo:', body.tipo);
+    console.log('body.modalidadBusqueda:', body.modalidadBusqueda);
+    console.log('body completo:', JSON.stringify(body));
     const cookieStore = await cookies();
     const token = cookieStore.get('auth-token')?.value;
 
@@ -353,24 +357,40 @@ export async function POST(request: NextRequest) {
     let fechasDisponibles = null;
 
     if (body.modalidadBusqueda === TipoSolicitud.INTERCAMBIO) {
-      // Para INTERCAMBIO: guardar turno que ofrece y turnos que busca
-      if (body.fechaOfrece) {
-        turnoOfrece = {
-          fecha: body.fechaOfrece,
-          horario: body.horarioOfrece || usuario.horario, 
-          grupoTurno: body.grupoOfrece || usuario.grupo_turno
-        };
-      }
-
-      if (body.fechasBusca && body.fechasBusca.length > 0) {
-        turnosBusca = body.fechasBusca;
+      if (body.tipo === 'OFREZCO') {
+        if (body.fechaOfrece) {
+          turnoOfrece = {
+            fecha: body.fechaOfrece,
+            horario: body.horarioOfrece || usuario.horario,
+            grupoTurno: body.grupoOfrece || usuario.grupo_turno
+          };
+        }
+        if (body.fechasBusca?.length > 0) {
+          turnosBusca = body.fechasBusca;
+        }
+      } else {
+        // BUSCO_INTERCAMBIO
+        if (body.fechasBusca?.length > 0) {
+          turnosBusca = body.fechasBusca;
+        }
+        if (body.fechasDisponibles?.length > 0) {
+          fechasDisponibles = body.fechasDisponibles;
+          turnoOfrece = {
+            fecha: body.fechasDisponibles[0].fecha,
+            horario: body.fechasDisponibles[0].horario || usuario.horario,
+            grupoTurno: usuario.grupo_turno
+          };
+        }
       }
     } else if (body.modalidadBusqueda === TipoSolicitud.ABIERTO) {
-      // Para ABIERTO: solo fechas disponibles
-      if (body.fechasDisponibles && body.fechasDisponibles.length > 0) {
+      if (body.fechasDisponibles?.length > 0) {
         fechasDisponibles = body.fechasDisponibles;
       }
     }
+
+    console.log('turnoOfrece construido:', turnoOfrece);
+    console.log('turnosBusca construido:', turnosBusca);
+    console.log('fechasDisponibles construido:', fechasDisponibles);
 
     // Insertar oferta
     const resultado = await sql`
