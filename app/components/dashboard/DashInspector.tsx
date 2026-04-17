@@ -120,7 +120,7 @@ export default function DashboardHome() {
     [guardiasTrabajadas, misGuardiasReales]);
 
 
-  function getDayStyles(type: 'worked' | 'exchange' | 'covered') {
+  function getDayStyles(type: 'worked' | 'exchange' | 'covered' | 'off' | 'future') {
     switch (type) {
       case 'worked':
         return 'bg-green-100 dark:bg-green-500/10 border-green-200 dark:border-green-500/20';
@@ -128,7 +128,8 @@ export default function DashboardHome() {
         return 'bg-amber-100 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20';
       case 'covered':
         return 'bg-orange-100 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/20';
-      default:
+      case 'off':
+      case 'future':
         return 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700';
     }
   }
@@ -293,30 +294,24 @@ export default function DashboardHome() {
 
 
             {/* Mi Semana */}
-            {semanaActual.map(({ label, tipo, horario }) => {
-              if (tipo === 'off' || tipo === 'future') return <div key={label} />;
-              return (
+            <div className="grid grid-cols-7 gap-2 mb-3 p-4">
+              {semanaActual.map(({ label, tipo, horario }) => (
                 <div
                   key={label}
                   className={`flex flex-col items-center rounded-md overflow-hidden border ${getDayStyles(tipo)} transition hover:scale-105`}
                 >
-                  {/* Día */}
                   <div className="w-full h-6 flex items-center justify-center">
                     <span className="text-[10px] font-medium text-gray-700 dark:text-gray-300">
-                      {label}{horario ? ` · ${horario.split('-')[0]}` : ''}
+                      {label}{(tipo !== 'off' && tipo !== 'future') && horario ? ` · ${horario.split('-')[0]}` : ''}
                     </span>
                   </div>
-
-                  {/* Línea */}
                   <div className="w-full h-px bg-black/20" />
-
-                  {/* Icono */}
                   <div className="w-full h-8 flex items-center justify-center">
-                    <DayIcon type={tipo} />
+                    {(tipo !== 'off' && tipo !== 'future') && <DayIcon type={tipo} />}
                   </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
 
             {/* Resumen semana */}
             <div className="flex items-center gap-4 mt-3 mb-5 text-sm">
