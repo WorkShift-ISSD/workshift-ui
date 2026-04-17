@@ -93,7 +93,7 @@ export default function CalendarioTurnos() {
               key={dia}
               title={esCedido ? 'Cediste este turno' : esGanado ? 'Turno ganado por intercambio' : trabaja ? 'Tu día de guardia' : ''}
               className={`
-                aspect-square flex flex-col items-center justify-center rounded-lg text-sm font-medium transition-all
+                h-12 px-1 rounded-md flex flex-col items-center justify-center rounded-md text-xs font-medium transition-all
                 ${esHoy ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
                 ${trabaja && !esCedido
                   ? esGanado
@@ -105,7 +105,7 @@ export default function CalendarioTurnos() {
                 }
               `}
             >
-              <span className="font-bold">{dia}</span>
+              <span className="font-bold text-lg">{dia}</span>
               {esCedido && <span className="text-[9px] mt-0.5 font-semibold">cedido</span>}
               {esGanado && <span className="text-[9px] mt-0.5 font-semibold">+turno</span>}
             </div>
