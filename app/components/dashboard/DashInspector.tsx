@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import {
+  Calendar,
   CheckCircle,
   Clock,
   XCircle,
@@ -20,7 +21,7 @@ import { LoadingSpinner } from '@/app/components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
 import { useTodasLasFaltas } from '@/hooks/useFaltas';
 import { calcularDiasTrabajoEnRango } from '@/app/lib/turnosUtils';
-import { useOfertas } from '@/hooks/useOfertas';
+import { useCambiosPage } from '@/hooks/useCambiosPage';
 import { useSolicitudesDirectas } from '@/hooks/useSolicitudesDirectas';
 import CalendarioTurnos from '@/app/components/CalendarioTurnos';
 import { useTurnosEfectivos } from '@/hooks/useTurnosEfectivos';
@@ -64,7 +65,7 @@ export default function DashboardHome() {
   const { cambios, isLoading: loadingCambios, error: errorCambios } = useCambios();
   const { turnosData, isLoading: loadingTurnos, error: errorTurnos } = useTurnosData();
   const { faltas, isLoading: loadingFaltas } = useTodasLasFaltas();
-  const { ofertas, isLoading: loadingOfertas } = useOfertas();
+  const { ofertasDisponibles } = useCambiosPage();
   const { solicitudes, isLoading: loadingSolicitudes } = useSolicitudesDirectas();
   const { turnosEfectivos, fechasCedidas } = useTurnosEfectivos();
 
@@ -173,7 +174,7 @@ export default function DashboardHome() {
             ? user?.horario || ''
             : '';
 
-      return { label, ymd, tipo, esFuturo, trabaja, horario };
+      return { label, tipo, horario };
     });
   }, [hoy, hoyYMD, turnosEfectivos, fechasCedidas, user]);
 
@@ -181,13 +182,16 @@ export default function DashboardHome() {
   const intercambiosSemana = semanaActual.filter(d => d.tipo === 'exchange').length;
 
   // ── Stats ────────────────────────────────────────────────────────────────
+
   const statsReales = useMemo(() => {
     const aprobados = solicitudes?.filter(sol => {
       const f = new Date(sol.fechaSolicitud);
       const estado = sol.estado as SolicitudDirectaEstado;
-      return (sol.solicitante.id === user?.id || sol.destinatario.id === user?.id) &&
+      const involucraAlUsuario = sol.solicitante.id === user?.id || sol.destinatario.id === user?.id;
+      return involucraAlUsuario &&
         estado === 'APROBADO' &&
-        f.getFullYear() === monthInfo.year && f.getMonth() === monthInfo.month;
+        f.getFullYear() === monthInfo.year &&
+        f.getMonth() === monthInfo.month;
     }).length || 0;
 
     const pendientes = solicitudes?.filter(sol => {
@@ -200,7 +204,8 @@ export default function DashboardHome() {
       const estado = sol.estado as SolicitudDirectaEstado;
       return sol.solicitante.id === user?.id &&
         (estado === 'RECHAZADO' || estado === 'CANCELADO') &&
-        f.getFullYear() === monthInfo.year && f.getMonth() === monthInfo.month;
+        f.getFullYear() === monthInfo.year &&
+        f.getMonth() === monthInfo.month;
     }).length || 0;
 
     return { aprobados, pendientes, rechazados };
@@ -237,7 +242,7 @@ export default function DashboardHome() {
   };
 
   // ── Loading / Error ──────────────────────────────────────────────────────
-  if (loadingCambios || loadingTurnos || loadingFaltas || loadingOfertas || loadingSolicitudes) {
+  if (loadingCambios || loadingTurnos || loadingFaltas || loadingSolicitudes) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-950">
         <LoadingSpinner />
@@ -536,6 +541,20 @@ export default function DashboardHome() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+
+          {/* ── Turnos disponibles ── */}
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">En oferta</p>
+                <p className="text-3xl font-bold text-blue-400 mt-1">{ofertasDisponibles.length}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Turnos disponibles</p>
+              </div>
+              <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              </div>
             </div>
           </div>
 
