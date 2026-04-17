@@ -15,6 +15,7 @@ import { useTurnosData } from '@/hooks/useTurnosData';
 import { Cambio as TipoCambio } from '../api/types';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
+import DashInspector from '@/app/components/dashboard/DashInspector';
 import { useTodasLasFaltas } from '@/hooks/useFaltas';
 import { calcularDiasTrabajoEnRango } from '@/app/lib/turnosUtils';
 import { useOfertas } from '@/hooks/useOfertas';
@@ -25,6 +26,10 @@ type SolicitudDirectaEstado = 'SOLICITADO' | 'APROBADO' | 'RECHAZADO' | 'CANCELA
 
 export default function DashboardHome() {
   const { user } = useAuth();
+
+    if (user?.rol === 'INSPECTOR') {
+    return <DashInspector />;
+  }
 
   const { cambios, isLoading: loadingCambios, error: errorCambios } = useCambios();
   const { turnosData, isLoading: loadingTurnos, error: errorTurnos } = useTurnosData();
