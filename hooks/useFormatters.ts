@@ -125,6 +125,22 @@ export const useFormatters = () => {
     }
   };
 
+  //FORMATO FECHA DIA + NUMERO DIA + MES (EJ MARTES 21 DE ABRIL)
+  const formatFechaLargaConDia = (fechaString: string) => {
+    if (!fechaString) return '';
+
+    const date = parseFechaLocal(fechaString);
+    if (!date || isNaN(date.getTime())) return '';
+
+    const weekday = date.toLocaleDateString('es-AR', { weekday: 'long' });
+    const day = date.getDate();
+    const month = date.toLocaleDateString('es-AR', { month: 'long' });
+
+    const result = `${weekday} ${day} de ${month}`;
+
+    return result.charAt(0).toUpperCase() + result.slice(1);
+  };
+
 
   return {
     parseFechaLocal,
@@ -133,6 +149,7 @@ export const useFormatters = () => {
     formatFechaSafe,
     formatTimeAgo,
     getTodayDate,
-    formatDiaYHorario
+    formatDiaYHorario,
+    formatFechaLargaConDia,
   };
 };

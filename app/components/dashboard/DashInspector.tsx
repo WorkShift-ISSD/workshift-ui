@@ -26,6 +26,7 @@ import { useSolicitudesDirectas } from '@/hooks/useSolicitudesDirectas';
 import CalendarioTurnos from '@/app/components/CalendarioTurnos';
 import { useTurnosEfectivos } from '@/hooks/useTurnosEfectivos';
 import { calcularGrupoTrabaja } from '@/app/lib/turnosUtils';
+import { useFormatters } from '@/hooks/useFormatters';
 
 type SolicitudDirectaEstado = 'SOLICITADO' | 'APROBADO' | 'RECHAZADO' | 'CANCELADO';
 
@@ -68,6 +69,7 @@ export default function DashboardHome() {
   const { ofertasDisponibles } = useCambiosPage();
   const { solicitudes, isLoading: loadingSolicitudes } = useSolicitudesDirectas();
   const { turnosEfectivos, fechasCedidas } = useTurnosEfectivos();
+  const { formatFechaLargaConDia } = useFormatters();
 
   const hoy = new Date();
   const hoyYMD = toYMD(hoy);
@@ -184,33 +186,34 @@ export default function DashboardHome() {
   // ── Stats ────────────────────────────────────────────────────────────────
 
   const statsReales = useMemo(() => {
-    const aprobados = solicitudes?.filter(sol => {
+    const misSolicitudes = solicitudes?.filter(sol =>
+      sol.solicitante.id === user?.id || sol.destinatario.id === user?.id
+    ) || [];
+
+    // Aprobadas = el jefe aprobó (COMPLETADO)
+    const aprobados = misSolicitudes.filter(sol => {
       const f = new Date(sol.fechaSolicitud);
-      const estado = sol.estado as SolicitudDirectaEstado;
-      const involucraAlUsuario = sol.solicitante.id === user?.id || sol.destinatario.id === user?.id;
-      return involucraAlUsuario &&
-        estado === 'APROBADO' &&
+      return sol.estado === 'COMPLETADO' &&
         f.getFullYear() === monthInfo.year &&
         f.getMonth() === monthInfo.month;
-    }).length || 0;
+    }).length;
 
-    const pendientes = solicitudes?.filter(sol => {
-      const estado = String(sol.estado).toUpperCase();
-      return sol.solicitante.id === user?.id && (estado === 'SOLICITADO' || estado === 'PENDIENTE');
-    }).length || 0;
+    // Pendientes = empleados acordaron pero el jefe no aprobó aún
+    const pendientes = misSolicitudes.filter(sol =>
+      sol.estado === 'APROBADO'
+    ).length;
 
-    const rechazados = solicitudes?.filter(sol => {
+    // Rechazadas = rechazadas o canceladas este mes
+    const rechazados = misSolicitudes.filter(sol => {
       const f = new Date(sol.fechaSolicitud);
-      const estado = sol.estado as SolicitudDirectaEstado;
-      return sol.solicitante.id === user?.id &&
-        (estado === 'RECHAZADO' || estado === 'CANCELADO') &&
+      const estado = sol.estado as string;
+      return (estado === 'RECHAZADO' || estado === 'CANCELADO') &&
         f.getFullYear() === monthInfo.year &&
         f.getMonth() === monthInfo.month;
-    }).length || 0;
+    }).length;
 
     return { aprobados, pendientes, rechazados };
   }, [solicitudes, user, monthInfo]);
-
   // ── Próximos cambios ─────────────────────────────────────────────────────
   const proximosCambios = useMemo(() =>
     (cambios || [])
@@ -280,7 +283,7 @@ export default function DashboardHome() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             Bienvenido {user?.nombre} {user?.apellido}
             <span className="flex items-center gap-1 text-amber-400 text-base font-semibold ml-1">
-              <Star className="w-4 h-4 fill-amber-400" />
+              <Star className="w-6 h-6 fill-amber-400" />
               4.6
             </span>
           </h1>
@@ -389,20 +392,14 @@ export default function DashboardHome() {
                   {solicitudesPendientes.map(s => (
                     <div key={s.id}>
                       <p className="text-sm text-gray-900 dark:text-white mb-3">
-                        <span className="font-semibold text-blue-400">{s.solicitante.apellido}</span>
+                        <span className="font-semibold text-blue-400">{s.solicitante
+                          ? `${s.solicitante.nombre} ${s.solicitante.apellido}`
+                          : 'N/A'}</span>
                         {' '}quiere tu turno del{' '}
                         <span className="text-gray-300">
-                          {new Date(s.fechaSolicitud).toLocaleDateString('es-ES', { weekday: 'long' })}
+                          {formatFechaLargaConDia(s.turnoDestinatario.fecha)}
                         </span>
                       </p>
-                      <div className="flex gap-2">
-                        <button className="flex-1 py-2 rounded-xl bg-green-600 hover:bg-green-500 transition-colors text-sm font-semibold text-gray-900 dark:text-white">
-                          Aceptar
-                        </button>
-                        <button className="flex-1 py-2 rounded-xl bg-red-600/80 hover:bg-red-600 transition-colors text-sm font-semibold text-gray-900 dark:text-white">
-                          Rechazar
-                        </button>
-                      </div>
                     </div>
                   ))}
                 </div>
