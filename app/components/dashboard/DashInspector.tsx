@@ -232,8 +232,11 @@ export default function DashboardHome() {
 
   // ── Intercambios recientes ───────────────────────────────────────────────
   const misIntercambios = useMemo(() =>
-    (cambios || []).slice(0, 3),
-    [cambios]);
+    (cambios || [])
+      .filter(c => c.fecha >= hoyYMD)
+      .sort((a, b) => a.fecha.localeCompare(b.fecha))
+      .slice(0, 3),
+    [cambios, hoyYMD]);
 
   const formatDayMonth = (ymd: string) => {
     const [, , d] = ymd.split('-');
@@ -243,6 +246,13 @@ export default function DashboardHome() {
       weekday: date.toLocaleDateString('es-ES', { weekday: 'long' }),
     };
   };
+
+  // ── Fechas aprobadas ───────────────────────────────────────────────
+  const fechasEfectivasSet = useMemo(
+    () => new Set(turnosEfectivos.map(t => t.fecha)),
+    [turnosEfectivos]
+  );
+
 
   // ── Loading / Error ──────────────────────────────────────────────────────
   if (loadingCambios || loadingTurnos || loadingFaltas || loadingSolicitudes) {
@@ -350,25 +360,29 @@ export default function DashboardHome() {
                 {misIntercambios.length === 0 && (
                   <p className="text-gray-500 text-sm">No hay intercambios recientes</p>
                 )}
-                {misIntercambios.map(c => (
-                  <div key={c.id} className="flex items-center justify-between group cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${c.estado === 'APROBADO' ? 'bg-green-400' : c.estado === 'PENDIENTE' ? 'bg-amber-400' : 'bg-red-400'}`} />
-                      <div>
-                        <p className="text-sm text-gray-900 dark:text-white font-medium">
-                          Cambio con{' '}
-                          <span className="text-blue-400">
-                            {c.destinatario?.apellido || 'N/A'}
-                          </span>
-                        </p>
-                        <p className={`text-xs mt-0.5 ${c.estado === 'APROBADO' ? 'text-green-500 dark:text-green-400' : c.estado === 'PENDIENTE' ? 'text-amber-400' : 'text-red-400'}`}>
-                          — {c.estado === 'APROBADO' ? 'Aprobado' : c.estado === 'PENDIENTE' ? 'Pendiente' : 'Rechazado'}
-                        </p>
+                {misIntercambios.map(c => {
+                  const esAprobadoReal = fechasEfectivasSet.has(c.fecha);
+
+                  return (
+                    <div key={c.id} className="flex items-center justify-between group cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${esAprobadoReal ?
+                          'bg-green-400' : c.estado === 'PENDIENTE' ? 'bg-amber-400' : 'bg-red-400'}`} />
+                        <div>
+                          <p className="text-sm text-gray-900 dark:text-white font-medium">Cambio con{' '}
+                            <span className="text-blue-400">
+                              {c.destinatario ? `${c.destinatario.nombre} ${c.destinatario.apellido}` : 'N/A'}
+                            </span>
+                          </p>
+                          <p className={`text-xs mt-0.5 ${esAprobadoReal ?
+                            'text-green-500 dark:text-green-400' : c.estado === 'PENDIENTE' ? 'text-amber-400' : 'text-red-400'}`}>
+                            — {esAprobadoReal ? 'Aprobado' : c.estado === 'PENDIENTE' ? 'Pendiente' : 'Rechazado'}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    <ArrowRight className="w-4 h-4 text-gray-500 dark:text-gray-400 group-hover:text-gray-500 dark:text-gray-400 dark:text-gray-400 transition-colors" />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -519,10 +533,10 @@ export default function DashboardHome() {
                 <p className="text-gray-500 text-sm">No hay cambios próximos</p>
               )}
               {proximosCambios.map(c => {
-                const { weekday } = formatDayMonth(c.fecha);
+                const fechaCorta = formatFechaLargaConDia(c.fecha).split(' de ')[0];
                 return (
                   <div key={c.id} className="flex items-center gap-3 group cursor-pointer">
-                    <span className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${c.estado === 'APROBADO' ? 'bg-green-500/20' :
+                    <span className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${c.estado === 'APROBADO' ? 'bg-green-500/20' :
                       c.estado === 'PENDIENTE' ? 'bg-amber-500/20' : 'bg-gray-700'
                       }`}>
                       {c.estado === 'APROBADO'
@@ -531,10 +545,10 @@ export default function DashboardHome() {
                       }
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white capitalize">{weekday}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-400 truncate">{c.turno}</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white capitalize">
+                        {fechaCorta} <span className="text-gray-400">-</span> 🕐 {c.turno}
+                      </p>
                     </div>
-                    <ArrowRight className="w-4 h-4 text-gray-500 dark:text-gray-400 group-hover:text-gray-500 dark:text-gray-400 dark:text-gray-400 transition-colors flex-shrink-0" />
                   </div>
                 );
               })}
