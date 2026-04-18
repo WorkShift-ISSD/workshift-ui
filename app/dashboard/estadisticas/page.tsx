@@ -108,6 +108,38 @@ function calcularProyeccion(datos: { periodo: string; cantidad: number; esIncomp
     tendencia: pendiente > 0.5 ? 'creciente' : pendiente < -0.5 ? 'decreciente' : 'estable'
   };
 }
+// Componente personalizado para tooltips de PieChart
+const CustomPieTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0];
+    const color = data.payload.fill || data.fill;
+    return (
+      <div className="bg-gray-800 dark:bg-gray-700 border border-gray-600 dark:border-gray-500 rounded-lg shadow-lg px-3 py-2">
+        <p className="text-white font-semibold">{data.name}</p>
+        <p className="font-bold" style={{ color: color }}>{data.value}</p>
+      </div>
+    );
+  }
+  return null;
+};
+
+// Componente personalizado para tooltips de BarChart
+const CustomBarTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-gray-800 dark:bg-gray-700 border border-gray-600 dark:border-gray-500 rounded-lg shadow-lg px-3 py-2">
+        <p className="text-white font-semibold mb-1">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <p key={index} className="text-white">
+            <span style={{ color: entry.color }}>{entry.name}:</span> <span className="font-bold">{entry.value}</span>
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
 
 export default function EstadisticasPage() {
   const { empleados, isLoading: loadingEmpleados } = useEmpleados();
@@ -467,7 +499,7 @@ export default function EstadisticasPage() {
     red: '#EF4444',
     purple: '#8B5CF6',
     orange: '#F97316',
-    cyan: '#06B6D4',
+    cyan: '#06b6d4ff',
     pink: '#EC4899',
   };
 
@@ -598,7 +630,7 @@ export default function EstadisticasPage() {
                     <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip content={<CustomPieTooltip />} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -609,17 +641,11 @@ export default function EstadisticasPage() {
               Personal por Turno
             </h3>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={statsPersonal.porTurno}>
+              <BarChart data={statsPersonal.porTurno} style={{ backgroundColor: 'transparent' }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="name" stroke="#9CA3AF" />
                 <YAxis stroke="#9CA3AF" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1F2937',
-                    border: '1px solid #374151',
-                    borderRadius: '8px'
-                  }}
-                />
+                <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(16, 185, 129, 0.1)' }} />
                 <Bar dataKey="value" fill={COLORS.green} radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -663,17 +689,10 @@ export default function EstadisticasPage() {
                     stroke="#9CA3AF"
                     tick={{ fontSize: 12 }}
                   />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#1F2937',
-                      border: '1px solid #374151',
-                      borderRadius: '8px',
-                      color: '#fff'
-                    }}
-                    cursor={{ fill: 'rgba(16, 185, 129, 0.1)' }}
-                  />
+                  <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(16, 185, 129, 0.1)' }} />
                   <Bar
                     dataKey="value"
+                    name="Inspectores"
                     fill={COLORS.green}
                     radius={[0, 8, 8, 0]}
                     label={{ position: 'right', fill: '#9CA3AF', fontSize: 12 }}
@@ -721,17 +740,10 @@ export default function EstadisticasPage() {
                     stroke="#9CA3AF"
                     tick={{ fontSize: 12 }}
                   />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#1F2937',
-                      border: '1px solid #374151',
-                      borderRadius: '8px',
-                      color: '#fff'
-                    }}
-                    cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
-                  />
+                  <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }} />
                   <Bar
                     dataKey="value"
+                    name="Supervisores"
                     fill={COLORS.blue}
                     radius={[0, 8, 8, 0]}
                     label={{ position: 'right', fill: '#9CA3AF', fontSize: 12 }}
@@ -774,7 +786,7 @@ export default function EstadisticasPage() {
                   <Cell fill={COLORS.green} />
                   <Cell fill={COLORS.red} />
                 </Pie>
-                <Tooltip />
+                <Tooltip content={<CustomPieTooltip />} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -789,14 +801,8 @@ export default function EstadisticasPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="name" stroke="#9CA3AF" />
                 <YAxis stroke="#9CA3AF" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1F2937',
-                    border: '1px solid #374151',
-                    borderRadius: '8px'
-                  }}
-                />
-                <Bar dataKey="value" fill={COLORS.orange} radius={[8, 8, 0, 0]} />
+                <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(246, 171, 59, 0.1)' }} />
+                <Bar dataKey="value" name="Faltas" fill={COLORS.orange} radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -811,14 +817,8 @@ export default function EstadisticasPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="dia" stroke="#9CA3AF" />
                 <YAxis stroke="#9CA3AF" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1F2937',
-                    border: '1px solid #374151',
-                    borderRadius: '8px'
-                  }}
-                />
-                <Bar dataKey="cantidad" fill={COLORS.purple} radius={[8, 8, 0, 0]} />
+                <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(131, 59, 246, 0.1)' }} />
+                <Bar dataKey="cantidad" name="Faltas" fill={COLORS.purple} radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
             <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
@@ -847,8 +847,14 @@ export default function EstadisticasPage() {
                   contentStyle={{
                     backgroundColor: '#1F2937',
                     border: '1px solid #374151',
-                    borderRadius: '8px'
+                    borderRadius: '8px',
+                    color: '#fff'
                   }}
+                  labelStyle={{ color: '#fff' }}
+                  itemStyle={{ color: '#EF4444' }}
+                  separator=": "
+                  wrapperStyle={{ color: '#FFFFFF' }}
+                  formatter={(value, name) => [<span style={{ color: '#FFF' }}>{value}</span>, name]}
                 />
                 <Legend />
                 <Line
@@ -870,39 +876,55 @@ export default function EstadisticasPage() {
               Comparativa de Períodos
             </h3>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart
-                data={[
-                  {
-                    periodo: selectedPeriod === 'mes' ? 'Mes Anterior' :
-                      selectedPeriod === 'trimestre' ? 'Trimestre Anterior' :
-                        'Año Anterior',
-                    cantidad: statsFaltas.comparativaPeriodos.anterior
-                  },
-                  {
-                    periodo: selectedPeriod === 'mes' ? 'Mes Actual' :
-                      selectedPeriod === 'trimestre' ? 'Trimestre Actual' :
-                        'Año Actual',
-                    cantidad: statsFaltas.comparativaPeriodos.actual
-                  }
-                ]}
-              >
+<BarChart
+  data={[
+    {
+      periodo: selectedPeriod === 'mes' ? 'Mes Anterior' :
+        selectedPeriod === 'trimestre' ? 'Trimestre Anterior' :
+          'Año Anterior',
+      cantidad: statsFaltas.comparativaPeriodos.anterior,
+      fill: COLORS.cyan
+    },
+    {
+      periodo: selectedPeriod === 'mes' ? 'Mes Actual' :
+        selectedPeriod === 'trimestre' ? 'Trimestre Actual' :
+          'Año Actual',
+      cantidad: statsFaltas.comparativaPeriodos.actual,
+      fill: statsFaltas.comparativaPeriodos.mejoro ? COLORS.green : COLORS.red
+    }
+  ]}
+>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="periodo" stroke="#9CA3AF" />
                 <YAxis stroke="#9CA3AF" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1F2937',
-                    border: '1px solid #374151',
-                    borderRadius: '8px'
-                  }}
-                />
-                <Bar
-                  dataKey="cantidad"
-                  radius={[8, 8, 0, 0]}
-                >
-                  <Cell fill={COLORS.cyan} />
-                  <Cell fill={statsFaltas.comparativaPeriodos.mejoro ? COLORS.green : COLORS.red} />
-                </Bar>
+<Tooltip
+  content={({ active, payload, label }) => {
+    if (!active || !payload || !payload.length) return null;
+
+    const entry = payload[0];
+    const barColor = entry?.payload?.fill || '#10B981';
+
+    return (
+      <div className="bg-gray-800 dark:bg-gray-700 border border-gray-600 dark:border-gray-500 rounded-lg shadow-lg px-3 py-2">
+        <p className="text-white font-semibold mb-1">{label}</p>
+        <p className="text-white">
+          <span style={{ color: barColor }}>Cantidad:</span>{' '}
+          <span className="font-bold">{entry.value}</span>
+        </p>
+      </div>
+    );
+  }}
+  cursor={{ fill: 'transparent' }}
+/>
+<Bar
+  dataKey="cantidad"
+  name="Cantidad"
+  radius={[8, 8, 0, 0]}
+>
+  {[COLORS.cyan, statsFaltas.comparativaPeriodos.mejoro ? COLORS.green : COLORS.red].map((color, index) => (
+    <Cell key={`cell-${index}`} fill={color} />
+  ))}
+</Bar>
               </BarChart>
             </ResponsiveContainer>
             <div className="mt-4 flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -951,17 +973,22 @@ export default function EstadisticasPage() {
                   contentStyle={{
                     backgroundColor: '#1F2937',
                     border: '1px solid #374151',
-                    borderRadius: '8px'
+                    borderRadius: '8px',
+                    color: '#fff'
                   }}
+                  labelStyle={{ color: '#fff' }}
+                  itemStyle={{ color: '#EF4444' }}
+                  separator=": "
                   formatter={(value: any, name: any, props: any) => {
                     if (props.payload.esIncompleto) {
-                      return [value, 'Faltas (ajustado)'];
+                      return [<span style={{ color: '#FFF' }}>{value}</span>, 'Faltas (ajustado)'];
                     }
                     if (props.payload.esProyeccion) {
-                      return [value, 'Proyección'];
+                      return [<span style={{ color: '#FFF' }}>{value}</span>, 'Proyección'];
                     }
-                    return [value, 'Faltas'];
+                    return [<span style={{ color: '#FFF' }}>{value}</span>, 'Faltas'];
                   }}
+
                 />
                 <Legend />
                 <Line

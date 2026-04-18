@@ -2,9 +2,9 @@
 
 import SideNav from "../ui/dashboard/sidenav";
 import ProtectedRoute from "../components/ProtectedRoute";
-import WhatsAppChatbot from "../components/WhatsAppChatbot";
-import AsistenteIA from "../components/AsistenteIA";
-import Footer from "../components/Footer";  // ← AGREGAR ESTA LÍNEA
+import WhatsAppChatbot from "../components/asistentes virtuales/WhatsAppChatbot";
+import AsistenteIA from "../components/asistentes virtuales/AsistenteIA";
+import Footer from "../components/Footer"; 
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -17,7 +17,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex-1 p-6 md:p-12">
             {children}
           </div>
-          <Footer />  {/* ← AGREGAR ESTA LÍNEA */}
+          <Footer /> 
         </div>
         <WhatsAppChatbot />
         <AsistenteIA />

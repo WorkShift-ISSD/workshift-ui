@@ -3,6 +3,9 @@
 import { useState, useRef } from "react";
 import { User, Phone, MapPin, AlertCircle, Calendar } from "lucide-react";
 import { useEmpleados } from "@/hooks/useEmpleados";
+import { useFormatters } from '@/hooks/useFormatters';
+
+
 
 
 interface EditProfileModalProps {
@@ -33,7 +36,9 @@ export default function EditProfileModal({
     const dateInputRef = useRef<HTMLInputElement | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-    const {empleados, updateEmpleado} = useEmpleados();
+    const { empleados, updateEmpleado } = useEmpleados();
+    const { parseFechaLocal } = useFormatters();
+    const [displayFecha, setDisplayFecha] = useState("");
 
     if (!isOpen) return null;
 
@@ -42,11 +47,40 @@ export default function EditProfileModal({
         setError("");
         setLoading(true);
 
+        // Convertir displayFecha a ISO si es necesario
+        let fechaFinal = fechaNacimiento;
+        if (!fechaFinal && displayFecha) {
+            const match = displayFecha.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+            if (match) {
+                const [, dd, mm, yyyy] = match;
+                fechaFinal = `${yyyy}-${mm}-${dd}`;
+            }
+        }
+
+        // VALIDAR +18 AÑOS
+        if (fechaFinal) {
+            const fechaNac = new Date(fechaFinal);
+            const hoy = new Date();
+            let edad = hoy.getFullYear() - fechaNac.getFullYear();
+            const mesActual = hoy.getMonth();
+            const mesNac = fechaNac.getMonth();
+
+            if (mesActual < mesNac || (mesActual === mesNac && hoy.getDate() < fechaNac.getDate())) {
+                edad--;
+            }
+
+            if (edad < 18) {
+                setError("Debes ser mayor de 18 años");
+                setLoading(false);
+                return;
+            }
+        }
+
         try {
             await updateEmpleado(userData.id, {
                 telefono,
                 direccion,
-                fechaNacimiento: fechaNacimiento || null,
+                fechaNacimiento: fechaFinal || null,
             });
 
             onSuccess();
@@ -54,6 +88,31 @@ export default function EditProfileModal({
             setError(err.message || "Error al actualizar datos");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleFechaChange = (value: string) => {
+        // Solo permitir números y /
+        const cleaned = value.replace(/[^\d/]/g, '');
+
+        // Limitar longitud a 10 caracteres (dd/mm/aaaa)
+        if (cleaned.length > 10) return;
+
+        // Auto-agregar / después de día y mes
+        let formatted = cleaned;
+        if (cleaned.length === 2 && !cleaned.includes('/')) {
+            formatted = cleaned + '/';
+        } else if (cleaned.length === 5 && cleaned.split('/').length === 2) {
+            formatted = cleaned + '/';
+        }
+
+        setDisplayFecha(formatted);
+
+        // Si está completo, actualizar fechaNacimiento
+        const match = formatted.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        if (match) {
+            const [, dd, mm, yyyy] = match;
+            setFechaNacimiento(`${yyyy}-${mm}-${dd}`);
         }
     };
 
@@ -120,40 +179,43 @@ export default function EditProfileModal({
                             Fecha de Nacimiento
                         </label>
                         <div className="relative">
+                            {/* Input visible para escribir */}
                             <input
                                 type="text"
-                                readOnly
-                                value={
-                                    fechaNacimiento
-                                        ? new Date(fechaNacimiento).toLocaleDateString("es-AR")
-                                        : ""
-                                }
+                                value={displayFecha}
+                                onChange={(e) => handleFechaChange(e.target.value)}
                                 placeholder="dd/mm/aaaa"
+                                maxLength={10}
                                 className="w-full px-4 py-2 pr-10 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                style={{ position: 'relative', zIndex: 10 }}
                             />
+
+                            {/* Input oculto del calendario */}
                             <input
                                 ref={dateInputRef}
                                 type="date"
                                 value={fechaNacimiento}
-                                onChange={(e) => setFechaNacimiento(e.target.value)}
-                                disabled={loading}
-                                className="absolute left-0 right-10 top-0 bottom-0 opacity-0 cursor-pointer z-20"
-                                aria-hidden="true"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    const el = dateInputRef.current;
-                                    if (!el) return;
-                                    if (typeof (el as any).showPicker === "function") {
-                                        try { (el as any).showPicker(); } catch { el.focus(); el.click(); }
+                                onChange={(e) => {
+                                    const isoDate = e.target.value;
+                                    setFechaNacimiento(isoDate);
+                                    // Actualizar el display cuando seleccionan del calendario
+                                    if (isoDate) {
+                                        const [yyyy, mm, dd] = isoDate.split('-');
+                                        setDisplayFecha(`${dd}/${mm}/${yyyy}`);
                                     } else {
-                                        el.focus();
-                                        el.click();
+                                        setDisplayFecha('');
                                     }
                                 }}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 z-30"
-                                aria-label="Abrir selector de fecha"
+                                className="absolute right-10 top-0 bottom-0 opacity-0"
+                                style={{ width: '40px', cursor: 'pointer', zIndex: 20 }}
+                            />
+
+                            {/* Botón del icono */}
+                            <button
+                                type="button"
+                                onClick={() => dateInputRef.current?.showPicker?.()}
+                                className="absolute right-3 top-1/2 -translate-y-1/2"
+                                style={{ zIndex: 30 }}
                             >
                                 <Calendar className="w-5 h-5 text-gray-400" />
                             </button>

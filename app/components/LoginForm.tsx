@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import ChangePasswordModal from "./ChangePasswordModal";
+import ChangePasswordModal from "./editar datos usuario/ChangePasswordModal";
 
 export default function LoginForm() {
   const router = useRouter();

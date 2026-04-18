@@ -10,7 +10,7 @@ export const endpoints = {
     update: (id: string) => `${API_BASE_URL}/cambios/${id}`,
     delete: (id: string) => `${API_BASE_URL}/cambios/${id}`,
   },
-  
+
   // Ofertas
   ofertas: {
     list: () => `${API_BASE_URL}/ofertas`,
@@ -29,10 +29,17 @@ export const endpoints = {
     delete: (id: string) => `${API_BASE_URL}/solicitudes-directas/${id}`,
   },
 
+
+  fechasBloqueadas: {
+    list: () => `${API_BASE_URL}/fechas-bloqueadas`,
+  },
+
+
+
   // Faltas
   faltas: {
-    list: (fecha?: string) => fecha 
-      ? `${API_BASE_URL}/faltas?fecha=${fecha}` 
+    list: (fecha?: string) => fecha
+      ? `${API_BASE_URL}/faltas?fecha=${fecha}`
       : `${API_BASE_URL}/faltas`,
     byId: (id: string) => `${API_BASE_URL}/faltas/${id}`,
     byEmpleado: (empleadoId: string) => `${API_BASE_URL}/faltas/empleado/${empleadoId}`,
@@ -46,13 +53,13 @@ export const endpoints = {
     get: () => `${API_BASE_URL}/stats`,
     update: () => `${API_BASE_URL}/stats`,
   },
-  
+
   // Turnos Data
   turnosData: {
     get: () => `${API_BASE_URL}/turnosData`,
     update: () => `${API_BASE_URL}/turnosData`,
   },
-  
+
   // Users
   users: {
     list: () => `${API_BASE_URL}/users`,
@@ -61,7 +68,7 @@ export const endpoints = {
     update: (id: string) => `${API_BASE_URL}/users/${id}`,
     delete: (id: string) => `${API_BASE_URL}/users/${id}`,
   },
-  
+
   // Turnos
   turnos: {
     list: () => `${API_BASE_URL}/turnos`,
@@ -70,6 +77,51 @@ export const endpoints = {
     update: (id: string) => `${API_BASE_URL}/turnos/${id}`,
     delete: (id: string) => `${API_BASE_URL}/turnos/${id}`,
   },
+
+  turnosEfectivos: {
+    list: () => `${API_BASE_URL}/turnos-efectivos`,
+  },
+
+  // Licencias
+  licencias: {
+    list: () => `${API_BASE_URL}/licencias`,
+    byId: (id: string) => `${API_BASE_URL}/licencias/${id}`,
+    create: () => `${API_BASE_URL}/licencias`,
+    update: (id: string) => `${API_BASE_URL}/licencias/${id}`,
+    delete: (id: string) => `${API_BASE_URL}/licencias/${id}`,
+  },
+
+  // Sanciones
+  sanciones: {
+    list: () => `${API_BASE_URL}/sanciones`,
+    byId: (id: string) => `${API_BASE_URL}/sanciones/${id}`,
+    byEmpleado: (empleadoId: string) =>
+      `${API_BASE_URL}/sanciones/empleado/${empleadoId}`,
+    create: () => `${API_BASE_URL}/sanciones`,
+    update: (id: string) => `${API_BASE_URL}/sanciones/${id}`,
+    delete: (id: string) => `${API_BASE_URL}/sanciones/${id}`,
+  },
+
+  // Autorizaciones
+  autorizaciones: {
+    list: (estado?: string) => estado
+      ? `${API_BASE_URL}/autorizaciones?estado=${estado}`
+      : `${API_BASE_URL}/autorizaciones`,
+    byId: (id: string) => `${API_BASE_URL}/autorizaciones/${id}`,
+    create: () => `${API_BASE_URL}/autorizaciones`,
+    aprobar: (id: string) => `${API_BASE_URL}/autorizaciones/${id}/aprobar`,
+    rechazar: (id: string) => `${API_BASE_URL}/autorizaciones/${id}/rechazar`,
+  },
+
+
+  //mensajes
+  mensajes: {
+    list: (ofertaId: string) => `${API_BASE_URL}/mensajes?ofertaId=${ofertaId}`,
+    create: () => `${API_BASE_URL}/mensajes`,
+    conversaciones: () => `${API_BASE_URL}/mensajes/conversaciones`,
+  },
+
+
 } as const;
 
 

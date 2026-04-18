@@ -52,7 +52,8 @@ interface ExportDataProps {
     total: number;
     activos: number;
     enLicencia: number;
-    ausentes: number;
+    inactivo: number;
+    ausentes?: number;
   };
   filters?: {
     searchTerm?: string;
@@ -68,7 +69,7 @@ interface ExportDataProps {
 }
 
 export const ExportData: React.FC<ExportDataProps> = ({
-  employees,
+  employees: employeesRaw,
   stats,
   filters,
   calcularEstado,
@@ -77,6 +78,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
   faltasDelDia = null,
   fechaSeleccionada
 }) => {
+  const employees = employeesRaw.filter(e => (e.rol as string) !== 'ADMINISTRADOR');
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
@@ -145,7 +147,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
         doc.setTextColor(120, 120, 120);
         doc.text("Migraciones - WSMS © 2025", 40, pageHeight - 12);
         doc.text(`Página ${pageNumber} de ${totalPages}`, pageWidth - 15, pageHeight - 12, { align: "right" });
-        doc.text(`Total empleados: ${employees.length}`, pageWidth - 15, pageHeight - 7, { align: "right" });
+        doc.text(`Total empleados: ${employees.filter(e => (e.rol as string) !== 'ADMINISTRADOR').length}`, pageWidth - 15, pageHeight - 7, { align: "right" });
       };
 
       let y = 45;
@@ -157,8 +159,8 @@ export const ExportData: React.FC<ExportDataProps> = ({
         const cards = [
           { label: "Total", value: stats.total, color: [37, 99, 235] },
           { label: "Activos", value: stats.activos, color: [34, 197, 94] },
-          { label: "Licencia", value: stats.enLicencia, color: [234, 179, 8] },
-          { label: "Ausentes", value: stats.ausentes, color: [239, 68, 68] },
+          { label: "En Licencia", value: stats.enLicencia, color: [234, 179, 8] },
+          { label: "Inactivos", value: stats.inactivo ?? stats.ausentes ?? 0, color: [239, 68, 68] },
         ];
 
         const cardWidth = (pageWidth - 40) / 4;
@@ -259,16 +261,16 @@ export const ExportData: React.FC<ExportDataProps> = ({
       doc.setFontSize(8);
 
       let page = 1;
-
+      let employeesToRender = employees;
       if (mode === 'faltas') {
-        employees = [...employees].sort((a, b) => {
+        employeesToRender = [...employees].sort((a, b) => {
           const horaA = a.horario?.slice(0, 5) || "99:99";
           const horaB = b.horario?.slice(0, 5) || "99:99";
           return horaA.localeCompare(horaB);
         });
       }
 
-      for (let emp of employees) {
+      for (let emp of employeesToRender) {
         if (y > pageHeight - 30) {
           doc.addPage();
           page++;
@@ -301,7 +303,6 @@ export const ExportData: React.FC<ExportDataProps> = ({
         } else {
           const falta = faltasDelDia?.find(f => f.empleadoId === emp.id);
           const motivoCompleto = falta?.motivo || '-';
-          // Limitar el motivo a 40 caracteres para que quepa en la celda
           const motivo = motivoCompleto.length > 40 ? motivoCompleto.substring(0, 37) + '...' : motivoCompleto;
           row = [
             emp.horario || "-",
@@ -317,7 +318,6 @@ export const ExportData: React.FC<ExportDataProps> = ({
         row.forEach((text, i) => {
           const colCenter = x + colWidth[i] / 2;
 
-          // Color del estado
           if ((mode === 'personal' && i === 5) || (mode === 'faltas' && i === 3)) {
             doc.setTextColor(colorEstado[0], colorEstado[1], colorEstado[2]);
             doc.setFont("helvetica", "bold");
@@ -328,12 +328,9 @@ export const ExportData: React.FC<ExportDataProps> = ({
 
           doc.setFontSize(8);
 
-          // Alineación
           if ((mode === 'personal' && i === 1) || (mode === 'faltas' && (i === 1 || i === 4))) {
-            // Nombre y motivo alineados a la izquierda
             doc.text(text, x + 2, y);
           } else {
-            // Resto centrado
             doc.text(text, colCenter, y, { align: "center" });
           }
 
@@ -378,8 +375,8 @@ export const ExportData: React.FC<ExportDataProps> = ({
 
     // ===== ESTADÍSTICAS =====
     if (mode === 'personal') {
-      wsData.push(['', '', '', 'TOTAL', 'ACTIVOS', 'EN LICENCIA', 'AUSENTES']);
-      wsData.push(['', '', '', stats.total, stats.activos, stats.enLicencia, stats.ausentes]);
+      wsData.push(['', '', '', 'TOTAL', 'ACTIVOS', 'EN LICENCIA', 'INACTIVOS/BLOQUEADOS']);
+      wsData.push(['', '', '', stats.total, stats.activos, stats.enLicencia, stats.inactivo]);
     } else {
       const presentes = employees.length - (faltasDelDia?.length || 0);
       wsData.push(['', '', '', 'TOTAL', 'PRESENTES', 'FALTAS']);
@@ -446,7 +443,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
 
     // ===== FOOTER =====
     wsData.push([`Migraciones - WSMS © 2025`]);
-    wsData.push([`Total empleados: ${employees.length}`]);
+    wsData.push([`Total empleados: ${employees.filter(e => (e.rol as string) !== 'ADMINISTRADOR').length}`]);
 
     // Crear hoja
     const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -675,17 +672,17 @@ export const ExportData: React.FC<ExportDataProps> = ({
       xml += `    <fecha_consulta>${fechaSeleccionada}</fecha_consulta>\n`;
     }
 
-    xml += `    <total_empleados>${employees.length}</total_empleados>\n`;
+    xml += `    <total_empleados>${employees.filter(e => (e.rol as string) !== 'ADMINISTRADOR').length}</total_empleados>\n`;
     xml += `    <estadisticas>\n`;
 
     if (mode === 'personal') {
       xml += `      <activos>${stats.activos}</activos>\n`;
       xml += `      <en_licencia>${stats.enLicencia}</en_licencia>\n`;
-      xml += `      <ausentes>${stats.ausentes}</ausentes>\n`;
+      xml += `      <inactivo>${stats.inactivo}</inactivo>\n`;
     } else {
       const presentes = employees.length - (faltasDelDia?.length || 0);
       xml += `      <presentes>${presentes}</presentes>\n`;
-      xml += `      <faltas>${faltasDelDia?.length || 0}</faltas>\n`;
+      xml += `      <inactivos>${stats.inactivo ?? stats.ausentes ?? 0}</inactivos>\n`;
     }
 
     xml += `    </estadisticas>\n`;

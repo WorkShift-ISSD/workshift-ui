@@ -56,7 +56,7 @@ const RUTAS_POR_ROL = {
   ],
 };
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Rutas públicas
@@ -100,7 +100,7 @@ export async function middleware(request: NextRequest) {
     return response;
 
   } catch (error) {
-    console.error('Error en middleware:', error);
+    console.error('Error en proxy:', error);
     return NextResponse.redirect(new URL('/', request.url));
   }
 }
