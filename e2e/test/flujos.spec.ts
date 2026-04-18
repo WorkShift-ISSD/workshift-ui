@@ -53,6 +53,25 @@ test.describe('Flujos', () => {
         await expect(
             page.locator('#seccion-mensajes').getByText('Patricia', { exact: false }).first()
         ).toBeVisible({ timeout: 5000 });
+
+        // Patricia acepta la propuesta desde el chat
+        await page.evaluate(() => {
+            document.cookie = 'auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        });
+        await page.waitForTimeout(300);
+        await login(page, 'inspector2');
+        await page.goto('/dashboard/cambios');
+        await page.locator('#seccion-mensajes').scrollIntoViewIfNeeded();
+        await page.locator('#seccion-mensajes').getByText('Emanuel', { exact: false }).first().click();
+        await page.waitForTimeout(1000);
+        await page.locator('button:has-text("Aceptar propuesta")').click();
+        await page.waitForTimeout(500);
+        // Si aparece modal de mantener activa, elegir cerrar
+        const modalMantener = page.locator('text=¿Qué hacemos con las otras fechas?');
+        if (await modalMantener.isVisible({ timeout: 1000 }).catch(() => false)) {
+            await page.locator('button:has-text("Cerrar la oferta completa")').click();
+        }
+        await page.waitForTimeout(1000);
     });
 
     test('Flujo cobertura con rango', async ({ page }) => {
