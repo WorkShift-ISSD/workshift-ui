@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
               ELSE (o.fechas_disponibles#>>'{}')::jsonb
             END
           ) fd
-          WHERE (fd->>'fecha')::date BETWEEN s.fecha_desde AND s.fecha_hasta
+        WHERE (fd->>'fecha') != '' AND (fd->>'fecha')::date BETWEEN s.fecha_desde AND s.fecha_hasta  
         )
     )
     AND NOT EXISTS (
@@ -144,6 +144,9 @@ export async function GET(request: NextRequest) {
           JSON.parse(o.fechas_disponibles) :
           o.fechas_disponibles
         ) : null,
+      fechaDesde: o.fecha_desde || null,
+      fechaHasta: o.fecha_hasta || null,
+      horarioRango: o.horario_rango || null,
       descripcion: o.descripcion,
       prioridad: o.prioridad,
       estado: o.estado,
@@ -171,10 +174,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log('body.fechaOfrece:', body.fechaOfrece);
-    console.log('body.tipo:', body.tipo);
-    console.log('body.modalidadBusqueda:', body.modalidadBusqueda);
-    console.log('body completo:', JSON.stringify(body));
     const cookieStore = await cookies();
     const token = cookieStore.get('auth-token')?.value;
 
@@ -229,6 +228,7 @@ export async function POST(request: NextRequest) {
     }
 
     const hoy = new Date().toISOString().split('T')[0];
+
 
     const [sancionUsuario] = await sql`
   SELECT 1 FROM sanciones
@@ -355,6 +355,24 @@ export async function POST(request: NextRequest) {
     let turnoOfrece = null;
     let turnosBusca = null;
     let fechasDisponibles = null;
+    let fechaDesde = null;
+    let fechaHasta = null;
+    let horarioRango = null;
+
+
+    if (body.usaRangoDisponibles && body.rangoDisponibles?.desde && body.rangoDisponibles?.hasta) {
+      fechaDesde = body.rangoDisponibles.desde;
+      fechaHasta = body.rangoDisponibles.hasta;
+    } else if (body.usaRangoBusca && body.rangoBusca?.desde && body.rangoBusca?.hasta) {
+      fechaDesde = body.rangoBusca.desde;
+      fechaHasta = body.rangoBusca.hasta;
+    }
+
+    if (body.usaRangoDisponibles && body.rangoDisponibles?.horario) {
+      horarioRango = body.rangoDisponibles.horario;
+    } else if (body.usaRangoBusca && body.rangoBusca?.horario) {
+      horarioRango = body.rangoBusca.horario;
+    }
 
     if (body.modalidadBusqueda === TipoSolicitud.INTERCAMBIO) {
       if (body.tipo === 'OFREZCO') {
@@ -365,62 +383,77 @@ export async function POST(request: NextRequest) {
             grupoTurno: body.grupoOfrece || usuario.grupo_turno
           };
         }
-        if (body.fechasBusca?.length > 0) {
-          turnosBusca = body.fechasBusca;
+        if (!body.usaRangoBusca && body.fechasBusca?.length > 0) {
+          const validas = body.fechasBusca.filter((f: any) => f.fecha && f.fecha.trim() !== '');
+          if (validas.length > 0) turnosBusca = validas;
         }
       } else {
         // BUSCO_INTERCAMBIO
         if (body.fechasBusca?.length > 0) {
-          turnosBusca = body.fechasBusca;
+          const validas = body.fechasBusca.filter((f: any) => f.fecha && f.fecha.trim() !== '');
+          if (validas.length > 0) turnosBusca = validas;
         }
-        if (body.fechasDisponibles?.length > 0) {
-          fechasDisponibles = body.fechasDisponibles;
+        if (body.usaRangoDisponibles) {
           turnoOfrece = {
-            fecha: body.fechasDisponibles[0].fecha,
-            horario: body.fechasDisponibles[0].horario || usuario.horario,
+            fecha: body.rangoDisponibles?.desde,
+            horario: body.rangoDisponibles?.horario || usuario.horario,
             grupoTurno: usuario.grupo_turno
           };
+        } else if (body.fechasDisponibles?.length > 0) {
+          const validas = body.fechasDisponibles.filter((f: any) => f.fecha && f.fecha.trim() !== '');
+          if (validas.length > 0) {
+            fechasDisponibles = validas;
+            turnoOfrece = {
+              fecha: validas[0].fecha,
+              horario: validas[0].horario || usuario.horario,
+              grupoTurno: usuario.grupo_turno
+            };
+          }
         }
       }
     } else if (body.modalidadBusqueda === TipoSolicitud.ABIERTO) {
-      if (body.fechasDisponibles?.length > 0) {
-        fechasDisponibles = body.fechasDisponibles;
+      if (!body.usaRangoDisponibles && body.fechasDisponibles?.length > 0) {
+        const validas = body.fechasDisponibles.filter((f: any) => f.fecha && f.fecha.trim() !== '');
+        if (validas.length > 0) fechasDisponibles = validas;
       }
     }
 
-    console.log('turnoOfrece construido:', turnoOfrece);
-    console.log('turnosBusca construido:', turnosBusca);
-    console.log('fechasDisponibles construido:', fechasDisponibles);
 
     // Insertar oferta
     const resultado = await sql`
-      INSERT INTO ofertas (
+    INSERT INTO ofertas (
         ofertante_id,
         tipo,
         modalidad_busqueda,
         turno_ofrece,
         turnos_busca,
         fechas_disponibles,
+        fecha_desde,
+        fecha_hasta,
+        horario_rango,
         descripcion,
         prioridad,
         estado,
         valido_hasta,
         publicado
-      ) VALUES (
+    ) VALUES (
         ${userId}::uuid,
         ${body.tipo},
         ${body.modalidadBusqueda},
         ${turnoOfrece ? JSON.stringify(turnoOfrece) : null}::jsonb,
         ${turnosBusca ? JSON.stringify(turnosBusca) : null}::jsonb,
         ${fechasDisponibles ? JSON.stringify(fechasDisponibles) : null}::jsonb,
+        ${fechaDesde},
+        ${fechaHasta},
+        ${horarioRango},
         ${body.descripcion},
         ${body.prioridad || Prioridad.NORMAL},
         ${EstadoOferta.DISPONIBLE},
         ${validoHasta.toISOString()},
         NOW()
-      )
-      RETURNING *;
-    `;
+    )
+    RETURNING *;
+`;
 
     const oferta = resultado[0];
 
@@ -463,6 +496,9 @@ export async function POST(request: NextRequest) {
           JSON.parse(ofertaFinal.fechas_disponibles) :
           ofertaFinal.fechas_disponibles
         ) : null,
+      fechaDesde: ofertaFinal.fecha_desde || null,
+      fechaHasta: ofertaFinal.fecha_hasta || null,
+      horarioRango: ofertaFinal.horario_rango || null,
       descripcion: ofertaFinal.descripcion,
       prioridad: ofertaFinal.prioridad,
       estado: ofertaFinal.estado,

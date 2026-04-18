@@ -23,6 +23,9 @@ export function useCambiosPage() {
         refetch,
     } = useOfertas();
 
+    const [modalSeleccionarFechaRango, setModalSeleccionarFechaRango] = useState(false);
+    const [fechasRangoDisponibles, setFechasRangoDisponibles] = useState<{ fecha: string; grupoTurno: string }[]>([]);
+
     const {
         solicitudes: solicitudesDirectas,
         agregarSolicitud,
@@ -53,7 +56,11 @@ export function useCambiosPage() {
 
     // Derived data
     const misOfertas = useMemo(
-        () => ofertas.filter(o => o.ofertante?.id === user?.id && o.estado === 'DISPONIBLE'),
+        () => {
+            const resultado = ofertas.filter(o => o.ofertante?.id === user?.id && o.estado === 'DISPONIBLE');
+            console.log('misOfertas:', resultado, 'user?.id:', user?.id, 'ofertas total:', ofertas.length);
+            return resultado;
+        },
         [ofertas, user?.id]
     );
 
@@ -64,33 +71,57 @@ export function useCambiosPage() {
             if (o.estado !== 'DISPONIBLE') return false;
             if (o.ofertante?.rol !== user.rol) return false;
 
-            // Para ofertas ABIERTO, verificar que el usuario trabaja alguna de las fechas
-            if (o.modalidadBusqueda === 'ABIERTO' && (o.fechasDisponibles?.length ?? 0) > 0) {
-                return o.fechasDisponibles!.some((f: any) => {
-                    const grupo = calcularGrupoTrabaja(new Date(f.fecha + 'T00:00:00'));
-                    const esSuGrupo = grupo === user.grupoTurno;
-                    const turnoEfectivo = turnosEfectivos?.find((te: any) => te.fecha === f.fecha);
-                    const horarioUsuario = turnoEfectivo?.horario_efectivo || user.horario;
-
-                    if (o.tipo === 'OFREZCO') {
-                        // Me ofrezco a cubrir → lo ve quien trabaja ese día y ese horario
-                        return (esSuGrupo || !!turnoEfectivo) && f.horario === horarioUsuario;
-                    } else {
-                        // Necesito que me cubran → lo ve quien NO trabaja ese día o trabaja en otro horario
-                        return !esSuGrupo && !turnoEfectivo;
-                    }
-                });
-            }
 
             // Para INTERCAMBIO: verificar que el usuario trabaja el día que el ofertante quiere cubrir
-            if (o.modalidadBusqueda === 'INTERCAMBIO' && o.turnoOfrece) {
-                const fecha = o.turnoOfrece.fecha;
-                const grupo = calcularGrupoTrabaja(new Date(fecha + 'T00:00:00'));
-                const esSuGrupo = grupo === user.grupoTurno;
-                const turnoEfectivo = turnosEfectivos?.find((te: any) => te.fecha === fecha);
-                const horarioUsuario = turnoEfectivo?.horario_efectivo || user.horario;
+            if (o.modalidadBusqueda === 'ABIERTO') {
+                if (o.fechaDesde && o.fechaHasta) {
+                    const desde = new Date((o.fechaDesde as string).split('T')[0] + 'T00:00:00');
+                    const hasta = new Date((o.fechaHasta as string).split('T')[0] + 'T00:00:00');
+                    for (let d = new Date(desde); d <= hasta; d.setDate(d.getDate() + 1)) {
+                        const fecha = d.toISOString().split('T')[0];
+                        const grupo = calcularGrupoTrabaja(new Date(fecha + 'T00:00:00'));
+                        const esSuGrupo = grupo === user.grupoTurno;
+                        const turnoEfectivo = turnosEfectivos?.find((te: any) => te.fecha === fecha);
+                        const horarioUsuario = turnoEfectivo?.horario_efectivo || user.horario;
+                        if (o.tipo === 'OFREZCO') {
+                            if (esSuGrupo || !!turnoEfectivo) return true;
+                        } else {
+                            if (!esSuGrupo && !turnoEfectivo) return true;
+                        }
+                    }
+                    return false;
+                }
+                if ((o.fechasDisponibles?.length ?? 0) > 0) {
+                    return o.fechasDisponibles!.some((f: any) => {
+                        const grupo = calcularGrupoTrabaja(new Date(f.fecha + 'T00:00:00'));
+                        const esSuGrupo = grupo === user.grupoTurno;
+                        const turnoEfectivo = turnosEfectivos?.find((te: any) => te.fecha === f.fecha);
+                        const horarioUsuario = turnoEfectivo?.horario_efectivo || user.horario;
+                        if (o.tipo === 'OFREZCO') {
+                            return (esSuGrupo || !!turnoEfectivo) && f.horario === horarioUsuario;
+                        } else {
+                            return !esSuGrupo && !turnoEfectivo;
+                        }
+                    });
+                }
+            }
 
+            if (o.modalidadBusqueda === 'INTERCAMBIO') {
                 if (o.tipo === 'OFREZCO') {
+                    if (o.fechaDesde && o.fechaHasta) {
+                        const desde = new Date((o.fechaDesde as string).split('T')[0] + 'T00:00:00');
+                        const hasta = new Date((o.fechaHasta as string).split('T')[0] + 'T00:00:00');
+                        for (let d = new Date(desde); d <= hasta; d.setDate(d.getDate() + 1)) {
+                            const fecha = d.toISOString().split('T')[0];
+                            const grupo = calcularGrupoTrabaja(new Date(fecha + 'T00:00:00'));
+                            const esSuGrupo = grupo === user.grupoTurno;
+                            const turnoEfectivo = turnosEfectivos?.find((te: any) => te.fecha === fecha);
+                            const horarioOferta = o.horarioRango || 'A convenir';
+                            const horarioUsuario = turnoEfectivo?.horario_efectivo || user.horario;
+                            if ((esSuGrupo || !!turnoEfectivo) && (horarioOferta === 'A convenir' || horarioOferta === horarioUsuario)) return true;
+                        }
+                        return false;
+                    }
                     const fechaQueOfrece = o.turnosBusca?.[0]?.fecha;
                     if (!fechaQueOfrece) return true;
                     const grupoFecha = calcularGrupoTrabaja(new Date(fechaQueOfrece + 'T00:00:00'));
@@ -99,6 +130,17 @@ export function useCambiosPage() {
                     const horarioFecha = o.turnosBusca?.[0]?.horario;
                     const horarioUsuarioFecha = turnoEfectivoFecha?.horario_efectivo || user.horario;
                     return (esSuGrupoFecha || !!turnoEfectivoFecha) && horarioFecha === horarioUsuarioFecha;
+                } else {
+                    const fechaNecesita = o.turnosBusca?.[0]?.fecha;
+                    if (!fechaNecesita) return true;
+                    const grupoNecesita = calcularGrupoTrabaja(new Date(fechaNecesita + 'T00:00:00'));
+                    const noTrabajaNecesita = grupoNecesita !== user.grupoTurno && !turnosEfectivos?.find((te: any) => te.fecha === fechaNecesita);
+                    const fechaACambio = o.fechasDisponibles?.[0]?.fecha;
+                    if (!fechaACambio) return noTrabajaNecesita;
+                    const turnoEfectivoACambio = turnosEfectivos?.find((te: any) => te.fecha === fechaACambio);
+                    const horarioACambio = o.fechasDisponibles?.[0]?.horario;
+                    const horarioUsuarioACambio = turnoEfectivoACambio?.horario_efectivo || user.horario;
+                    return noTrabajaNecesita && horarioACambio === horarioUsuarioACambio;
                 }
             }
 
@@ -192,6 +234,12 @@ export function useCambiosPage() {
                 prioridad: oferta.prioridad,
                 fechasBusca: oferta.turnosBusca?.length ? oferta.turnosBusca : [{ fecha: '', horario: '' }],
                 fechasDisponibles: oferta.fechasDisponibles?.length ? oferta.fechasDisponibles : [{ fecha: '', horario: '' }],
+                usaRangoDisponibles: false,
+                rangoDisponibles: { desde: '', hasta: '', horario: 'A convenir' },
+                usaRangoBusca: false,
+                rangoBusca: { desde: '', hasta: '', horario: 'A convenir' },
+                fechaDesde: '',
+                fechaHasta: '',
             },
         });
         setActiveModal('nueva-oferta');
@@ -269,6 +317,43 @@ export function useCambiosPage() {
         if (!oferta || !user) return;
 
         const esCobertura = oferta.modalidadBusqueda === 'ABIERTO';
+        const tieneRango = oferta.fechaDesde && oferta.fechaHasta;
+
+        // Si tiene rango, calcular días válidos y abrir modal
+        if (tieneRango) {
+            const desde = new Date((oferta.fechaDesde as string).split('T')[0] + 'T00:00:00');
+            const hasta = new Date((oferta.fechaHasta as string).split('T')[0] + 'T00:00:00');
+            const diasValidos: { fecha: string; grupoTurno: string }[] = [];
+            const fechasYaAcordadas = oferta.fechasAcordadas?.map((fa: any) => fa.fecha.split('T')[0]) || [];
+
+            for (let d = new Date(desde); d <= hasta; d.setDate(d.getDate() + 1)) {
+                const fecha = d.toISOString().split('T')[0];
+
+                // Excluir fechas ya acordadas
+                if (fechasYaAcordadas.includes(fecha)) continue;
+                const grupo = calcularGrupoTrabaja(new Date(fecha + 'T00:00:00'));
+                const esSuGrupo = grupo === user.grupoTurno;
+                const turnoEfectivo = turnosEfectivos?.find((te: any) => te.fecha === fecha);
+
+                if (esCobertura && oferta.tipo === 'OFREZCO') {
+                    // OFREZCO_COBERTURA: interesado elige día suyo que quiere que le cubran
+                    if (esSuGrupo || !!turnoEfectivo) diasValidos.push({ fecha, grupoTurno: grupo });
+                } else if (!esCobertura && oferta.tipo === 'OFREZCO') {
+                    // OFREZCO_INTERCAMBIO: interesado elige día del rango que quiere que haga el ofertante
+                    if (esSuGrupo || !!turnoEfectivo) diasValidos.push({ fecha, grupoTurno: grupo });
+                } else if (!esCobertura && oferta.tipo === 'BUSCO') {
+                    // BUSCO_INTERCAMBIO: interesado elige día del rango que puede cubrir
+                    if (!esSuGrupo && !turnoEfectivo) diasValidos.push({ fecha, grupoTurno: grupo });
+                }
+            }
+
+            setFechasRangoDisponibles(diasValidos);
+            setOfertaParaSeleccionar(oferta);
+            setModalSeleccionarFechaRango(true);
+            return;
+        }
+
+        // Sin rango — lógica existente
         const tieneMultiples = esCobertura
             ? (oferta.fechasDisponibles?.length ?? 0) > 1
             : (oferta.turnosBusca?.length ?? 0) > 1;
@@ -280,7 +365,6 @@ export function useCambiosPage() {
             return;
         }
 
-        // Si hay una sola fecha, usarla directamente
         const fechaDirecta = esCobertura
             ? oferta.fechasDisponibles?.[0]?.fecha
             : oferta.turnosBusca?.[0]?.fecha;
@@ -298,7 +382,27 @@ export function useCambiosPage() {
             }),
         });
         setOfertaChatId(id);
-    }, [ofertas, user]);
+    }, [ofertas, user, turnosEfectivos]);
+
+
+    const handleConfirmarFechaRango = useCallback(async (fecha: string, horario: string) => {
+        if (!ofertaParaSeleccionar || !user) return;
+        setModalSeleccionarFechaRango(false);
+        const ofertaId = ofertaParaSeleccionar.id;
+        const receptorId = ofertaParaSeleccionar.ofertante.id;
+        setOfertaParaSeleccionar(null);
+        await fetch('/api/mensajes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                ofertaId: ofertaId,
+                receptorId: receptorId,
+                contenido: `Hola, me interesa tu oferta. Me gustaría ir el ${fecha} en horario ${horario}`,
+            }),
+        });
+        setOfertaChatId(ofertaId);
+    }, [ofertaParaSeleccionar, user]);
 
     return {
         user,
@@ -316,7 +420,9 @@ export function useCambiosPage() {
         activeTab, setActiveTab,
         isConsultarOpen, setIsConsultarOpen,
         modalSeleccionarTurno, setModalSeleccionarTurno,
-        ofertaParaSeleccionar,
+        modalSeleccionarFechaRango, setModalSeleccionarFechaRango,
+        fechasRangoDisponibles,
+        ofertaParaSeleccionar, setOfertaParaSeleccionar,
         ofertaChatId, setOfertaChatId,
         turnoSeleccionadoChatRef,
         solicitudEditando, setSolicitudEditando,
@@ -328,6 +434,7 @@ export function useCambiosPage() {
         handleTomarOferta,
         handleConfirmarSeleccion,
         handleMeInteresa,
+        handleConfirmarFechaRango,
         actualizarEstadoOferta,
         actualizarEstado,
         recargarConversaciones,

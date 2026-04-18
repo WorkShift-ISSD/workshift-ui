@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Send, Check, CheckCheck } from 'lucide-react';
 import { useFormatters } from '@/hooks/useFormatters';
 
@@ -77,14 +77,36 @@ export function ChatCard({
     const soyElOfertante = conv.ofertanteId === userId;
 
     const calcularTurnoParaEnviar = () => {
+        // Buscar fecha en el mensaje del interesado
         const mensajeInteresado = mensajes.find(m => m.emisor.id !== conv.ofertanteId);
         const fechaDelMensaje = mensajeInteresado?.contenido.match(/\d{4}-\d{2}-\d{2}/)?.[0];
-        return fechaDelMensaje
-            ? { fecha: fechaDelMensaje, horario: conv.fechasDisponibles?.find(f => f.fecha === fechaDelMensaje)?.horario || conv.fechasDisponibles?.[0]?.horario || '' }
-            : conv.fechasDisponibles?.[0]
-                ? { fecha: conv.fechasDisponibles[0].fecha, horario: conv.fechasDisponibles[0].horario }
-                : null;
+        const horarioDelMensaje = mensajeInteresado?.contenido.match(/\d{2}:\d{2}-\d{2}:\d{2}/)?.[0];
+
+        if (fechaDelMensaje) {
+            // Buscar el horario en fechasDisponibles o usar el del mensaje
+            const horario = conv.fechasDisponibles?.find(f => f.fecha === fechaDelMensaje)?.horario
+                || horarioDelMensaje
+                || conv.fechasDisponibles?.[0]?.horario
+                || '';
+            return { fecha: fechaDelMensaje, horario };
+        }
+
+        // Sin fecha en mensaje, usar primera fecha disponible
+        return conv.fechasDisponibles?.[0]
+            ? { fecha: conv.fechasDisponibles[0].fecha, horario: conv.fechasDisponibles[0].horario }
+            : null;
     };
+
+    const mensajesContainerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (isOpen) {
+            setTimeout(() => {
+                mensajesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        }
+    }, [isOpen, mensajes]);
+
 
     return (
         <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">

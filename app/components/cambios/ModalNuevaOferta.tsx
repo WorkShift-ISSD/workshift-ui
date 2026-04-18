@@ -73,6 +73,12 @@ export function ModalNuevaOferta({ isOpen, onClose, onSubmit, ofertaEditando }: 
     prioridad: 'NORMAL' as Prioridad,
     fechasBusca: [{ fecha: '', horario: user?.horario || HORARIOS[0] }],
     fechasDisponibles: [{ fecha: '', horario: user?.horario || HORARIOS[0] }],
+    usaRangoDisponibles: false,
+    rangoDisponibles: { desde: '', hasta: '', horario: 'A convenir' },
+    usaRangoBusca: false,
+    rangoBusca: { desde: '', hasta: '', horario: 'A convenir' },
+    fechaDesde: '',
+    fechaHasta: '',
   }), [user, HORARIOS]);
 
   const modoInicial = useMemo((): ModoOferta => {
@@ -110,18 +116,20 @@ export function ModalNuevaOferta({ isOpen, onClose, onSubmit, ofertaEditando }: 
     if (esIntercambio) {
       if (modo === 'OFREZCO_INTERCAMBIO' && !form.fechaOfrece) return 'Seleccioná la fecha de tu turno';
       if (modo === 'OFREZCO_INTERCAMBIO' && user && !esFechaValidaParaGrupo(new Date(form.fechaOfrece + 'T00:00:00'), user.grupoTurno as GrupoTurno)) {
-    return `Ese día no corresponde a tu Guardia ${user.grupoTurno}`;
+        return `Ese día no corresponde a tu Guardia ${user.grupoTurno}`;
       }
       const fechasValidas = form.fechasBusca.filter(f => f.fecha.trim() !== '');
-      if (fechasValidas.length === 0) return 'Agregá al menos una fecha';
+      const tieneRangoBusca = form.usaRangoBusca && form.rangoBusca.desde && form.rangoBusca.hasta;
+      if (fechasValidas.length === 0 && !tieneRangoBusca) return 'Agregá al menos una fecha';
     } else {
       const fechasValidas = form.fechasDisponibles.filter(f => f.fecha.trim() !== '');
-      if (fechasValidas.length === 0) return 'Agregá al menos una fecha';
+      const tieneRango = form.usaRangoDisponibles && form.rangoDisponibles.desde && form.rangoDisponibles.hasta;
+      if (fechasValidas.length === 0 && !tieneRango) return 'Agregá al menos una fecha';
     }
     if (!form.descripcion || form.descripcion.trim().length < 10)
       return 'La descripción debe tener al menos 10 caracteres';
     return '';
-  }, [form, esIntercambio, user]);
+  }, [form, esIntercambio, user, modo]);
 
   const handleClose = useCallback(() => {
     setForm(FORM_INICIAL);
@@ -240,6 +248,13 @@ export function ModalNuevaOferta({ isOpen, onClose, onSubmit, ofertaEditando }: 
             onRemoveFechaBusca={(index: number) => setForm(prev => ({ ...prev, fechasBusca: prev.fechasBusca.filter((_, i) => i !== index) }))}
             onAddFechaDisponible={(horario?: string) => setForm(prev => ({ ...prev, fechasDisponibles: [...prev.fechasDisponibles, { fecha: '', horario: horario || HORARIOS[0] }] }))}
             onRemoveFechaDisponible={(index: number) => setForm(prev => ({ ...prev, fechasDisponibles: prev.fechasDisponibles.filter((_, i) => i !== index) }))}
+            onToggleRangoDisponibles={(v: boolean) => setForm(prev => ({
+              ...prev,
+              usaRangoDisponibles: v,
+              fechasDisponibles: v ? [{ fecha: '', horario: prev.rangoDisponibles.horario }] : [{ fecha: '', horario: user?.horario || HORARIOS[0] }]
+            }))} onUpdateRangoDisponibles={(field, value) => setForm(prev => ({ ...prev, rangoDisponibles: { ...prev.rangoDisponibles, [field]: value } }))}
+            onToggleRangoBusca={(v: boolean) => setForm(prev => ({ ...prev, usaRangoBusca: v }))}
+            onUpdateRangoBusca={(field, value) => setForm(prev => ({ ...prev, rangoBusca: { ...prev.rangoBusca, [field]: value } }))}
           />
 
           {/* Descripción */}

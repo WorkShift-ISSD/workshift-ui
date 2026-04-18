@@ -3,6 +3,8 @@
 import { Gift, RefreshCw, ArrowRight } from 'lucide-react';
 import { useFormatters } from '@/hooks/useFormatters';
 import { TipoSolicitud } from '@/app/lib/enum';
+import { useState } from 'react';
+import { Paginacion } from './Paginacion';
 
 interface Props {
   ofertas: any[];
@@ -11,6 +13,11 @@ interface Props {
 
 export function OfertasDisponiblesTab({ ofertas, onMeInteresa }: Props) {
   const { formatDate, formatTimeAgo } = useFormatters();
+  const [pagina, setPagina] = useState(1);
+  const [porPagina, setPorPagina] = useState(5);
+
+  const totalPaginas = Math.ceil(ofertas.length / porPagina);
+  const ofertasPaginadas = ofertas.slice((pagina - 1) * porPagina, pagina * porPagina);
 
   if (ofertas.length === 0) {
     return (
@@ -30,7 +37,7 @@ export function OfertasDisponiblesTab({ ofertas, onMeInteresa }: Props) {
         {ofertas.length} {ofertas.length === 1 ? 'oferta disponible' : 'ofertas disponibles'}
       </p>
 
-      {ofertas.map(oferta => {
+      {ofertasPaginadas.map(oferta => {
         const esIntercambio = oferta.modalidadBusqueda === TipoSolicitud.INTERCAMBIO;
         const esOfrezcoIntercambio = esIntercambio && oferta.tipo === 'OFREZCO';
         const esBuscoIntercambio = esIntercambio && oferta.tipo === 'BUSCO';
@@ -75,9 +82,14 @@ export function OfertasDisponiblesTab({ ofertas, onMeInteresa }: Props) {
                 {/* Lo que se ofrece a hacer (turnosBusca = días libres que ofrece cubrir) */}
                 <div className="flex-1 bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 border border-blue-100 dark:border-blue-900">
                   <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-1">
-                    Se ofrece a trabajar el
+                    {oferta.fechaDesde && oferta.fechaHasta ? 'Se ofrece a trabajar un turno del' : 'Se ofrece a trabajar el'}
                   </p>
-                  {oferta.turnosBusca?.length > 0 ? (
+                  {oferta.fechaDesde && oferta.fechaHasta ? (
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {formatDate(oferta.fechaDesde)} al {formatDate(oferta.fechaHasta)}
+                      {oferta.horarioRango && ` · Horario: ${oferta.horarioRango}`}
+                    </p>
+                  ) : oferta.turnosBusca?.length > 0 ? (
                     <>
                       {oferta.turnosBusca.slice(0, 2).map((t: any, i: number) => (
                         <div key={i} className={i > 0 ? 'mt-1 pt-1 border-t border-blue-100 dark:border-blue-900' : ''}>
@@ -141,19 +153,33 @@ export function OfertasDisponiblesTab({ ofertas, onMeInteresa }: Props) {
                 <ArrowRight className="h-4 w-4 text-gray-400 flex-shrink-0 mt-4" />
 
                 {/* Lo que ofrece a cambio (fechasDisponibles = días libres que puede trabajar) */}
-                {oferta.fechasDisponibles?.length > 0 && (
+                {(oferta.fechasDisponibles?.length > 0 || (oferta.fechaDesde && oferta.fechaHasta)) && (
                   <div className="flex-1 bg-green-50 dark:bg-green-950/20 rounded-lg p-3 border border-green-100 dark:border-green-900">
                     <p className="text-[10px] font-semibold text-green-600 dark:text-green-400 uppercase tracking-wide mb-1">
-                      {oferta.fechasDisponibles.length === 1 ? 'A cambio ofrece ir el' : `A cambio ofrece ir el (${oferta.fechasDisponibles.length} opciones)`}
+                      {oferta.fechaDesde && oferta.fechaHasta
+                        ? 'A cambio ofrece ir un turno del'
+                        : oferta.fechasDisponibles?.length === 1
+                          ? 'A cambio ofrece ir el'
+                          : `A cambio ofrece ir el (${oferta.fechasDisponibles?.length} opciones)`
+                      }
                     </p>
-                    {oferta.fechasDisponibles.slice(0, 2).map((f: any, i: number) => (
-                      <div key={i} className={i > 0 ? 'mt-1 pt-1 border-t border-green-100 dark:border-green-900' : ''}>
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatDate(f.fecha)}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{f.horario}</p>
-                      </div>
-                    ))}
-                    {oferta.fechasDisponibles.length > 2 && (
-                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">+{oferta.fechasDisponibles.length - 2} más</p>
+                    {oferta.fechaDesde && oferta.fechaHasta ? (
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        Del {formatDate(oferta.fechaDesde)} al {formatDate(oferta.fechaHasta)}
+                        {oferta.horarioRango && ` · ${oferta.horarioRango}`}
+                      </p>
+                    ) : (
+                      <>
+                        {oferta.fechasDisponibles.slice(0, 2).map((f: any, i: number) => (
+                          <div key={i} className={i > 0 ? 'mt-1 pt-1 border-t border-green-100 dark:border-green-900' : ''}>
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatDate(f.fecha)}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{f.horario}</p>
+                          </div>
+                        ))}
+                        {oferta.fechasDisponibles.length > 2 && (
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">+{oferta.fechasDisponibles.length - 2} más</p>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
@@ -161,7 +187,7 @@ export function OfertasDisponiblesTab({ ofertas, onMeInteresa }: Props) {
             )}
 
             {/* ABIERTO: fechas disponibles */}
-            {!esIntercambio && oferta.fechasDisponibles?.length > 0 && (
+            {!esIntercambio && (oferta.fechasDisponibles?.length > 0 || (oferta.fechaDesde && oferta.fechaHasta)) && (
               <div className={`rounded-lg p-3 border mb-3 ${oferta.tipo === 'OFREZCO'
                 ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900'
                 : 'bg-orange-50 dark:bg-orange-950/20 border-orange-100 dark:border-orange-900'
@@ -170,14 +196,21 @@ export function OfertasDisponiblesTab({ ofertas, onMeInteresa }: Props) {
                   ? 'text-blue-600 dark:text-blue-400'
                   : 'text-orange-600 dark:text-orange-400'
                   }`}>
-                  {oferta.tipo === 'OFREZCO' ? 'Disponible para cubrir el' : 'Necesita cobertura el'}
+                  {oferta.tipo === 'OFREZCO' ? 'Disponible para cubrir un turno' : 'Necesita cobertura'}
                 </p>
                 <div className="space-y-1">
-                  {oferta.fechasDisponibles.map((f: any, i: number) => (
-                    <p key={i} className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {formatDate(f.fecha)} · {f.horario}
+                  {oferta.fechaDesde && oferta.fechaHasta ? (
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      Entre el {formatDate(oferta.fechaDesde)} y el {formatDate(oferta.fechaHasta)}
+                      {oferta.horarioRango && ` · Horario: ${oferta.horarioRango}`}
                     </p>
-                  ))}
+                  ) : (
+                    oferta.fechasDisponibles?.map((f: any, i: number) => (
+                      <p key={i} className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {formatDate(f.fecha)} · {f.horario}
+                      </p>
+                    ))
+                  )}
                 </div>
               </div>
             )}
@@ -199,6 +232,15 @@ export function OfertasDisponiblesTab({ ofertas, onMeInteresa }: Props) {
           </div>
         );
       })}
+
+      <Paginacion
+        pagina={pagina}
+        totalPaginas={totalPaginas}
+        porPagina={porPagina}
+        onCambiarPagina={setPagina}
+        onCambiarPorPagina={setPorPagina}
+      />
+
     </div>
   );
 }

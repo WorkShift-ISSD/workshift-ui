@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Check, XCircle, Calendar, User, FileText, ArrowRightLeft } from "lucide-react";
+import { X, Check, XCircle, User, FileText, ArrowRightLeft } from "lucide-react";
 import { Autorizacion } from "@/app/api/types";
 import { useFormatters } from '@/hooks/useFormatters';
 import { toast } from "react-toastify";
@@ -174,8 +174,13 @@ export function ModalAutorizacion({
                       <div className="flex items-center gap-2">
                         <ArrowRightLeft className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                         <h4 className="font-semibold text-blue-900 dark:text-blue-300">
-                          Cambio de Turno - Solicitud Directa
+                          {turnoDestinatario ? 'Intercambio de Turno' : 'Cobertura de Turno'}
                         </h4>
+                        {!turnoDestinatario && (
+                          <p className="text-sm text-blue-700 dark:text-gray-400 mt-1">
+                            {solicitud.destinatario.apellido}, {solicitud.destinatario.nombre} cubre el turno de {solicitud.solicitante.apellido}, {solicitud.solicitante.nombre} el {formatFechaSafe(turnoSolicitante.fecha)} de {turnoSolicitante.horario}
+                          </p>
+                        )}
                       </div>
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${solicitud.prioridad === 'ALTA' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
                         solicitud.prioridad === 'MEDIA' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
@@ -197,7 +202,7 @@ export function ModalAutorizacion({
                             {solicitud.solicitante.apellido}, {solicitud.solicitante.nombre}
                           </p>
                           <p className="text-xs text-gray-600 dark:text-gray-400">{solicitud.solicitante.rol}</p>
-                          <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mt-1">SOLICITANTE</p>
+                          <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mt-1">{turnoDestinatario ? 'CEDE SU TURNO' : 'NECESITA COBERTURA'}</p>
                         </div>
 
                         <div className="space-y-2">
@@ -230,49 +235,21 @@ export function ModalAutorizacion({
                             {solicitud.destinatario.apellido}, {solicitud.destinatario.nombre}
                           </p>
                           <p className="text-xs text-gray-600 dark:text-gray-400">{solicitud.destinatario.rol}</p>
-                          <p className="text-xs font-medium text-green-600 dark:text-green-400 mt-1">DESTINATARIO</p>
+                          <p className="text-xs font-medium text-green-600 dark:text-green-400 mt-1">CUBRE</p>
                         </div>
 
                         <div className="space-y-2">
-                          {turnoDestinatario ? (
-                            <div>
-                              <p className="text-xs text-gray-600 dark:text-gray-400">Fecha que ofrece</p>
-                              <p className="font-semibold text-gray-900 dark:text-white">
-                                {formatFechaSafe(turnoDestinatario.fecha)}
-                              </p>
-                            </div>
-                          ) : (
-                            <div>
-                              <p className="text-xs text-gray-600 dark:text-gray-400">Tipo</p>
-                              <p className="font-semibold text-gray-900 dark:text-white">Cobertura</p>
-                            </div>
-                          )}
-                          {turnoDestinatario ? (
-                            <div>
-                              <p className="text-xs text-gray-600 dark:text-gray-400">Horario</p>
-                              <p className="font-semibold text-gray-900 dark:text-white">
-                                {turnoDestinatario.horario}
-                              </p>
-                            </div>
-                          ) : (
-                            <div>
-                              <p className="text-xs text-gray-600 dark:text-gray-400">Tipo</p>
-                              <p className="font-semibold text-gray-900 dark:text-white">Cobertura</p>
-                            </div>
-                          )}
-                          {turnoDestinatario ? (
-                            <div>
-                              <p className="text-xs text-gray-600 dark:text-gray-400">Grupo</p>
-                              <p className="font-semibold text-gray-900 dark:text-white">
-                                {turnoDestinatario.grupoTurno}
-                              </p>
-                            </div>
-                          ) : (
-                            <div>
-                              <p className="text-xs text-gray-600 dark:text-gray-400">Tipo</p>
-                              <p className="font-semibold text-gray-900 dark:text-white">Cobertura</p>
-                            </div>
-                          )}
+                          {/*<div>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">Grupo</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">
+                              {solicitud.destinatario.grupoTurno}
+                            </p>
+                          </div>*/}
+                          <div className="flex items-center justify-center mt-2">
+                            <p className="text-sm text-gray-500 dark:text-gray-400 text-center italic">
+                              Cubre el turno de {solicitud.solicitante.apellido}, {solicitud.solicitante.nombre} el {formatFechaSafe(turnoSolicitante.fecha)} de {turnoSolicitante.horario}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -472,8 +449,8 @@ export function ModalAutorizacion({
                   placeholder="Agregar observaciones..."
                   rows={3}
                   className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-3
-                           bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                           focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                          focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   {observaciones.length} caracteres
