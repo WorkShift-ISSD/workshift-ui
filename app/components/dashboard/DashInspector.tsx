@@ -50,11 +50,11 @@ function toYMD(date: Date) {
 
 // ── Íconos de estado de día ────────────────────────────────────────────────
 
-function DayIcon({ type }: { type: 'worked' | 'exchange' | 'off' | 'covered' }) {
+function DayIcon({ type }: { type: 'worked' | 'exchange' | 'off' | 'covered' | 'absent' }) {
   if (type === 'worked') return <CheckCircle className="w-4 h-4 text-green-500 dark:text-green-400" />;
   if (type === 'exchange') return <RefreshCw className="w-4 h-4 text-amber-400" />;
   if (type === 'covered') return <RefreshCw className="w-4 h-4 text-orange-400" />;
-  if (type === 'off') return null;
+  if (type === 'absent') return <XCircle className="w-4 h-4 text-red-400" />;
   return null;
 }
 
@@ -97,7 +97,8 @@ export default function DashboardHome() {
     if (!user || !faltas) return 0;
     const hoyDate = new Date(); hoyDate.setHours(0, 0, 0, 0);
     return faltas.filter(f => {
-      const ff = new Date(f.fecha);
+      const fechaStr = f.fecha.includes('T') ? f.fecha.split('T')[0] : f.fecha;
+      const ff = new Date(fechaStr + 'T00:00:00');
       return f.empleadoId === user.id &&
         ff.getFullYear() === monthInfo.year &&
         ff.getMonth() === monthInfo.month &&
@@ -123,17 +124,14 @@ export default function DashboardHome() {
     [guardiasTrabajadas, misGuardiasReales]);
 
 
-  function getDayStyles(type: 'worked' | 'exchange' | 'covered' | 'off' | 'future') {
+  function getDayStyles(type: 'worked' | 'exchange' | 'covered' | 'off' | 'future' | 'absent') {
     switch (type) {
-      case 'worked':
-        return 'bg-green-100 dark:bg-green-500/10 border-green-200 dark:border-green-500/20';
-      case 'exchange':
-        return 'bg-amber-100 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20';
-      case 'covered':
-        return 'bg-orange-100 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/20';
+      case 'worked': return 'bg-green-100 dark:bg-green-500/10 border-green-200 dark:border-green-500/20';
+      case 'exchange': return 'bg-amber-100 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20';
+      case 'covered': return 'bg-orange-100 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/20';
+      case 'absent': return 'bg-red-100 dark:bg-red-500/10 border-red-200 dark:border-red-500/20';
       case 'off':
-      case 'future':
-        return 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700';
+      case 'future': return 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700';
     }
   }
 
@@ -154,10 +152,16 @@ export default function DashboardHome() {
       const esGanado = fechasGanadas.has(ymd);
       const esCedido = fechasCedidasSet.has(ymd);
       const trabaja = (esGrupoUsuario && !esCedido) || esGanado;
+      const esFalta = faltas?.some(f => {
+        const fs = f.fecha.includes('T') ? f.fecha.split('T')[0] : f.fecha;
+        return f.empleadoId === user?.id && fs === ymd;
+      }) ?? false;
 
-      let tipo: 'worked' | 'exchange' | 'off' | 'future' | 'covered';
+      let tipo: 'worked' | 'exchange' | 'off' | 'future' | 'covered' | 'absent';
       if (esFuturo) {
         tipo = 'future';
+      } else if (esFalta) {
+        tipo = 'absent';
       } else if (esCedido) {
         tipo = 'covered';
       } else if (esGanado) {
@@ -178,6 +182,8 @@ export default function DashboardHome() {
 
       return { label, tipo, horario };
     });
+
+
   }, [hoy, hoyYMD, turnosEfectivos, fechasCedidas, user]);
 
   const trabajadosSemana = semanaActual.filter(d => d.tipo === 'worked' || d.tipo === 'exchange').length;
@@ -368,17 +374,15 @@ export default function DashboardHome() {
                       <div className="flex items-center gap-3">
                         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${esAprobadoReal ?
                           'bg-green-400' : c.estado === 'PENDIENTE' ? 'bg-amber-400' : 'bg-red-400'}`} />
-                        <div>
-                          <p className="text-sm text-gray-900 dark:text-white font-medium">Cambio con{' '}
-                            <span className="text-blue-400">
-                              {c.destinatario ? `${c.destinatario.nombre} ${c.destinatario.apellido}` : 'N/A'}
-                            </span>
-                          </p>
-                          <p className={`text-xs mt-0.5 ${esAprobadoReal ?
-                            'text-green-500 dark:text-green-400' : c.estado === 'PENDIENTE' ? 'text-amber-400' : 'text-red-400'}`}>
-                            — {esAprobadoReal ? 'Aprobado' : c.estado === 'PENDIENTE' ? 'Pendiente' : 'Rechazado'}
-                          </p>
-                        </div>
+                        <p className="text-sm text-gray-900 dark:text-white font-medium">Cambio con{' '}
+                          <span className="text-blue-400">
+                            {c.destinatario ? `${c.destinatario.nombre} ${c.destinatario.apellido}` : 'N/A'}
+                          </span>
+                        </p>
+                        <p className={`text-xs mt-0.5 ${esAprobadoReal ?
+                          'text-green-500 dark:text-green-400' : c.estado === 'PENDIENTE' ? 'text-amber-400' : 'text-red-400'}`}>
+                          — {esAprobadoReal ? 'Aprobado' : c.estado === 'PENDIENTE' ? 'Pendiente' : 'Rechazado'}
+                        </p>
                       </div>
                     </div>
                   );

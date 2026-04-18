@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { calcularGrupoTrabaja } from '../lib/turnosUtils';
 import { useAuth } from '../context/AuthContext';
 import { useTurnosEfectivos } from '@/hooks/useTurnosEfectivos';
+import { useTodasLasFaltas } from '@/hooks/useFaltas';
 
 export default function CalendarioTurnos() {
   const [mesActual, setMesActual] = useState(new Date().getMonth());
@@ -12,6 +13,7 @@ export default function CalendarioTurnos() {
 
   const { user } = useAuth();
   const { turnosEfectivos, fechasCedidas } = useTurnosEfectivos();
+  const { faltas } = useTodasLasFaltas();
 
   const hoy = new Date();
   const totalDias = new Date(anioActual, mesActual + 1, 0).getDate();
@@ -47,11 +49,14 @@ export default function CalendarioTurnos() {
     const esGanado = fechasGanadas.has(fechaStr);
     const esCedido = fechasCedidasSet.has(fechaStr);
     const esHoy = fecha.toDateString() === hoy.toDateString();
+    const esFalta = faltas?.some(f => { // 👈
+      const fs = f.fecha.includes('T') ? f.fecha.split('T')[0] : f.fecha;
+      return f.empleadoId === user?.id && fs === fechaStr;
+    }) ?? false;
 
-    // Trabaja si: es su grupo y no cedió, O ganó ese turno
     const trabaja = (esGrupoUsuario && !esCedido) || esGanado;
 
-    return { fechaStr, trabaja, esGanado, esCedido, esHoy, grupoDelDia };
+    return { fechaStr, trabaja, esGanado, esCedido, esHoy, grupoDelDia, esFalta };
   };
 
   return (
@@ -86,28 +91,39 @@ export default function CalendarioTurnos() {
         {/* Días del mes */}
         {Array.from({ length: totalDias }, (_, i) => {
           const dia = i + 1;
-          const { trabaja, esGanado, esCedido, esHoy } = getDiaInfo(dia);
+          const { trabaja, esGanado, esCedido, esHoy, esFalta } = getDiaInfo(dia);
 
           return (
             <div
               key={dia}
-              title={esCedido ? 'Cediste este turno' : esGanado ? 'Turno ganado por intercambio' : trabaja ? 'Tu día de guardia' : ''}
+              title={
+                esFalta ? 'Falta registrada'
+                  : esCedido ? 'Cediste este turno'
+                    : esGanado ? 'Turno ganado por intercambio'
+                      : trabaja ? 'Tu día de guardia'
+                        : ''
+              }
               className={`
-                h-12 px-1 rounded-md flex flex-col items-center justify-center rounded-md text-xs font-medium transition-all
-                ${esHoy ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
-                ${trabaja && !esCedido
-                  ? esGanado
-                    ? 'bg-green-500 dark:bg-green-600 text-white'
-                    : 'bg-blue-500 dark:bg-blue-600 text-white'
-                  : esCedido
-                    ? 'bg-orange-200 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400'
-                    : 'bg-gray-100 dark:bg-gray-700/50 text-gray-400 dark:text-gray-600'
+        h-12 px-1 rounded-md flex flex-col items-center justify-center text-xs font-medium transition-all relative
+        ${esHoy ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
+        ${esFalta
+                  ? 'bg-red-500 dark:bg-red-600 text-white'
+                  : trabaja && !esCedido
+                    ? esGanado
+                      ? 'bg-green-500 dark:bg-green-600 text-white'
+                      : 'bg-blue-500 dark:bg-blue-600 text-white'
+                    : esCedido
+                      ? 'bg-orange-200 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400'
+                      : 'bg-gray-100 dark:bg-gray-700/50 text-gray-400 dark:text-gray-600'
                 }
-              `}
+      `}
             >
+              {esFalta && (
+                <span className="absolute top-0.5 left-0.5 text-[8px]">✗</span>
+              )}
               <span className="font-bold text-lg">{dia}</span>
               {esCedido && <span className="text-[9px] mt-0.5 font-semibold">cedido</span>}
-              {esGanado && <span className="text-[9px] mt-0.5 font-semibold">+turno</span>}
+              {esGanado && !esFalta && <span className="text-[9px] mt-0.5 font-semibold">+turno</span>}
             </div>
           );
         })}
