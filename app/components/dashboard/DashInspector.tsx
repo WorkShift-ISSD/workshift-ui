@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import {
   Calendar,
   CheckCircle,
+  Ban,
   Clock,
   XCircle,
   TrendingUp,
@@ -27,6 +28,8 @@ import CalendarioTurnos from '@/app/components/CalendarioTurnos';
 import { useTurnosEfectivos } from '@/hooks/useTurnosEfectivos';
 import { calcularGrupoTrabaja } from '@/app/lib/turnosUtils';
 import { useFormatters } from '@/hooks/useFormatters';
+import { useSanciones } from '@/hooks/useSanciones';
+import { useLicencias } from '@/hooks/useLicencias';
 
 type SolicitudDirectaEstado = 'SOLICITADO' | 'APROBADO' | 'RECHAZADO' | 'CANCELADO';
 
@@ -50,11 +53,14 @@ function toYMD(date: Date) {
 
 // ── Íconos de estado de día ────────────────────────────────────────────────
 
-function DayIcon({ type }: { type: 'worked' | 'exchange' | 'off' | 'covered' | 'absent' }) {
+function DayIcon({ type, isSancion = false }: { type: 'worked' | 'exchange' | 'off' | 'covered' | 'absent' | 'license'; isSancion?: boolean }) {
   if (type === 'worked') return <CheckCircle className="w-4 h-4 text-green-500 dark:text-green-400" />;
   if (type === 'exchange') return <RefreshCw className="w-4 h-4 text-amber-400" />;
   if (type === 'covered') return <RefreshCw className="w-4 h-4 text-orange-400" />;
-  if (type === 'absent') return <XCircle className="w-4 h-4 text-red-400" />;
+  if (type === 'absent') return isSancion
+    ? <Ban className="w-4 h-4 text-red-400" />
+    : <XCircle className="w-4 h-4 text-red-400" />;
+  if (type === 'license') return <Clock className="w-4 h-4 text-orange-300" />;
   return null;
 }
 
@@ -70,6 +76,8 @@ export default function DashboardHome() {
   const { solicitudes, isLoading: loadingSolicitudes } = useSolicitudesDirectas();
   const { turnosEfectivos, fechasCedidas } = useTurnosEfectivos();
   const { formatFechaLargaConDia } = useFormatters();
+  const { sanciones } = useSanciones();
+  const { licencias } = useLicencias();
 
   const hoy = new Date();
   const hoyYMD = toYMD(hoy);
@@ -96,15 +104,45 @@ export default function DashboardHome() {
   const faltasDelMes = useMemo(() => {
     if (!user || !faltas) return 0;
     const hoyDate = new Date(); hoyDate.setHours(0, 0, 0, 0);
-    return faltas.filter(f => {
+
+    // Faltas en días de guardia
+    const faltasReales = faltas.filter(f => {
       const fechaStr = f.fecha.includes('T') ? f.fecha.split('T')[0] : f.fecha;
       const ff = new Date(fechaStr + 'T00:00:00');
-      return f.empleadoId === user.id &&
+      if (!(f.empleadoId === user.id &&
         ff.getFullYear() === monthInfo.year &&
         ff.getMonth() === monthInfo.month &&
-        ff <= hoyDate;
+        ff <= hoyDate)) return false;
+      // Solo contar si ese día le tocaba trabajar
+      const grupoDelDia = calcularGrupoTrabaja(ff);
+      return grupoDelDia === user.grupoTurno;
     }).length;
-  }, [user, faltas, monthInfo]);
+
+    // Sanciones activas en días de guardia del mes
+    const sancionesReales = sanciones?.filter(s => {
+      if (s.empleado_id !== user.id || s.estado !== 'ACTIVA') return false;
+      const desde = new Date(s.fecha_desde.split('T')[0] + 'T00:00:00');
+      const hasta = new Date(s.fecha_hasta.split('T')[0] + 'T00:00:00');
+      // Contar días del mes que caen en la sanción y son días de guardia hasta hoy
+      let count = 0;
+      const cursor = new Date(Math.max(
+        desde.getTime(),
+        new Date(monthInfo.firstDay + 'T00:00:00').getTime()
+      ));
+      const fin = new Date(Math.min(
+        hasta.getTime(),
+        hoyDate.getTime(),
+        new Date(monthInfo.lastDayStr + 'T00:00:00').getTime()
+      ));
+      while (cursor <= fin) {
+        if (calcularGrupoTrabaja(cursor) === user.grupoTurno) count++;
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      return count > 0;
+    }).length;
+
+    return faltasReales + sancionesReales;
+  }, [user, faltas, sanciones, monthInfo]);
 
   const guardiasTrabajadas = useMemo(() => {
     if (!user) return 0;
@@ -124,19 +162,27 @@ export default function DashboardHome() {
     [guardiasTrabajadas, misGuardiasReales]);
 
 
-  function getDayStyles(type: 'worked' | 'exchange' | 'covered' | 'off' | 'future' | 'absent') {
+  function getDayStyles(type: 'worked' | 'exchange' | 'covered' | 'off' | 'future' | 'absent' | 'license', esGuardia = true) {
     switch (type) {
       case 'worked': return 'bg-green-100 dark:bg-green-500/10 border-green-200 dark:border-green-500/20';
       case 'exchange': return 'bg-amber-100 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20';
       case 'covered': return 'bg-orange-100 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/20';
-      case 'absent': return 'bg-red-100 dark:bg-red-500/10 border-red-200 dark:border-red-500/20';
+      case 'absent': return esGuardia
+        ? 'bg-red-100 dark:bg-red-500/10 border-red-200 dark:border-red-500/20'       // día de guardia con falta/sanción
+        : 'bg-red-200 dark:bg-red-900/30 border-red-400 dark:border-red-700/50';      // no es día de guardia pero tiene sanción
+      case 'license': return 'bg-orange-100 dark:bg-orange-400/10 border-orange-300 dark:border-orange-400/20';
       case 'off':
       case 'future': return 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700';
     }
   }
 
   // ── Semana actual ────────────────────────────────────────────────────────
-  const semanaActual = useMemo(() => {
+  const semanaActual = useMemo((): {
+    label: string;
+    tipo: 'worked' | 'exchange' | 'off' | 'future' | 'covered' | 'absent' | 'license';
+    horario: string; esSancion: boolean;
+    esGuardia: boolean;
+  }[] => {
     const lunes = getLunes(hoy);
     const fechasGanadas = new Set(turnosEfectivos.map(t => t.fecha));
     const fechasCedidasSet = new Set(fechasCedidas);
@@ -152,16 +198,33 @@ export default function DashboardHome() {
       const esGanado = fechasGanadas.has(ymd);
       const esCedido = fechasCedidasSet.has(ymd);
       const trabaja = (esGrupoUsuario && !esCedido) || esGanado;
+
       const esFalta = faltas?.some(f => {
         const fs = f.fecha.includes('T') ? f.fecha.split('T')[0] : f.fecha;
         return f.empleadoId === user?.id && fs === ymd;
       }) ?? false;
 
-      let tipo: 'worked' | 'exchange' | 'off' | 'future' | 'covered' | 'absent';
+      const esSancion = sanciones?.some(s =>
+        s.empleado_id === user?.id &&
+        s.estado === 'ACTIVA' &&
+        ymd >= s.fecha_desde.split('T')[0] &&
+        ymd <= s.fecha_hasta.split('T')[0]
+      ) ?? false;
+
+      const esLicencia = licencias?.some(l =>
+        l.empleado_id === user?.id &&
+        (l.estado === 'APROBADA' || l.estado === 'ACTIVA') &&
+        ymd >= l.fecha_desde.split('T')[0] &&
+        ymd <= l.fecha_hasta.split('T')[0]
+      ) ?? false;
+
+      let tipo: 'worked' | 'exchange' | 'off' | 'future' | 'covered' | 'absent' | 'license';
       if (esFuturo) {
         tipo = 'future';
-      } else if (esFalta) {
+      } else if (esFalta || esSancion) {
         tipo = 'absent';
+      } else if (esLicencia) {
+        tipo = 'license';
       } else if (esCedido) {
         tipo = 'covered';
       } else if (esGanado) {
@@ -180,14 +243,14 @@ export default function DashboardHome() {
             ? user?.horario || ''
             : '';
 
-      return { label, tipo, horario };
+      return { label, tipo, horario, esSancion, esGuardia: trabaja };
     });
-
-
-  }, [hoy, hoyYMD, turnosEfectivos, fechasCedidas, user]);
+  }, [hoy, hoyYMD, turnosEfectivos, fechasCedidas, user, faltas, sanciones, licencias]);
 
   const trabajadosSemana = semanaActual.filter(d => d.tipo === 'worked' || d.tipo === 'exchange').length;
   const intercambiosSemana = semanaActual.filter(d => d.tipo === 'exchange').length;
+  const faltasSemana = semanaActual.filter(d => d.tipo === 'absent' && d.esGuardia).length;
+  const licenciasSemana = semanaActual.filter(d => d.tipo === 'license').length;
 
   // ── Stats ────────────────────────────────────────────────────────────────
 
@@ -319,10 +382,10 @@ export default function DashboardHome() {
 
             {/* Mi Semana */}
             <div className="grid grid-cols-7 gap-2 mb-3 p-4">
-              {semanaActual.map(({ label, tipo, horario }) => (
+              {semanaActual.map(({ label, tipo, horario, esSancion, esGuardia }) => (
                 <div
                   key={label}
-                  className={`flex flex-col items-center rounded-md overflow-hidden border ${getDayStyles(tipo)} transition hover:scale-105`}
+                  className={`flex flex-col items-center rounded-md overflow-hidden border ${getDayStyles(tipo, esGuardia)} transition hover:scale-105`}
                 >
                   <div className="w-full h-6 flex items-center justify-center">
                     <span className="text-[10px] font-medium text-gray-700 dark:text-gray-300">
@@ -331,7 +394,7 @@ export default function DashboardHome() {
                   </div>
                   <div className="w-full h-px bg-black/20" />
                   <div className="w-full h-8 flex items-center justify-center">
-                    {(tipo !== 'off' && tipo !== 'future') && <DayIcon type={tipo} />}
+                    {(tipo !== 'off' && tipo !== 'future') && <DayIcon type={tipo} isSancion={esSancion} />}
                   </div>
                 </div>
               ))}
@@ -348,6 +411,24 @@ export default function DashboardHome() {
                 <RefreshCw className="w-4 h-4" />
                 <span className="font-semibold">{intercambiosSemana} intercambios</span>
               </span>
+              {faltasSemana > 0 && (
+                <>
+                  <span className="text-gray-500 dark:text-gray-400">•</span>
+                  <span className="flex items-center gap-1.5 text-red-400">
+                    <XCircle className="w-4 h-4" />
+                    <span className="font-semibold">{faltasSemana} {faltasSemana === 1 ? 'falta' : 'faltas'}</span>
+                  </span>
+                </>
+              )}
+              {licenciasSemana > 0 && (
+                <>
+                  <span className="text-gray-500 dark:text-gray-400">•</span>
+                  <span className="flex items-center gap-1.5 text-orange-400">
+                    <Clock className="w-4 h-4" />
+                    <span className="font-semibold">{licenciasSemana} {licenciasSemana === 1 ? 'licencia' : 'licencias'}</span>
+                  </span>
+                </>
+              )}
             </div>
 
             {/* Calendario */}
