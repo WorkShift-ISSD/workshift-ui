@@ -16,6 +16,7 @@ import { Cambio as TipoCambio } from '../api/types';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
 import DashInspector from '@/app/components/dashboard/DashInspector';
+import DashJefe from '@/app/components/dashboard/DashJefe';
 import { useTodasLasFaltas } from '@/hooks/useFaltas';
 import { calcularDiasTrabajoEnRango } from '@/app/lib/turnosUtils';
 import { useOfertas } from '@/hooks/useOfertas';
@@ -26,10 +27,6 @@ type SolicitudDirectaEstado = 'SOLICITADO' | 'APROBADO' | 'RECHAZADO' | 'CANCELA
 
 export default function DashboardHome() {
   const { user } = useAuth();
-
-    if (user?.rol === 'INSPECTOR') {
-    return <DashInspector />;
-  }
 
   const { cambios, isLoading: loadingCambios, error: errorCambios } = useCambios();
   const { turnosData, isLoading: loadingTurnos, error: errorTurnos } = useTurnosData();
@@ -161,6 +158,9 @@ export default function DashboardHome() {
 
     return { turnosOferta: turnosDisponibles, aprobados: aprobadosDelMes, pendientes: pendientesParaMi, rechazados: rechazadosDelMes };
   }, [ofertas, solicitudes, user, monthInfo]);
+
+  if (user?.rol === 'INSPECTOR') return <DashInspector />;
+  if (user?.rol === 'JEFE' || user?.rol === 'ADMINISTRADOR') return <DashJefe />;
 
   if (loadingCambios || loadingTurnos || loadingFaltas || loadingOfertas || loadingSolicitudes) {
     return (
