@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { MessageSquare, ChevronDown, ChevronUp, Send, Check, CheckCheck } from 'lucide-react';
-import { useConversaciones, Conversacion } from '@/hooks/useConversaciones';
+import { MessageSquare } from 'lucide-react';
+import { useConversaciones } from '@/hooks/useConversaciones';
 import { useAuth } from '@/app/context/AuthContext';
-import { useFormatters } from '@/hooks/useFormatters';
 import Pusher from 'pusher-js';
+import { ChatCard } from './ChatCards';
+import { ModalConfirmarFechas } from './ModalConfirmarFechas';
 
 interface Mensaje {
     id: string;
@@ -26,37 +27,43 @@ const ITEMS_POR_PAGINA = 5;
 interface Props {
     ofertaAbrirId?: string | null;
     onChatAbierto?: () => void;
+    onMensajesLeidos?: () => void;
+    onNuevoMensaje?: () => void;
 }
 
-export function SeccionMensajes({ ofertaAbrirId, onChatAbierto }: Props) {
+export function SeccionMensajes({ ofertaAbrirId, onChatAbierto, onMensajesLeidos, onNuevoMensaje }: Props) {
     const { user } = useAuth();
     const { conversaciones, isLoading, recargar } = useConversaciones();
-    const { formatTimeAgo } = useFormatters();
 
     const [tabActivo, setTabActivo] = useState<TabMensajes>('activos');
     const [pagina, setPagina] = useState(1);
-    const [chatAbierto, setChatAbierto] = useState<string | null>(null); // ofertaId
+    const [chatAbierto, setChatAbierto] = useState<string | null>(null);
+    const [chatAbiertoOfertaId, setChatAbiertoOfertaId] = useState<string | null>(null);
+    const [chatAbiertoOtroId, setChatAbiertoOtroId] = useState<string | null>(null);
     const [mensajes, setMensajes] = useState<Mensaje[]>([]);
     const [loadingMensajes, setLoadingMensajes] = useState(false);
     const [texto, setTexto] = useState('');
     const [enviando, setEnviando] = useState(false);
     const mensajesEndRef = useRef<HTMLDivElement>(null);
-    const pusherRef = useRef<Pusher | null>(null);
     const recargarRef = useRef(recargar);
+    const conversacionesRef = useRef(conversaciones);
+    const pendingOfertaAbrirRef = useRef<string | null>(null);
 
-useEffect(() => { recargarRef.current = recargar; }, [recargar]);
+    const [modalConfirmarFechas, setModalConfirmarFechas] = useState(false);
+    const [pendienteAceptar, setPendienteAceptar] = useState<{
+        turnoParaEnviar: { fecha: string; horario: string } | null;
+        conv: any;
+    } | null>(null);
 
+    useEffect(() => { conversacionesRef.current = conversaciones; }, [conversaciones]);
+    useEffect(() => { recargarRef.current = recargar; }, [recargar]);
 
-
-    // Filtrar conversaciones por tab
-    const estadosActivos = ['DISPONIBLE', 'SOLICITADO'];
     const conversacionesFiltradas = conversaciones.filter(c =>
         tabActivo === 'activos'
-            ? estadosActivos.includes(c.ofertaEstado)
-            : !estadosActivos.includes(c.ofertaEstado)
+            ? c.conversacionEstado === 'ACTIVA'
+            : c.conversacionEstado !== 'ACTIVA'
     );
 
-    // Paginación
     const totalPaginas = Math.ceil(conversacionesFiltradas.length / ITEMS_POR_PAGINA);
     const conversacionesPaginadas = conversacionesFiltradas.slice(
         (pagina - 1) * ITEMS_POR_PAGINA,
@@ -65,11 +72,10 @@ useEffect(() => { recargarRef.current = recargar; }, [recargar]);
 
     const totalSinLeer = conversaciones.reduce((acc, c) => acc + c.sinLeer, 0);
 
-    // Cargar mensajes del chat abierto
-    const cargarMensajes = useCallback(async (ofertaId: string) => {
+    const cargarMensajes = useCallback(async (ofertaId: string, otroId: string) => {
         setLoadingMensajes(true);
         try {
-            const res = await fetch(`/api/mensajes?ofertaId=${ofertaId}`, {
+            const res = await fetch(`/api/mensajes?ofertaId=${ofertaId}&otroId=${otroId}`, {
                 credentials: 'include',
             });
             const data = await res.json();
@@ -81,59 +87,68 @@ useEffect(() => { recargarRef.current = recargar; }, [recargar]);
         }
     }, []);
 
-    // Abrir/cerrar chat
-    const toggleChat = useCallback((ofertaId: string) => {
-        if (chatAbierto === ofertaId) {
+    const toggleChat = useCallback((convId: string, ofertaId: string, otroId: string) => {
+        if (chatAbierto === convId) {
             setChatAbierto(null);
+            setChatAbiertoOfertaId(null);
+            setChatAbiertoOtroId(null);
             setMensajes([]);
         } else {
-            setChatAbierto(ofertaId);
-            cargarMensajes(ofertaId);
+            setChatAbierto(convId);
+            setChatAbiertoOfertaId(ofertaId);
+            setChatAbiertoOtroId(otroId);
+            cargarMensajes(ofertaId, otroId);
         }
     }, [chatAbierto, cargarMensajes]);
 
     useEffect(() => {
         if (ofertaAbrirId) {
+            pendingOfertaAbrirRef.current = ofertaAbrirId;
             setTabActivo('activos');
-            // Pequeño delay para que el mensaje inicial ya esté en la BD
-            setTimeout(async () => {
-                await recargar();
-                setChatAbierto(ofertaAbrirId);
-                await cargarMensajes(ofertaAbrirId);
-                onChatAbierto?.();
-                document.getElementById('seccion-mensajes')?.scrollIntoView({ behavior: 'smooth' });
-            }, 300);
+            recargar();
+            onChatAbierto?.();
+            document.getElementById('seccion-mensajes')?.scrollIntoView({ behavior: 'smooth' });
         }
     }, [ofertaAbrirId]);
 
-    // Pusher — escuchar nuevos mensajes en tiempo real
     useEffect(() => {
-        if (!chatAbierto) return () => {
-            try { channel.unbind_all(); } catch (e) { }
-            try { pusher.unsubscribe(`oferta-${chatAbierto}`); } catch (e) { }
-            // NO pusher.disconnect() acá
-        };
+        if (!pendingOfertaAbrirRef.current) return;
+        const conv = conversaciones.find(c => c.ofertaId === pendingOfertaAbrirRef.current);
+        if (conv) {
+            setChatAbierto(conv.id);
+            setChatAbiertoOfertaId(conv.ofertaId);
+            setChatAbiertoOtroId(conv.otroParticipante.id);
+            cargarMensajes(conv.ofertaId, conv.otroParticipante.id);
+            pendingOfertaAbrirRef.current = null;
+        }
+    }, [conversaciones]);
 
+    useEffect(() => {
+        if (!chatAbiertoOfertaId || !chatAbiertoOtroId || !user?.id) return;
 
+        const participantes = [user.id, chatAbiertoOtroId].sort().join('-');
         const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
             cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
         });
 
-        const channel = pusher.subscribe(`oferta-${chatAbierto}`);
+        const channel = pusher.subscribe(`conv-${chatAbiertoOfertaId}-${participantes}`);
         channel.bind('nuevo-mensaje', (data: Mensaje) => {
             setMensajes(prev => [...prev, data]);
-            recargar(); // actualizar badge de sin leer
+            recargarRef.current();
+            onNuevoMensaje?.();
+        });
+        channel.bind('mensajes-leidos', () => {
+            setMensajes(prev => prev.map(m => ({ ...m, leido: true })));
+            recargarRef.current();
+            onMensajesLeidos?.();
         });
 
-        pusherRef.current = pusher;
-
         return () => {
-            channel.unbind_all();
-            pusher.unsubscribe(`oferta-${chatAbierto}`);
-            pusher.disconnect();
+            try { channel.unbind_all(); } catch (e) { }
+            try { pusher.unsubscribe(`conv-${chatAbiertoOfertaId}-${participantes}`); } catch (e) { }
+            try { pusher.disconnect(); } catch (e) { }
         };
-    }, [chatAbierto, recargar]);
-
+    }, [chatAbiertoOfertaId, chatAbiertoOtroId, user?.id]);
 
     useEffect(() => {
         if (!user?.id) return;
@@ -142,11 +157,13 @@ useEffect(() => { recargarRef.current = recargar; }, [recargar]);
             cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
         });
 
-        // Canal personal del usuario para notificaciones
         const channel = pusher.subscribe(`usuario-${user.id}`);
         channel.bind('nuevo-mensaje', () => {
             recargarRef.current();
+            onNuevoMensaje?.();
         });
+        channel.bind('oferta-completada', () => recargarRef.current());
+        channel.bind('conversacion-actualizada', () => recargarRef.current());
 
         return () => {
             try { channel.unbind_all(); } catch (e) { }
@@ -155,15 +172,12 @@ useEffect(() => { recargarRef.current = recargar; }, [recargar]);
         };
     }, [user?.id]);
 
-    // Scroll al último mensaje
     useEffect(() => {
         mensajesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [mensajes]);
 
-    // Enviar mensaje
     const handleEnviar = async () => {
-        if (!texto.trim() || !chatAbierto || !user) return;
-
+        if (!texto.trim() || !chatAbierto || !chatAbiertoOfertaId || !user) return;
         const conversacion = conversaciones.find(c => c.id === chatAbierto);
         if (!conversacion) return;
 
@@ -174,7 +188,7 @@ useEffect(() => { recargarRef.current = recargar; }, [recargar]);
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({
-                    ofertaId: chatAbierto,
+                    ofertaId: chatAbiertoOfertaId,
                     receptorId: conversacion.otroParticipante.id,
                     contenido: texto.trim(),
                 }),
@@ -187,23 +201,47 @@ useEffect(() => { recargarRef.current = recargar; }, [recargar]);
         }
     };
 
-    const formatUltimaConexion = (ultimoLogin: string | null) => {
-        if (!ultimoLogin) return 'Nunca conectado';
-        const diff = Date.now() - new Date(ultimoLogin).getTime();
-        const minutos = Math.floor(diff / 60000);
-        if (minutos < 5) return '🟢 En línea';
-        if (minutos < 60) return `Visto hace ${minutos} min`;
-        const horas = Math.floor(minutos / 60);
-        if (horas < 24) return `Visto hace ${horas}h`;
-        const dias = Math.floor(horas / 24);
-        return `Visto hace ${dias}d`;
+    const aceptarPropuesta = async (conv: any, turnoParaEnviar: any, cancelarOferta: boolean) => {
+        const res = await fetch(`/api/ofertas/${conv.ofertaId}/tomar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                tomadorId: conv.otroParticipante.id,
+                turnoSeleccionado: turnoParaEnviar,
+                cancelarOferta,
+            }),
+        });
+        if (res.ok) {
+            await recargar();
+        } else {
+            const data = await res.json();
+            alert(data.error || 'Error al aceptar');
+        }
     };
 
-    const conversacionAbierta = conversaciones.find(c => c.id === chatAbierto);
+    const handleAceptar = (conv: any, turnoParaEnviar: { fecha: string; horario: string } | null) => {
+        if ((conv.fechasDisponibles?.length ?? 0) > 1) {
+            setPendienteAceptar({ turnoParaEnviar, conv });
+            setModalConfirmarFechas(true);
+        } else {
+            aceptarPropuesta(conv, turnoParaEnviar, true);
+        }
+    };
+
+    const handleRechazar = async (conv: any) => {
+        const res = await fetch(`/api/ofertas/${conv.ofertaId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ estado: 'CANCELADO' }),
+        });
+        if (res.ok) await recargar();
+    };
 
     return (
         <div id="seccion-mensajes" className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-            {/* Header de la sección */}
+            {/* Header */}
             <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <MessageSquare className="h-5 w-5 text-gray-500 dark:text-gray-400" />
@@ -216,18 +254,36 @@ useEffect(() => { recargarRef.current = recargar; }, [recargar]);
                 </div>
             </div>
 
-            {/* Tabs internos */}
+            {/* Tabs */}
             <div className="border-b border-gray-200 dark:border-gray-700 flex">
                 {(['activos', 'cerrados'] as TabMensajes[]).map(tab => (
                     <button
                         key={tab}
-                        onClick={() => { setTabActivo(tab); setPagina(1); setChatAbierto(null); }}
+                        onClick={() => {
+                            setTabActivo(tab);
+                            setPagina(1);
+                            setChatAbierto(null);
+                            setChatAbiertoOfertaId(null);
+                            if (tab === 'cerrados') {
+                                fetch('/api/mensajes/conversaciones', {
+                                    method: 'PATCH',
+                                    credentials: 'include',
+                                }).then(async () => await recargar());
+                            }
+                        }}
                         className={`flex-1 py-2.5 text-sm font-medium transition-colors relative ${tabActivo === tab
                             ? 'text-blue-600 dark:text-blue-400'
                             : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                             }`}
                     >
-                        {tab === 'activos' ? 'Activos' : 'Cerrados'}
+                        {tab === 'activos' ? 'Activos' : (
+                            <span className="flex items-center gap-1 justify-center">
+                                Cerrados
+                                {conversaciones.filter(c => c.conversacionEstado !== 'ACTIVA' && !c.visto).length > 0 && (
+                                    <span className="w-2 h-2 bg-red-500 rounded-full inline-block" />
+                                )}
+                            </span>
+                        )}
                         {tabActivo === tab && (
                             <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
                         )}
@@ -247,122 +303,25 @@ useEffect(() => { recargarRef.current = recargar; }, [recargar]);
                     </div>
                 ) : (
                     conversacionesPaginadas.map(conv => (
-                        <div key={conv.id} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                            {/* Card de conversación */}
-                            <button
-                                onClick={() => toggleChat(conv.id)}
-                                className="w-full p-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left"
-                            >
-                                {/* Avatar */}
-                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                                    {conv.otroParticipante.nombre[0]}{conv.otroParticipante.apellido[0]}
-                                </div>
-
-                                {/* Info */}
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between mb-0.5">
-                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                                            {conv.otroParticipante.nombre} {conv.otroParticipante.apellido}
-                                        </p>
-                                        <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 ml-2">
-                                            {formatTimeAgo(conv.ultimoMensajeAt)}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                            {conv.ultimoMensaje}
-                                        </p>
-                                        {conv.sinLeer > 0 && (
-                                            <span className="ml-2 px-1.5 py-0.5 bg-blue-600 text-white rounded-full text-xs flex-shrink-0">
-                                                {conv.sinLeer}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
-                                        {formatUltimaConexion(conv.otroParticipante.ultimoLogin)}
-                                    </p>
-                                </div>
-
-                                {/* Chevron */}
-                                {chatAbierto === conv.id
-                                    ? <ChevronUp className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                                    : <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                                }
-                            </button>
-
-                            {/* Chat expandido */}
-                            {chatAbierto === conv.id && (
-                                <div className="border-t border-gray-200 dark:border-gray-700">
-                                    {/* Info de la oferta */}
-                                    <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700/50 text-xs text-gray-500 dark:text-gray-400">
-                                        {conv.turnoOfrece
-                                            ? `Oferta: ${conv.turnoOfrece.fecha} · ${conv.turnoOfrece.horario}`
-                                            : conv.fechasDisponibles?.length
-                                                ? `Cobertura: ${conv.fechasDisponibles.map(f => f.fecha).join(', ')}`
-                                                : 'Oferta'}
-                                    </div>
-
-                                    {/* Mensajes */}
-                                    <div className="h-64 overflow-y-auto p-3 space-y-2">
-                                        {loadingMensajes ? (
-                                            <p className="text-center text-xs text-gray-400 mt-8">Cargando mensajes...</p>
-                                        ) : mensajes.length === 0 ? (
-                                            <p className="text-center text-xs text-gray-400 mt-8">
-                                                Empezá la conversación
-                                            </p>
-                                        ) : (
-                                            mensajes.map(msg => {
-                                                const esMio = msg.emisor.id === user?.id;
-                                                return (
-                                                    <div key={msg.id} className={`flex ${esMio ? 'justify-end' : 'justify-start'}`}>
-                                                        <div className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm ${esMio
-                                                            ? 'bg-blue-600 text-white rounded-br-sm'
-                                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-bl-sm'
-                                                            }`}>
-                                                            <p>{msg.contenido}</p>
-                                                            <div className={`flex items-center gap-1 mt-0.5 ${esMio ? 'justify-end' : 'justify-start'}`}>
-                                                                <span className={`text-[10px] ${esMio ? 'text-blue-200' : 'text-gray-400'}`}>
-                                                                    {new Date(msg.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                                                                </span>
-                                                                {esMio && (
-                                                                    msg.leido
-                                                                        ? <CheckCheck className="h-3 w-3 text-blue-200" />
-                                                                        : <Check className="h-3 w-3 text-blue-200" />
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })
-                                        )}
-                                        <div ref={mensajesEndRef} />
-                                    </div>
-
-                                    {/* Input */}
-                                    <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 flex gap-2">
-                                        <input
-                                            type="text"
-                                            value={texto}
-                                            onChange={e => setTexto(e.target.value)}
-                                            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleEnviar()}
-                                            placeholder="Escribí un mensaje..."
-                                            className="flex-1 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        />
-                                        <button
-                                            onClick={handleEnviar}
-                                            disabled={!texto.trim() || enviando}
-                                            className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            <Send className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                        <ChatCard
+                            key={conv.id}
+                            conv={conv}
+                            isOpen={chatAbierto === conv.id}
+                            userId={user?.id ?? ''}
+                            mensajes={chatAbierto === conv.id ? mensajes : []}
+                            loadingMensajes={chatAbierto === conv.id ? loadingMensajes : false}
+                            texto={chatAbierto === conv.id ? texto : ''}
+                            enviando={enviando}
+                            onToggle={() => toggleChat(conv.id, conv.ofertaId, conv.otroParticipante.id)}
+                            onTextoChange={setTexto}
+                            onEnviar={handleEnviar}
+                            onAceptar={(turno) => handleAceptar(conv, turno)}
+                            onRechazar={() => handleRechazar(conv)}
+                            mensajesEndRef={mensajesEndRef}
+                        />
                     ))
                 )}
 
-                {/* Paginación */}
                 {totalPaginas > 1 && (
                     <div className="flex items-center justify-center gap-2 pt-2">
                         <button
@@ -372,9 +331,7 @@ useEffect(() => { recargarRef.current = recargar; }, [recargar]);
                         >
                             Anterior
                         </button>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                            {pagina} / {totalPaginas}
-                        </span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">{pagina} / {totalPaginas}</span>
                         <button
                             onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}
                             disabled={pagina === totalPaginas}
@@ -383,6 +340,21 @@ useEffect(() => { recargarRef.current = recargar; }, [recargar]);
                             Siguiente
                         </button>
                     </div>
+                )}
+
+                {modalConfirmarFechas && pendienteAceptar && (
+                    <ModalConfirmarFechas
+                        onMantener={async () => {
+                            setModalConfirmarFechas(false);
+                            await aceptarPropuesta(pendienteAceptar.conv, pendienteAceptar.turnoParaEnviar, false);
+                            setPendienteAceptar(null);
+                        }}
+                        onCerrar={async () => {
+                            setModalConfirmarFechas(false);
+                            await aceptarPropuesta(pendienteAceptar.conv, pendienteAceptar.turnoParaEnviar, true);
+                            setPendienteAceptar(null);
+                        }}
+                    />
                 )}
             </div>
         </div>

@@ -20,47 +20,113 @@ const SECRET_KEY = new TextEncoder().encode(
   process.env.JWT_SECRET || 'Workshift25'
 );
 
-// GET - Obtener todas las ofertas
+
 // GET - Obtener todas las ofertas
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const estado = searchParams.get('estado');
 
-    // ✅ CORREGIDO: Incluir TODOS los estados (también CANCELADO y COMPLETADO)
+    // Obtener usuario logueado
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth-token')?.value;
+    let userId: string | null = null;
+    if (token) {
+      try {
+        const { payload } = await jwtVerify(token, SECRET_KEY);
+        userId = payload.id as string;
+      } catch (e) {
+        // token inválido, continuar sin filtrar
+      }
+    }
+
+
     const ofertas = await sql`
-      SELECT 
-        o.*,
-        json_build_object(
-          'id', u.id,
-          'nombre', u.nombre,
-          'apellido', u.apellido,
-          'rol', u.rol,
-          'calificacion', COALESCE(u.calificacion, 4.5),
-          'totalIntercambios', COALESCE(u.total_intercambios, 0)
-        ) as ofertante,
-        json_build_object(
-          'id', t.id,
-          'nombre', t.nombre,
-          'apellido', t.apellido
-        ) as tomador
-      FROM ofertas o
-      JOIN users u ON o.ofertante_id = u.id
-      LEFT JOIN users t ON o.tomador_id = t.id
-      WHERE o.estado IN (
-        ${EstadoOferta.DISPONIBLE}, 
-        ${EstadoOferta.SOLICITADO}, 
-        ${EstadoOferta.APROBADO},
-        ${EstadoOferta.COMPLETADO},
-        ${EstadoOferta.CANCELADO}
-      )
-      ORDER BY o.publicado DESC;
-    `;
+  SELECT 
+    o.*,
+    json_build_object(
+      'id', u.id,
+      'nombre', u.nombre,
+      'apellido', u.apellido,
+      'rol', u.rol,
+      'calificacion', COALESCE(u.calificacion, 4.5),
+      'totalIntercambios', COALESCE(u.total_intercambios, 0)
+    ) as ofertante,
+    json_build_object(
+      'id', t.id,
+      'nombre', t.nombre,
+      'apellido', t.apellido
+    ) as tomador,
+    (
+  SELECT json_agg(json_build_object(
+    'fecha', sd.fecha_solicitante::text,
+    'tomadorId', sd.solicitante_id::text,
+    'tomadorNombre', us.nombre,
+    'tomadorApellido', us.apellido
+  ))
+  FROM solicitudes_directas sd
+  JOIN autorizaciones a ON a.solicitud_id = sd.id
+  JOIN users us ON us.id = sd.solicitante_id
+  WHERE sd.oferta_id = o.id
+    AND a.estado IN ('PENDIENTE', 'APROBADA')
+) as fechas_acordadas,
+(
+  SELECT a.estado
+  FROM solicitudes_directas sd
+  JOIN autorizaciones a ON a.solicitud_id = sd.id
+  WHERE sd.oferta_id = o.id
+  LIMIT 1
+) as estado_autorizacion
+  FROM ofertas o
+  JOIN users u ON o.ofertante_id = u.id
+  LEFT JOIN users t ON o.tomador_id = t.id
+  WHERE o.estado IN (
+    ${EstadoOferta.DISPONIBLE}, 
+    ${EstadoOferta.SOLICITADO}, 
+    ${EstadoOferta.APROBADO},
+    ${EstadoOferta.COMPLETADO},
+    ${EstadoOferta.CANCELADO}
+  )
+  AND (
+    o.ofertante_id = ${userId}::uuid
+    OR o.modalidad_busqueda != 'ABIERTO'
+    OR o.fechas_disponibles IS NULL
+    OR NOT EXISTS (
+      SELECT 1 FROM sanciones s
+      WHERE s.empleado_id = ${userId}::uuid
+        AND s.estado = 'ACTIVA'
+        AND EXISTS (
+          SELECT 1 FROM jsonb_array_elements(
+            CASE 
+              WHEN jsonb_typeof(o.fechas_disponibles) = 'array' THEN o.fechas_disponibles
+              ELSE (o.fechas_disponibles#>>'{}')::jsonb
+            END
+          ) fd
+          WHERE (fd->>'fecha')::date BETWEEN s.fecha_desde AND s.fecha_hasta
+        )
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM licencias l
+      WHERE l.empleado_id = ${userId}::uuid
+        AND l.estado IN ('APROBADA', 'ACTIVA')
+        AND EXISTS (
+          SELECT 1 FROM jsonb_array_elements(
+            CASE 
+              WHEN jsonb_typeof(o.fechas_disponibles) = 'array' THEN o.fechas_disponibles
+              ELSE (o.fechas_disponibles#>>'{}')::jsonb
+            END
+          ) fd
+          WHERE (fd->>'fecha')::date BETWEEN l.fecha_desde AND l.fecha_hasta
+        )
+    )
+  )
+  ORDER BY o.publicado DESC;
+`;
 
     const ofertasFormateadas = ofertas.map(o => ({
       id: o.id,
       ofertante: o.ofertante,
-      tomador: o.tomador?.id ? o.tomador : null, // ✅ Incluir tomador si existe
+      tomador: o.tomador?.id ? o.tomador : null, 
       tipo: o.tipo,
       modalidadBusqueda: o.modalidad_busqueda,
       turnoOfrece: o.turno_ofrece ?
@@ -83,6 +149,10 @@ export async function GET(request: NextRequest) {
       estado: o.estado,
       validoHasta: o.valido_hasta,
       publicado: o.publicado,
+      fechasAcordadas: o.fechas_acordadas ?
+        (typeof o.fechas_acordadas === 'string' ? JSON.parse(o.fechas_acordadas) : o.fechas_acordadas)
+        : null,
+      estadoAutorizacion: o.estado_autorizacion,
     }));
 
     return NextResponse.json(ofertasFormateadas);
@@ -101,13 +171,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log('📥 Body recibido:', {
-      horarioOfrece: body.horarioOfrece,
-      fechaOfrece: body.fechaOfrece,
-      tipo: body.tipo,
-      bodyCompleto: body
-    });
-
     const cookieStore = await cookies();
     const token = cookieStore.get('auth-token')?.value;
 
@@ -122,7 +185,6 @@ export async function POST(request: NextRequest) {
     const { payload } = await jwtVerify(token, SECRET_KEY);
     const userId = payload.id as string;
 
-    console.log('✅ Usuario autenticado:', userId);
 
     // Obtener datos del usuario
     const [usuario] = await sql`
@@ -139,9 +201,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('✅ Usuario encontrado:', usuario);
-
-    // ✅ Validar tipo (OFREZCO o BUSCO)
+    //  Validar tipo (OFREZCO o BUSCO)
     if (!isValidTipoOferta(body.tipo)) {
       return NextResponse.json(
         { error: `Tipo de oferta inválido: "${body.tipo}". Debe ser: ${Object.values(TipoOferta).join(' o ')}` },
@@ -149,7 +209,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ✅ Validar modalidadBusqueda (INTERCAMBIO o ABIERTO)
+    //  Validar modalidadBusqueda (INTERCAMBIO o ABIERTO)
     if (!isValidTipoSolicitud(body.modalidadBusqueda)) {
       return NextResponse.json(
         { error: `Modalidad inválida: "${body.modalidadBusqueda}". Debe ser: ${Object.values(TipoSolicitud).join(' o ')}` },
@@ -238,24 +298,66 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Verificar autorizaciones pendientes para intercambio
+    if (body.fechaOfrece) {
+      const [autorizacionPendiente] = await sql`
+    SELECT 1 FROM autorizaciones a
+    JOIN solicitudes_directas sd ON a.solicitud_id = sd.id
+    WHERE a.estado = 'PENDIENTE'
+      AND (
+        (sd.solicitante_id = ${userId}::uuid AND sd.fecha_solicitante = ${body.fechaOfrece}::date)
+        OR
+        (sd.destinatario_id = ${userId}::uuid AND sd.fecha_destinatario = ${body.fechaOfrece}::date)
+        OR
+        (sd.destinatario_id = ${userId}::uuid AND sd.fecha_destinatario IS NULL AND sd.fecha_solicitante = ${body.fechaOfrece}::date)
+      )
+    LIMIT 1;
+  `;
+      if (autorizacionPendiente) {
+        return NextResponse.json(
+          { error: 'Ya tenés una autorización pendiente para esa fecha' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Verificar para cobertura
+    if (body.fechasDisponibles?.length > 0) {
+      for (const fd of body.fechasDisponibles) {
+        if (!fd.fecha) continue;
+        const [autorizacionPendiente] = await sql`
+          SELECT 1 FROM autorizaciones a
+          JOIN solicitudes_directas sd ON a.solicitud_id = sd.id
+          WHERE a.estado = 'PENDIENTE'
+          AND (
+            (sd.solicitante_id = ${userId}::uuid AND sd.fecha_solicitante = ${fd.fecha}::date)
+          OR
+            (sd.destinatario_id = ${userId}::uuid AND sd.fecha_destinatario = ${fd.fecha}::date)
+          OR
+            (sd.destinatario_id = ${userId}::uuid AND sd.fecha_destinatario IS NULL AND sd.fecha_solicitante = ${fd.fecha}::date)
+            )
+          LIMIT 1;
+          `;
+        if (autorizacionPendiente) {
+          return NextResponse.json(
+            { error: `Ya tenés una autorización pendiente para el ${fd.fecha}` },
+            { status: 400 }
+          );
+        }
+      }
+    }
 
     // Construir datos según modalidad
     let turnoOfrece = null;
     let turnosBusca = null;
     let fechasDisponibles = null;
-    console.log('🔧 Creando turnoOfrece con:', {
-      fechaOfrece: body.fechaOfrece,
-      horarioOfrece: body.horarioOfrece,
-      usuarioHorario: usuario.horario,
-      horarioFinal: body.horarioOfrece || usuario.horario
-    });
 
     if (body.modalidadBusqueda === TipoSolicitud.INTERCAMBIO) {
       // Para INTERCAMBIO: guardar turno que ofrece y turnos que busca
       if (body.fechaOfrece) {
         turnoOfrece = {
           fecha: body.fechaOfrece,
-          horario: body.horarioOfrece || usuario.horario, // ✅ USAR EL DEL FORM
+          horario: body.horarioOfrece || usuario.horario, 
           grupoTurno: body.grupoOfrece || usuario.grupo_turno
         };
       }
@@ -269,18 +371,6 @@ export async function POST(request: NextRequest) {
         fechasDisponibles = body.fechasDisponibles;
       }
     }
-
-
-
-    console.log('📅 Datos procesados:', {
-      userId,
-      tipo: body.tipo,
-      modalidadBusqueda: body.modalidadBusqueda,
-      turnoOfrece,
-      turnosBusca,
-      fechasDisponibles,
-      validoHasta: validoHasta.toISOString()
-    });
 
     // Insertar oferta
     const resultado = await sql`
@@ -312,16 +402,7 @@ export async function POST(request: NextRequest) {
       RETURNING *;
     `;
 
-    console.log('💾 GUARDADO EN BD:', {
-      turno_ofrece: resultado[0].turno_ofrece,
-      tipo: typeof resultado[0].turno_ofrece,
-      parseado: typeof resultado[0].turno_ofrece === 'string'
-        ? JSON.parse(resultado[0].turno_ofrece)
-        : resultado[0].turno_ofrece
-    });
-
     const oferta = resultado[0];
-    console.log('✅ Oferta insertada con ID:', oferta.id);
 
     // Obtener oferta completa
     const ofertaCompleta = await sql`

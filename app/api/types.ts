@@ -265,10 +265,10 @@ export interface TurnosData {
 // TODO: eliminar estos una vez que todos los componentes usen los tipos nuevos
 
 /** @deprecated usar SolicitudDirecta */
-export interface SolicitudesDirectas extends SolicitudDirecta {}
+export interface SolicitudesDirectas extends SolicitudDirecta { }
 
 /** @deprecated usar Oferta */
-export interface Ofertas extends Oferta {}
+export interface Ofertas extends Oferta { }
 
 /** @deprecated usar User */
 export interface Turno {
@@ -286,9 +286,18 @@ export interface Cambio {
   id: string;
   fecha: string;
   turno: string;
-  solicitante: string;
-  destinatario: string;
-  estado: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO';
-  created_at?: string;
-  updated_at?: string;
+  estado: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO' | 'REALIZADO';
+  tipoCambio: string | null;
+  createdAt: string;
+  fechaAprobacion: string | null;
+  solicitante: {
+    id: string;
+    nombre: string;
+    apellido: string;
+  };
+  destinatario: {
+    id: string;
+    nombre: string;
+    apellido: string;
+  } | null;
 }
