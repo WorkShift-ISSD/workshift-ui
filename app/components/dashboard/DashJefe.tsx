@@ -18,6 +18,7 @@ import { LoadingSpinner } from '@/app/components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
 import { useDashboardJefe } from '@/hooks/useDashboardJefe';
 import { ImpactoBadge, Impacto } from '@/app/components/autorizaciones/ImpactoBadge';
+import { HeatmapOperativo } from '@/app/components/dashboard/HeatmapOperativo';
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -54,10 +55,12 @@ interface AuthPendiente {
   };
   // licencia (si existe)
   licencia?: {
-    tipo:      string;
-    fechaDesde:string;
-    fechaHasta:string;
-    dias:      number;
+    tipo:       string;
+    fechaDesde: string;
+    fechaHasta: string;
+    fecha_desde?: string; // fallback snake_case
+    fecha_hasta?: string;
+    dias:       number;
   };
   impacto: Impacto;
 }
@@ -89,168 +92,6 @@ function fmtFecha(iso: string) {
 
 function initials(nombre = '', apellido = '') {
   return `${nombre[0] ?? ''}${apellido[0] ?? ''}`.toUpperCase();
-}
-
-const HEATMAP_CLASSES = [
-  'bg-gray-200 dark:bg-gray-800',
-  'bg-green-200 dark:bg-green-900',
-  'bg-green-400 dark:bg-green-700',
-  'bg-green-500 dark:bg-green-500',
-  'bg-green-600 dark:bg-green-400',
-];
-
-function getHeatLevel(total: number) {
-  if (total === 0) return 0;
-  if (total <= 2)  return 1;
-  if (total <= 5)  return 2;
-  if (total <= 10) return 3;
-  return 4;
-}
-
-// ─────────────────────────────────────────────────────────────
-// Heatmap
-// ─────────────────────────────────────────────────────────────
-function HeatmapActividad({
-  heatmap,
-}: {
-  heatmap: Array<{ fecha: string; total: number; pendientes: number }>;
-}) {
-  const [tooltip, setTooltip] = useState<{
-    x: number; y: number; text: string;
-  } | null>(null);
-
-  const NUM_WEEKS = 16;
-  const today = useMemo(() => new Date(), []);
-
-  const startDate = useMemo(() => {
-    const d = new Date(today);
-    d.setDate(d.getDate() - (NUM_WEEKS * 7 - 1));
-    while (d.getDay() !== 1) d.setDate(d.getDate() - 1);
-    return d;
-  }, [today]);
-
-  const heatmapMap = useMemo(() => {
-    const m: Record<string, { total: number; pendientes: number }> = {};
-    heatmap.forEach(r => { m[r.fecha] = { total: r.total, pendientes: r.pendientes }; });
-    return m;
-  }, [heatmap]);
-
-  const weeks = useMemo(() => {
-    const ws: Date[][] = [];
-    for (let w = 0; w < NUM_WEEKS; w++) {
-      const week: Date[] = [];
-      for (let d = 0; d < 7; d++) {
-        const date = new Date(startDate);
-        date.setDate(startDate.getDate() + w * 7 + d);
-        week.push(date);
-      }
-      ws.push(week);
-    }
-    return ws;
-  }, [startDate]);
-
-  const DAYS = ['Lun', '', 'Mié', '', 'Vie', '', 'Dom'];
-
-  const monthLabels = useMemo(() => {
-    const labels: Array<{ label: string; colIndex: number }> = [];
-    let lastMonth = -1;
-    weeks.forEach((week, wi) => {
-      const m = week[0].getMonth();
-      if (m !== lastMonth) {
-        labels.push({
-          label: week[0].toLocaleDateString('es-ES', { month: 'short' }),
-          colIndex: wi,
-        });
-        lastMonth = m;
-      }
-    });
-    return labels;
-  }, [weeks]);
-
-  return (
-    <div className="relative overflow-x-auto">
-      <div className="flex ml-8 mb-1" style={{ gap: '2px' }}>
-        {weeks.map((_, wi) => {
-          const ml = monthLabels.find(m => m.colIndex === wi);
-          return (
-            <div key={wi} style={{ width: 13, flexShrink: 0 }}>
-              {ml && (
-                <span className="text-[10px] text-gray-400 dark:text-gray-500">
-                  {ml.label}
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="flex flex-col" style={{ gap: '2px' }}>
-        {DAYS.map((day, di) => (
-          <div key={di} className="flex items-center" style={{ gap: '2px' }}>
-            <span className="text-[10px] text-gray-400 dark:text-gray-500 w-7 text-right mr-1 flex-shrink-0">
-              {day}
-            </span>
-            {weeks.map((week, wi) => {
-              const date = week[di];
-              const isFuture = date > today;
-              const key = date.toISOString().split('T')[0];
-              const data = heatmapMap[key];
-              const level = isFuture ? 0 : getHeatLevel(data?.total ?? 0);
-              const hasPending = !isFuture && (data?.pendientes ?? 0) > 0;
-
-              return (
-                <div
-                  key={wi}
-                  className={[
-                    HEATMAP_CLASSES[level],
-                    hasPending ? 'ring-1 ring-amber-400 dark:ring-amber-500' : '',
-                    'rounded-[2px] cursor-pointer transition-transform hover:scale-125 hover:z-10 flex-shrink-0',
-                  ].join(' ')}
-                  style={{ width: 13, height: 13 }}
-                  onMouseEnter={e => {
-                    const rect = (e.target as HTMLElement).getBoundingClientRect();
-                    const label = isFuture
-                      ? 'Sin datos'
-                      : data
-                        ? `${data.total} solicitudes · ${data.pendientes} pendientes`
-                        : 'Sin actividad';
-                    setTooltip({
-                      x: rect.left + window.scrollX,
-                      y: rect.top + window.scrollY - 38,
-                      text: `${date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })} — ${label}`,
-                    });
-                  }}
-                  onMouseLeave={() => setTooltip(null)}
-                />
-              );
-            })}
-          </div>
-        ))}
-      </div>
-
-      {tooltip && (
-        <div
-          className="fixed z-50 pointer-events-none bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-[11px] rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-lg"
-          style={{ left: tooltip.x, top: tooltip.y }}
-        >
-          {tooltip.text}
-        </div>
-      )}
-
-      <div className="flex items-center gap-2 mt-3 text-[11px] text-gray-400 dark:text-gray-500">
-        <span>menos</span>
-        {HEATMAP_CLASSES.map((cls, i) => (
-          <div key={i} className={`${cls} rounded-[2px] flex-shrink-0`} style={{ width: 11, height: 11 }} />
-        ))}
-        <span>más</span>
-        <div
-          className="bg-gray-200 dark:bg-gray-800 ring-1 ring-amber-400 dark:ring-amber-500 rounded-[2px] ml-2 flex-shrink-0"
-          style={{ width: 11, height: 11 }}
-        />
-        <span className="text-amber-500 dark:text-amber-400">con pendientes</span>
-      </div>
-    </div>
-  );
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -560,20 +401,51 @@ function AuthCard({
           {/* Impacto en cobertura */}
           {impacto?.total_grupo > 0 && (
             <div className={[
-              'rounded-xl p-3 text-xs',
+              'rounded-xl p-3 text-xs space-y-2',
               impacto.nivel === 'alto'
                 ? 'bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20'
                 : impacto.nivel === 'medio'
                   ? 'bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20'
                   : 'bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20',
             ].join(' ')}>
-              <p className="font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              <p className="font-semibold text-gray-700 dark:text-gray-300">
                 Impacto en cobertura · Grupo {empGrupo}
               </p>
+
+              {/* Duración de la licencia — solo si tenemos los datos */}
+              {(auth.licencia?.fechaDesde ?? auth.licencia?.fecha_desde) && (
+                <div className="flex items-center gap-3 py-1.5 px-2 rounded-lg bg-white/60 dark:bg-gray-900/40 border border-gray-200/60 dark:border-gray-700/40">
+                  <div className="text-center">
+                    <p className={`text-lg font-bold leading-none ${
+                      impacto.nivel === 'alto'   ? 'text-red-600 dark:text-red-400'
+                      : impacto.nivel === 'medio' ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-green-600 dark:text-green-400'
+                    }`}>
+                      {auth.licencia!.dias}
+                    </p>
+                    <p className="text-[9px] text-gray-400 dark:text-gray-500 mt-0.5">días</p>
+                  </div>
+                  <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
+                  <div className="text-gray-600 dark:text-gray-400">
+                    <span className="font-medium">
+                      {fmtFecha(auth.licencia!.fechaDesde ?? (auth.licencia as any).fecha_desde)}
+                    </span>
+                    <span className="mx-1.5 text-gray-400">→</span>
+                    <span className="font-medium">
+                      {fmtFecha(auth.licencia!.fechaHasta ?? (auth.licencia as any).fecha_hasta)}
+                    </span>
+                  </div>
+                  <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
+                  <div className="text-gray-500 dark:text-gray-400 italic">
+                    {auth.licencia!.tipo.replace(/_/g, ' ').toLowerCase()}
+                  </div>
+                </div>
+              )}
+
               <p className="text-gray-600 dark:text-gray-400">
                 Si se aprueba: <strong>{impacto.ausentes_periodo + 1}</strong> de{' '}
                 <strong>{impacto.total_grupo}</strong> empleados del grupo estarán
-                ausentes en ese período ({impacto.pct_impacto}% del grupo).
+                ausentes durante ese período ({impacto.pct_impacto}% del grupo).
               </p>
             </div>
           )}
@@ -647,8 +519,8 @@ export default function DashJefe() {
     grupoJefe,
     metricas,
     personal,
-    heatmap,
     pendientes,
+    autorizacionesGrupo,
     aprobarAutorizacion,
     rechazarAutorizacion,
   } = useDashboardJefe();
@@ -777,17 +649,20 @@ export default function DashJefe() {
           ))}
         </div>
 
-        {/* ── Heatmap ── */}
+        {/* ── Heatmap operativo ── */}
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-              Actividad operativa — últimas 16 semanas
+              Mapa de ausencias por turno
             </h2>
             <span className="text-xs text-gray-400 dark:text-gray-500 hidden sm:block">
-              licencias · intercambios · coberturas
+              pendientes + aprobadas
             </span>
           </div>
-          <HeatmapActividad heatmap={heatmap} />
+          <HeatmapOperativo
+            autorizaciones={autorizacionesGrupo ?? []}
+            empleados={personal?.empleados ?? []}
+          />
         </div>
 
         {/* ── Personal global + Autorizaciones ── */}

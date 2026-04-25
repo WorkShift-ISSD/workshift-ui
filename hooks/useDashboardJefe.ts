@@ -171,7 +171,10 @@ export function useDashboardJefe() {
     metricas,
     personal,
     heatmap,
-    pendientes:          pendientesConImpacto,
+    pendientes:           pendientesConImpacto,
+    // Todas las autorizaciones del grupo (pendientes + aprobadas + rechazadas)
+    // para que HeatmapOperativo pueda mostrar el historial completo
+    autorizacionesGrupo:  (autorizaciones ?? []).filter(a => idsDelGrupo.has(a.empleadoId)),
     aprobarAutorizacion,
     rechazarAutorizacion,
   };
