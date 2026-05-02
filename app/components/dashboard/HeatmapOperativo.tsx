@@ -157,10 +157,11 @@ const TURNO_HORARIOS: Record<Turno, string> = {
 // ─────────────────────────────────────────────────────────────
 export function HeatmapOperativo({ autorizaciones, empleados }: Props) {
   const [periodo,      setPeriodo]      = useState<Periodo>('mes');
-  const [filtroRol,    setFiltroRol]    = useState<FiltroRol>('ambos');
-  const [filtroTipo,   setFiltroTipo]   = useState<FiltroTipo>('ambos');
-  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('ambos');
-  const [tooltip, setTooltip]       = useState<{
+  const [filtroRol,      setFiltroRol]      = useState<FiltroRol>('ambos');
+  const [filtroTipo,     setFiltroTipo]     = useState<FiltroTipo>('ambos');
+  const [filtroEstado,   setFiltroEstado]   = useState<FiltroEstado>('ambos');
+  const [personasActivas, setPersonasActivas] = useState<Set<string>>(new Set());
+  const [tooltip, setTooltip] = useState<{
     x: number; y: number;
     dia: string; turno: Turno; count: number; detalle: string[];
   } | null>(null);
@@ -173,8 +174,9 @@ export function HeatmapOperativo({ autorizaciones, empleados }: Props) {
   const { inicio, fin: finPeriodo } = useMemo(() => rangoFechas(periodo), [periodo]);
 
   // Extender el fin hasta la última fecha de licencia futura en los datos
-  // para que el heatmap muestre autorizaciones que empiezan después de hoy
+  // EXCEPTO para "semana" donde queremos exactamente lun-dom de la semana actual
   const fin = useMemo(() => {
+    if (periodo === 'semana') return finPeriodo;
     let maxFecha = new Date(finPeriodo);
     autorizaciones.forEach(auth => {
       if (auth.estado !== 'PENDIENTE' && auth.estado !== 'APROBADA') return;
@@ -186,7 +188,7 @@ export function HeatmapOperativo({ autorizaciones, empleados }: Props) {
       if (hasta > maxFecha) maxFecha = hasta;
     });
     return maxFecha;
-  }, [finPeriodo, autorizaciones]);
+  }, [finPeriodo, autorizaciones, periodo]);
 
   const dias = useMemo(() => generarDias(inicio, fin), [inicio, fin]);
 
@@ -214,6 +216,9 @@ export function HeatmapOperativo({ autorizaciones, empleados }: Props) {
       const estadoLabel = auth.estado === 'PENDIENTE' ? '⏳' : '✓';
       const tipoLabel   = esIntercambio ? 'Intercambio' : 'Licencia';
       const item        = `${estadoLabel} ${rolLabel} ${apellido} · ${tipoLabel}`;
+
+      // Filtro por personas activas — vacío = mostrar todas
+      if (personasActivas.size > 0 && !personasActivas.has(`${rolLabel} ${apellido}`)) return;
 
       if (esIntercambio && auth.solicitudDirecta) {
         const sd        = auth.solicitudDirecta;
@@ -253,7 +258,7 @@ export function HeatmapOperativo({ autorizaciones, empleados }: Props) {
     });
 
     return m;
-  }, [autorizaciones, dias, empMap, filtroRol, filtroTipo, filtroEstado]);
+  }, [autorizaciones, dias, empMap, filtroRol, filtroTipo, filtroEstado, personasActivas]);
 
   // Totales por turno para el label del eje Y
   const totalesPorTurno = useMemo(() =>
@@ -303,7 +308,7 @@ export function HeatmapOperativo({ autorizaciones, empleados }: Props) {
     <div className="space-y-3">
 
       {/* ── Controles ── */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 items-center">
         <TabGroup
           options={Object.entries(PERIODO_LABELS).map(([k, v]) => ({ key: k, label: v }))}
           value={periodo}
@@ -320,9 +325,9 @@ export function HeatmapOperativo({ autorizaciones, empleados }: Props) {
         />
         <TabGroup
           options={[
-            { key: 'ambos',     label: 'Todo' },
+            { key: 'ambos',       label: 'Todo' },
             { key: 'intercambio', label: 'Intercambios' },
-            { key: 'licencia',  label: 'Licencias' },
+            { key: 'licencia',    label: 'Licencias' },
           ]}
           value={filtroTipo}
           onChange={v => setFiltroTipo(v as FiltroTipo)}
@@ -336,6 +341,26 @@ export function HeatmapOperativo({ autorizaciones, empleados }: Props) {
           value={filtroEstado}
           onChange={v => setFiltroEstado(v as FiltroEstado)}
         />
+
+        {/* Indicador de personas activas con botón limpiar */}
+        {personasActivas.size > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {[...personasActivas].map(p => (
+              <span
+                key={p}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-100 dark:bg-blue-500/20 border border-blue-300 dark:border-blue-500/40 text-blue-700 dark:text-blue-300"
+              >
+                {p}
+              </span>
+            ))}
+            <button
+              onClick={() => setPersonasActivas(new Set())}
+              className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-300 dark:hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+            >
+              Limpiar filtros
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── Grilla ── */}
@@ -461,6 +486,18 @@ export function HeatmapOperativo({ autorizaciones, empleados }: Props) {
             );
           })}
 
+          {/* ── Chips de personas involucradas en el período ── */}
+          <PersonasInvolucradas
+            matriz={matriz}
+            dias={dias}
+            personasActivas={personasActivas}
+            onPersonaClick={p => setPersonasActivas(prev => {
+              const next = new Set(prev);
+              next.has(p) ? next.delete(p) : next.add(p);
+              return next;
+            })}
+          />
+
           {/* ── Insight: presión por día de la semana ── */}
           {Object.values(acumPorDow).some(v => v > 0) && (
             <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-800 flex items-start gap-4 flex-wrap">
@@ -555,6 +592,139 @@ export function HeatmapOperativo({ autorizaciones, empleados }: Props) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// PersonasInvolucradas — chips agrupados por turno
+// ─────────────────────────────────────────────────────────────
+function PersonasInvolucradas({
+  matriz,
+  dias,
+  personasActivas,
+  onPersonaClick,
+}: {
+  matriz:          Record<string, Record<Turno, string[]>>;
+  dias:            Date[];
+  personasActivas: Set<string>;
+  onPersonaClick:  (persona: string) => void;
+}) {
+  const [expandido, setExpandido] = useState(false);
+
+  // Recolectar personas únicas por turno en todo el período visible
+  const porTurno = useMemo(() => {
+    const acc: Record<Turno, Set<string>> = {
+      Mañana: new Set(),
+      Tarde:  new Set(),
+      Noche:  new Set(),
+    };
+    dias.forEach(d => {
+      const key = d.toISOString().split('T')[0];
+      const day = matriz[key];
+      if (!day) return;
+      (Object.keys(acc) as Turno[]).forEach(turno => {
+        day[turno].forEach(item => {
+          // El item tiene formato "⏳ Insp. Apellido · Tipo"
+          // Extraer "Insp. Apellido" como identificador de persona
+          const match = item.match(/^[⏳✓]\s(.+?)\s·/);
+          if (match) acc[turno].add(match[1].trim());
+        });
+      });
+    });
+    return {
+      Mañana: [...acc.Mañana].sort(),
+      Tarde:  [...acc.Tarde].sort(),
+      Noche:  [...acc.Noche].sort(),
+    };
+  }, [matriz, dias]);
+
+  const totalPersonas = Object.values(porTurno).reduce((s, arr) => s + arr.length, 0);
+  if (totalPersonas === 0) return null;
+
+  const MAX_VISIBLE = 6; // chips por turno antes de colapsar
+
+  return (
+    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-800">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[9px] text-gray-400 dark:text-gray-500">
+          Personal involucrado en el período · {totalPersonas} persona{totalPersonas !== 1 ? 's' : ''}
+        </p>
+        {Object.values(porTurno).some(arr => arr.length > MAX_VISIBLE) && (
+          <button
+            onClick={() => setExpandido(v => !v)}
+            className="text-[9px] text-blue-500 dark:text-blue-400 hover:underline"
+          >
+            {expandido ? 'ver menos' : 'ver todos'}
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        {(Object.entries(porTurno) as [Turno, string[]][])
+          .filter(([, personas]) => personas.length > 0)
+          .map(([turno, personas]) => {
+            const visible = expandido ? personas : personas.slice(0, MAX_VISIBLE);
+            const ocultos = personas.length - visible.length;
+
+            const turnoColor = turno === 'Mañana'
+              ? 'text-amber-600 dark:text-amber-400'
+              : turno === 'Tarde'
+                ? 'text-orange-600 dark:text-orange-400'
+                : 'text-indigo-600 dark:text-indigo-400';
+
+            return (
+              <div key={turno} className="flex items-start gap-2 flex-wrap">
+                {/* Label del turno */}
+                <span className={`text-[10px] font-semibold flex-shrink-0 w-14 text-right pt-0.5 ${turnoColor}`}>
+                  {turno}
+                </span>
+
+                {/* Chips */}
+                <div className="flex flex-wrap gap-1 flex-1">
+                  {visible.map((persona, i) => {
+                    const esPendiente = dias.some(d => {
+                      const key = d.toISOString().split('T')[0];
+                      return matriz[key]?.[turno].some(
+                        item => item.startsWith('⏳') && item.includes(persona)
+                      );
+                    });
+                    const isActiva = personasActivas.has(persona);
+                    const haySeleccion = personasActivas.size > 0;
+
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => onPersonaClick(persona)}
+                        className={[
+                          'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all cursor-pointer',
+                          isActiva
+                            ? 'bg-blue-100 dark:bg-blue-500/30 text-blue-700 dark:text-blue-200 border-blue-400 dark:border-blue-400 ring-1 ring-blue-400'
+                            : haySeleccion
+                              ? 'opacity-40 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-500 border-gray-200 dark:border-gray-700 hover:opacity-100'
+                              : esPendiente
+                                ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30 hover:border-amber-400'
+                                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-400',
+                        ].join(' ')}
+                      >
+                        {esPendiente ? '⏳' : '✓'} {persona}
+                      </button>
+                    );
+                  })}
+
+                  {ocultos > 0 && (
+                    <button
+                      onClick={() => setExpandido(true)}
+                      className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-gray-400 transition-colors"
+                    >
+                      +{ocultos} más
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+      </div>
     </div>
   );
 }
