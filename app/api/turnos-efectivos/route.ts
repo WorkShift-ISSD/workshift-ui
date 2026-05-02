@@ -20,6 +20,9 @@ export async function GET(request: NextRequest) {
     const { payload } = await jwtVerify(token, SECRET_KEY);
     const userId = payload.id as string;
 
+    const { searchParams } = new URL(request.url);
+    const targetUserId = searchParams.get('userId') || userId;
+
     const turnosGanados = await sql`
       SELECT 
         id::text,
@@ -32,7 +35,7 @@ export async function GET(request: NextRequest) {
         estado,
         'GANADO' as tipo
       FROM turnos_efectivos
-      WHERE empleado_id = ${userId}::uuid
+      WHERE empleado_id = ${targetUserId}::uuid
         AND estado = 'PENDIENTE'
         AND fecha >= NOW()::date;
     `;
@@ -41,7 +44,7 @@ export async function GET(request: NextRequest) {
       SELECT 
         TO_CHAR(fecha, 'YYYY-MM-DD') as fecha
       FROM turnos_efectivos
-      WHERE empleado_intercambio_id = ${userId}::uuid
+      WHERE empleado_intercambio_id = ${targetUserId}::uuid
         AND estado = 'PENDIENTE'
         AND fecha >= NOW()::date;
     `;

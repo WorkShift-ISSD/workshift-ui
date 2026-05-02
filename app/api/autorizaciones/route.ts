@@ -64,13 +64,14 @@ export async function GET(request: NextRequest) {
                   'id', us.id,
                   'nombre', us.nombre,
                   'apellido', us.apellido,
-                  'rol', us.rol
+                  'rol', us.rol,
                 ),
                 'destinatario', json_build_object(
                   'id', ud.id,
                   'nombre', ud.nombre,
                   'apellido', ud.apellido,
-                  'rol', ud.rol
+                  'rol', ud.rol,
+                  'grupoTurno', ud.grupo_turno
                 ),
                 'turnoSolicitante', sd.turno_solicitante,
                 'turnoDestinatario', sd.turno_destinatario
@@ -182,7 +183,8 @@ export async function GET(request: NextRequest) {
                   'id', ud.id,
                   'nombre', ud.nombre,
                   'apellido', ud.apellido,
-                  'rol', ud.rol
+                  'rol', ud.rol,
+                  'grupoTurno', ud.grupo_turno
                 ),
                 'turnoSolicitante', sd.turno_solicitante,
                 'turnoDestinatario', sd.turno_destinatario

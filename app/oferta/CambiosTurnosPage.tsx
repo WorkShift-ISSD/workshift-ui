@@ -17,6 +17,7 @@ import { SeccionMensajes } from '../components/mensajes/SeccionMensajes';
 import { StatsBar } from '../components/cambios/StatsBar';
 import { AccionesPrincipales } from '../components/cambios/AccionesPrincipales';
 import { useCambiosPage } from '@/hooks/useCambiosPage';
+import { ModalSeleccionarFechaRango } from '../components/mensajes/ModalSeleccionarFechaRango';
 
 export default function CambiosTurnosPage() {
   const {
@@ -35,11 +36,14 @@ export default function CambiosTurnosPage() {
     activeTab, setActiveTab,
     isConsultarOpen, setIsConsultarOpen,
     modalSeleccionarTurno, setModalSeleccionarTurno,
-    ofertaParaSeleccionar,
+    ofertaParaSeleccionar, setOfertaParaSeleccionar,
     turnoSeleccionadoChatRef,
     ofertaChatId, setOfertaChatId,
     solicitudEditando, setSolicitudEditando,
     ofertaEditando, setOfertaEditando,
+    modalSeleccionarFechaRango, setModalSeleccionarFechaRango,
+    fechasRangoDisponibles,
+    handleConfirmarFechaRango,
     handleSubmitSolicitud,
     handleEditarSolicitud,
     handleSubmitOferta,
@@ -191,6 +195,15 @@ export default function CambiosTurnosPage() {
         onClose={() => { setModalSeleccionarTurno(false); }}
         onConfirmar={handleConfirmarSeleccion}
         oferta={ofertaParaSeleccionar}
+      />
+
+      <ModalSeleccionarFechaRango
+        isOpen={modalSeleccionarFechaRango}
+        ofertanteNombre={ofertaParaSeleccionar ? `${ofertaParaSeleccionar.ofertante.nombre} ${ofertaParaSeleccionar.ofertante.apellido}` : ''}
+        fechasDisponibles={fechasRangoDisponibles}
+        horarioUsuario={user?.horario || ''}
+        onConfirmar={handleConfirmarFechaRango}
+        onCerrar={() => { setModalSeleccionarFechaRango(false); setOfertaParaSeleccionar(null); }}
       />
 
       {/* Mensajes */}

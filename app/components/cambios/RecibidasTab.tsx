@@ -2,6 +2,8 @@
 
 import { MessageSquare, Check, X } from 'lucide-react';
 import { useFormatters } from '@/hooks/useFormatters';
+import { useState } from 'react';
+import { Paginacion } from './Paginacion';
 
 interface Props {
   solicitudesRecibidas: any[];
@@ -11,6 +13,13 @@ interface Props {
 
 export function RecibidasTab({ solicitudesRecibidas, onAceptar, onRechazar }: Props) {
   const { formatDate, formatTimeAgo } = useFormatters();
+  const [pagina, setPagina] = useState(1);
+  const [porPagina, setPorPagina] = useState(5);
+
+  const totalPaginas = Math.ceil(solicitudesRecibidas.length / porPagina);
+  const solicitudesPaginadas = solicitudesRecibidas.slice((pagina - 1) * porPagina, pagina * porPagina);
+
+
 
   if (solicitudesRecibidas.length === 0) {
     return (
@@ -31,7 +40,7 @@ export function RecibidasTab({ solicitudesRecibidas, onAceptar, onRechazar }: Pr
         {solicitudesRecibidas.length === 1 ? 'solicitud pendiente' : 'solicitudes pendientes'}
       </p>
 
-      {solicitudesRecibidas.map(solicitud => (
+      {solicitudesPaginadas.map(solicitud => (
         <div
           key={solicitud.id}
           className="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
@@ -122,6 +131,15 @@ export function RecibidasTab({ solicitudesRecibidas, onAceptar, onRechazar }: Pr
           </div>
         </div>
       ))}
+
+      <Paginacion
+        pagina={pagina}
+        totalPaginas={totalPaginas}
+        porPagina={porPagina}
+        onCambiarPagina={setPagina}
+        onCambiarPorPagina={setPorPagina}
+      />
+
     </div>
   );
 }

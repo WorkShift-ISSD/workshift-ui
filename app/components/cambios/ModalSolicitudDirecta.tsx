@@ -57,6 +57,7 @@ export function ModalSolicitudDirecta({ isOpen, onClose, onSubmit, solicitudEdit
   const [submitting, setSubmitting] = useState(false);
   const { turnosEfectivos, fechasCedidas } = useTurnosEfectivos();
   const { fechasBloqueadas: fechasBloqueadasPropias } = useFechasBloqueadas();
+  const [turnosEfectivosCompanero, setTurnosEfectivosCompanero] = useState<string[]>([]);
 
 
   // Fechas extra del usuario — días que ganó por intercambios previos
@@ -99,6 +100,21 @@ export function ModalSolicitudDirecta({ isOpen, onClose, onSubmit, solicitudEdit
     () => usuarios.find(u => u.id === form.destinatarioId) || null,
     [usuarios, form.destinatarioId]
   );
+
+  useEffect(() => {
+    if (!companeroSeleccionado) {
+      setTurnosEfectivosCompanero([]);
+      return;
+    }
+    fetch(`/api/turnos-efectivos?userId=${companeroSeleccionado.id}`, {
+      credentials: 'include'
+    })
+      .then(r => r.json())
+      .then(data => {
+        setTurnosEfectivosCompanero(data.ganados?.map((t: any) => t.fecha) || []);
+      });
+  }, [companeroSeleccionado?.id]);
+
 
   //
   const turnoEfectivoSeleccionado = useMemo(
@@ -439,12 +455,14 @@ export function ModalSolicitudDirecta({ isOpen, onClose, onSubmit, solicitudEdit
                   value={form.fechaDestinatario}
                   onChange={v => setForm(prev => ({ ...prev, fechaDestinatario: v }))}
                   grupoObjetivo={companeroSeleccionado?.grupoTurno as GrupoTurno | undefined}
+                  fechasExtra={turnosEfectivosCompanero}
                   fechasBloqueadas={fechasBloqueadasPropias}
                   minDate={new Date()}
                   className={`w-full px-2 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 ${companeroSeleccionado
                     ? 'border-green-300 dark:border-green-700'
                     : 'border-gray-200 dark:border-gray-600 opacity-50 pointer-events-none'
                     }`}
+                    
                 />
               </div>
             )}

@@ -221,7 +221,10 @@ export function SeccionMensajes({ ofertaAbrirId, onChatAbierto, onMensajesLeidos
     };
 
     const handleAceptar = (conv: any, turnoParaEnviar: { fecha: string; horario: string } | null) => {
-        if ((conv.fechasDisponibles?.length ?? 0) > 1) {
+        const tieneMultiplesFechas = (conv.fechasDisponibles?.length ?? 0) > 1;
+        const esRango = conv.fechaDesde && conv.fechaHasta;
+
+        if (tieneMultiplesFechas || esRango) {
             setPendienteAceptar({ turnoParaEnviar, conv });
             setModalConfirmarFechas(true);
         } else {

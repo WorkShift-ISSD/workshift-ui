@@ -3,8 +3,8 @@ import { useMemo } from "react";
 
 export type Rol = "SUPERVISOR" | "INSPECTOR" | "JEFE";
 export type GrupoTurno = "A" | "B";
-export type TipoOferta = "OFREZCO" | "BUSCO"; // ✅ Actualizado
-export type ModalidadBusqueda = "INTERCAMBIO" | "ABIERTO"; // ✅ Nuevo
+export type TipoOferta = "OFREZCO" | "BUSCO"; 
+export type ModalidadBusqueda = "INTERCAMBIO" | "ABIERTO";
 export type Prioridad = "NORMAL" | "URGENTE";
 export type EstadoOferta =
   | "DISPONIBLE"
@@ -25,7 +25,7 @@ export interface Oferta {
     totalIntercambios: number;
   };
   tipo: TipoOferta;
-  modalidadBusqueda?: ModalidadBusqueda; // ✅ Nuevo campo opcional
+  modalidadBusqueda?: ModalidadBusqueda; //  Nuevo campo opcional
   turnoOfrece: {
     fecha: string;
     horario: string;
@@ -36,7 +36,7 @@ export interface Oferta {
     horario: string;
     grupoTurno: GrupoTurno;
   } | null;
-  turnosBusca?: Array<{ // ✅ Nuevo para múltiples fechas
+  turnosBusca?: Array<{ //  Nuevo para múltiples fechas
     fecha: string;
     horario: string;
   }>;
@@ -44,10 +44,13 @@ export interface Oferta {
     desde: string;
     hasta: string;
   };
-  fechasDisponibles?: Array<{ // ✅ Nuevo para modalidad abierta
+  fechasDisponibles?: Array<{ //  Nuevo para modalidad abierta
     fecha: string;
     horario: string;
   }>;
+  fechaDesde?: string | null; 
+  fechaHasta?: string | null;
+  horarioRango?: string | null;
   descripcion: string;
   prioridad: Prioridad;
   validoHasta: string;
@@ -74,29 +77,38 @@ export interface Oferta {
     nombre: string;
     apellido: string;
   };
+  fechasAcordadas?: Array<{
+    fecha: string;
+    tomadorId: string;
+    tomadorNombre: string;
+    tomadorApellido: string;
+}> | null;
 }
 
 export interface NuevaOfertaForm {
-  tipo: TipoOferta; // ✅ Actualizado
-  modalidadBusqueda: ModalidadBusqueda; // ✅ Nuevo
+  tipo: TipoOferta; 
+  modalidadBusqueda: ModalidadBusqueda; 
   fechaOfrece: string;
   horarioOfrece: string;
   grupoOfrece: GrupoTurno;
-  //fechaBusca: string;
-  //horarioBusca: string;
-  //grupoBusca: GrupoTurno;
-  //fechaDesde: string;
-  //fechaHasta: string;
+  fechaDesde: string;
+  fechaHasta: string;
   descripcion: string;
   prioridad: Prioridad;
-  fechasBusca: Array<{ fecha: string; horario: string }>; // ✅ Nuevo
-  fechasDisponibles: Array<{ fecha: string; horario: string }>; // ✅ Nuevo
+  fechasBusca: Array<{ fecha: string; horario: string }>; 
+  fechasDisponibles: Array<{ fecha: string; horario: string }>; 
+  // Rango para fechas disponibles (Me ofrezco a cubrir, Necesito cobertura, Días a cambio)
+  usaRangoDisponibles: boolean;
+  rangoDisponibles: { desde: string; hasta: string; horario: string };
+  // Rango para fechas busca (Turno que me ofrezco a hacer en OFREZCO_INTERCAMBIO)
+  usaRangoBusca: boolean;
+  rangoBusca: { desde: string; hasta: string; horario: string };
 }
 
-// ✅ Fetcher con credentials
+//  Fetcher con credentials
 const fetcher = async (url: string) => {
   const res = await fetch(url, {
-    credentials: 'include', // ✅ Enviar cookies
+    credentials: 'include', //  Enviar cookies
   });
   if (!res.ok) throw new Error(`Error al obtener ${url}`);
   return res.json();
@@ -112,7 +124,7 @@ export const useOfertas = () => {
     refreshInterval: 5000,
   });
 
-  // ✅ Crear nueva oferta con cookies
+  //  Crear nueva oferta con cookies
   const agregarOferta = async (oferta: NuevaOfertaForm) => {
     console.log('📤 Enviando oferta:', oferta);
 
@@ -121,7 +133,7 @@ export const useOfertas = () => {
       headers: {
         "Content-Type": "application/json",
       },
-      credentials: 'include', // ✅ Enviar cookies automáticamente
+      credentials: 'include', // Enviar cookies automáticamente
       body: JSON.stringify(oferta),
     });
 
@@ -134,12 +146,12 @@ export const useOfertas = () => {
     return data;
   };
 
-  // ✅ Actualizar estado de oferta
+  // Actualizar estado de oferta
   const actualizarEstado = async (id: string, nuevoEstado: EstadoOferta) => {
     const res = await fetch(`/api/ofertas/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      credentials: 'include', // ✅ Agregar esto
+      credentials: 'include', 
       body: JSON.stringify({ estado: nuevoEstado }),
     });
 
@@ -150,11 +162,11 @@ export const useOfertas = () => {
     return updated;
   };
 
-  // ✅ Eliminar oferta
+  //  Eliminar oferta
   const eliminarOferta = async (id: string) => {
     const res = await fetch(`/api/ofertas/${id}`, {
       method: "DELETE",
-      credentials: 'include', // ✅ Agregar esto
+      credentials: 'include', //  Agregar esto
     });
     if (!res.ok) throw new Error("Error al eliminar oferta");
 
@@ -167,7 +179,7 @@ export const useOfertas = () => {
     return {
       total: ofertas.length,
       ofrezco: ofertas.filter((o) => o.tipo === "OFREZCO").length,
-      busco: ofertas.filter((o) => o.modalidadBusqueda === "INTERCAMBIO").length, // ✅ Correcto
+      busco: ofertas.filter((o) => o.modalidadBusqueda === "INTERCAMBIO").length, //  Correcto
       urgentes: ofertas.filter((o) => o.prioridad === "URGENTE").length,
     };
   }, [ofertas]);

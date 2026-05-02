@@ -1,0 +1,28 @@
+En app/api/ofertas/route.ts, en el bloque POST, hay que arreglar la construcción de datos para intercambios con rango.
+Problema 1 — BUSCO_INTERCAMBIO con rango:
+Cuando body.usaRangoDisponibles es true, fechasDisponibles[0] está vacío, pero turnoOfrece se construye desde ahí. Hay que construir turnoOfrece desde el rango cuando se usa rango:
+typescript} else {
+    // BUSCO_INTERCAMBIO
+    if (body.fechasBusca?.length > 0) {
+        turnosBusca = body.fechasBusca;
+    }
+    if (body.usaRangoDisponibles && body.rangoDisponibles?.desde) {
+        // Con rango: turnoOfrece usa la primera fecha del rango
+        turnoOfrece = {
+            fecha: body.rangoDisponibles.desde,
+            horario: body.rangoDisponibles.horario || usuario.horario,
+            grupoTurno: usuario.grupo_turno
+        };
+        // No guardar fechasDisponibles vacías
+    } else if (body.fechasDisponibles?.length > 0) {
+        const validas = body.fechasDisponibles.filter((f: any) => f.fecha && f.fecha.trim() !== '');
+        if (validas.length > 0) {
+            fechasDisponibles = validas;
+            turnoOfrece = {
+                fecha: validas[0].fecha,
+                horario: validas[0].horario || usuario.horario,
+                grupoTurno: usuario.grupo_turno
+            };
+        }
+    }
+}

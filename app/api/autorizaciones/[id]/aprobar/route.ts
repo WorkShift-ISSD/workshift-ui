@@ -147,38 +147,6 @@ export async function POST(
   `;
         }
 
-        // Si es intercambio (no cobertura), crear también el turno del destinatario
-        if (solicitud.fecha_destinatario) {
-          await sql`
-        INSERT INTO turnos_efectivos (
-          id,
-          empleado_id,
-          fecha,S
-          horario_original,
-          horario_efectivo,
-          grupo_original,
-          grupo_efectivo,
-          tipo_cambio,
-          autorizacion_id,
-          empleado_intercambio_id,
-          estado,
-          created_at
-        ) VALUES (
-    gen_random_uuid(),
-    ${solicitud.solicitante_id}::uuid,
-    ${esCobertura ? solicitud.fecha_solicitante : solicitud.fecha_destinatario}::date,
-    ${esCobertura ? (solicitud.horario_destinatario || solicitud.horario_solicitante) : solicitud.horario_solicitante},
-    ${esCobertura ? (solicitud.horario_destinatario || solicitud.horario_solicitante) : (solicitud.horario_destinatario || solicitud.horario_solicitante)},
-    ${esCobertura ? (solicitud.grupo_destinatario || solicitud.grupo_solicitante) : solicitud.grupo_solicitante},
-    ${esCobertura ? (solicitud.grupo_destinatario || solicitud.grupo_solicitante) : (solicitud.grupo_destinatario || solicitud.grupo_solicitante)},
-    ${esCobertura ? 'COBERTURA' : 'INTERCAMBIO'},
-    ${id}::uuid,
-    ${solicitud.destinatario_id}::uuid,
-    'PENDIENTE',
-    NOW()
-  );
-      `;
-        }
       }
     }
 

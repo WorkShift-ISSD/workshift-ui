@@ -1,10 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Ban } from 'lucide-react';
 import { calcularGrupoTrabaja } from '../lib/turnosUtils';
 import { useAuth } from '../context/AuthContext';
 import { useTurnosEfectivos } from '@/hooks/useTurnosEfectivos';
+import { useTodasLasFaltas } from '@/hooks/useFaltas';
+import { useSanciones } from '@/hooks/useSanciones';
+import { useLicencias } from '@/hooks/useLicencias';
 
 export default function CalendarioTurnos() {
   const [mesActual, setMesActual] = useState(new Date().getMonth());
@@ -12,6 +15,9 @@ export default function CalendarioTurnos() {
 
   const { user } = useAuth();
   const { turnosEfectivos, fechasCedidas } = useTurnosEfectivos();
+  const { faltas } = useTodasLasFaltas();
+  const { sanciones } = useSanciones();
+  const { licencias } = useLicencias();
 
   const hoy = new Date();
   const totalDias = new Date(anioActual, mesActual + 1, 0).getDate();
@@ -48,10 +54,28 @@ export default function CalendarioTurnos() {
     const esCedido = fechasCedidasSet.has(fechaStr);
     const esHoy = fecha.toDateString() === hoy.toDateString();
 
-    // Trabaja si: es su grupo y no cedió, O ganó ese turno
+    const esFalta = faltas?.some(f => {
+      const fs = f.fecha.includes('T') ? f.fecha.split('T')[0] : f.fecha;
+      return f.empleadoId === user?.id && fs === fechaStr;
+    }) ?? false;
+
+    const esSancion = sanciones?.some(s =>
+      s.empleado_id === user?.id &&
+      s.estado === 'ACTIVA' &&
+      fechaStr >= s.fecha_desde.split('T')[0] &&
+      fechaStr <= s.fecha_hasta.split('T')[0]
+    ) ?? false;
+
+    const esLicencia = licencias?.some(l =>
+      l.empleado_id === user?.id &&
+      (l.estado === 'APROBADA' || l.estado === 'ACTIVA') &&
+      fechaStr >= l.fecha_desde.split('T')[0] &&
+      fechaStr <= l.fecha_hasta.split('T')[0]
+    ) ?? false;
+
     const trabaja = (esGrupoUsuario && !esCedido) || esGanado;
 
-    return { fechaStr, trabaja, esGanado, esCedido, esHoy, grupoDelDia };
+    return { fechaStr, trabaja, esGanado, esCedido, esHoy, grupoDelDia, esFalta, esSancion, esLicencia };
   };
 
   return (
@@ -86,28 +110,50 @@ export default function CalendarioTurnos() {
         {/* Días del mes */}
         {Array.from({ length: totalDias }, (_, i) => {
           const dia = i + 1;
-          const { trabaja, esGanado, esCedido, esHoy } = getDiaInfo(dia);
+          const { trabaja, esGanado, esCedido, esHoy, esFalta, esSancion, esLicencia } = getDiaInfo(dia);
+          const esRojo = esFalta || esSancion;
 
           return (
             <div
               key={dia}
-              title={esCedido ? 'Cediste este turno' : esGanado ? 'Turno ganado por intercambio' : trabaja ? 'Tu día de guardia' : ''}
+              title={
+                esFalta ? 'Falta registrada'
+                  : esSancion ? 'Sanción activa'
+                    : esLicencia ? 'Licencia'
+                      : esCedido ? 'Cediste este turno'
+                        : esGanado ? 'Turno ganado por intercambio'
+                          : trabaja ? 'Tu día de guardia'
+                            : ''
+              }
               className={`
-                aspect-square flex flex-col items-center justify-center rounded-lg text-sm font-medium transition-all
-                ${esHoy ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
-                ${trabaja && !esCedido
-                  ? esGanado
-                    ? 'bg-green-500 dark:bg-green-600 text-white'
-                    : 'bg-blue-500 dark:bg-blue-600 text-white'
-                  : esCedido
-                    ? 'bg-orange-200 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400'
-                    : 'bg-gray-100 dark:bg-gray-700/50 text-gray-400 dark:text-gray-600'
+        h-12 px-1 rounded-md flex flex-col items-center justify-center text-xs font-medium transition-all relative
+        ${esHoy ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
+                ${esFalta
+                  ? trabaja
+                    ? 'bg-red-500 dark:bg-red-600 text-white'
+                    : 'bg-red-300 dark:bg-red-900/50 text-white'
+                  : esSancion
+                    ? trabaja
+                      ? 'bg-red-500 dark:bg-red-600 text-white'
+                      : 'bg-red-300 dark:bg-red-900/50 text-red-200'
+                    : esLicencia
+                      ? 'bg-orange-400 dark:bg-orange-500 text-white'
+                      : trabaja && !esCedido
+                        ? esGanado
+                          ? 'bg-green-500 dark:bg-green-600 text-white'
+                          : 'bg-blue-500 dark:bg-blue-600 text-white'
+                        : esCedido
+                          ? 'bg-orange-200 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400'
+                          : 'bg-gray-100 dark:bg-gray-700/50 text-gray-400 dark:text-gray-600'
                 }
-              `}
+      `}
             >
-              <span className="font-bold">{dia}</span>
+              {esFalta && !esSancion && <span className="absolute top-0.5 left-0.5 text-[8px]">✗</span>}
+              {esSancion && <Ban className="absolute top-0.5 left-0.5 w-3 h-3 text-white" />}
+              {esLicencia && !esRojo && <span className="absolute top-0.5 left-0.5 text-[8px]">📋</span>}
+              <span className="font-bold text-lg">{dia}</span>
               {esCedido && <span className="text-[9px] mt-0.5 font-semibold">cedido</span>}
-              {esGanado && <span className="text-[9px] mt-0.5 font-semibold">+turno</span>}
+              {esGanado && !esRojo && !esLicencia && <span className="text-[9px] mt-0.5 font-semibold">+turno</span>}
             </div>
           );
         })}
@@ -120,6 +166,10 @@ export default function CalendarioTurnos() {
           <span>Mi guardia</span>
         </div>
         <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-gray-100 dark:bg-gray-700/50" />
+          <span>Sin guardia</span>
+        </div>
+        <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded bg-green-500" />
           <span>Turno ganado</span>
         </div>
@@ -128,8 +178,20 @@ export default function CalendarioTurnos() {
           <span>Turno cedido</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-gray-100 dark:bg-gray-700/50" />
-          <span>Sin guardia</span>
+          <div className="w-3 h-3 rounded bg-orange-400" />
+          <span>Licencia</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-red-500 flex items-center justify-center">
+            <span className="text-[6px] text-white font-bold">✗</span>
+          </div>
+          <span>Falta</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-red-500 flex items-center justify-center">
+            <Ban className="w-2 h-2 text-white" />
+          </div>
+          <span>Sanción</span>
         </div>
       </div>
     </div>

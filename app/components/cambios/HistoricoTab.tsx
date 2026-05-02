@@ -3,6 +3,8 @@
 import { History, RefreshCw, Gift, ArrowRight } from 'lucide-react';
 import { useFormatters } from '@/hooks/useFormatters';
 import { TipoSolicitud } from '@/app/lib/enum';
+import { useState } from 'react';
+import { Paginacion } from './Paginacion';
 
 interface FechaAcordada {
   fecha: string;
@@ -61,6 +63,12 @@ export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOfer
     ...solicitudesHistorico.map(s => ({ tipo: 'solicitud' as const, data: s, fecha: s.fechaSolicitud })),
   ].sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
 
+  const [pagina, setPagina] = useState(1);
+  const [porPagina, setPorPagina] = useState(10);
+
+  const totalPaginas = Math.ceil(items.length / porPagina);
+  const itemsPaginados = items.slice((pagina - 1) * porPagina, pagina * porPagina);
+
   if (items.length === 0) {
     return (
       <div className="text-center py-12">
@@ -79,7 +87,7 @@ export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOfer
         {items.length} {items.length === 1 ? 'cambio' : 'cambios'} en tu historial
       </p>
 
-      {items.map((item, idx) => {
+      {itemsPaginados.map((item, idx) => {
         if (item.tipo === 'oferta') {
           const oferta = item.data;
           const soyOfertante = oferta.ofertante?.id === userId;
@@ -117,14 +125,20 @@ export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOfer
                     <p className="font-medium">{formatDate(oferta.turnoOfrece.fecha)}</p>
                     <p className="text-[10px] text-gray-500">{oferta.turnoOfrece.horario}</p>
                   </div>
-                  {oferta.turnosBusca?.length > 0 && (
+                  {(oferta.turnosBusca?.length > 0 || (oferta.fechaDesde && oferta.fechaHasta)) && (
                     <>
                       <ArrowRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
                       <div className="text-center">
                         <p className="text-xs text-gray-500 dark:text-gray-400">
                           {soyOfertante ? 'A cambio de' : 'Diste'}
                         </p>
-                        {oferta.turnosBusca.length === 1 ? (
+                        {oferta.fechaDesde && oferta.fechaHasta ? (
+                          <>
+                            <p className="font-medium text-xs">Del {formatDate(oferta.fechaDesde)}</p>
+                            <p className="font-medium text-xs">al {formatDate(oferta.fechaHasta)}</p>
+                            {oferta.horarioRango && <p className="text-[10px] text-gray-500">{oferta.horarioRango}</p>}
+                          </>
+                        ) : oferta.turnosBusca.length === 1 ? (
                           <>
                             <p className="font-medium">{formatDate(oferta.turnosBusca[0].fecha)}</p>
                             <p className="text-[10px] text-gray-500">{oferta.turnosBusca[0].horario}</p>
@@ -149,8 +163,16 @@ export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOfer
                     </div>
                   )}
 
+                  {/* Rango de fechas */}
+                  {oferta.fechaDesde && oferta.fechaHasta && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Del {formatDate(oferta.fechaDesde)} al {formatDate(oferta.fechaHasta)}
+                      {oferta.horarioRango && ` · ${oferta.horarioRango}`}
+                    </p>
+                  )}
+
                   {/* Fechas todavía disponibles */}
-                  {oferta.fechasDisponibles?.length > 0 && (
+                  {!oferta.fechaDesde && oferta.fechasDisponibles?.length > 0 && (
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       {oferta.fechasDisponibles.length === 1
                         ? `${formatDate(oferta.fechasDisponibles[0].fecha)} — disponible`
@@ -275,6 +297,15 @@ export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOfer
           </div>
         );
       })}
+
+      <Paginacion
+        pagina={pagina}
+        totalPaginas={totalPaginas}
+        porPagina={porPagina}
+        onCambiarPagina={setPagina}
+        onCambiarPorPagina={setPorPagina}
+      />
+
     </div>
   );
 }

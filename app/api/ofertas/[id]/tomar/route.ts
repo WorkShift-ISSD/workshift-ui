@@ -105,6 +105,9 @@ export async function POST(
         : oferta.turno_ofrece)
       : null;
 
+    console.log('turnoOfertanteRaw:', turnoOfertanteRaw);
+    console.log('oferta.turno_ofrece raw:', oferta.turno_ofrece);
+
     // Para cobertura, la fecha viene del turnoSeleccionado o de fechas_disponibles
     const fechaDisponibles = oferta.fechas_disponibles
       ? (typeof oferta.fechas_disponibles === 'string'
@@ -233,10 +236,17 @@ export async function POST(
 
     // ── Construir datos de los turnos ─────────────────────────────────────
 
-    // Turno del tomador (lo que da a cambio — solo en intercambio)
-    const turnoSolicitanteObj = turnoSeleccionado ? {
-      fecha: turnoSeleccionado.fecha,
-      horario: turnoSeleccionado.horario || tomador.horario,
+    const turnosBuscaRaw = oferta.turnos_busca
+      ? (typeof oferta.turnos_busca === 'string'
+        ? JSON.parse(oferta.turnos_busca)
+        : oferta.turnos_busca)
+      : null;
+
+    // Para INTERCAMBIO: el tomador cubre el turno de turnosBusca[0]
+    // Para COBERTURA: el tomador cubre fechaTurnoOfertante
+    const turnoSolicitanteObj = !esCobertura && turnosBuscaRaw?.[0] ? {
+      fecha: turnosBuscaRaw[0].fecha,
+      horario: turnosBuscaRaw[0].horario || tomador.horario,
       grupoTurno: tomador.grupo_turno
     } : {
       fecha: fechaTurnoOfertante,
@@ -244,7 +254,8 @@ export async function POST(
       grupoTurno: tomador.grupo_turno
     };
 
-    // Turno del ofertante (lo que recibe el tomador)
+    // Para INTERCAMBIO: el ofertante recibe cobertura en turnoOfrece
+    // Para COBERTURA: no hay turno destinatario
     const turnoDestinatarioObj = turnoOfertanteRaw ? {
       fecha: turnoOfertanteRaw.fecha,
       horario: turnoOfertanteRaw.horario,
