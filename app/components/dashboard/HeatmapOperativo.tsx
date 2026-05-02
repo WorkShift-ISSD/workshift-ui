@@ -44,10 +44,31 @@ function horaInicio(horario: string): number {
   return match ? parseInt(match[1], 10) : -1;
 }
 
+/**
+ * Clasifica un horario en Mañana / Tarde / Noche según los horarios
+ * reales de la organización:
+ *
+ * Inspectores
+ *   Mañana:  04:00-14:00 | 06:00-16:00
+ *   Tarde:   13:00-23:00
+ *   Noche:   19:00-05:00
+ *
+ * Supervisores
+ *   Mañana:  05:00-14:00
+ *   Tarde:   14:00-23:00
+ *   Noche:   23:00-05:00
+ */
 function clasificarTurno(horario: string): Turno {
   const h = horaInicio(horario);
-  if (h >= 5  && h <= 13) return 'Mañana';
-  if (h >= 14 && h <= 20) return 'Tarde';
+  // Mañana: inspectores 04:00 o 06:00, supervisores 05:00
+  if (h === 4 || h === 5 || h === 6) return 'Mañana';
+  // Tarde: inspectores 13:00, supervisores 14:00
+  if (h === 13 || h === 14) return 'Tarde';
+  // Noche: inspectores 19:00, supervisores 23:00
+  if (h === 19 || h === 23) return 'Noche';
+  // Fallback para horarios no reconocidos
+  if (h >= 4  && h <= 11) return 'Mañana';
+  if (h >= 12 && h <= 17) return 'Tarde';
   return 'Noche';
 }
 
@@ -123,6 +144,13 @@ const PERIODO_LABELS: Record<Periodo, string> = {
 };
 
 const DIAS_ES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+// Horarios reales por turno para mostrar en el eje Y
+const TURNO_HORARIOS: Record<Turno, string> = {
+  'Mañana': '04–06 → 14–16',
+  'Tarde':  '13–14 → 23',
+  'Noche':  '19–23 → 05',
+};
 
 // ─────────────────────────────────────────────────────────────
 // Componente principal
@@ -258,7 +286,7 @@ export function HeatmapOperativo({ autorizaciones, empleados }: Props) {
               : periodo === 'mes'    ? 20
               : periodo === '4meses' ? 11
               : 7;
-  const cellH = 32;
+  const cellH = 36;
   const gap   = 2;
 
   const hoy = toKey(new Date());
@@ -367,8 +395,11 @@ export function HeatmapOperativo({ autorizaciones, empleados }: Props) {
                   <p className="text-[11px] font-semibold text-gray-700 dark:text-gray-300 leading-tight">
                     {turno}
                   </p>
+                  <p className="text-[9px] text-gray-400 dark:text-gray-500 leading-tight">
+                    {TURNO_HORARIOS[turno]}
+                  </p>
                   <p className={[
-                    'text-[9px] font-medium',
+                    'text-[9px] font-medium mt-0.5',
                     totalTurno > 0
                       ? 'text-amber-600 dark:text-amber-400'
                       : 'text-gray-400 dark:text-gray-600',
