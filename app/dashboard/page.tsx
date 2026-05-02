@@ -22,11 +22,21 @@ import { calcularDiasTrabajoEnRango } from '@/app/lib/turnosUtils';
 import { useOfertas } from '@/hooks/useOfertas';
 import { useSolicitudesDirectas } from '@/hooks/useSolicitudesDirectas';
 import CalendarioTurnos from '@/app/components/CalendarioTurnos';
+import DashboardSupervisor from '../components/dashboard/Dashsupervisor';
+
 
 type SolicitudDirectaEstado = 'SOLICITADO' | 'APROBADO' | 'RECHAZADO' | 'CANCELADO';
 
 export default function DashboardHome() {
   const { user } = useAuth();
+
+    if (user?.rol === 'INSPECTOR') {
+    return <DashInspector />;
+  }
+
+    if (user?.rol === 'SUPERVISOR') {
+    return <DashboardSupervisor />;
+  }
 
   const { cambios, isLoading: loadingCambios, error: errorCambios } = useCambios();
   const { turnosData, isLoading: loadingTurnos, error: errorTurnos } = useTurnosData();

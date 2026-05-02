@@ -1,11 +1,16 @@
 import { Page } from '@playwright/test';
 
-let users: Record<string, { email: string; password: string }> = {};
+let users: any = {};
 
 try {
-    users = require('../fixtures/users').users;
+  users = require('../fixtures/users').users;
 } catch {
-    // fixtures/users.ts is gitignored — provide it locally to run tests
+  users = {
+    inspector: {
+      email: 'fallback@test.com',
+      password: '1234'
+    }
+  };
 }
 
 type UserKey = keyof typeof users;
