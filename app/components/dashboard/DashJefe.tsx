@@ -13,6 +13,7 @@ import {
   XCircle,
   ChevronDown,
   ChevronUp,
+  Search,
 } from 'lucide-react';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
@@ -526,6 +527,7 @@ export default function DashJefe() {
   } = useDashboardJefe();
 
   const [authFiltro, setAuthFiltro] = useState<'todos' | 'licencia' | 'intercambio'>('todos');
+  const [busqueda, setBusqueda]     = useState('');
 
   const handleAction = useCallback(
     async (id: string, action: 'aprobar' | 'rechazar', obs: string) => {
@@ -540,10 +542,22 @@ export default function DashJefe() {
   const altoImpacto  = (pendientes as AuthPendiente[]).filter(a => a.impacto?.nivel === 'alto');
 
   const pendientesFiltrados = useMemo<AuthPendiente[]>(() => {
-    if (authFiltro === 'licencia')    return licencias;
-    if (authFiltro === 'intercambio') return intercambios;
-    return pendientes as AuthPendiente[];
-  }, [pendientes, authFiltro, licencias, intercambios]);
+    let base: AuthPendiente[] =
+      authFiltro === 'licencia'    ? licencias :
+      authFiltro === 'intercambio' ? intercambios :
+      pendientes as AuthPendiente[];
+
+    if (!busqueda.trim()) return base;
+
+    const q = busqueda.toLowerCase().trim();
+    return base.filter(a => {
+      const nombre   = `${a.empleado?.apellido ?? a.empleado?.apellido ?? ''} ${a.empleado?.nombre ?? a.empleado?.nombre ?? ''}`.toLowerCase();
+      const tipo     = (a.licencia?.tipo ?? a.tipo ?? '').toLowerCase().replace(/_/g, ' ');
+      const motivo   = (a.solicitud?.motivo ?? a.solicitud?.motivo ?? '').toLowerCase();
+      const destNombre = `${a.solicitud?.destinatario?.apellido ?? a.solicitud?.destinatario?.apellido ?? ''} ${a.solicitud?.destinatario?.nombre ?? a.solicitud?.destinatario?.nombre ?? ''}`.toLowerCase();
+      return nombre.includes(q) || tipo.includes(q) || motivo.includes(q) || destNombre.includes(q);
+    });
+  }, [pendientes, authFiltro, licencias, intercambios, busqueda]);
 
   // ── Loading ──
   if (isLoading) {
@@ -691,7 +705,7 @@ export default function DashJefe() {
               )}
             </div>
 
-            <div className="flex border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden mb-4 text-xs">
+            <div className="flex border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden mb-3 text-xs">
               {([
                 { key: 'todos',       label: `Todas (${pendientes.length})` },
                 { key: 'licencia',    label: `Licencias (${licencias.length})` },
@@ -712,12 +726,32 @@ export default function DashJefe() {
               ))}
             </div>
 
+            {/* Buscador */}
+            <div className="relative mb-3">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-gray-500 pointer-events-none" />
+              <input
+                type="text"
+                value={busqueda}
+                onChange={e => setBusqueda(e.target.value)}
+                placeholder="Buscar por nombre, tipo o motivo..."
+                className="w-full pl-8 pr-8 py-1.5 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-blue-400 dark:focus:border-blue-500 transition-colors"
+              />
+              {busqueda && (
+                <button
+                  onClick={() => setBusqueda('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                >
+                  <XCircle className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
             <div className="flex-1 space-y-2 overflow-y-auto max-h-[440px] pr-0.5">
               {pendientesFiltrados.length === 0 ? (
                 <div className="text-center py-10">
                   <CheckCircle className="w-10 h-10 text-green-400 mx-auto mb-2 opacity-40" />
                   <p className="text-sm text-gray-400 dark:text-gray-600">
-                    No hay autorizaciones pendientes
+                    {busqueda ? `Sin resultados para "${busqueda}"` : 'No hay autorizaciones pendientes'}
                   </p>
                 </div>
               ) : (
