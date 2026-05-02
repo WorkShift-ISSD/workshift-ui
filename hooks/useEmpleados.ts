@@ -21,6 +21,8 @@ interface Inspector {
   activo: boolean;
   grupoTurno: 'A' | 'B';
   fotoPerfil: string | null;
+  calificacion:      number | null;
+  totalIntercambios: number;
   ultimoLogin: string | null;
   createdAt: string;
   updatedAt: string;
