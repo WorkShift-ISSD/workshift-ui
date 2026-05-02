@@ -28,7 +28,7 @@ import DashboardSupervisor from '../components/dashboard/Dashsupervisor';
 type SolicitudDirectaEstado = 'SOLICITADO' | 'APROBADO' | 'RECHAZADO' | 'CANCELADO';
 
 export default function DashboardHome() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
 
     if (user?.rol === 'INSPECTOR') {
     return <DashInspector />;
@@ -169,8 +169,11 @@ export default function DashboardHome() {
     return { turnosOferta: turnosDisponibles, aprobados: aprobadosDelMes, pendientes: pendientesParaMi, rechazados: rechazadosDelMes };
   }, [ofertas, solicitudes, user, monthInfo]);
 
-  if (user?.rol === 'INSPECTOR') return <DashInspector />;
-  if (user?.rol === 'JEFE' || user?.rol === 'ADMINISTRADOR') return <DashJefe />;
+  const userRol = user?.rol as string | undefined;
+
+  if (userRol === 'INSPECTOR')                           return <DashInspector />;
+  if (userRol === 'JEFE' || userRol === 'ADMINISTRADOR') return <DashJefe />;
+  if (userRol === 'SUPERVISOR')                          return <DashboardSupervisor />;
 
   if (loadingCambios || loadingTurnos || loadingFaltas || loadingOfertas || loadingSolicitudes) {
     return (
