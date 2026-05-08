@@ -173,7 +173,7 @@ export function FormularioOferta({
                                 }}
                                 grupoObjetivo={horarioFijo ? user?.grupoTurno as GrupoTurno : undefined}
                                 fechasExtra={fechasExtraUsuario}
-                                fechasBloqueadas={[...fechasCedidas, ...fechasBloqueadasPropias]}
+                                fechasBloqueadas={horarioFijo ? [...fechasCedidas, ...fechasBloqueadasPropias] : fechasBloqueadasPropias}
                                 minDate={new Date()}
                                 className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                             />

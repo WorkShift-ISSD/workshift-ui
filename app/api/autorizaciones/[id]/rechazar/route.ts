@@ -4,6 +4,15 @@ import { sql } from '@/app/lib/postgres';
 import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
 import { EstadoAutorizacion } from '@/app/lib/enum';
+import Pusher from 'pusher';
+
+const pusher = new Pusher({
+  appId: process.env.PUSHER_APP_ID!,
+  key: process.env.PUSHER_KEY!,
+  secret: process.env.PUSHER_SECRET!,
+  cluster: process.env.PUSHER_CLUSTER!,
+  useTLS: true,
+});
 
 const SECRET_KEY = new TextEncoder().encode(
   process.env.JWT_SECRET || 'Workshift25'
@@ -105,6 +114,17 @@ export async function POST(
         WHERE id = ${autorizacion.licencia_id}::uuid;
       `;
       console.log('✅ Licencia actualizada a RECHAZADA');
+    }
+
+    // Notificar al solicitante vía Pusher
+    const solicitanteId = autorizacion.solicitud_id
+      ? (await sql`SELECT solicitante_id FROM solicitudes_directas WHERE id = ${autorizacion.solicitud_id}::uuid`)[0]?.solicitante_id
+      : autorizacion.oferta_id
+        ? (await sql`SELECT ofertante_id FROM ofertas WHERE id = ${autorizacion.oferta_id}::uuid`)[0]?.ofertante_id
+        : null;
+
+    if (solicitanteId) {
+      await pusher.trigger(`usuario-${solicitanteId}`, 'autorizacion-actualizada', { autorizacionId: id });
     }
 
     return NextResponse.json({

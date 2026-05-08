@@ -13,6 +13,8 @@ import ModalFalta from '@/app/components/faltas/ModalFalta';
 import ModalConsultaFaltas from '@/app/components/faltas/ModalConsultaFaltas';
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { CustomDatePicker } from '@/app/components/CustomDatePicker';
+
 import {
   UserCircle,
   XCircle,
@@ -27,7 +29,7 @@ import { ExportData } from "@/app/components/ExportToPdf";
 
 
 export default function FaltasPage() {
-    const {
+  const {
     getTodayDate,
     formatDate,
     parseFechaLocal,
@@ -48,6 +50,13 @@ export default function FaltasPage() {
     setModalConsultaOpen(true);
   };
 
+  const [turnosEfectivosDelDia, setTurnosEfectivosDelDia] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch(`/api/turnos-efectivos?fecha=${selectedDate}`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => setTurnosEfectivosDelDia(Array.isArray(data) ? data : []));
+  }, [selectedDate]);
 
   const [searchText, setSearchText] = useState("");
 
@@ -110,29 +119,33 @@ export default function FaltasPage() {
   const empleadosDelDia = useMemo(() => {
     if (!selectedDate || !empleados) return [];
 
+    const empleadosGanaron = turnosEfectivosDelDia.filter((t: any) => t.tipo === 'GANADO');
+    const empleadosCedieron = new Set(turnosEfectivosDelDia.filter((t: any) => t.tipo === 'CEDIDO').map((t: any) => t.empleadoId));
+
     return empleados
       .filter((emp) => {
         const estaActivo = emp.activo;
         const perteneceAlGrupo = emp.grupoTurno === grupoQueTrabaja;
+        const turnoGanado = empleadosGanaron.find((t: any) => t.empleadoId === emp.id);
+        const ganoTurno = !!turnoGanado;
+        const cedioTurno = empleadosCedieron.has(emp.id);
         const rolCoincide = selectedRole === "TODOS"
           ? (emp.rol === 'SUPERVISOR' || emp.rol === 'INSPECTOR')
           : emp.rol === selectedRole;
-        const turnoCoincide = selectedTurno === "TODOS" || emp.horario === selectedTurno;
-
-        // 👇 Filtro por texto (nombre o apellido)
+        const horarioEfectivo = turnoGanado ? turnoGanado.horarioEfectivo : emp.horario;
+        const turnoCoincide = selectedTurno === "TODOS" || horarioEfectivo === selectedTurno;
         const coincideTexto = searchText === "" ||
           emp.nombre.toLowerCase().includes(searchText.toLowerCase()) ||
           emp.apellido.toLowerCase().includes(searchText.toLowerCase());
 
-        // 👇 AGREGÁ coincideTexto ACÁ
-        return estaActivo && perteneceAlGrupo && rolCoincide && turnoCoincide && coincideTexto;
+        return estaActivo && (perteneceAlGrupo || ganoTurno) && !cedioTurno && rolCoincide && turnoCoincide && coincideTexto;
       })
       .sort((a, b) => {
         const horaA = a.horario?.split("-")[0] ?? "";
         const horaB = b.horario?.split("-")[0] ?? "";
         return horaA.localeCompare(horaB);
       });
-  }, [empleados, selectedDate, selectedRole, selectedTurno, grupoQueTrabaja, searchText]);
+  }, [empleados, selectedDate, selectedRole, selectedTurno, grupoQueTrabaja, searchText, turnosEfectivosDelDia]);
 
 
   // Lista de faltas del día
@@ -188,10 +201,10 @@ export default function FaltasPage() {
     const fechaSeleccionada = new Date(newDate);
     const hoy = new Date(today);
 
-    if (fechaSeleccionada > hoy) {
-      toast.warning("No se pueden consultar fechas futuras");
-      return;
-    }
+    //if (fechaSeleccionada > hoy) {
+    //toast.warning("No se pueden consultar fechas futuras");
+    //return;
+    //}
 
     setSelectedDate(newDate);
   };
@@ -241,7 +254,7 @@ export default function FaltasPage() {
               activos: empleadosParaExportar.filter(emp => !empleadosConFalta.includes(emp.id)).length,
               ausentes: empleadosConFalta.length,
               enLicencia: 0,
-               inactivo: 0,
+              inactivo: 0,
             }}
             faltasDelDia={(faltas ?? []).map(f => ({
               ...f,
@@ -257,7 +270,7 @@ export default function FaltasPage() {
       </div>
 
       {/* Alerta de fecha futura */}
-      {esFechaFutura && (
+      {/*{esFechaFutura && (
         <div className="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
           <div className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
@@ -266,7 +279,7 @@ export default function FaltasPage() {
             </p>
           </div>
         </div>
-      )}
+      )}*/}
 
       {/* Info del grupo que trabaja */}
       <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
@@ -306,15 +319,11 @@ export default function FaltasPage() {
             <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             Fecha
           </label>
-          <input
-            type="date"
+          <CustomDatePicker
+            id="fecha-faltas"
             value={selectedDate}
-            max={today}
-            onChange={(e) => handleDateChange(e.target.value)}
-            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 
-                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                    focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 
-                    focus:border-transparent transition-all"
+            onChange={handleDateChange}
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
           />
         </div>
 
@@ -328,9 +337,9 @@ export default function FaltasPage() {
             value={selectedRole}
             onChange={(e) => setSelectedRole(e.target.value)}
             className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 
-                     bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                     focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 
-                     focus:border-transparent transition-all"
+                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                    focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 
+                    focus:border-transparent transition-all"
           >
             <option value="TODOS">Todos los roles</option>
             {rolesDisponibles.map((rol) => (
@@ -351,10 +360,10 @@ export default function FaltasPage() {
             value={selectedTurno}
             onChange={(e) => setSelectedTurno(e.target.value)}
             className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 
-                     bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                     focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 
-                     focus:border-transparent transition-all
-                     disabled:opacity-50 disabled:cursor-not-allowed"
+                  bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                  focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 
+                  focus:border-transparent transition-all
+                  disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={selectedRole === "TODOS"}
           >
             <option value="TODOS">Todos los Horarios</option>
@@ -381,15 +390,7 @@ export default function FaltasPage() {
         </div>
 
         {/* Contenido */}
-        {esFechaFutura ? (
-          <div className="text-center text-gray-500 dark:text-gray-400 py-12">
-            <AlertCircle className="w-16 h-16 mx-auto mb-4 text-yellow-500" />
-            <p className="text-lg font-medium">Fecha no válida</p>
-            <p className="text-sm">
-              No se pueden consultar fechas futuras
-            </p>
-          </div>
-        ) : empleadosDelDia.length === 0 ? (
+        {empleadosDelDia.length === 0 ? (
           <div className="text-center text-gray-500 dark:text-gray-400 py-12">
             <UserCircle className="w-16 h-16 mx-auto mb-4 opacity-50" />
             <p className="text-lg font-medium">No hay empleados</p>
@@ -426,6 +427,8 @@ export default function FaltasPage() {
                   const enFalta = !!falta;
                   const enLicencia = empleadosConLicencia.has(emp.id);
                   const enSancion = empleadosConSancion.has(emp.id);
+                  const turnoGanado = turnosEfectivosDelDia.find((t: any) => t.tipo === 'GANADO' && t.empleadoId === emp.id);
+                  const horarioMostrar = turnoGanado ? turnoGanado.horarioEfectivo : emp.horario;
 
                   return (
                     <tr
@@ -433,7 +436,7 @@ export default function FaltasPage() {
                       className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-600 dark:text-gray-400">
-                        {emp.horario}
+                        {horarioMostrar}
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium text-gray-900 dark:text-white">
@@ -478,9 +481,9 @@ export default function FaltasPage() {
                           <button
                             onClick={() => setModalEmpleado(emp)}
                             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600
-                                       text-white rounded-lg font-medium transition-colors
-                                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                                       dark:focus:ring-offset-gray-800"
+                                      text-white rounded-lg font-medium transition-colors
+                                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                                      dark:focus:ring-offset-gray-800"
                           >
                             Registrar Falta
                           </button>
@@ -492,9 +495,9 @@ export default function FaltasPage() {
                                 setModalEmpleado(falta.empleado || emp);
                               }}
                               className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-500 dark:hover:bg-yellow-600
-                                         text-white rounded-lg font-medium transition-colors
-                                         focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2
-                                         dark:focus:ring-offset-gray-800"
+                                        text-white rounded-lg font-medium transition-colors
+                                        focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2
+                                        dark:focus:ring-offset-gray-800"
                             >
                               Editar
                             </button>
@@ -502,9 +505,9 @@ export default function FaltasPage() {
                             <button
                               onClick={() => handleEliminarFalta(falta.id)}
                               className="px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600
-                                         text-white rounded-lg font-medium transition-colors
-                                         focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
-                                         dark:focus:ring-offset-gray-800"
+                                        text-white rounded-lg font-medium transition-colors
+                                        focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
+                                        dark:focus:ring-offset-gray-800"
                             >
                               Eliminar
                             </button>

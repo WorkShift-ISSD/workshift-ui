@@ -236,31 +236,103 @@ export async function POST(
 
     // ── Construir datos de los turnos ─────────────────────────────────────
 
+    const esBusco = oferta.tipo === 'BUSCO';
+
     const turnosBuscaRaw = oferta.turnos_busca
       ? (typeof oferta.turnos_busca === 'string'
         ? JSON.parse(oferta.turnos_busca)
         : oferta.turnos_busca)
       : null;
 
-    // Para INTERCAMBIO: el tomador cubre el turno de turnosBusca[0]
-    // Para COBERTURA: el tomador cubre fechaTurnoOfertante
-    const turnoSolicitanteObj = !esCobertura && turnosBuscaRaw?.[0] ? {
-      fecha: turnosBuscaRaw[0].fecha,
-      horario: turnosBuscaRaw[0].horario || tomador.horario,
-      grupoTurno: tomador.grupo_turno
-    } : {
-      fecha: fechaTurnoOfertante,
-      horario: tomador.horario,
-      grupoTurno: tomador.grupo_turno
-    };
+    // solicitanteId/destinatarioId según quién inició la búsqueda:
+    //   BUSCO (esBusco=true)  → solicitante = ofertante (ej. Patricia), destinatario = tomador (ej. Emanuel)
+    //   OFREZCO (esBusco=false) → solicitante = tomador, destinatario = ofertante
+    //
+    // turnoSolicitante = turno que CEDE el solicitante
+    // turnoDestinatario = turno que CEDE el destinatario
+    const turnoSolicitanteObj = !esCobertura
+      ? esBusco
+        ? {
+            // BUSCO_INTERCAMBIO: solicitante = ofertante (Patricia), cede su turno (turnoOfrece)
+            fecha: turnoOfertanteRaw?.fecha || fechaTurnoOfertante,
+            horario: turnoOfertanteRaw?.horario,
+            grupoTurno: turnoOfertanteRaw?.grupoTurno,
+          }
+        : {
+            // OFREZCO_INTERCAMBIO: solicitante = tomador, cede el día que el ofertante le pidió
+            fecha: turnosBuscaRaw?.[0]?.fecha || turnoSeleccionado?.fecha || fechaTurnoOfertante,
+            horario: turnosBuscaRaw?.[0]?.horario || turnoSeleccionado?.horario || tomador.horario,
+            grupoTurno: tomador.grupo_turno,
+          }
+      : esBusco
+        ? {
+            // BUSCO_COBERTURA: solicitante = ofertante, su turno a cubrir (grupo y horario del ofertante)
+            fecha: turnoOfertanteRaw?.fecha || turnoSeleccionado?.fecha || fechaTurnoOfertante,
+            horario: turnoOfertanteRaw?.horario || tomador.horario,
+            grupoTurno: turnoOfertanteRaw?.grupoTurno || tomador.grupo_turno,
+          }
+        : {
+            // OFREZCO_COBERTURA: solicitante = tomador, su turno propio
+            fecha: turnoSeleccionado?.fecha || fechaTurnoOfertante,
+            horario: tomador.horario,
+            grupoTurno: tomador.grupo_turno,
+          };
 
-    // Para INTERCAMBIO: el ofertante recibe cobertura en turnoOfrece
-    // Para COBERTURA: no hay turno destinatario
-    const turnoDestinatarioObj = turnoOfertanteRaw ? {
-      fecha: turnoOfertanteRaw.fecha,
-      horario: turnoOfertanteRaw.horario,
-      grupoTurno: turnoOfertanteRaw.grupoTurno
-    } : null;
+    const turnoDestinatarioObj = !esCobertura
+      ? esBusco
+        ? {
+            // BUSCO_INTERCAMBIO: destinatario = tomador (Emanuel), cede el día que eligió del rango
+            fecha: turnoSeleccionado?.fecha,
+            horario: tomador.horario,
+            grupoTurno: tomador.grupo_turno,
+          }
+        : turnoOfertanteRaw
+          ? {
+              // OFREZCO_INTERCAMBIO: destinatario = ofertante, cede su turnoOfrece
+              fecha: turnoOfertanteRaw.fecha,
+              horario: turnoOfertanteRaw.horario,
+              grupoTurno: turnoOfertanteRaw.grupoTurno,
+            }
+          : null
+      : null; // cobertura: unidireccional, sin turnoDestinatario
+
+    // ── Validaciones de duplicado ─────────────────────────────────────────
+
+    // Para BUSCO_INTERCAMBIO el tomador cede turnoDestinatario; en el resto, turnoSolicitante
+    const fechaSeleccionada = (!esCobertura && esBusco)
+      ? (turnoDestinatarioObj?.fecha ?? turnoSolicitanteObj.fecha)
+      : turnoSolicitanteObj.fecha;
+
+    // 6. Turno efectivo ya existente para el tomador en esa fecha
+    const [turnoEfectivoExistente] = await sql`
+      SELECT 1 FROM turnos_efectivos
+      WHERE empleado_id = ${tomadorId}::uuid
+        AND fecha = ${fechaSeleccionada}::date
+        AND estado = 'PENDIENTE'
+      LIMIT 1;
+    `;
+    if (turnoEfectivoExistente) {
+      return NextResponse.json(
+        { error: 'Ya existe una cobertura aprobada para esa fecha' },
+        { status: 400 }
+      );
+    }
+
+    // 7. Autorización pendiente para la misma fecha
+    const [autorizacionPendienteExistente] = await sql`
+      SELECT 1 FROM autorizaciones a
+      JOIN solicitudes_directas sd ON a.solicitud_id = sd.id
+      WHERE a.empleado_id = ${tomadorId}::uuid
+        AND a.estado = 'PENDIENTE'
+        AND sd.fecha_solicitante = ${fechaSeleccionada}::date
+      LIMIT 1;
+    `;
+    if (autorizacionPendienteExistente) {
+      return NextResponse.json(
+        { error: 'Ya tenés una solicitud pendiente de aprobación para esa fecha' },
+        { status: 400 }
+      );
+    }
 
     // ── Marcar oferta como COMPLETADO ─────────────────────────────────────
 
@@ -328,12 +400,21 @@ export async function POST(
         UPDATE conversaciones
         SET estado = 'ACEPTADA', updated_at = NOW(), visto = false
         WHERE oferta_id = ${id}::uuid
-    AND (
-      (participante_id = ${tomadorId}::uuid)
-      OR
-      (participante_id = ${oferta.ofertante_id}::uuid AND otro_participante_id = ${tomadorId}::uuid)
-    );
-`;
+          AND (
+            (participante_id = ${tomadorId}::uuid)
+            OR
+            (participante_id = ${oferta.ofertante_id}::uuid AND otro_participante_id = ${tomadorId}::uuid)
+          );
+      `;
+
+      // Cerrar otras conversaciones ACTIVAS de la misma oferta con la misma fecha acordada
+      await sql`
+        UPDATE conversaciones
+        SET estado = 'CANCELADA', updated_at = NOW()
+        WHERE oferta_id = ${id}::uuid
+          AND estado = 'ACTIVA'
+          AND fecha_acordada = ${fechaSeleccionada}::date;
+      `;
 
     }
 
@@ -346,6 +427,17 @@ export async function POST(
 
     // ── Crear solicitud directa entre tomador y ofertante ─────────────────
     // Estado APROBADO porque ambos ya acordaron — va directo al jefe
+
+    const solicitanteId = esBusco ? oferta.ofertante_id : tomadorId;
+    const destinatarioId = esBusco ? tomadorId : oferta.ofertante_id;
+
+
+console.log('solicitanteId:', solicitanteId);
+console.log('destinatarioId:', destinatarioId);
+console.log('esBusco:', esBusco);
+console.log('oferta.tipo:', oferta.tipo);
+
+
 
     try {
       const [nuevaSolicitud] = await sql`
@@ -367,8 +459,8 @@ export async function POST(
           estado,
           fecha_solicitud
         ) VALUES (
-          ${tomadorId}::uuid,
-          ${oferta.ofertante_id}::uuid,
+          ${solicitanteId}::uuid, 
+          ${destinatarioId}::uuid,
           ${turnoSolicitanteObj ? JSON.stringify(turnoSolicitanteObj) : null},
           ${turnoDestinatarioObj ? JSON.stringify(turnoDestinatarioObj) : null},
           ${turnoSolicitanteObj?.fecha || null},

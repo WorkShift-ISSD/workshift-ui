@@ -21,10 +21,46 @@ export async function GET(request: NextRequest) {
     const userId = payload.id as string;
 
     const { searchParams } = new URL(request.url);
+    const fecha = searchParams.get('fecha');
     const targetUserId = searchParams.get('userId') || userId;
 
+    // Si se pasa ?fecha= sin userId, devolver todos los turnos efectivos del día para todos los empleados
+    if (fecha && !searchParams.get('userId')) {
+      const ganados = await sql`
+        SELECT
+          te.empleado_id::text as "empleadoId",
+          TO_CHAR(te.fecha, 'YYYY-MM-DD') as fecha,
+          te.horario_efectivo as "horarioEfectivo",
+          te.grupo_efectivo as "grupoEfectivo",
+          te.tipo_cambio as "tipoCambio",
+          'GANADO' as tipo,
+          u.nombre, u.apellido, u.horario, u.grupo_turno as "grupoTurno"
+        FROM turnos_efectivos te
+        JOIN users u ON te.empleado_id = u.id
+        WHERE te.fecha = ${fecha}::date AND te.estado = 'PENDIENTE';
+      `;
+
+      const cedidos = await sql`
+        SELECT
+          te.empleado_intercambio_id::text as "empleadoId",
+          TO_CHAR(te.fecha, 'YYYY-MM-DD') as fecha,
+          te.horario_original as "horarioEfectivo",
+          te.grupo_original as "grupoEfectivo",
+          te.tipo_cambio as "tipoCambio",
+          'CEDIDO' as tipo,
+          u.nombre, u.apellido, u.horario, u.grupo_turno as "grupoTurno"
+        FROM turnos_efectivos te
+        JOIN users u ON te.empleado_intercambio_id = u.id
+        WHERE te.fecha = ${fecha}::date
+          AND te.estado = 'PENDIENTE'
+          AND te.empleado_intercambio_id IS NOT NULL;
+      `;
+
+      return NextResponse.json([...ganados, ...cedidos]);
+    }
+
     const turnosGanados = await sql`
-      SELECT 
+      SELECT
         id::text,
         TO_CHAR(fecha, 'YYYY-MM-DD') as fecha,
         horario_original,
@@ -41,7 +77,7 @@ export async function GET(request: NextRequest) {
     `;
 
     const turnosCedidos = await sql`
-      SELECT 
+      SELECT
         TO_CHAR(fecha, 'YYYY-MM-DD') as fecha
       FROM turnos_efectivos
       WHERE empleado_intercambio_id = ${targetUserId}::uuid

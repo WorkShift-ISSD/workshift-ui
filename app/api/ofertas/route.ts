@@ -62,7 +62,9 @@ export async function GET(request: NextRequest) {
     'fecha', sd.fecha_solicitante::text,
     'tomadorId', sd.solicitante_id::text,
     'tomadorNombre', us.nombre,
-    'tomadorApellido', us.apellido
+    'tomadorApellido', us.apellido,
+    'autorizacionId', a.id::text,
+    'estadoAutorizacion', a.estado
   ))
   FROM solicitudes_directas sd
   JOIN autorizaciones a ON a.solicitud_id = sd.id
@@ -389,26 +391,23 @@ export async function POST(request: NextRequest) {
         }
       } else {
         // BUSCO_INTERCAMBIO
-        if (body.fechasBusca?.length > 0) {
-          const validas = body.fechasBusca.filter((f: any) => f.fecha && f.fecha.trim() !== '');
-          if (validas.length > 0) turnosBusca = validas;
-        }
-        if (body.usaRangoDisponibles) {
+        const fechasBuscaValidas = body.fechasBusca?.filter((f: any) => f.fecha && f.fecha.trim() !== '') ?? [];
+        if (fechasBuscaValidas.length > 0) turnosBusca = fechasBuscaValidas;
+
+        // turnoOfrece = el día que el ofertante TIENE y necesita cambiar (Bloque 1)
+        const diaQueNecesita = fechasBuscaValidas[0];
+        if (diaQueNecesita) {
           turnoOfrece = {
-            fecha: body.rangoDisponibles?.desde,
-            horario: body.rangoDisponibles?.horario || usuario.horario,
+            fecha: diaQueNecesita.fecha,
+            horario: diaQueNecesita.horario || usuario.horario,
             grupoTurno: usuario.grupo_turno
           };
-        } else if (body.fechasDisponibles?.length > 0) {
+        }
+
+        // Los días que puede hacer a cambio van en fechasDisponibles (si son específicos)
+        if (!body.usaRangoDisponibles && body.fechasDisponibles?.length > 0) {
           const validas = body.fechasDisponibles.filter((f: any) => f.fecha && f.fecha.trim() !== '');
-          if (validas.length > 0) {
-            fechasDisponibles = validas;
-            turnoOfrece = {
-              fecha: validas[0].fecha,
-              horario: validas[0].horario || usuario.horario,
-              grupoTurno: usuario.grupo_turno
-            };
-          }
+          if (validas.length > 0) fechasDisponibles = validas;
         }
       }
     } else if (body.modalidadBusqueda === TipoSolicitud.ABIERTO) {

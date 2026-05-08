@@ -239,7 +239,8 @@ export async function GET(request: NextRequest) {
         LEFT JOIN ofertas of ON a.oferta_id = of.id
         LEFT JOIN users uof ON of.ofertante_id = uof.id
         LEFT JOIN users ut ON of.tomador_id = ut.id
-        
+
+        WHERE a.estado != 'CANCELADA'
         ORDER BY a.created_at DESC;
       `;
     }

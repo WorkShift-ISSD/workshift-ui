@@ -6,11 +6,42 @@ import { TipoSolicitud } from '@/app/lib/enum';
 import { useState } from 'react';
 import { Paginacion } from './Paginacion';
 
+function ModalConfirmarCancelar({ onConfirmar, onCerrar }: { onConfirmar: () => void; onCerrar: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">
+          ¿Cancelar solicitud?
+        </h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
+          Esta acción cancelará la solicitud de autorización. El jefe ya no la verá y la oferta volverá a estar disponible.
+        </p>
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onCerrar}
+            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
+            No, volver
+          </button>
+          <button
+            onClick={onConfirmar}
+            className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+          >
+            Sí, cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface FechaAcordada {
   fecha: string;
   tomadorId: string;
   tomadorNombre: string;
   tomadorApellido: string;
+  autorizacionId?: string;
+  estadoAutorizacion?: string;
 }
 
 interface Props {
@@ -18,6 +49,7 @@ interface Props {
   solicitudesDirectas: any[];
   userId?: string;
   onTomarOferta: (id: string) => void;
+  onCancelarAutorizacion: (autorizacionId: string) => void;
 }
 
 function EstadoBadge({ estado }: { estado: string }) {
@@ -36,8 +68,9 @@ function EstadoBadge({ estado }: { estado: string }) {
   );
 }
 
-export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOferta }: Props) {
+export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOferta, onCancelarAutorizacion }: Props) {
   const { formatDate, formatTimeAgo } = useFormatters();
+  const [autorizacionAConfirmar, setAutorizacionAConfirmar] = useState<string | null>(null);
 
   const ofertasHistorico = ofertas.filter(o => {
     const soyOfertante = o.ofertante?.id === userId;
@@ -154,12 +187,37 @@ export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOfer
                 <div className="my-2">
                   {/* Fechas ya acordadas */}
                   {oferta.fechasAcordadas?.length > 0 && (
-                    <div className="space-y-1 mb-1">
-                      {oferta.fechasAcordadas.map((fa: FechaAcordada, i: number) => (
-                        <p key={i} className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          📅 {formatDate(fa.fecha)} con {fa.tomadorNombre} {fa.tomadorApellido} — acordado
-                        </p>
-                      ))}
+                    <div className="space-y-2 mb-1">
+                      {oferta.fechasAcordadas.map((fa: FechaAcordada, i: number) => {
+                        const puedeCancelar =
+                          fa.autorizacionId &&
+                          fa.estadoAutorizacion === 'PENDIENTE' &&
+                          (soyOfertante || fa.tomadorId === userId);
+                        return (
+                          <div key={i} className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              📅 {formatDate(fa.fecha)} con {fa.tomadorNombre} {fa.tomadorApellido}
+                              {fa.estadoAutorizacion === 'PENDIENTE' && (
+                                <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">— pendiente de aprobación</span>
+                              )}
+                              {fa.estadoAutorizacion === 'APROBADA' && (
+                                <span className="ml-2 text-xs text-green-600 dark:text-green-400">— aprobado</span>
+                              )}
+                              {fa.estadoAutorizacion === 'CANCELADA' && (
+                                <span className="ml-2 text-xs text-red-500 dark:text-red-400">— cancelado</span>
+                              )}
+                            </p>
+                            {puedeCancelar && (
+                              <button
+                                onClick={() => setAutorizacionAConfirmar(fa.autorizacionId!)}
+                                className="shrink-0 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                              >
+                                Cancelar
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 
@@ -205,8 +263,8 @@ export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOfer
                 </button>
               )}
 
-              {/* Estado de espera o aprobación */}
-              {oferta.fechasAcordadas?.length > 0 && (
+              {/* Estado de espera o aprobación — solo si ninguna fechaAcordada tiene estadoAutorizacion */}
+              {oferta.fechasAcordadas?.length > 0 && !oferta.fechasAcordadas[0]?.estadoAutorizacion && (
                 <div className={`mt-2 text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${oferta.estadoAutorizacion === 'APROBADA'
                   ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
                   : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
@@ -306,6 +364,15 @@ export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOfer
         onCambiarPorPagina={setPorPagina}
       />
 
+      {autorizacionAConfirmar && (
+        <ModalConfirmarCancelar
+          onConfirmar={() => {
+            onCancelarAutorizacion(autorizacionAConfirmar);
+            setAutorizacionAConfirmar(null);
+          }}
+          onCerrar={() => setAutorizacionAConfirmar(null)}
+        />
+      )}
     </div>
   );
 }
