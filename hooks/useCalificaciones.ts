@@ -1,0 +1,80 @@
+import useSWR from 'swr';
+import { fetcher, poster, putter } from '@/app/api/fetcher';
+
+export interface TurnoPendiente {
+  id: string;
+  fecha: string;
+  horario: string;
+  tipo_cambio: string;
+  otro_id: string;
+  otro_nombre: string;
+  otro_iniciales: string;
+}
+
+export interface HistorialCalificacion {
+  id: string;
+  fecha: string;
+  horario: string;
+  comunicacion: number;
+  responsabilidad: number;
+  recomendacion: number;
+  promedio: number;
+  cumplimiento: boolean;
+  comentario: string | null;
+  direccion: 'dada' | 'recibida';
+  otro_nombre: string;
+  otro_iniciales: string;
+  editable: boolean;
+  created_at: string;
+}
+
+interface CalificacionesData {
+  pendientes: TurnoPendiente[];
+  historial: HistorialCalificacion[];
+  miScore: number;
+}
+
+export function useCalificaciones() {
+  const { data, error, isLoading, mutate } = useSWR<CalificacionesData>(
+    '/api/calificaciones',
+    fetcher,
+    { revalidateOnFocus: true }
+  );
+
+  const crearCalificacion = async (body: {
+    turnoEfectivoId: string;
+    calificadoId: string;
+    comunicacion: number;
+    responsabilidad: number;
+    recomendacion: number;
+    cumplimiento: boolean;
+    comentario?: string;
+  }) => {
+    const res = await poster('/api/calificaciones', body);
+    mutate();
+    return res;
+  };
+
+  const editarCalificacion = async (id: string, body: Partial<{
+    comunicacion: number;
+    responsabilidad: number;
+    recomendacion: number;
+    cumplimiento: boolean;
+    comentario: string;
+  }>) => {
+    const res = await putter(`/api/calificaciones/${id}`, body);
+    mutate();
+    return res;
+  };
+
+  return {
+    pendientes: data?.pendientes || [],
+    historial: data?.historial || [],
+    miScore: data?.miScore || 0,
+    isLoading,
+    error,
+    crearCalificacion,
+    editarCalificacion,
+    refetch: mutate,
+  };
+}

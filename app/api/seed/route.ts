@@ -591,6 +591,35 @@ async function seedOfertas() {
   return true;
 }
 
+async function seedTurnosEfectivos() {
+  await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS turnos_efectivos (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      empleado_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      empleado_intercambio_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      fecha DATE NOT NULL,
+      horario_original VARCHAR(20) NOT NULL,
+      horario_efectivo VARCHAR(20) NOT NULL,
+      grupo_original VARCHAR(1) NOT NULL,
+      grupo_efectivo VARCHAR(1) NOT NULL,
+      tipo_cambio VARCHAR(20) NOT NULL,
+      autorizacion_id UUID,
+      estado VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE',
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
+  `;
+
+  await sql`CREATE INDEX IF NOT EXISTS idx_turnos_efectivos_empleado ON turnos_efectivos(empleado_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_turnos_efectivos_intercambio ON turnos_efectivos(empleado_intercambio_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_turnos_efectivos_fecha ON turnos_efectivos(fecha)`;
+
+  console.log('✅ Tabla turnos_efectivos creada');
+}
+
+
 async function seedSolicitudesDirectas() {
   await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
 
@@ -627,6 +656,36 @@ async function seedSolicitudesDirectas() {
 
   console.log('✅ Tabla solicitudes_directas creada');
   return true;
+}
+
+async function seedCalificaciones() {
+  await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS calificaciones (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      turno_efectivo_id UUID NOT NULL REFERENCES turnos_efectivos(id) ON DELETE CASCADE,
+      calificador_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      calificado_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      comunicacion NUMERIC(2,1) NOT NULL CHECK (comunicacion BETWEEN 1 AND 5),
+      responsabilidad NUMERIC(2,1) NOT NULL CHECK (responsabilidad BETWEEN 1 AND 5),
+      recomendacion NUMERIC(2,1) NOT NULL CHECK (recomendacion BETWEEN 1 AND 5),
+      promedio NUMERIC(3,2) GENERATED ALWAYS AS (
+        ROUND((comunicacion + responsabilidad + recomendacion) / 3.0, 2)
+      ) STORED,
+      cumplimiento BOOLEAN NOT NULL,
+      comentario TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(turno_efectivo_id, calificador_id)
+    );
+  `;
+
+  await sql`CREATE INDEX IF NOT EXISTS idx_calificaciones_calificador ON calificaciones(calificador_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_calificaciones_calificado ON calificaciones(calificado_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_calificaciones_turno ON calificaciones(turno_efectivo_id)`;
+
+  console.log('✅ Tabla calificaciones creada');
 }
 
 async function seedDocsHelp() {
@@ -1049,6 +1108,8 @@ async function createRelations() {
 async function dropAllTables() {
   console.log('🗑️  Eliminando tablas existentes...');
 
+  await sql`DROP TABLE IF EXISTS calificaciones CASCADE`;
+  await sql`DROP TABLE IF EXISTS turnos_efectivos CASCADE`;
   await sql`DROP TABLE IF EXISTS password_reset_tokens CASCADE`;
   await sql`DROP TABLE IF EXISTS solicitudes_directas CASCADE`;
   await sql`DROP TABLE IF EXISTS ofertas CASCADE`;
@@ -1106,6 +1167,12 @@ export async function GET() {
 
       await seedSolicitudesDirectas();
 
+      await seedTurnosEfectivos();
+      console.log('✅ Turnos efectivos creados');
+
+      await seedCalificaciones();
+      console.log('✅ Calificaciones creadas')
+
       await seedDocsHelp();
 
       await createRelations();
@@ -1115,7 +1182,8 @@ export async function GET() {
     return Response.json({
       message: 'Database seeded successfully',
       systemUsers: systemUsers.map(u => ({ legajo: u.legajo, email: u.email, rol: u.rol })),
-      tables: ['users', 'faltas', 'turnos', 'cambios', 'stats', 'turnos_data', 'ofertas', 'solicitudes_directas'],
+      tables: ['users', 'faltas', 'turnos', 'cambios', 'stats', 'turnos_data', 
+         'ofertas', 'solicitudes_directas', 'turnos_efectivos', 'calificaciones'],
       enums: {
         EstadoSolicitud: Object.values(EstadoSolicitud),
         EstadoOferta: Object.values(EstadoOferta),
