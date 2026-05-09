@@ -183,35 +183,34 @@ export function ModalNuevaOferta({ isOpen, onClose, onSubmit, ofertaEditando }: 
           )}
 
           {/* Selector de modo */}
-          {!esEdicion && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">¿Qué necesitás?</label>
-              <div className="grid grid-cols-2 gap-2">
-                {MODOS.map(m => {
-                  const c = COLOR_CLASSES[m.color];
-                  const Icon = m.icon;
-                  const activo = modo === m.value;
-                  return (
-                    <button
-                      key={m.value}
-                      type="button"
-                      onClick={() => handleModoChange(m.value)}
-                      className={`flex items-start gap-2.5 px-3 py-2.5 rounded-lg border-2 text-left transition-all ${activo
-                        ? `${c.border} ${c.bg}`
-                        : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
-                        }`}
-                    >
-                      <Icon className={`h-4 w-4 flex-shrink-0 mt-0.5 ${activo ? c.icon : 'text-gray-400'}`} />
-                      <div>
-                        <p className={`text-sm font-medium ${activo ? c.text : 'text-gray-700 dark:text-gray-300'}`}>{m.label}</p>
-                        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{m.desc}</p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">¿Qué necesitás?</label>
+            <div className="grid grid-cols-2 gap-2">
+              {MODOS.map(m => {
+                const c = COLOR_CLASSES[m.color];
+                const Icon = m.icon;
+                const activo = modo === m.value;
+                return (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={esEdicion ? undefined : () => handleModoChange(m.value)}
+                    disabled={esEdicion && !activo}
+                    className={`flex items-start gap-2.5 px-3 py-2.5 rounded-lg border-2 text-left transition-all ${activo
+                      ? `${c.border} ${c.bg}`
+                      : 'border-gray-200 dark:border-gray-600 opacity-40'
+                      } ${esEdicion ? 'cursor-default' : 'hover:border-gray-300 dark:hover:border-gray-500'}`}
+                  >
+                    <Icon className={`h-4 w-4 flex-shrink-0 mt-0.5 ${activo ? c.icon : 'text-gray-400'}`} />
+                    <div>
+                      <p className={`text-sm font-medium ${activo ? c.text : 'text-gray-700 dark:text-gray-300'}`}>{m.label}</p>
+                      <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{m.desc}</p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-          )}
+          </div>
 
           {/* Formulario según modo */}
           <FormularioOferta

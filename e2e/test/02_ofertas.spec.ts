@@ -79,11 +79,30 @@ test.describe('Ofertas', () => {
     });
 
     test('Las ofertas aparecen en disponibles para otro inspector', async ({ page }) => {
+        // Patricia publica con rango para evitar el filtro de horario exacto
+        await page.locator('button:has-text("Nueva oferta")').click();
+        await page.waitForTimeout(1000);
+        await expect(page.getByText('¿Qué necesitás?')).toBeVisible({ timeout: 5000 });
+
+        await page.getByText('Me ofrezco a cubrir').click();
+        await page.waitForTimeout(500);
+
+        await page.locator('button:has-text("Rango")').click();
+        await page.waitForTimeout(300);
+
+        await selectDate(page, 'rango-disponibles-desde', '2026-08-01');
+        await selectDate(page, 'rango-disponibles-hasta', '2026-08-07');
+
+        await page.fill('textarea', 'Test disponible para otro inspector');
+        await page.getByRole('button', { name: /publicar oferta/i }).click();
+        await expect(page.getByText('Oferta publicada')).toBeVisible({ timeout: 5000 });
+
+        // Emanuel va a Disponibles y verifica que la ve
         await login(page, 'inspector1'); // Emanuel - Grupo A
         await page.goto('/dashboard/cambios');
         await page.locator('button:has-text("Disponibles")').click();
 
-        await expect(page.getByText('Disponible para cubrir un turno').first()).toBeVisible();
+        await expect(page.getByText('Test disponible para otro inspector')).toBeVisible({ timeout: 5000 });
     });
 
     test('No puede publicar oferta en fecha con sanción activa', async ({ page }) => {
@@ -332,6 +351,170 @@ test.describe('Ofertas', () => {
         await expect(dia22.first()).toBeDisabled();
     });
 
+    test('Genera autorización pendiente', async ({ page }) => {
+        // Patricia publica "Me ofrezco a cubrir" con rango octubre 2026-10-01 al 2026-10-07
+        await page.locator('button:has-text("Nueva oferta")').click();
+        await page.waitForTimeout(1000);
+        await expect(page.getByText('¿Qué necesitás?')).toBeVisible({ timeout: 5000 });
+
+        await page.getByText('Me ofrezco a cubrir').click();
+        await page.waitForTimeout(500);
+
+        await page.locator('button:has-text("Rango")').click();
+        await page.waitForTimeout(300);
+
+        await selectDate(page, 'rango-disponibles-desde', '2026-10-01');
+        await selectDate(page, 'rango-disponibles-hasta', '2026-10-07');
+
+        await page.fill('textarea', 'Test autorización pendiente');
+        await page.getByRole('button', { name: /publicar oferta/i }).click();
+        await expect(page.getByText('Oferta publicada')).toBeVisible({ timeout: 5000 });
+
+        // Emanuel hace "Me interesa"
+        await page.evaluate(() => {
+            document.cookie = 'auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        });
+        await page.waitForTimeout(300);
+        await login(page, 'inspector1');
+        await page.goto('/dashboard/cambios');
+        await page.locator('button:has-text("Disponibles")').click();
+
+        await page.getByText('Test autorización pendiente').waitFor({ timeout: 5000 });
+        const ofertaCard = page.locator('div').filter({ hasText: 'Test autorización pendiente' }).last();
+        await ofertaCard.locator('button:has-text("Me interesa")').click();
+        await page.waitForTimeout(500);
+
+        // Elegir la primera fecha del modal y confirmar
+        await expect(page.getByText('Seleccioná el día que te conviene')).toBeVisible({ timeout: 3000 });
+        await page.locator('.max-h-48 button').first().click();
+        await page.waitForTimeout(300);
+        await page.getByRole('button', { name: 'Confirmar' }).click();
+        await page.waitForTimeout(1500);
+
+        // Patricia acepta la propuesta desde el chat
+        await page.evaluate(() => {
+            document.cookie = 'auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        });
+        await page.waitForTimeout(300);
+        await login(page, 'inspector2');
+        await page.goto('/dashboard/cambios');
+        await page.locator('#seccion-mensajes').scrollIntoViewIfNeeded();
+        await page.waitForTimeout(1000);
+
+        const chatCard = page.locator('#seccion-mensajes').locator('button').filter({ hasText: 'Emanuel' }).first();
+        await chatCard.click();
+        await page.waitForTimeout(2000);
+        await expect(page.locator('input[placeholder="Escribí un mensaje..."]')).toBeVisible({ timeout: 5000 });
+
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await page.locator('#seccion-mensajes').scrollIntoViewIfNeeded();
+        const chatCard2 = page.locator('#seccion-mensajes').locator('button').filter({ hasText: 'Emanuel' }).first();
+        await chatCard2.click();
+        await page.waitForTimeout(2000);
+
+        await expect(page.locator('button:has-text("Aceptar propuesta")')).toBeVisible({ timeout: 5000 });
+        await page.locator('button:has-text("Aceptar propuesta")').click();
+        await page.waitForTimeout(500);
+
+        // Si aparece modal de mantener activa, elegir cerrar
+        const modalMantener = page.locator('text=¿Qué hacemos con las otras fechas?');
+        if (await modalMantener.isVisible({ timeout: 1000 }).catch(() => false)) {
+            await page.locator('button:has-text("Cerrar la oferta completa")').click();
+        }
+        await page.waitForTimeout(1000);
+
+        // Verificar éxito: toast o conversación cerrada
+        const toastExito = page.getByText(/acordado|aceptad|éxito/i);
+        const convCerrada = page.locator('#seccion-mensajes').getByText(/cerrad|completad/i);
+        await expect(toastExito.or(convCerrada).first()).toBeVisible({ timeout: 5000 });
+    });
+
+    test('Genera segunda autorización pendiente', async ({ page }) => {
+        // Emanuel publica "Me ofrezco a cubrir" con rango octubre 2026-10-08 al 2026-10-14
+        await page.evaluate(() => {
+            document.cookie = 'auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        });
+        await page.waitForTimeout(300);
+        await login(page, 'inspector1');
+        await page.goto('/dashboard/cambios');
+
+        await page.locator('button:has-text("Nueva oferta")').click();
+        await page.waitForTimeout(1000);
+        await expect(page.getByText('¿Qué necesitás?')).toBeVisible({ timeout: 5000 });
+
+        await page.getByText('Me ofrezco a cubrir').click();
+        await page.waitForTimeout(500);
+
+        await page.locator('button:has-text("Rango")').click();
+        await page.waitForTimeout(300);
+
+        await selectDate(page, 'rango-disponibles-desde', '2026-10-08');
+        await selectDate(page, 'rango-disponibles-hasta', '2026-10-14');
+
+        await page.fill('textarea', 'Test segunda autorización pendiente');
+        await page.getByRole('button', { name: /publicar oferta/i }).click();
+        await expect(page.getByText('Oferta publicada')).toBeVisible({ timeout: 5000 });
+
+        // Patricia hace "Me interesa"
+        await page.evaluate(() => {
+            document.cookie = 'auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        });
+        await page.waitForTimeout(300);
+        await login(page, 'inspector2');
+        await page.goto('/dashboard/cambios');
+        await page.locator('button:has-text("Disponibles")').click();
+
+        await page.getByText('Test segunda autorización pendiente').waitFor({ timeout: 5000 });
+        const ofertaCard = page.locator('div').filter({ hasText: 'Test segunda autorización pendiente' }).last();
+        await ofertaCard.locator('button:has-text("Me interesa")').click();
+        await page.waitForTimeout(500);
+
+        // Elegir la primera fecha del modal y confirmar
+        await expect(page.getByText('Seleccioná el día que te conviene')).toBeVisible({ timeout: 3000 });
+        await page.locator('.max-h-48 button').first().click();
+        await page.waitForTimeout(300);
+        await page.getByRole('button', { name: 'Confirmar' }).click();
+        await page.waitForTimeout(1500);
+
+        // Emanuel acepta la propuesta desde el chat
+        await page.evaluate(() => {
+            document.cookie = 'auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        });
+        await page.waitForTimeout(300);
+        await login(page, 'inspector1');
+        await page.goto('/dashboard/cambios');
+        await page.locator('#seccion-mensajes').scrollIntoViewIfNeeded();
+        await page.waitForTimeout(1000);
+
+        const chatCard = page.locator('#seccion-mensajes').locator('button').filter({ hasText: 'Patricia' }).first();
+        await chatCard.click();
+        await page.waitForTimeout(2000);
+        await expect(page.locator('input[placeholder="Escribí un mensaje..."]')).toBeVisible({ timeout: 5000 });
+
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await page.locator('#seccion-mensajes').scrollIntoViewIfNeeded();
+        const chatCard2 = page.locator('#seccion-mensajes').locator('button').filter({ hasText: 'Patricia' }).first();
+        await chatCard2.click();
+        await page.waitForTimeout(2000);
+
+        await expect(page.locator('button:has-text("Aceptar propuesta")')).toBeVisible({ timeout: 5000 });
+        await page.locator('button:has-text("Aceptar propuesta")').click();
+        await page.waitForTimeout(500);
+
+        // Si aparece modal de mantener activa, elegir cerrar
+        const modalMantener = page.locator('text=¿Qué hacemos con las otras fechas?');
+        if (await modalMantener.isVisible({ timeout: 1000 }).catch(() => false)) {
+            await page.locator('button:has-text("Cerrar la oferta completa")').click();
+        }
+        await page.waitForTimeout(1000);
+
+        // Verificar éxito: toast o conversación cerrada
+        const toastExito = page.getByText(/acordado|aceptad|éxito/i);
+        const convCerrada = page.locator('#seccion-mensajes').getByText(/cerrad|completad/i);
+        await expect(toastExito.or(convCerrada).first()).toBeVisible({ timeout: 5000 });
+    });
 
 });
 

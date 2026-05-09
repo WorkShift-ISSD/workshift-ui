@@ -51,6 +51,7 @@ export default function CambiosTurnosPage() {
     handleTomarOferta,
     handleConfirmarSeleccion,
     handleMeInteresa,
+    handleCancelarAutorizacion,
     actualizarEstadoOferta,
     actualizarEstado,
     recargarConversaciones,
@@ -145,6 +146,7 @@ export default function CambiosTurnosPage() {
               solicitudesDirectas={solicitudesDirectas}
               userId={user?.id}
               onTomarOferta={handleTomarOferta}
+              onCancelarAutorizacion={handleCancelarAutorizacion}
             />
           )}
           {activeTab === 'recibidas' && (
@@ -181,6 +183,7 @@ export default function CambiosTurnosPage() {
         solicitudEditando={solicitudEditando}
       />
       <ModalNuevaOferta
+        key={ofertaEditando?.id ?? 'new'}
         isOpen={activeModal === 'nueva-oferta'}
         onClose={() => { setActiveModal(null); setOfertaEditando(null); }}
         onSubmit={handleSubmitOferta}

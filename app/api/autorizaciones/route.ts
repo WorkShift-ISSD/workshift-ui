@@ -261,7 +261,8 @@ export async function GET(request: NextRequest) {
         LEFT JOIN users uof ON of.ofertante_id = uof.id
         LEFT JOIN users ut ON of.tomador_id = ut.id
         LEFT JOIN licencias lic ON a.licencia_id = lic.id
-        
+
+        WHERE a.estado != 'CANCELADA'
         ORDER BY a.created_at DESC;
       `;
     }

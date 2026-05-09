@@ -111,6 +111,7 @@ export const endpoints = {
     create: () => `${API_BASE_URL}/autorizaciones`,
     aprobar: (id: string) => `${API_BASE_URL}/autorizaciones/${id}/aprobar`,
     rechazar: (id: string) => `${API_BASE_URL}/autorizaciones/${id}/rechazar`,
+    cancelar: (id: string) => `${API_BASE_URL}/autorizaciones/${id}/cancelar`,
   },
 
 
