@@ -123,25 +123,67 @@ export async function PATCH(
     let turnoOfrece = null;
     let turnosBusca = null;
     let fechasDisponibles = null;
+    let fechaDesde: string | null = null;
+    let fechaHasta: string | null = null;
+    let horarioRango: string | null = null;
 
     if (body.modalidadBusqueda === 'INTERCAMBIO') {
+      if (body.tipo === 'OFREZCO') {
+        // OFREZCO_INTERCAMBIO
+        if (body.fechaOfrece) {
+          turnoOfrece = {
+            fecha: body.fechaOfrece,
+            horario: body.horarioOfrece || usuario.horario,
+            grupoTurno: body.grupoOfrece || usuario.grupo_turno,
+          };
+        }
+        if (body.usaRangoBusca && body.rangoBusca?.desde && body.rangoBusca?.hasta) {
+          fechaDesde = body.rangoBusca.desde;
+          fechaHasta = body.rangoBusca.hasta;
+          horarioRango = body.rangoBusca.horario || 'A convenir';
+        } else if (body.fechasBusca?.length > 0) {
+          turnosBusca = body.fechasBusca.filter((f: any) => f.fecha && f.fecha.trim() !== '');
+        }
+      } else {
+        // BUSCO_INTERCAMBIO
+        const fechasBuscaValidas = body.fechasBusca?.filter((f: any) => f.fecha && f.fecha.trim() !== '') ?? [];
+        if (fechasBuscaValidas.length > 0) turnosBusca = fechasBuscaValidas;
+        const diaQueNecesita = fechasBuscaValidas[0];
+        if (diaQueNecesita) {
+          turnoOfrece = {
+            fecha: diaQueNecesita.fecha,
+            horario: diaQueNecesita.horario || usuario.horario,
+            grupoTurno: usuario.grupo_turno,
+          };
+        }
+        if (body.usaRangoDisponibles && body.rangoDisponibles?.desde && body.rangoDisponibles?.hasta) {
+          fechaDesde = body.rangoDisponibles.desde;
+          fechaHasta = body.rangoDisponibles.hasta;
+          horarioRango = body.rangoDisponibles.horario || 'A convenir';
+        } else if (body.fechasDisponibles?.length > 0) {
+          const validas = body.fechasDisponibles.filter((f: any) => f.fecha && f.fecha.trim() !== '');
+          if (validas.length > 0) fechasDisponibles = validas;
+        }
+      }
+    } else {
+      // ABIERTO (cobertura)
       if (body.fechaOfrece) {
         turnoOfrece = {
           fecha: body.fechaOfrece,
           horario: body.horarioOfrece || usuario.horario,
-          grupoTurno: body.grupoOfrece || usuario.grupo_turno
+          grupoTurno: body.grupoOfrece || usuario.grupo_turno,
         };
       }
-      if (body.fechasBusca && body.fechasBusca.length > 0) {
-        turnosBusca = body.fechasBusca.filter((f: any) => f.fecha && f.fecha.trim() !== '');
-      }
-    } else if (body.modalidadBusqueda === 'ABIERTO') {
-      if (body.fechasDisponibles && body.fechasDisponibles.length > 0) {
+      if (body.usaRangoDisponibles && body.rangoDisponibles?.desde && body.rangoDisponibles?.hasta) {
+        fechaDesde = body.rangoDisponibles.desde;
+        fechaHasta = body.rangoDisponibles.hasta;
+        horarioRango = body.rangoDisponibles.horario || 'A convenir';
+      } else if (body.fechasDisponibles?.length > 0) {
         fechasDisponibles = body.fechasDisponibles.filter((f: any) => f.fecha && f.fecha.trim() !== '');
       }
     }
 
-    console.log('✅ Datos procesados:', { turnoOfrece, turnosBusca, fechasDisponibles });
+    console.log('✅ Datos procesados:', { turnoOfrece, turnosBusca, fechasDisponibles, fechaDesde, fechaHasta, horarioRango });
 
     const [ofertaActualizada] = await sql`
       UPDATE ofertas
@@ -151,6 +193,9 @@ export async function PATCH(
         turno_ofrece = ${turnoOfrece ? JSON.stringify(turnoOfrece) : null}::jsonb,
         turnos_busca = ${turnosBusca ? JSON.stringify(turnosBusca) : null}::jsonb,
         fechas_disponibles = ${fechasDisponibles ? JSON.stringify(fechasDisponibles) : null}::jsonb,
+        fecha_desde = ${fechaDesde},
+        fecha_hasta = ${fechaHasta},
+        horario_rango = ${horarioRango},
         descripcion = ${body.descripcion},
         prioridad = ${body.prioridad || 'NORMAL'},
         updated_at = NOW()
@@ -203,6 +248,9 @@ export async function PATCH(
             JSON.parse(ofertaCompleta.fechas_disponibles) :
             ofertaCompleta.fechas_disponibles
           ) : null,
+        fechaDesde: ofertaCompleta.fecha_desde,
+        fechaHasta: ofertaCompleta.fecha_hasta,
+        horarioRango: ofertaCompleta.horario_rango,
         descripcion: ofertaCompleta.descripcion,
         prioridad: ofertaCompleta.prioridad,
         estado: ofertaCompleta.estado,

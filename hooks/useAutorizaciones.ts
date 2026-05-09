@@ -5,8 +5,11 @@ import { useState, useEffect } from "react";
 import { endpoints } from "@/app/api/endpoints";
 import { fetcher, poster } from "@/app/api/fetcher";
 import { Autorizacion } from "@/app/api/types";
+import { useAuth } from "@/app/context/AuthContext";
+import Pusher from "pusher-js";
 
 export function useAutorizaciones(estado?: string) {
+  const { user } = useAuth();
   const [autorizaciones, setAutorizaciones] = useState<Autorizacion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +35,35 @@ export function useAutorizaciones(estado?: string) {
   useEffect(() => {
     cargarAutorizaciones();
   }, [estado]);
+
+
+useEffect(() => {
+    const interval = setInterval(() => {
+        cargarAutorizaciones();
+    }, 300000); // cada 30 segundos
+    
+    return () => clearInterval(interval);
+}, [estado]);
+
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
+      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+    });
+
+    const channel = pusher.subscribe(`usuario-${user.id}`);
+    channel.bind('autorizacion-actualizada', () => {
+      cargarAutorizaciones();
+    });
+
+    return () => {
+      try { channel.unbind_all(); } catch (e) { }
+      try { pusher.unsubscribe(`usuario-${user.id}`); } catch (e) { }
+      try { pusher.disconnect(); } catch (e) { }
+    };
+  }, [user?.id]);
 
   const aprobarAutorizacion = async (id: string, observaciones?: string) => {
     try {

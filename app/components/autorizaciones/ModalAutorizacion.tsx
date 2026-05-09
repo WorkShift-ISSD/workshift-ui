@@ -202,28 +202,25 @@ export function ModalAutorizacion({
                             {solicitud.solicitante.apellido}, {solicitud.solicitante.nombre}
                           </p>
                           <p className="text-xs text-gray-600 dark:text-gray-400">{solicitud.solicitante.rol}</p>
-                          <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mt-1">{turnoDestinatario ? 'CEDE SU TURNO' : 'NECESITA COBERTURA'}</p>
                         </div>
-
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           <div>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">Fecha que ofrece</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              {formatFechaSafe(turnoSolicitante.fecha)}
+                            <p className="text-xs text-gray-400 dark:text-gray-500 line-through">
+                              Turno original: {formatFechaSafe(turnoSolicitante.fecha)} · {turnoSolicitante.horario}
                             </p>
                           </div>
-                          <div>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">Horario</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              {turnoSolicitante.horario}
+                          {turnoDestinatario && (
+                            <div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Turno que queda:</p>
+                              <p className="font-bold text-gray-900 dark:text-white text-lg">{formatFechaSafe(turnoDestinatario.fecha)}</p>
+                              <p className="font-semibold text-gray-800 dark:text-gray-100">{turnoDestinatario.horario}</p>
+                            </div>
+                          )}
+                          {!turnoDestinatario && (
+                            <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                              No trabaja este día — solicitó cobertura
                             </p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">Grupo</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              {turnoSolicitante.grupoTurno}
-                            </p>
-                          </div>
+                          )}
                         </div>
                       </div>
 
@@ -235,26 +232,37 @@ export function ModalAutorizacion({
                             {solicitud.destinatario.apellido}, {solicitud.destinatario.nombre}
                           </p>
                           <p className="text-xs text-gray-600 dark:text-gray-400">{solicitud.destinatario.rol}</p>
-                          <p className="text-xs font-medium text-green-600 dark:text-green-400 mt-1">CUBRE</p>
                         </div>
-
-                        <div className="space-y-2">
-                          {/*<div>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">Grupo</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              {solicitud.destinatario.grupoTurno}
-                            </p>
-                          </div>*/}
-                          <div className="flex items-center justify-center mt-2">
-                            <p className="text-sm text-gray-500 dark:text-gray-400 text-center italic">
-                              Cubre el turno de {solicitud.solicitante.apellido}, {solicitud.solicitante.nombre} el {formatFechaSafe(turnoSolicitante.fecha)} de {turnoSolicitante.horario}
-                            </p>
-                          </div>
+                        <div className="space-y-3">
+                          {turnoDestinatario ? (
+                            <>
+                              <div>
+                                <p className="text-xs text-gray-400 dark:text-gray-500 line-through">
+                                  Turno original: {formatFechaSafe(turnoDestinatario.fecha)} · {turnoDestinatario.horario}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Turno que queda:</p>
+                                <p className="font-bold text-gray-900 dark:text-white text-lg">{formatFechaSafe(turnoSolicitante.fecha)}</p>
+                                <p className="font-semibold text-gray-800 dark:text-gray-100">{turnoSolicitante.horario}</p>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="space-y-2">
+                              <p className="text-xs text-gray-400 dark:text-gray-500 italic">
+                                Día libre — hace cobertura
+                              </p>
+                              <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Turno que cubre:</p>
+                                <p className="font-bold text-gray-900 dark:text-white text-lg">{formatFechaSafe(turnoSolicitante.fecha)}</p>
+                                <p className="font-semibold text-gray-800 dark:text-gray-100">{turnoSolicitante.horario} · Guardia {turnoSolicitante.grupoTurno}</p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
                   </div>
-
                   {/* Motivo */}
                   {solicitud.motivo && (
                     <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">

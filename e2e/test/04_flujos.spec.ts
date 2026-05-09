@@ -2,6 +2,37 @@ import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
 import { selectDate } from '../helpers/datepicker';
 
+// Fechas calculadas dinámicamente: primer día del mes que está 7 meses adelante.
+// Así cada run mensual usa un rango distinto y no colisiona con turnos_efectivos previos.
+function calcularFechasTest() {
+    // Referencia de grupos: 1 ene 2025 = Grupo A, alternan cada día
+    const FECHA_REF = new Date(2025, 0, 1);
+    const base = new Date();
+    base.setMonth(base.getMonth() + 7);
+    base.setDate(1);
+    const year = base.getFullYear();
+    const month = String(base.getMonth() + 1).padStart(2, '0');
+
+    // Encontrar el primer día Grupo A dentro del rango 1-7 del mes
+    let diaIntercambio = '';
+    for (let d = 1; d <= 7; d++) {
+        const fecha = new Date(year, base.getMonth(), d);
+        const diffDays = Math.floor((fecha.getTime() - FECHA_REF.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays % 2 === 0) { // par = Grupo A
+            diaIntercambio = `${year}-${month}-${String(d).padStart(2, '0')}`;
+            break;
+        }
+    }
+
+    return {
+        desde: `${year}-${month}-01`,
+        hasta: `${year}-${month}-07`,
+        diaIntercambio,
+    };
+}
+
+const { desde: DESDE, hasta: HASTA, diaIntercambio: DIA_INTERCAMBIO } = calcularFechasTest();
+
 test.describe('Flujos', () => {
     test.describe.configure({ mode: 'serial' });
 
@@ -20,8 +51,8 @@ test.describe('Flujos', () => {
         await page.locator('button:has-text("Rango")').last().click();
         await page.waitForTimeout(300);
 
-        await selectDate(page, 'rango-disponibles-desde', '2026-09-01');
-        await selectDate(page, 'rango-disponibles-hasta', '2026-09-07');
+        await selectDate(page, 'rango-disponibles-desde', DESDE);
+        await selectDate(page, 'rango-disponibles-hasta', HASTA);
 
         await page.fill('textarea', 'Test flujo cobertura completo');
         await page.getByRole('button', { name: /publicar oferta/i }).click();
@@ -62,8 +93,22 @@ test.describe('Flujos', () => {
         await login(page, 'inspector2');
         await page.goto('/dashboard/cambios');
         await page.locator('#seccion-mensajes').scrollIntoViewIfNeeded();
-        await page.locator('#seccion-mensajes').getByText('Emanuel', { exact: false }).first().click();
         await page.waitForTimeout(1000);
+        // Abrir el chat de Emanuel haciendo click en su card
+        const chatCard = page.locator('#seccion-mensajes').locator('button').filter({ hasText: 'Emanuel' }).first();
+        await chatCard.click();
+        await page.waitForTimeout(2000);
+        // Verificar que el chat está expandido buscando el input de mensaje
+        await expect(page.locator('input[placeholder="Escribí un mensaje..."]')).toBeVisible({ timeout: 5000 });
+        // Recargar para asegurar que llegó el mensaje
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await page.locator('#seccion-mensajes').scrollIntoViewIfNeeded();
+        const chatCard2 = page.locator('#seccion-mensajes').locator('button').filter({ hasText: 'Emanuel' }).first();
+        await chatCard2.click();
+        await page.waitForTimeout(2000);
+        // Aceptar propuesta
+        await expect(page.locator('button:has-text("Aceptar propuesta")')).toBeVisible({ timeout: 5000 });
         await page.locator('button:has-text("Aceptar propuesta")').click();
         await page.waitForTimeout(500);
         // Si aparece modal de mantener activa, elegir cerrar
@@ -75,7 +120,6 @@ test.describe('Flujos', () => {
     });
 
     test('Flujo cobertura con rango', async ({ page }) => {
-        // Patricia publica con rango 2026-09-01 al 2026-09-07
         await login(page, 'inspector2');
         await page.goto('/dashboard/cambios');
 
@@ -89,8 +133,8 @@ test.describe('Flujos', () => {
         await page.locator('button:has-text("Rango")').last().click();
         await page.waitForTimeout(300);
 
-        await selectDate(page, 'rango-disponibles-desde', '2026-09-01');
-        await selectDate(page, 'rango-disponibles-hasta', '2026-09-07');
+        await selectDate(page, 'rango-disponibles-desde', DESDE);
+        await selectDate(page, 'rango-disponibles-hasta', HASTA);
 
         await page.fill('textarea', 'Test flujo cobertura con rango');
         await page.getByRole('button', { name: /publicar oferta/i }).click();
@@ -143,11 +187,11 @@ test.describe('Flujos', () => {
         await page.locator('button:has-text("Rango")').last().click();
         await page.waitForTimeout(300);
 
-        await selectDate(page, 'rango-busca-desde', '2026-09-01');
-        await selectDate(page, 'rango-busca-hasta', '2026-09-07');
+        await selectDate(page, 'rango-busca-desde', DESDE);
+        await selectDate(page, 'rango-busca-hasta', HASTA);
 
         // Turno que quiero que me cubran — día A de Emanuel
-        await selectDate(page, 'fecha-ofrece', '2026-09-03');
+        await selectDate(page, 'fecha-ofrece', DIA_INTERCAMBIO);
 
         await page.fill('textarea', 'Test flujo intercambio completo');
         await page.getByRole('button', { name: /publicar oferta/i }).click();
