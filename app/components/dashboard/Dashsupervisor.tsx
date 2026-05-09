@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   Calendar,
   CheckCircle,
@@ -422,6 +422,28 @@ export default function DashboardSupervisor() {
   const [busquedaInspector, setBusquedaInspector] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<'PRESENTE' | 'AUSENTE' | 'LICENCIA' | 'SANCIONADO' | null>(null);
 
+  // ── Popup de personas por horario ────────────────────────────────────────
+  type PopupHorario = { horario: string; filtro: 'PRESENTE' | 'AUSENTE' | 'LICENCIA' | 'SANCIONADO' | null };
+  const [popupHorario, setPopupHorario] = useState<PopupHorario | null>(null);
+  const [busquedaPopup, setBusquedaPopup] = useState('');
+  const [paginaPopup, setPaginaPopup] = useState(1);
+  const POPUP_POR_PAGINA = 6;
+
+  function abrirPopup(horario: string, filtro: PopupHorario['filtro']) {
+    setPopupHorario({ horario, filtro });
+    setBusquedaPopup('');
+    setPaginaPopup(1);
+  }
+  function cerrarPopup() { setPopupHorario(null); setBusquedaPopup(''); }
+
+  // Cerrar popup con Escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') cerrarPopup(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [popupHorario]);
+
   // ── Agrupación por horario ───────────────────────────────────────────────
   const porHorario = useMemo(() => {
     const map = new Map<string, { presentes: number; faltas: number; licencias: number; sanciones: number }>();
@@ -507,252 +529,7 @@ export default function DashboardSupervisor() {
         </div>
       )}
 
-      {/* ── Panel del equipo ── */}
-      <div className="mb-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5">
 
-        {/* Encabezado */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-blue-500 dark:text-blue-400" />
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-              Estado del equipo hoy
-            </h2>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 dark:text-gray-400">Cobertura</span>
-            <span
-              className={`text-sm font-bold ${
-                coberturaPct >= 80
-                  ? 'text-green-500 dark:text-green-400'
-                  : coberturaPct >= 60
-                  ? 'text-amber-400'
-                  : 'text-red-400'
-              }`}
-            >
-              {coberturaPct}%
-            </span>
-          </div>
-        </div>
-
-        {/* Buscador */}
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Buscar por nombre o apellido..."
-            value={busquedaInspector}
-            onChange={e => {
-              setBusquedaInspector(e.target.value);
-              setPaginaInspectores(1);
-            }}
-            className="w-full pl-9 pr-9 py-2 text-sm rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition"
-          />
-          {busquedaInspector && (
-            <button
-              onClick={() => { setBusquedaInspector(''); setPaginaInspectores(1); }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-
-        {/* Barra de cobertura */}
-        <div className="w-full h-2 bg-gray-100 dark:bg-gray-800 rounded-full mb-5 overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all ${
-              coberturaPct >= 80
-                ? 'bg-green-500'
-                : coberturaPct >= 60
-                ? 'bg-amber-400'
-                : 'bg-red-500'
-            }`}
-            style={{ width: `${coberturaPct}%` }}
-          />
-        </div>
-
-        {/* Resumen rápido — clickeables */}
-        <div className="grid grid-cols-4 gap-3 mb-5">
-          {([
-            {
-              key: 'PRESENTE' as const,
-              count: presentes,
-              label: 'Presentes',
-              icon: <UserCheck className="w-4 h-4" />,
-              base: 'bg-green-500/10 border-green-500/20 text-green-500 dark:text-green-400',
-              active: 'bg-green-500/25 border-green-500/60 ring-2 ring-green-500/30',
-            },
-            {
-              key: 'AUSENTE' as const,
-              count: ausentes,
-              label: 'Ausentes',
-              icon: <UserX className="w-4 h-4" />,
-              base: 'bg-red-500/10 border-red-500/20 text-red-400',
-              active: 'bg-red-500/25 border-red-500/60 ring-2 ring-red-500/30',
-            },
-            {
-              key: 'LICENCIA' as const,
-              count: enLicencia,
-              label: 'En licencia',
-              icon: <Clock className="w-4 h-4" />,
-              base: 'bg-orange-400/10 border-orange-400/20 text-orange-400',
-              active: 'bg-orange-400/25 border-orange-400/60 ring-2 ring-orange-400/30',
-            },
-            {
-              key: 'SANCIONADO' as const,
-              count: sancionados,
-              label: 'Sancionados',
-              icon: <Ban className="w-4 h-4" />,
-              base: 'bg-red-950/10 dark:bg-red-950/20 border-red-900/20 dark:border-red-900/30 text-red-600 dark:text-red-500',
-              active: 'bg-red-900/20 border-red-700/60 ring-2 ring-red-700/30',
-            },
-          ]).map(({ key, count, label, icon, base, active }) => {
-            const isActive = filtroEstado === key;
-            return (
-              <button
-                key={key}
-                onClick={() => {
-                  setFiltroEstado(prev => prev === key ? null : key);
-                  setPaginaInspectores(1);
-                }}
-                className={`flex flex-col items-center gap-1 p-3 rounded-xl border transition-all cursor-pointer select-none ${base} ${isActive ? active : 'hover:brightness-110'}`}
-              >
-                {icon}
-                <span className="text-xl font-bold">{count}</span>
-                <span className="text-xs opacity-70 text-center leading-tight">{label}</span>
-                {isActive && (
-                  <span className="text-[10px] font-semibold opacity-90 mt-0.5">● filtrando</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Lista de inspectores paginada */}
-        {inspectoresDeHoy.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            No hay inspectores en turno hoy.
-          </p>
-        ) : (() => {
-          const query = busquedaInspector.toLowerCase().trim();
-          const filtrados = inspectoresDeHoy.filter(i => {
-            const coincideEstado = filtroEstado ? i.estado === filtroEstado : true;
-            const coincideBusqueda = query
-              ? `${i.nombre} ${i.apellido}`.toLowerCase().includes(query)
-              : true;
-            return coincideEstado && coincideBusqueda;
-          });
-
-          const buscando = query.length > 0 || filtroEstado !== null;
-          const totalPaginas = buscando ? 1 : Math.ceil(filtrados.length / INSPECTORES_POR_PAGINA);
-          const paginaActual = Math.min(paginaInspectores, totalPaginas);
-          const inspectoresPagina = buscando
-            ? filtrados
-            : filtrados.slice(
-                (paginaActual - 1) * INSPECTORES_POR_PAGINA,
-                paginaActual * INSPECTORES_POR_PAGINA
-              );
-
-          const BADGE: Record<string, { label: string; cls: string }> = {
-            PRESENTE:  { label: 'Presente',    cls: 'bg-green-500/10 text-green-500 dark:text-green-400 border-green-500/20' },
-            AUSENTE:   { label: 'Ausente',     cls: 'bg-red-500/10 text-red-400 border-red-500/20' },
-            LICENCIA:  { label: 'En licencia', cls: 'bg-orange-400/10 text-orange-400 border-orange-400/20' },
-            SANCIONADO:{ label: 'Sancionado',  cls: 'bg-red-950/20 text-red-600 dark:text-red-500 border-red-900/30' },
-          };
-
-          return (
-            <div>
-              {inspectoresPagina.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-6 text-center">
-                  <Search className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {filtroEstado && !query
-                      ? `No hay inspectores con estado "${filtroEstado.toLowerCase()}" hoy`
-                      : filtroEstado && query
-                      ? `Sin resultados para "${busquedaInspector}" en este filtro`
-                      : `No se encontró ningún inspector con "${busquedaInspector}"`}
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-3">
-                    {inspectoresPagina.map(inspector => {
-                      const badge = BADGE[inspector.estado];
-                      return (
-                        <div
-                          key={inspector.id}
-                          className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-7 h-7 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
-                              <span className="text-xs font-bold text-blue-500 dark:text-blue-400">
-                                {inspector.nombre[0]}{inspector.apellido[0]}
-                              </span>
-                            </div>
-                            <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                              {inspector.nombre} {inspector.apellido}
-                            </span>
-                          </div>
-                          <span className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full border ${badge.cls}`}>
-                            {badge.label}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Paginación — solo si no hay búsqueda activa */}
-                  {!buscando && totalPaginas > 1 && (
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700/50">
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {(paginaActual - 1) * INSPECTORES_POR_PAGINA + 1}–{Math.min(paginaActual * INSPECTORES_POR_PAGINA, filtrados.length)} de {filtrados.length}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => setPaginaInspectores(p => Math.max(1, p - 1))}
-                          disabled={paginaActual === 1}
-                          className="px-2.5 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                        >
-                          ← Ant.
-                        </button>
-                        {Array.from({ length: totalPaginas }, (_, i) => i + 1).map(n => (
-                          <button
-                            key={n}
-                            onClick={() => setPaginaInspectores(n)}
-                            className={`w-7 h-7 text-xs rounded-lg border transition-colors ${
-                              n === paginaActual
-                                ? 'bg-blue-500 border-blue-500 text-white font-bold'
-                                : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-                            }`}
-                          >
-                            {n}
-                          </button>
-                        ))}
-                        <button
-                          onClick={() => setPaginaInspectores(p => Math.min(totalPaginas, p + 1))}
-                          disabled={paginaActual === totalPaginas}
-                          className="px-2.5 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                        >
-                          Sig. →
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Indicador de resultados cuando hay búsqueda activa */}
-                  {buscando && (
-                    <p className="text-xs text-gray-400 dark:text-gray-500 pt-2 border-t border-gray-100 dark:border-gray-700/50">
-                      {filtrados.length === 1
-                        ? '1 resultado encontrado'
-                        : `${filtrados.length} resultados encontrados`}
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-          );
-        })()}
-      </div>
 
       {/* ══════════════ SECCIÓN PERSONAL (idéntica al Inspector) ══════════════ */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
@@ -871,28 +648,23 @@ export default function DashboardSupervisor() {
                             style={{ width: `${pct}%` }}
                           />
                         </div>
-                        {/* Contadores */}
-                        <div className="flex items-center gap-4 text-xs">
-                          <span className="flex items-center gap-1 text-green-500 dark:text-green-400">
-                            <UserCheck className="w-3.5 h-3.5" />
-                            <span className="font-semibold">{presentes}</span>
-                            <span className="text-green-500/70 dark:text-green-400/60">presentes</span>
-                          </span>
-                          <span className="flex items-center gap-1 text-red-400">
-                            <UserX className="w-3.5 h-3.5" />
-                            <span className="font-semibold">{faltas}</span>
-                            <span className="text-red-400/70">{faltas === 1 ? 'falta' : 'faltas'}</span>
-                          </span>
-                          <span className="flex items-center gap-1 text-orange-400">
-                            <Clock className="w-3.5 h-3.5" />
-                            <span className="font-semibold">{licencias}</span>
-                            <span className="text-orange-400/70">{licencias === 1 ? 'licencia' : 'licencias'}</span>
-                          </span>
-                          <span className="flex items-center gap-1 text-red-600 dark:text-red-500">
-                            <Ban className="w-3.5 h-3.5" />
-                            <span className="font-semibold">{sanciones}</span>
-                            <span className="text-red-600/70 dark:text-red-500/70">{sanciones === 1 ? 'sanción' : 'sanciones'}</span>
-                          </span>
+                        {/* Contadores clicables */}
+                        <div className="flex items-center gap-3 text-xs flex-wrap">
+                          {([
+                            { filtro: 'PRESENTE'   as const, count: presentes, icon: <UserCheck className="w-3.5 h-3.5" />, cls: 'text-green-500 dark:text-green-400', label: (n: number) => `${n} presente${n !== 1 ? 's' : ''}` },
+                            { filtro: 'AUSENTE'    as const, count: faltas,    icon: <UserX className="w-3.5 h-3.5" />,    cls: 'text-red-400',                         label: (n: number) => `${n} ${n === 1 ? 'falta' : 'faltas'}` },
+                            { filtro: 'LICENCIA'   as const, count: licencias, icon: <Clock className="w-3.5 h-3.5" />,    cls: 'text-orange-400',                      label: (n: number) => `${n} ${n === 1 ? 'licencia' : 'licencias'}` },
+                            { filtro: 'SANCIONADO' as const, count: sanciones, icon: <Ban className="w-3.5 h-3.5" />,      cls: 'text-red-600 dark:text-red-500',       label: (n: number) => `${n} ${n === 1 ? 'sanción' : 'sanciones'}` },
+                          ]).map(({ filtro: f, count, icon, cls, label }) => (
+                            <button
+                              key={f}
+                              onClick={() => abrirPopup(horario, f)}
+                              className={`flex items-center gap-1 ${cls} hover:opacity-70 transition-opacity rounded px-1 -mx-1`}
+                            >
+                              {icon}
+                              <span className="font-semibold underline decoration-dotted underline-offset-2">{label(count)}</span>
+                            </button>
+                          ))}
                         </div>
                       </div>
                     );
@@ -1107,6 +879,138 @@ export default function DashboardSupervisor() {
           </div>
         </div>
       </div>
+
+      {/* ── Popup personas por horario ── */}
+      {popupHorario && (() => {
+        const BADGE_P: Record<string, { label: string; cls: string }> = {
+          PRESENTE:   { label: 'Presente',    cls: 'bg-green-500/10 text-green-500 dark:text-green-400 border-green-500/20' },
+          AUSENTE:    { label: 'Ausente',     cls: 'bg-red-500/10 text-red-400 border-red-500/20' },
+          LICENCIA:   { label: 'En licencia', cls: 'bg-orange-400/10 text-orange-400 border-orange-400/20' },
+          SANCIONADO: { label: 'Sancionado',  cls: 'bg-red-950/20 text-red-600 dark:text-red-500 border-red-900/30' },
+        };
+        const inspHorario = inspectoresDeHoy.filter(i =>
+          (i.horario || 'Sin horario') === popupHorario.horario &&
+          (popupHorario.filtro ? i.estado === popupHorario.filtro : true)
+        );
+        const q = busquedaPopup.toLowerCase().trim();
+        const filtrados = q
+          ? inspHorario.filter(i => `${i.nombre} ${i.apellido}`.toLowerCase().includes(q))
+          : inspHorario;
+        const totalPags = Math.ceil(filtrados.length / POPUP_POR_PAGINA);
+        const pag = Math.min(paginaPopup, Math.max(1, totalPags));
+        const pagina = filtrados.slice((pag - 1) * POPUP_POR_PAGINA, pag * POPUP_POR_PAGINA);
+        const estadoLabel = popupHorario.filtro
+          ? BADGE_P[popupHorario.filtro]?.label
+          : 'Todos';
+
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+            onClick={cerrarPopup}
+          >
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+
+            {/* Panel */}
+            <div
+              className="relative z-10 w-full max-w-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+                <div className="min-w-0">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    🕐 {popupHorario.horario}
+                  </p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {estadoLabel}
+                    <span className="ml-1.5 text-xs font-normal text-gray-400">({filtrados.length})</span>
+                  </p>
+                </div>
+                <button
+                  onClick={cerrarPopup}
+                  className="ml-3 flex-shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Buscador compacto */}
+              <div className="px-3 pt-3 pb-2">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Buscar..."
+                    value={busquedaPopup}
+                    onChange={e => { setBusquedaPopup(e.target.value); setPaginaPopup(1); }}
+                    className="w-full pl-8 pr-8 py-1.5 text-sm rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition"
+                  />
+                  {busquedaPopup && (
+                    <button
+                      onClick={() => { setBusquedaPopup(''); setPaginaPopup(1); }}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Lista */}
+              <div className="px-3 pb-2 space-y-1 max-h-64 overflow-y-auto">
+                {pagina.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-4">Sin resultados</p>
+                ) : pagina.map(inspector => {
+                  const badge = BADGE_P[inspector.estado];
+                  return (
+                    <div
+                      key={inspector.id}
+                      className="flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-6 h-6 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
+                          <span className="text-[10px] font-bold text-blue-500 dark:text-blue-400">
+                            {inspector.nombre[0]}{inspector.apellido[0]}
+                          </span>
+                        </div>
+                        <span className="text-xs font-medium text-gray-900 dark:text-white truncate">
+                          {inspector.nombre} {inspector.apellido}
+                        </span>
+                      </div>
+                      <span className={`flex-shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${badge.cls}`}>
+                        {badge.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Paginación compacta */}
+              {!q && totalPags > 1 && (
+                <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100 dark:border-gray-800">
+                  <span className="text-xs text-gray-400">
+                    {(pag - 1) * POPUP_POR_PAGINA + 1}–{Math.min(pag * POPUP_POR_PAGINA, filtrados.length)} / {filtrados.length}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setPaginaPopup(p => Math.max(1, p - 1))}
+                      disabled={pag === 1}
+                      className="px-2 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >←</button>
+                    <span className="text-xs text-gray-500 px-1">{pag}/{totalPags}</span>
+                    <button
+                      onClick={() => setPaginaPopup(p => Math.min(totalPags, p + 1))}
+                      disabled={pag === totalPags}
+                      className="px-2 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >→</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );
