@@ -77,4 +77,33 @@ export function useCalificaciones() {
     editarCalificacion,
     refetch: mutate,
   };
+} // 👈 cierre de useCalificaciones
+
+// 👇 todo esto va AFUERA
+
+export interface ListadoItem {
+  id: string;
+  nombre: string;
+  cargo: string;
+  promedio: number;
+  cantidad: number;
+  cumplSi: number;
+  cumplNo: number;
+  comunicacion: number;
+  responsabilidad: number;
+  recomendacion: number;
+  ultimoComentario: string | null;
+}
+
+export function useListadoCalificaciones(rol?: string) {
+  const url = `/api/calificaciones/listado${rol ? `?rol=${rol}` : ''}`;
+  const { data, error, isLoading } = useSWR<ListadoItem[]>(url, fetcher, {
+    revalidateOnFocus: true,
+  });
+
+  return {
+    listado: data || [],
+    isLoading,
+    error,
+  };
 }

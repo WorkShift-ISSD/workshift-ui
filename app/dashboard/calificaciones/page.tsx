@@ -8,15 +8,15 @@ import {
   BarChart2, List, Download, Filter, X,
   MessageSquare, ThumbsUp, ShieldCheck,
 } from "lucide-react";
-import { useCalificaciones, TurnoPendiente, HistorialCalificacion } from "@/hooks/useCalificaciones";
+import { useCalificaciones, useListadoCalificaciones, TurnoPendiente, HistorialCalificacion } from "@/hooks/useCalificaciones";
 import { LoadingSpinner } from "@/app/components/LoadingSpinner";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 const CRITERIOS = [
-  { key: "comunicacion",    label: "Comunicación",    icon: MessageSquare },
-  { key: "responsabilidad", label: "Responsabilidad", icon: ShieldCheck   },
-  { key: "recomendacion",   label: "Recomendación",   icon: ThumbsUp      },
+  { key: "comunicacion", label: "Comunicación", icon: MessageSquare },
+  { key: "responsabilidad", label: "Responsabilidad", icon: ShieldCheck },
+  { key: "recomendacion", label: "Recomendación", icon: ThumbsUp },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -64,9 +64,8 @@ function StarRow({ value, onChange, size = 20 }: { value: number; onChange?: (v:
         <Star
           key={i}
           size={size}
-          className={`transition-colors ${onChange ? "cursor-pointer" : ""} ${
-            i <= (hover || value) ? "text-amber-400 fill-amber-400" : "text-gray-600"
-          }`}
+          className={`transition-colors ${onChange ? "cursor-pointer" : ""} ${i <= (hover || value) ? "text-amber-400 fill-amber-400" : "text-gray-600"
+            }`}
           onMouseEnter={() => onChange && setHover(i)}
           onMouseLeave={() => onChange && setHover(0)}
           onClick={() => onChange && onChange(i)}
@@ -161,21 +160,19 @@ function ModalCalificar({
             <div className="flex gap-3">
               <button
                 onClick={() => setCumplimiento(true)}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium border transition-all ${
-                  cumplimiento === true
-                    ? "bg-green-900/50 border-green-700 text-green-300"
-                    : "bg-gray-800 border-gray-600 text-gray-400 hover:border-gray-500"
-                }`}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium border transition-all ${cumplimiento === true
+                  ? "bg-green-900/50 border-green-700 text-green-300"
+                  : "bg-gray-800 border-gray-600 text-gray-400 hover:border-gray-500"
+                  }`}
               >
                 <CheckCircle size={15} /> Sí, cumplió
               </button>
               <button
                 onClick={() => setCumplimiento(false)}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium border transition-all ${
-                  cumplimiento === false
-                    ? "bg-red-900/50 border-red-700 text-red-300"
-                    : "bg-gray-800 border-gray-600 text-gray-400 hover:border-gray-500"
-                }`}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium border transition-all ${cumplimiento === false
+                  ? "bg-red-900/50 border-red-700 text-red-300"
+                  : "bg-gray-800 border-gray-600 text-gray-400 hover:border-gray-500"
+                  }`}
               >
                 <XCircle size={15} /> No cumplió
               </button>
@@ -270,10 +267,10 @@ function TabPendientes({
   }, { dias: 999, nombre: '', fecha: '' });
 
   const stats = [
-    { label: "Pendientes",        value: pendientes.length,        color: "text-red-400",    sub: "cambios sin calificar" },
-    { label: "Vence más pronto",  value: venceMasPronto.dias === 999 ? '—' : `${venceMasPronto.dias} día${venceMasPronto.dias !== 1 ? 's' : ''}`, color: "text-yellow-300", sub: venceMasPronto.nombre || '—' },
-    { label: "Emitidas este mes", value: emitidas,                 color: "text-white",      sub: "calificaciones"        },
-    { label: "Mi promedio",       value: `★ ${miScore.toFixed(1)}`, color: "text-amber-400",  sub: `${historial.filter(h => h.direccion === 'recibida').length} recibidas` },
+    { label: "Pendientes", value: pendientes.length, color: "text-red-400", sub: "cambios sin calificar" },
+    { label: "Vence más pronto", value: venceMasPronto.dias === 999 ? '—' : `${venceMasPronto.dias} día${venceMasPronto.dias !== 1 ? 's' : ''}`, color: "text-yellow-300", sub: venceMasPronto.nombre || '—' },
+    { label: "Emitidas este mes", value: emitidas, color: "text-white", sub: "calificaciones" },
+    { label: "Mi promedio", value: `★ ${miScore.toFixed(1)}`, color: "text-amber-400", sub: `${historial.filter(h => h.direccion === 'recibida').length} recibidas` },
   ];
 
   if (isLoading) return <div className="flex justify-center py-12"><LoadingSpinner /></div>;
@@ -372,9 +369,9 @@ function TabMiPerfil({
   const cumplNo = recibidas.filter(h => !h.cumplimiento).length;
 
   const criteriosPerfil = [
-    { label: "Comunicación",    valor: promComun, pct: (promComun / 5) * 100 },
-    { label: "Responsabilidad", valor: promResp,  pct: (promResp / 5) * 100  },
-    { label: "Recomendación",   valor: promRecom, pct: (promRecom / 5) * 100 },
+    { label: "Comunicación", valor: promComun, pct: (promComun / 5) * 100 },
+    { label: "Responsabilidad", valor: promResp, pct: (promResp / 5) * 100 },
+    { label: "Recomendación", valor: promRecom, pct: (promRecom / 5) * 100 },
   ];
 
   return (
@@ -458,8 +455,15 @@ function TabMiPerfil({
 
 function TabListado() {
   const [cargo, setCargo] = useState("Todos");
+  const { listado, isLoading } = useListadoCalificaciones(
+    cargo === "Todos" ? undefined : cargo.toUpperCase()
+  );
 
-  // TODO: conectar a /api/calificaciones/listado cuando esté disponible
+  const getIniciales = (nombre: string) => {
+    const p = nombre.trim().split(' ');
+    return p.length >= 2 ? (p[0][0] + p[1][0]).toUpperCase() : p[0].slice(0, 2).toUpperCase();
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -482,9 +486,68 @@ function TabListado() {
           </button>
         </div>
       </div>
-      <div className="bg-gray-800 rounded-xl border border-gray-700/50 p-8 text-center">
-        <p className="text-gray-500 text-sm">El listado general estará disponible próximamente.</p>
-      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-12"><LoadingSpinner /></div>
+      ) : (
+        <div className="bg-gray-800 rounded-xl border border-gray-700/50 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-gray-700/50">
+                  {["Empleado", "Cargo", "Promedio", "Califs.", "Cumplimiento", "Último comentario"].map((h) => (
+                    <th key={h} className="text-left px-4 py-3 text-gray-500 font-medium">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {listado.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-10 text-center text-gray-500">
+                      No hay calificaciones registradas.
+                    </td>
+                  </tr>
+                ) : listado.map((e) => (
+                  <tr key={e.id} className="border-b border-gray-700/30 hover:bg-gray-700/20 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <Avatar iniciales={getIniciales(e.nombre)} size="sm" />
+                        <span className="text-gray-200">{e.nombre}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 capitalize">{e.cargo.toLowerCase()}</td>
+                    <td className="px-4 py-3">
+                      {e.cantidad === 0 ? (
+                        <span className="text-gray-600">Sin calificaciones</span>
+                      ) : (
+                        <div>
+                          <StarRow value={Math.round(e.promedio)} size={12} />
+                          <span className="text-gray-400 mt-0.5 block">{Number(e.promedio).toFixed(1)}</span>
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-gray-500">{e.cantidad}</td>
+                    <td className="px-4 py-3">
+                      {e.cantidad === 0 ? (
+                        <span className="text-gray-600">—</span>
+                      ) : (
+                        <span className="text-xs">
+                          <span className="text-green-400">{e.cumplSi} Sí</span>
+                          <span className="text-gray-600"> · </span>
+                          <span className="text-red-400">{e.cumplNo} No</span>
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 max-w-[160px] truncate">
+                      {e.ultimoComentario || '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -494,9 +557,9 @@ function TabListado() {
 type Tab = "pendientes" | "perfil" | "listado";
 
 const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
-  { key: "pendientes", label: "Pendientes",     icon: Clock     },
-  { key: "perfil",     label: "Mi perfil",      icon: BarChart2 },
-  { key: "listado",    label: "Listado general", icon: List      },
+  { key: "pendientes", label: "Pendientes", icon: Clock },
+  { key: "perfil", label: "Mi perfil", icon: BarChart2 },
+  { key: "listado", label: "Listado general", icon: List },
 ];
 
 export default function CalificacionesPage() {
@@ -540,11 +603,10 @@ export default function CalificacionesPage() {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm border-b-2 transition-all -mb-px ${
-                tab === t.key
-                  ? "border-blue-500 text-blue-400 font-medium"
-                  : "border-transparent text-gray-500 hover:text-gray-300"
-              }`}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm border-b-2 transition-all -mb-px ${tab === t.key
+                ? "border-blue-500 text-blue-400 font-medium"
+                : "border-transparent text-gray-500 hover:text-gray-300"
+                }`}
             >
               <t.icon size={15} />
               {t.label}
