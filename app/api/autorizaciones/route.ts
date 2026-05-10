@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
                   'id', us.id,
                   'nombre', us.nombre,
                   'apellido', us.apellido,
-                  'rol', us.rol,
+                  'rol', us.rol
                 ),
                 'destinatario', json_build_object(
                   'id', ud.id,

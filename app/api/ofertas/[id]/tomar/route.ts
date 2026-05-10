@@ -105,8 +105,6 @@ export async function POST(
         : oferta.turno_ofrece)
       : null;
 
-    console.log('turnoOfertanteRaw:', turnoOfertanteRaw);
-    console.log('oferta.turno_ofrece raw:', oferta.turno_ofrece);
 
     // Para cobertura, la fecha viene del turnoSeleccionado o de fechas_disponibles
     const fechaDisponibles = oferta.fechas_disponibles
@@ -223,16 +221,20 @@ export async function POST(
       );
     }
 
-    // ── Obtener datos del tomador ─────────────────────────────────────────
+    // ── Obtener datos del tomador y del ofertante ────────────────────────────
 
     const [tomador] = await sql`
-      SELECT id, nombre, apellido, rol, horario, grupo_turno 
+      SELECT id, nombre, apellido, rol, horario, grupo_turno
       FROM users WHERE id = ${tomadorId}::uuid;
     `;
 
     if (!tomador) {
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
     }
+
+    const [ofertanteUser] = await sql`
+      SELECT horario, grupo_turno FROM users WHERE id = ${oferta.ofertante_id}::uuid;
+    `;
 
     // ── Construir datos de los turnos ─────────────────────────────────────
 
@@ -244,35 +246,31 @@ export async function POST(
         : oferta.turnos_busca)
       : null;
 
-    // solicitanteId/destinatarioId según quién inició la búsqueda:
-    //   BUSCO (esBusco=true)  → solicitante = ofertante (ej. Patricia), destinatario = tomador (ej. Emanuel)
-    //   OFREZCO (esBusco=false) → solicitante = tomador, destinatario = ofertante
-    //
     // turnoSolicitante = turno que CEDE el solicitante
     // turnoDestinatario = turno que CEDE el destinatario
     const turnoSolicitanteObj = !esCobertura
       ? esBusco
         ? {
-            // BUSCO_INTERCAMBIO: solicitante = ofertante (Patricia), cede su turno (turnoOfrece)
-            fecha: turnoOfertanteRaw?.fecha || fechaTurnoOfertante,
-            horario: turnoOfertanteRaw?.horario,
-            grupoTurno: turnoOfertanteRaw?.grupoTurno,
+            // BUSCO_INTERCAMBIO: solicitante = ofertante (Emanuel), cede el día que necesita cubrir (turnosBusca)
+            fecha: turnoSeleccionado?.fecha || turnosBuscaRaw?.[0]?.fecha || fechaTurnoOfertante,
+            horario: ofertanteUser?.horario,
+            grupoTurno: ofertanteUser?.grupo_turno,
           }
         : {
-            // OFREZCO_INTERCAMBIO: solicitante = tomador, cede el día que el ofertante le pidió
+            // OFREZCO_INTERCAMBIO: solicitante = tomador, cede el día — usa su horario real
             fecha: turnosBuscaRaw?.[0]?.fecha || turnoSeleccionado?.fecha || fechaTurnoOfertante,
-            horario: turnosBuscaRaw?.[0]?.horario || turnoSeleccionado?.horario || tomador.horario,
+            horario: tomador.horario,
             grupoTurno: tomador.grupo_turno,
           }
       : esBusco
         ? {
-            // BUSCO_COBERTURA: solicitante = ofertante, su turno a cubrir (grupo y horario del ofertante)
-            fecha: turnoOfertanteRaw?.fecha || turnoSeleccionado?.fecha || fechaTurnoOfertante,
-            horario: turnoOfertanteRaw?.horario || tomador.horario,
-            grupoTurno: turnoOfertanteRaw?.grupoTurno || tomador.grupo_turno,
+            // BUSCO_COBERTURA: solicitante = ofertante (necesita cobertura), su turno está en fechas_disponibles
+            fecha: fechaDisponibles?.[0]?.fecha || fechaTurnoOfertante,
+            horario: fechaDisponibles?.[0]?.horario || ofertanteUser?.horario,
+            grupoTurno: ofertanteUser?.grupo_turno,
           }
         : {
-            // OFREZCO_COBERTURA: solicitante = tomador, su turno propio
+            // OFREZCO_COBERTURA: solicitante = tomador (necesita cobertura), usa su propio horario
             fecha: turnoSeleccionado?.fecha || fechaTurnoOfertante,
             horario: tomador.horario,
             grupoTurno: tomador.grupo_turno,
@@ -281,29 +279,27 @@ export async function POST(
     const turnoDestinatarioObj = !esCobertura
       ? esBusco
         ? {
-            // BUSCO_INTERCAMBIO: destinatario = tomador (Emanuel), cede el día que eligió del rango
-            fecha: turnoSeleccionado?.fecha,
+            // BUSCO_INTERCAMBIO: destinatario = tomador (Juan), cede el día que Emanuel ofrece (turnoOfrece)
+            fecha: turnoOfertanteRaw?.fecha,
             horario: tomador.horario,
             grupoTurno: tomador.grupo_turno,
           }
         : turnoOfertanteRaw
           ? {
-              // OFREZCO_INTERCAMBIO: destinatario = ofertante, cede su turnoOfrece
+              // OFREZCO_INTERCAMBIO: destinatario = ofertante, cede su turnoOfrece — usa su horario real
               fecha: turnoOfertanteRaw.fecha,
-              horario: turnoOfertanteRaw.horario,
-              grupoTurno: turnoOfertanteRaw.grupoTurno,
+              horario: ofertanteUser?.horario,
+              grupoTurno: ofertanteUser?.grupo_turno,
             }
           : null
       : null; // cobertura: unidireccional, sin turnoDestinatario
-
-    // ── Validaciones de duplicado ─────────────────────────────────────────
 
     // Para BUSCO_INTERCAMBIO el tomador cede turnoDestinatario; en el resto, turnoSolicitante
     const fechaSeleccionada = (!esCobertura && esBusco)
       ? (turnoDestinatarioObj?.fecha ?? turnoSolicitanteObj.fecha)
       : turnoSolicitanteObj.fecha;
 
-    // 6. Turno efectivo ya existente para el tomador en esa fecha
+    // Turno efectivo ya existente para el tomador en esa fecha
     const [turnoEfectivoExistente] = await sql`
       SELECT 1 FROM turnos_efectivos
       WHERE empleado_id = ${tomadorId}::uuid
@@ -318,7 +314,7 @@ export async function POST(
       );
     }
 
-    // 7. Autorización pendiente para la misma fecha
+    // Autorización pendiente para la misma fecha
     const [autorizacionPendienteExistente] = await sql`
       SELECT 1 FROM autorizaciones a
       JOIN solicitudes_directas sd ON a.solicitud_id = sd.id
@@ -432,13 +428,6 @@ export async function POST(
     const destinatarioId = esBusco ? tomadorId : oferta.ofertante_id;
 
 
-console.log('solicitanteId:', solicitanteId);
-console.log('destinatarioId:', destinatarioId);
-console.log('esBusco:', esBusco);
-console.log('oferta.tipo:', oferta.tipo);
-
-
-
     try {
       const [nuevaSolicitud] = await sql`
         INSERT INTO solicitudes_directas (
@@ -459,7 +448,7 @@ console.log('oferta.tipo:', oferta.tipo);
           estado,
           fecha_solicitud
         ) VALUES (
-          ${solicitanteId}::uuid, 
+          ${solicitanteId}::uuid,
           ${destinatarioId}::uuid,
           ${turnoSolicitanteObj ? JSON.stringify(turnoSolicitanteObj) : null},
           ${turnoDestinatarioObj ? JSON.stringify(turnoDestinatarioObj) : null},

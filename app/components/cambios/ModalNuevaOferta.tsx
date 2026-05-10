@@ -120,7 +120,12 @@ export function ModalNuevaOferta({ isOpen, onClose, onSubmit, ofertaEditando }: 
       }
       const fechasValidas = form.fechasBusca.filter(f => f.fecha.trim() !== '');
       const tieneRangoBusca = form.usaRangoBusca && form.rangoBusca.desde && form.rangoBusca.hasta;
-      if (fechasValidas.length === 0 && !tieneRangoBusca) return 'Agregá al menos una fecha';
+      if (fechasValidas.length === 0 && !tieneRangoBusca) return 'Agregá al menos una fecha que necesitás cambiar';
+      if (modo === 'BUSCO_INTERCAMBIO') {
+        const dispValidas = form.fechasDisponibles.filter(f => f.fecha.trim() !== '');
+        const tieneRangoDisp = form.usaRangoDisponibles && form.rangoDisponibles.desde && form.rangoDisponibles.hasta;
+        if (dispValidas.length === 0 && !tieneRangoDisp) return 'Indicá al menos una fecha que podés hacer a cambio';
+      }
     } else {
       const fechasValidas = form.fechasDisponibles.filter(f => f.fecha.trim() !== '');
       const tieneRango = form.usaRangoDisponibles && form.rangoDisponibles.desde && form.rangoDisponibles.hasta;

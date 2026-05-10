@@ -100,7 +100,8 @@ export function useCambiosPage() {
                         const turnoEfectivo = turnosEfectivos?.find((te: any) => te.fecha === f.fecha);
                         const horarioUsuario = turnoEfectivo?.horario_efectivo || user.horario;
                         if (o.tipo === 'OFREZCO') {
-                            return trabaja && f.horario === horarioUsuario;
+                            const horarioOk = !f.horario || f.horario === 'A convenir' || f.horario === horarioUsuario;
+                            return trabaja && horarioOk;
                         } else {
                             return !trabaja;
                         }
@@ -125,17 +126,27 @@ export function useCambiosPage() {
                     }
                     const fechaQueOfrece = o.turnosBusca?.[0]?.fecha;
                     if (!fechaQueOfrece) return true;
-                    return trabajaEnFecha(fechaQueOfrece);
+                    const turnoEfectivoFecha = turnosEfectivos?.find((te: any) => te.fecha === fechaQueOfrece);
+                    const horarioFecha = o.turnosBusca?.[0]?.horario;
+                    const horarioUsuarioFecha = turnoEfectivoFecha?.horario_efectivo || user.horario;
+                    const horarioFechaOk = !horarioFecha || horarioFecha === 'A convenir' || horarioFecha === horarioUsuarioFecha;
+                    return trabajaEnFecha(fechaQueOfrece) && horarioFechaOk;
                 } else {
                     const fechaNecesita = o.turnosBusca?.[0]?.fecha;
                     if (!fechaNecesita) return true;
-                    const noTrabajaNecesita = !trabajaEnFecha(fechaNecesita);
                     const fechaACambio = o.fechasDisponibles?.[0]?.fecha;
-                    if (!fechaACambio) return noTrabajaNecesita;
+                    // Mismo día = intercambio de horario: el usuario tiene que trabajar ese día
+                    // Distinto día = intercambio normal: el usuario NO tiene que trabajar fechaNecesita
+                    const mismoDia = fechaACambio && fechaNecesita === fechaACambio;
+                    const condicionDia = mismoDia
+                        ? trabajaEnFecha(fechaNecesita)
+                        : !trabajaEnFecha(fechaNecesita);
+                    if (!fechaACambio) return condicionDia;
                     const turnoEfectivoACambio = turnosEfectivos?.find((te: any) => te.fecha === fechaACambio);
                     const horarioACambio = o.fechasDisponibles?.[0]?.horario;
                     const horarioUsuarioACambio = turnoEfectivoACambio?.horario_efectivo || user.horario;
-                    return noTrabajaNecesita && horarioACambio === horarioUsuarioACambio;
+                    const horarioACambioOk = !horarioACambio || horarioACambio === 'A convenir' || horarioACambio === horarioUsuarioACambio;
+                    return condicionDia && horarioACambioOk;
                 }
             }
 

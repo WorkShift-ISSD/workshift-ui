@@ -53,7 +53,8 @@ function toYMD(date: Date) {
 
 // ── Íconos de estado de día ────────────────────────────────────────────────
 
-function DayIcon({ type, isSancion = false }: { type: 'worked' | 'exchange' | 'off' | 'covered' | 'absent' | 'license'; isSancion?: boolean }) {
+function DayIcon({ type, isSancion = false, esFuturo = false }: { type: 'worked' | 'exchange' | 'off' | 'covered' | 'absent' | 'license' | 'future'; isSancion?: boolean; esFuturo?: boolean }) {
+  if (type === 'future') return <CheckCircle className="w-4 h-4 text-green-300 dark:text-green-700" />;
   if (type === 'worked') return <CheckCircle className="w-4 h-4 text-green-500 dark:text-green-400" />;
   if (type === 'exchange') return <RefreshCw className="w-4 h-4 text-amber-400" />;
   if (type === 'covered') return <RefreshCw className="w-4 h-4 text-orange-400" />;
@@ -171,8 +172,10 @@ export default function DashboardHome() {
         ? 'bg-red-100 dark:bg-red-500/10 border-red-200 dark:border-red-500/20'       // día de guardia con falta/sanción
         : 'bg-red-200 dark:bg-red-900/30 border-red-400 dark:border-red-700/50';      // no es día de guardia pero tiene sanción
       case 'license': return 'bg-orange-100 dark:bg-orange-400/10 border-orange-300 dark:border-orange-400/20';
-      case 'off':
-      case 'future': return 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700';
+      case 'off': return 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700';
+      case 'future': return esGuardia
+        ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800/30'
+        : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700';
     }
   }
 
@@ -389,12 +392,12 @@ export default function DashboardHome() {
                 >
                   <div className="w-full h-6 flex items-center justify-center">
                     <span className="text-[10px] font-medium text-gray-700 dark:text-gray-300">
-                      {label}{(tipo !== 'off' && tipo !== 'future') && horario ? ` · ${horario.split('-')[0]}` : ''}
+                      {label}{(tipo !== 'off' && (tipo !== 'future' || esGuardia)) && horario ? ` · ${horario.split('-')[0]}` : ''}
                     </span>
                   </div>
                   <div className="w-full h-px bg-black/20" />
                   <div className="w-full h-8 flex items-center justify-center">
-                    {(tipo !== 'off' && tipo !== 'future') && <DayIcon type={tipo} isSancion={esSancion} />}
+                    {(tipo !== 'off' && (tipo !== 'future' || esGuardia)) && <DayIcon type={tipo} isSancion={esSancion} />}
                   </div>
                 </div>
               ))}
