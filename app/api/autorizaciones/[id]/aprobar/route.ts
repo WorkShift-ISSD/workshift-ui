@@ -96,36 +96,45 @@ export async function POST(
   `;
 
       if (solicitud) {
+        // solicitante = quien NECESITA cobertura (CEDE), destinatario = quien CUBRE (GANA)
+        // Para intercambio: solicitante = quien inicia, destinatario = quien responde
         const esCobertura = !solicitud.fecha_destinatario;
 
+        // Para cobertura: fetchear horario del que cubre (destinatario) para horario_original
+        let cubridorHorario = solicitud.horario_destinatario;
+        let cubridorGrupo = solicitud.grupo_destinatario;
         if (esCobertura) {
-          // COBERTURA: el DESTINATARIO (quien cubre) trabaja el turno del solicitante (quien es cubierto)
-          const [destinatario] = await sql`
-            SELECT horario, grupo_turno FROM users WHERE id = ${solicitud.destinatario_id}::uuid
-          `;
-          await sql`
-            INSERT INTO turnos_efectivos (
-              id, empleado_id, fecha, horario_original, horario_efectivo,
-              grupo_original, grupo_efectivo, tipo_cambio, autorizacion_id,
-              empleado_intercambio_id, estado, created_at
-            ) VALUES (
-              gen_random_uuid(),
-              ${solicitud.destinatario_id}::uuid,
-              ${solicitud.fecha_solicitante}::date,
-              ${destinatario?.horario || solicitud.horario_solicitante},
-              ${solicitud.horario_solicitante},
-              ${destinatario?.grupo_turno || solicitud.grupo_solicitante},
-              ${solicitud.grupo_solicitante},
-              'COBERTURA',
-              ${id}::uuid,
-              ${solicitud.solicitante_id}::uuid,
-              'PENDIENTE',
-              NOW()
-            );
-          `;
-        } else {
-          // INTERCAMBIO: cada uno gana el día del otro
+          const [cubridor] = await sql`SELECT horario, grupo_turno FROM users WHERE id = ${solicitud.destinatario_id}::uuid`;
+          cubridorHorario = cubridor?.horario;
+          cubridorGrupo = cubridor?.grupo_turno;
+        }
 
+        // Cobertura:   empleado_id = destinatario (GANA/cubre), intercambio_id = solicitante (CEDE/es cubierto)
+        // Intercambio: empleado_id = solicitante (GANA su nuevo día), intercambio_id = destinatario (CEDE ese día)
+        await sql`
+  INSERT INTO turnos_efectivos (
+    id, empleado_id, fecha, horario_original, horario_efectivo,
+    grupo_original, grupo_efectivo, tipo_cambio, autorizacion_id,
+    empleado_intercambio_id, estado, created_at
+  ) VALUES (
+    gen_random_uuid(),
+    ${esCobertura ? solicitud.destinatario_id : solicitud.solicitante_id}::uuid,
+    ${esCobertura ? solicitud.fecha_solicitante : solicitud.fecha_destinatario}::date,
+    ${esCobertura ? (cubridorHorario || solicitud.horario_solicitante) : solicitud.horario_solicitante},
+    ${esCobertura ? solicitud.horario_solicitante : (solicitud.horario_destinatario || solicitud.horario_solicitante)},
+    ${esCobertura ? (cubridorGrupo || solicitud.grupo_solicitante) : solicitud.grupo_solicitante},
+    ${esCobertura ? solicitud.grupo_solicitante : (solicitud.grupo_destinatario || solicitud.grupo_solicitante)},
+    ${esCobertura ? 'COBERTURA' : 'INTERCAMBIO'},
+    ${id}::uuid,
+    ${esCobertura ? solicitud.solicitante_id : solicitud.destinatario_id}::uuid,
+    'PENDIENTE',
+    NOW()
+  )
+  ON CONFLICT (empleado_id, fecha) DO NOTHING;
+`;
+
+        // Segundo turno — solo para intercambio (destinatario gana el día del solicitante)
+        if (!esCobertura) {
           // Solicitante gana el día del destinatario
           await sql`
             INSERT INTO turnos_efectivos (
@@ -145,7 +154,8 @@ export async function POST(
               ${solicitud.destinatario_id}::uuid,
               'PENDIENTE',
               NOW()
-            );
+            )
+            ON CONFLICT (empleado_id, fecha) DO NOTHING;
           `;
 
           // Destinatario gana el día del solicitante
@@ -167,7 +177,8 @@ export async function POST(
               ${solicitud.solicitante_id}::uuid,
               'PENDIENTE',
               NOW()
-            );
+            )
+            ON CONFLICT (empleado_id, fecha) DO NOTHING;
           `;
         }
       }
