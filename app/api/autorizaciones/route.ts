@@ -111,21 +111,32 @@ export async function GET(request: NextRequest) {
                 'fechasDisponibles', of.fechas_disponibles
               )
             ELSE NULL
-          END as oferta
+          END as oferta,
+
+          -- Datos de LICENCIA
+          CASE 
+            WHEN a.licencia_id IS NOT NULL THEN
+              json_build_object(
+                'id', lic.id,
+                'tipo', lic.tipo,
+                'fechaDesde', lic.fecha_desde,
+                'fechaHasta', lic.fecha_hasta,
+                'dias', lic.dias,
+                'estado', lic.estado
+              )
+            ELSE NULL
+          END as licencia
           
         FROM autorizaciones a
         JOIN users e ON a.empleado_id = e.id
         LEFT JOIN users ap ON a.aprobado_por = ap.id
-        
-        -- JOIN con solicitud directa
         LEFT JOIN solicitudes_directas sd ON a.solicitud_id = sd.id
         LEFT JOIN users us ON sd.solicitante_id = us.id
         LEFT JOIN users ud ON sd.destinatario_id = ud.id
-        
-        -- JOIN con oferta
         LEFT JOIN ofertas of ON a.oferta_id = of.id
         LEFT JOIN users uof ON of.ofertante_id = uof.id
         LEFT JOIN users ut ON of.tomador_id = ut.id
+        LEFT JOIN licencias lic ON a.licencia_id = lic.id
         
         WHERE a.estado = ${estado}
         ORDER BY a.created_at DESC;
@@ -224,21 +235,32 @@ export async function GET(request: NextRequest) {
                 'fechasDisponibles', of.fechas_disponibles
               )
             ELSE NULL
-          END as oferta
+          END as oferta,
+
+          -- Datos de LICENCIA
+          CASE 
+            WHEN a.licencia_id IS NOT NULL THEN
+              json_build_object(
+                'id', lic.id,
+                'tipo', lic.tipo,
+                'fechaDesde', lic.fecha_desde,
+                'fechaHasta', lic.fecha_hasta,
+                'dias', lic.dias,
+                'estado', lic.estado
+              )
+            ELSE NULL
+          END as licencia
           
         FROM autorizaciones a
         JOIN users e ON a.empleado_id = e.id
         LEFT JOIN users ap ON a.aprobado_por = ap.id
-        
-        -- JOIN con solicitud directa
         LEFT JOIN solicitudes_directas sd ON a.solicitud_id = sd.id
         LEFT JOIN users us ON sd.solicitante_id = us.id
         LEFT JOIN users ud ON sd.destinatario_id = ud.id
-        
-        -- JOIN con oferta
         LEFT JOIN ofertas of ON a.oferta_id = of.id
         LEFT JOIN users uof ON of.ofertante_id = uof.id
         LEFT JOIN users ut ON of.tomador_id = ut.id
+        LEFT JOIN licencias lic ON a.licencia_id = lic.id
 
         WHERE a.estado != 'CANCELADA'
         ORDER BY a.created_at DESC;

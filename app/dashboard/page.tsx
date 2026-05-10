@@ -16,19 +16,26 @@ import { Cambio as TipoCambio } from '../api/types';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
 import DashInspector from '@/app/components/dashboard/DashInspector';
+import DashJefe from '@/app/components/dashboard/DashJefe';
 import { useTodasLasFaltas } from '@/hooks/useFaltas';
 import { calcularDiasTrabajoEnRango } from '@/app/lib/turnosUtils';
 import { useOfertas } from '@/hooks/useOfertas';
 import { useSolicitudesDirectas } from '@/hooks/useSolicitudesDirectas';
 import CalendarioTurnos from '@/app/components/CalendarioTurnos';
+import DashboardSupervisor from '../components/dashboard/Dashsupervisor';
+
 
 type SolicitudDirectaEstado = 'SOLICITADO' | 'APROBADO' | 'RECHAZADO' | 'CANCELADO';
 
 export default function DashboardHome() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
 
     if (user?.rol === 'INSPECTOR') {
     return <DashInspector />;
+  }
+
+    if (user?.rol === 'SUPERVISOR') {
+    return <DashboardSupervisor />;
   }
 
   const { cambios, isLoading: loadingCambios, error: errorCambios } = useCambios();
@@ -161,6 +168,12 @@ export default function DashboardHome() {
 
     return { turnosOferta: turnosDisponibles, aprobados: aprobadosDelMes, pendientes: pendientesParaMi, rechazados: rechazadosDelMes };
   }, [ofertas, solicitudes, user, monthInfo]);
+
+  const userRol = user?.rol as string | undefined;
+
+  if (userRol === 'INSPECTOR')                           return <DashInspector />;
+  if (userRol === 'JEFE' || userRol === 'ADMINISTRADOR') return <DashJefe />;
+  if (userRol === 'SUPERVISOR')                          return <DashboardSupervisor />;
 
   if (loadingCambios || loadingTurnos || loadingFaltas || loadingOfertas || loadingSolicitudes) {
     return (

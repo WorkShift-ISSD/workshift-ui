@@ -384,7 +384,9 @@ useEffect(() => {
           activo: formData.activo !== undefined ? formData.activo : true,
           grupoTurno: formData.grupoTurno || 'A',
           turno: '',
-          fechaIngreso: ''
+          fechaIngreso: '',
+          calificacion: null,
+          totalIntercambios: 0
         });
       } else if (modalMode === 'edit' && selectedEmployee) {
         const confirmEdit = window.confirm('¿Seguro quiere modificar los datos del empleado?');

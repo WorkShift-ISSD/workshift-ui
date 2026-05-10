@@ -7,6 +7,8 @@ import "react-toastify/dist/ReactToastify.css";
 
 import { useAutorizaciones } from "@/hooks/useAutorizaciones";
 import { AutorizacionesTable } from "@/app/components/autorizaciones/AutorizacionesTable";
+import { useDashboardJefe } from '@/hooks/useDashboardJefe';
+
 
 export default function AutorizacionesPage() {
   const [filtroEstado, setFiltroEstado] = useState<string | undefined>(undefined);
@@ -27,6 +29,12 @@ export default function AutorizacionesPage() {
       rechazadas: autorizaciones.filter((a) => a.estado === "RECHAZADA").length,
     };
   }, [autorizaciones]);
+
+  const { pendientes } = useDashboardJefe();
+  const impactoMap = Object.fromEntries(
+    pendientes.map(p => [p.id, p.impacto])
+  );
+
 
   return (
     <div className="container mx-auto p-6">
@@ -137,6 +145,7 @@ export default function AutorizacionesPage() {
         loading={loading}
         onAprobar={aprobarAutorizacion}
         onRechazar={rechazarAutorizacion}
+        impactoMap={impactoMap}
       />
     </div>
   );
