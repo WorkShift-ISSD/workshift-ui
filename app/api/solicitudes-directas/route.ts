@@ -293,7 +293,7 @@ export async function POST(request: NextRequest) {
   AND (
     (sd.solicitante_id = ${solicitanteId}::uuid AND sd.fecha_solicitante = ${fechaSolicitante}::date)
     OR
-    (sd.destinatario_id = ${solicitanteId}::uuid AND sd.fecha_destinatario = ${fechaDestinatario}::date)
+    (sd.destinatario_id = ${solicitanteId}::uuid AND sd.fecha_destinatario = ${fechaDestinatario || null}::date)
     OR
     (sd.destinatario_id = ${solicitanteId}::uuid AND sd.fecha_destinatario IS NULL AND sd.fecha_solicitante = ${fechaSolicitante}::date)
   )

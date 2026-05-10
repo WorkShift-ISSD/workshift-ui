@@ -394,20 +394,17 @@ export async function POST(request: NextRequest) {
         const fechasBuscaValidas = body.fechasBusca?.filter((f: any) => f.fecha && f.fecha.trim() !== '') ?? [];
         if (fechasBuscaValidas.length > 0) turnosBusca = fechasBuscaValidas;
 
-        // turnoOfrece = el día que el ofertante TIENE y necesita cambiar (Bloque 1)
-        const diaQueNecesita = fechasBuscaValidas[0];
-        if (diaQueNecesita) {
-          turnoOfrece = {
-            fecha: diaQueNecesita.fecha,
-            horario: diaQueNecesita.horario || usuario.horario,
-            grupoTurno: usuario.grupo_turno
-          };
-        }
-
-        // Los días que puede hacer a cambio van en fechasDisponibles (si son específicos)
+        // turnoOfrece = el día que el ofertante OFRECE hacer a cambio (fechasDisponibles)
         if (!body.usaRangoDisponibles && body.fechasDisponibles?.length > 0) {
           const validas = body.fechasDisponibles.filter((f: any) => f.fecha && f.fecha.trim() !== '');
-          if (validas.length > 0) fechasDisponibles = validas;
+          if (validas.length > 0) {
+            fechasDisponibles = validas;
+            turnoOfrece = {
+              fecha: validas[0].fecha,
+              horario: validas[0].horario || usuario.horario,
+              grupoTurno: usuario.grupo_turno
+            };
+          }
         }
       }
     } else if (body.modalidadBusqueda === TipoSolicitud.ABIERTO) {

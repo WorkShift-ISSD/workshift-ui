@@ -55,10 +55,11 @@ interface Props {
 function EstadoBadge({ estado }: { estado: string }) {
   const map: Record<string, { label: string; className: string }> = {
     COMPLETADO: { label: 'Completado', className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' },
-    APROBADO: { label: 'Aprobado', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
-    CANCELADO: { label: 'Cancelado por vos', className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' },
+    APROBADO: { label: 'Pendiente de jefe', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
+    CANCELADO: { label: 'Cancelado', className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' },
+    RECHAZADO: { label: 'Rechazado', className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' },
     DISPONIBLE: { label: 'En espera', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
-    SOLICITADO: { label: 'En espera', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
+    SOLICITADO: { label: 'Pendiente de respuesta', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
   };
   const s = map[estado] || { label: estado, className: 'bg-gray-100 text-gray-600' };
   return (
@@ -84,11 +85,7 @@ export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOfer
 
   const solicitudesHistorico = solicitudesDirectas.filter(s => {
     if (s.origen === 'TABLERO') return false;
-    const soyElSolicitante = s.solicitante?.id === userId;
-    const soyElDestinatario = s.destinatario?.id === userId;
-    if (s.estado === 'COMPLETADO') return soyElSolicitante || soyElDestinatario;
-    if (s.estado === 'CANCELADO') return soyElSolicitante;
-    return false;
+    return s.solicitante?.id === userId || s.destinatario?.id === userId;
   });
 
   const items = [
@@ -241,6 +238,23 @@ export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOfer
                 </div>
               )}
 
+              {/* Estado autorización — para intercambio (cobertura lo muestra por fechasAcordadas) */}
+              {esIntercambio && oferta.estadoAutorizacion && (
+                <div className={`mt-2 text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${
+                  oferta.estadoAutorizacion === 'APROBADA'
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                    : oferta.estadoAutorizacion === 'RECHAZADA'
+                      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                }`}>
+                  {oferta.estadoAutorizacion === 'APROBADA'
+                    ? '✅ Aprobado por el jefe'
+                    : oferta.estadoAutorizacion === 'RECHAZADA'
+                      ? '❌ Rechazado por el jefe'
+                      : '⏳ Pendiente de aprobación del jefe'}
+                </div>
+              )}
+
               {/* Con quién — solo si no hay fechasAcordadas */}
               {!oferta.fechasAcordadas?.length && otraParte?.nombre && (
                 <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -346,6 +360,18 @@ export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOfer
             <p className="text-xs text-gray-500 dark:text-gray-400">
               Con {otraParte?.nombre} {otraParte?.apellido}
             </p>
+
+            {['APROBADO', 'COMPLETADO'].includes(solicitud.estado) && (
+              <div className={`mt-2 text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${
+                solicitud.estado === 'COMPLETADO'
+                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                  : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+              }`}>
+                {solicitud.estado === 'COMPLETADO'
+                  ? '✅ Aprobado por el jefe'
+                  : '⏳ Pendiente de aprobación del jefe'}
+              </div>
+            )}
 
             {solicitud.motivo && (
               <p className="text-xs text-gray-400 dark:text-gray-500 italic mt-1">
