@@ -56,9 +56,10 @@ function DayIcon({
   type,
   isSancion = false,
 }: {
-  type: 'worked' | 'exchange' | 'off' | 'covered' | 'absent' | 'license';
+  type: 'worked' | 'exchange' | 'off' | 'covered' | 'absent' | 'license' | 'future';
   isSancion?: boolean;
 }) {
+  if (type === 'future') return <CheckCircle className="w-4 h-4 text-green-300 dark:text-green-700" />;
   if (type === 'worked') return <CheckCircle className="w-4 h-4 text-green-500 dark:text-green-400" />;
   if (type === 'exchange') return <RefreshCw className="w-4 h-4 text-amber-400" />;
   if (type === 'covered') return <RefreshCw className="w-4 h-4 text-orange-400" />;
@@ -198,8 +199,11 @@ export default function DashboardSupervisor() {
       case 'license':
         return 'bg-orange-100 dark:bg-orange-400/10 border-orange-300 dark:border-orange-400/20';
       case 'off':
-      case 'future':
         return 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700';
+      case 'future':
+        return esGuardia
+          ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800/30'
+          : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700';
     }
   }
 
@@ -499,7 +503,7 @@ export default function DashboardSupervisor() {
             Bienvenido {user?.nombre} {user?.apellido}
             <span className="flex items-center gap-1 text-amber-400 text-base font-semibold ml-1">
               <Star className="w-6 h-6 fill-amber-400" />
-              4.6
+              {Number(user?.calificacion ?? 0).toFixed(1)}
             </span>
           </h1>
           <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5 capitalize">
@@ -550,14 +554,14 @@ export default function DashboardSupervisor() {
                   <div className="w-full h-6 flex items-center justify-center">
                     <span className="text-[10px] font-medium text-gray-700 dark:text-gray-300">
                       {label}
-                      {tipo !== 'off' && tipo !== 'future' && horario
+                      {tipo !== 'off' && (tipo !== 'future' || esGuardia) && horario
                         ? ` · ${horario.split('-')[0]}`
                         : ''}
                     </span>
                   </div>
                   <div className="w-full h-px bg-black/20" />
                   <div className="w-full h-8 flex items-center justify-center">
-                    {tipo !== 'off' && tipo !== 'future' && (
+                    {tipo !== 'off' && (tipo !== 'future' || esGuardia) && (
                       <DayIcon type={tipo} isSancion={esSancion} />
                     )}
                   </div>
@@ -750,10 +754,10 @@ export default function DashboardSupervisor() {
                             ? `${s.solicitante.nombre} ${s.solicitante.apellido}`
                             : 'N/A'}
                         </span>{' '}
-                        quiere tu turno del{' '}
-                        <span className="text-gray-300">
-                          {formatFechaLargaConDia(s.turnoDestinatario.fecha)}
-                        </span>
+                        {s.turnoDestinatario
+                          ? <>quiere tu turno del{' '}<span className="text-gray-300">{formatFechaLargaConDia(s.turnoDestinatario.fecha)}</span></>
+                          : <>quiere cubrirte el{' '}<span className="text-gray-300">{formatFechaLargaConDia(s.turnoSolicitante?.fecha)}</span></>
+                        }
                       </p>
                     </div>
                   ))}

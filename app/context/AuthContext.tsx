@@ -17,8 +17,8 @@ interface User {
   primerIngreso?: boolean;
   telefono: string;
   direccion: string;
-  fechaNacimiento?: string; 
-
+  fechaNacimiento?: string;
+  calificacion?: number;
 }
 
 interface AuthContextType {

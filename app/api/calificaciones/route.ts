@@ -32,15 +32,16 @@ export async function GET(request: NextRequest) {
           WHEN te.empleado_id = ${userId}::uuid THEN u2.nombre || ' ' || u2.apellido
           ELSE u1.nombre || ' ' || u1.apellido
         END as otro_nombre,
-        CASE 
-          WHEN te.empleado_id = ${userId}::uuid THEN CONCAT(u2.nombre[1:1], u2.apellido[1:1])
-          ELSE CONCAT(u1.nombre[1:1], u1.apellido[1:1])
+        CASE
+          WHEN te.empleado_id = ${userId}::uuid THEN CONCAT(LEFT(u2.nombre, 1), LEFT(u2.apellido, 1))
+          ELSE CONCAT(LEFT(u1.nombre, 1), LEFT(u1.apellido, 1))
         END as otro_iniciales
       FROM turnos_efectivos te
       JOIN users u1 ON u1.id = te.empleado_id
       JOIN users u2 ON u2.id = te.empleado_intercambio_id
-      -- Solo turnos pasados
+      -- Solo turnos pasados dentro de la ventana de 7 días
       WHERE te.fecha < NOW()::date
+        AND te.fecha >= NOW()::date - INTERVAL '7 days'
         AND te.estado = 'PENDIENTE'
         -- El usuario participó
         AND (te.empleado_id = ${userId}::uuid OR te.empleado_intercambio_id = ${userId}::uuid)
@@ -77,8 +78,8 @@ export async function GET(request: NextRequest) {
         END as otro_nombre,
         CASE 
           WHEN c.calificador_id = ${userId}::uuid 
-          THEN CONCAT(u_calificado.nombre[1:1], u_calificado.apellido[1:1])
-          ELSE CONCAT(u_calificador.nombre[1:1], u_calificador.apellido[1:1])
+          THEN CONCAT(LEFT(u_calificado.nombre, 1), LEFT(u_calificado.apellido, 1))
+          ELSE CONCAT(LEFT(u_calificador.nombre, 1), LEFT(u_calificador.apellido, 1))
         END as otro_iniciales,
         -- Editable si fue hace menos de 24hs y fue dada por mí
         (c.calificador_id = ${userId}::uuid AND c.created_at > NOW() - INTERVAL '24 hours') as editable,
@@ -92,12 +93,14 @@ export async function GET(request: NextRequest) {
       LIMIT 20;
     `;
 
-    // Mi score actual
+    // Mi score actual — calculado en tiempo real desde la tabla de calificaciones
     const [miScore] = await sql`
-      SELECT calificacion FROM users WHERE id = ${userId}::uuid;
+      SELECT COALESCE(ROUND(AVG(promedio)::numeric, 1), 0) as score
+      FROM calificaciones
+      WHERE calificado_id = ${userId}::uuid;
     `;
 
-    return NextResponse.json({ pendientes, historial, miScore: miScore?.calificacion || 0 });
+    return NextResponse.json({ pendientes, historial, miScore: Number(miScore?.score) || 0 });
 
   } catch (error) {
     console.error('❌ Error GET /api/calificaciones:', error);

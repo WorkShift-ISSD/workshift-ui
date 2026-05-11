@@ -14,13 +14,6 @@ export async function GET(request: NextRequest) {
     const { payload } = await jwtVerify(token, SECRET_KEY);
     const rol = payload.rol as string;
 
-    if (!['JEFE', 'SUPERVISOR', 'ADMINISTRADOR'].includes(rol)) {
-      return NextResponse.json({ error: 'Sin permisos' }, { status: 403 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const rolFiltro = searchParams.get('rol'); // opcional: INSPECTOR, SUPERVISOR
-
     const listado = await sql`
       SELECT
         u.id::text,
@@ -33,7 +26,6 @@ export async function GET(request: NextRequest) {
         COALESCE(AVG(c.comunicacion), 0) as comunicacion,
         COALESCE(AVG(c.responsabilidad), 0) as responsabilidad,
         COALESCE(AVG(c.recomendacion), 0) as recomendacion,
-        -- Último comentario recibido
         (
           SELECT c2.comentario
           FROM calificaciones c2
@@ -46,9 +38,8 @@ export async function GET(request: NextRequest) {
       FROM users u
       LEFT JOIN calificaciones c ON c.calificado_id = u.id
       WHERE u.activo = true
-        AND u.rol IN ('INSPECTOR', 'SUPERVISOR')
-        AND (${rolFiltro}::text IS NULL OR u.rol = ${rolFiltro}::text)
-        AND (u.rol as text) != 'ADMINISTRADOR'
+        AND u.rol = ${rol}
+        AND u.id != ${payload.id as string}::uuid
       GROUP BY u.id, u.nombre, u.apellido, u.rol, u.calificacion
       ORDER BY COALESCE(u.calificacion, 0) DESC, u.apellido;
     `;

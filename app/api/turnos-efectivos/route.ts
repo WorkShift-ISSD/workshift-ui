@@ -72,8 +72,7 @@ export async function GET(request: NextRequest) {
         'GANADO' as tipo
       FROM turnos_efectivos
       WHERE empleado_id = ${targetUserId}::uuid
-        AND estado = 'PENDIENTE'
-        AND fecha >= NOW()::date;
+        AND estado = 'PENDIENTE';
     `;
 
     const turnosCedidos = await sql`
@@ -81,8 +80,7 @@ export async function GET(request: NextRequest) {
         TO_CHAR(fecha, 'YYYY-MM-DD') as fecha
       FROM turnos_efectivos
       WHERE empleado_intercambio_id = ${targetUserId}::uuid
-        AND estado = 'PENDIENTE'
-        AND fecha >= NOW()::date;
+        AND estado = 'PENDIENTE';
     `;
 
     return NextResponse.json({

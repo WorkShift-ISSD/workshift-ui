@@ -16,6 +16,7 @@ interface CustomDatePickerProps {
   fechasBloqueadas?: string[];
   className?: string;
   placeholder?: string;
+  showGrupo?: boolean;
 }
 
 export function CustomDatePicker({
@@ -29,6 +30,7 @@ export function CustomDatePicker({
   fechasBloqueadas,
   className = '',
   placeholder = 'dd/mm/aaaa',
+  showGrupo = true,
 }: CustomDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(() => {
@@ -193,7 +195,7 @@ export function CustomDatePicker({
             ].filter(Boolean).join(' ')}>
               {day}
             </span>
-            {!isSelected && !isDisabled && (
+            {showGrupo && !isSelected && !isDisabled && (
               <span className={`text-[9px] font-semibold mt-0.5 ${esGrupoA
                 ? 'text-blue-500 dark:text-blue-400'
                 : 'text-orange-500 dark:text-orange-400'
@@ -267,21 +269,23 @@ export function CustomDatePicker({
       <div className="grid grid-cols-7 gap-0.5">{renderCalendar()}</div>
 
       {/* Leyenda compacta */}
-      <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 flex items-center justify-center gap-3 text-[10px]">
-        <div className="flex items-center gap-1">
-          <div className="w-2 h-2 bg-blue-200 dark:bg-blue-900/50 rounded" />
-          <span className="text-gray-500 dark:text-gray-400">A</span>
+      {showGrupo && (
+        <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 flex items-center justify-center gap-3 text-[10px]">
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 bg-blue-200 dark:bg-blue-900/50 rounded" />
+            <span className="text-gray-500 dark:text-gray-400">A</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 bg-orange-200 dark:bg-orange-900/50 rounded" />
+            <span className="text-gray-500 dark:text-gray-400">B</span>
+          </div>
+          {grupoObjetivo && (
+            <span className="text-gray-400 dark:text-gray-500">
+              Solo Grupo {grupoObjetivo}
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-1">
-          <div className="w-2 h-2 bg-orange-200 dark:bg-orange-900/50 rounded" />
-          <span className="text-gray-500 dark:text-gray-400">B</span>
-        </div>
-        {grupoObjetivo && (
-          <span className="text-gray-400 dark:text-gray-500">
-            Solo Grupo {grupoObjetivo}
-          </span>
-        )}
-      </div>
+      )}
     </div>
   ) : null;
 

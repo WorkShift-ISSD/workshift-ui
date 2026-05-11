@@ -59,9 +59,13 @@ export async function GET(request: NextRequest) {
         cloudinary_public_id,
         telefono,
         direccion,
-        fecha_nacimiento as "fechaNacimiento"
-      FROM users 
-      WHERE id = ${userId} AND activo = true
+        fecha_nacimiento as "fechaNacimiento",
+        COALESCE(
+          (SELECT ROUND(AVG(c.promedio)::numeric, 1) FROM calificaciones c WHERE c.calificado_id = u.id),
+          0
+        ) as calificacion
+      FROM users u
+      WHERE u.id = ${userId}::uuid AND u.activo = true
     `;
 
     if (!user) {

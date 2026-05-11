@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import * as XLSX from 'xlsx-js-style';
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
 import {
   Star, Clock, CheckCircle, XCircle, ChevronRight,
   BarChart2, List, Download, Filter, X,
-  MessageSquare, ThumbsUp, ShieldCheck,
+  MessageSquare, ThumbsUp, ShieldCheck, Search,
 } from "lucide-react";
 import { useCalificaciones, useListadoCalificaciones, TurnoPendiente, HistorialCalificacion } from "@/hooks/useCalificaciones";
 import { LoadingSpinner } from "@/app/components/LoadingSpinner";
@@ -270,7 +271,7 @@ function TabPendientes({
     { label: "Pendientes", value: pendientes.length, color: "text-red-400", sub: "cambios sin calificar" },
     { label: "Vence más pronto", value: venceMasPronto.dias === 999 ? '—' : `${venceMasPronto.dias} día${venceMasPronto.dias !== 1 ? 's' : ''}`, color: "text-yellow-300", sub: venceMasPronto.nombre || '—' },
     { label: "Emitidas este mes", value: emitidas, color: "text-white", sub: "calificaciones" },
-    { label: "Mi promedio", value: `★ ${miScore.toFixed(1)}`, color: "text-amber-400", sub: `${historial.filter(h => h.direccion === 'recibida').length} recibidas` },
+    { label: "Mi promedio", value: `★ ${Number(miScore).toFixed(1)}`, color: "text-amber-400", sub: `${historial.filter(h => h.direccion === 'recibida').length} recibidas` },
   ];
 
   if (isLoading) return <div className="flex justify-center py-12"><LoadingSpinner /></div>;
@@ -300,7 +301,8 @@ function TabPendientes({
           <div className="space-y-2">
             {pendientes.map((item) => {
               const dias = diasRestantes(item.fecha);
-              const diasUsados = 7 - dias;
+              const hoyMs = new Date().setHours(0, 0, 0, 0);
+              const diasUsados = Math.floor((hoyMs - new Date(item.fecha + 'T00:00:00').getTime()) / 86400000);
               return (
                 <motion.div
                   key={item.id}
@@ -379,7 +381,7 @@ function TabMiPerfil({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="bg-gray-800 rounded-xl p-5 border border-gray-700/50 flex flex-col items-center justify-center gap-2">
           <p className="text-gray-500 text-xs">Mi score general</p>
-          <p className="text-amber-400 text-5xl font-medium leading-none">{miScore.toFixed(1)}</p>
+          <p className="text-amber-400 text-5xl font-medium leading-none">{Number(miScore).toFixed(1)}</p>
           <StarRow value={Math.round(miScore)} size={16} />
           <p className="text-gray-600 text-xs">{recibidas.length} calificaciones recibidas</p>
         </div>
@@ -392,7 +394,7 @@ function TabMiPerfil({
               <div className="flex-1 bg-gray-900 rounded-full h-1.5 overflow-hidden">
                 <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${c.pct}%` }} />
               </div>
-              <span className="text-gray-300 text-xs w-7 text-right">{c.valor.toFixed(1)}</span>
+              <span className="text-gray-300 text-xs w-7 text-right">{Number(c.valor).toFixed(1)}</span>
             </div>
           ))}
           <div className="border-t border-gray-700/50 pt-3 flex items-center gap-3">
@@ -425,7 +427,7 @@ function TabMiPerfil({
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="text-xs px-2.5 py-1 rounded-md bg-blue-900/40 text-blue-300 border border-blue-800/50">
-                    ★ {item.promedio.toFixed(1)}
+                    ★ {Number(item.promedio).toFixed(1)}
                   </span>
                   <span className={`text-xs px-2 py-0.5 rounded ${item.cumplimiento ? 'text-green-400' : 'text-red-400'}`}>
                     {item.cumplimiento ? '✓ Cumplió' : '✗ No cumplió'}
@@ -454,34 +456,211 @@ function TabMiPerfil({
 // ─── Tab: Listado general ─────────────────────────────────────────────────────
 
 function TabListado() {
-  const [cargo, setCargo] = useState("Todos");
-  const { listado, isLoading } = useListadoCalificaciones(
-    cargo === "Todos" ? undefined : cargo.toUpperCase()
-  );
+  const [busqueda, setBusqueda] = useState("");
+  const { listado, isLoading } = useListadoCalificaciones(undefined);
 
   const getIniciales = (nombre: string) => {
     const p = nombre.trim().split(' ');
     return p.length >= 2 ? (p[0][0] + p[1][0]).toUpperCase() : p[0].slice(0, 2).toUpperCase();
   };
 
+  const listadoFiltrado = listado.filter(e =>
+    busqueda === "" ||
+    e.nombre.toLowerCase().includes(busqueda.toLowerCase())
+  );
+
+  const now = new Date();
+  const fechaGen = now.toLocaleDateString("es-AR");
+  const horaGen = now.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  const fechaArchivo = now.toISOString().slice(0, 10);
+
+  const exportToExcel = () => {
+    const wb = XLSX.utils.book_new();
+    const wsData: (string | number)[][] = [];
+
+    wsData.push(['DIRECCIÓN NACIONAL DE MIGRACIONES - WSMS']);
+    wsData.push(['CALIFICACIONES DE PERSONAL - REPORTE DETALLADO']);
+    wsData.push([`Generado: ${fechaGen} ${horaGen}`]);
+    wsData.push([]);
+    wsData.push(['TOTAL', 'CON CALIFICACIONES', 'SIN CALIFICACIONES']);
+    wsData.push([
+      listado.length,
+      listado.filter(e => e.cantidad > 0).length,
+      listado.filter(e => e.cantidad === 0).length,
+    ]);
+    wsData.push([]);
+
+    const headerRowIndex = wsData.length;
+    wsData.push(['EMPLEADO', 'PROMEDIO', 'CALIFICACIONES', 'CUMPLIÓ', 'NO CUMPLIÓ', 'ÚLTIMO COMENTARIO']);
+
+    listadoFiltrado.forEach(e => {
+      wsData.push([
+        e.nombre,
+        e.cantidad === 0 ? 'Sin calificaciones' : Number(e.promedio).toFixed(1),
+        e.cantidad,
+        e.cumplSi,
+        e.cumplNo,
+        e.ultimoComentario || '—',
+      ]);
+    });
+
+    wsData.push([]);
+    wsData.push(['Migraciones - WSMS © 2025']);
+    wsData.push([`Total: ${listadoFiltrado.length} empleados`]);
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols'] = [{ wch: 25 }, { wch: 12 }, { wch: 15 }, { wch: 10 }, { wch: 12 }, { wch: 35 }];
+
+    // Estilo encabezado
+    ['A1', 'A2'].forEach(cell => {
+      if (ws[cell]) ws[cell].s = { font: { bold: true, sz: 13, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '1F2937' } } };
+    });
+    const headerRow = `A${headerRowIndex + 1}`;
+    ['A', 'B', 'C', 'D', 'E', 'F'].forEach(col => {
+      const cell = `${col}${headerRowIndex + 1}`;
+      if (ws[cell]) ws[cell].s = { font: { bold: true, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '1D4ED8' } } };
+    });
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Calificaciones');
+    XLSX.writeFile(wb, `Calificaciones_${fechaArchivo}.xlsx`);
+  };
+
+  const exportToPDF = async () => {
+    try {
+      const jsPDFModule = await import("jspdf");
+      const jsPDF = jsPDFModule.default;
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      const drawHeader = () => {
+        doc.setFillColor(31, 41, 55);
+        doc.rect(0, 0, pageWidth, 35, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.setTextColor(255, 255, 255);
+        doc.text("Dirección Nacional de Migraciones - WSMS", pageWidth / 2, 15, { align: "center" });
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text("Calificaciones de Personal - Reporte Detallado", pageWidth / 2, 23, { align: "center" });
+        doc.setFontSize(8);
+        doc.text(`Generado: ${fechaGen} ${horaGen}`, pageWidth / 2, 30, { align: "center" });
+      };
+
+      const drawFooter = (page: number, total: number) => {
+        doc.setDrawColor(200, 200, 200);
+        doc.line(15, pageHeight - 15, pageWidth - 15, pageHeight - 15);
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
+        doc.text("Migraciones - WSMS © 2025", 15, pageHeight - 8);
+        doc.text(`Página ${page} de ${total}`, pageWidth - 15, pageHeight - 8, { align: "right" });
+      };
+
+      drawHeader();
+      let y = 45;
+
+      // Cards resumen
+      const cards = [
+        { label: "Total", value: listadoFiltrado.length, color: [37, 99, 235] },
+        { label: "Con calificaciones", value: listadoFiltrado.filter(e => e.cantidad > 0).length, color: [34, 197, 94] },
+        { label: "Sin calificaciones", value: listadoFiltrado.filter(e => e.cantidad === 0).length, color: [107, 114, 128] },
+      ];
+      const cw = (pageWidth - 40) / 3;
+      cards.forEach((c, i) => {
+        const x = 15 + i * (cw + 2.5);
+        doc.setFillColor(c.color[0], c.color[1], c.color[2]);
+        doc.roundedRect(x, y, cw, 18, 2, 2, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.setTextColor(255, 255, 255);
+        doc.text(String(c.value), x + cw / 2, y + 10, { align: "center" });
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.text(c.label, x + cw / 2, y + 16, { align: "center" });
+      });
+      y += 28;
+
+      // Encabezados tabla
+      const cols = [
+        { label: "Empleado", x: 15, w: 55 },
+        { label: "Promedio", x: 72, w: 25 },
+        { label: "Califs.", x: 99, w: 18 },
+        { label: "Cumplió", x: 119, w: 18 },
+        { label: "No cumplió", x: 139, w: 20 },
+        { label: "Último comentario", x: 161, w: 44 },
+      ];
+      doc.setFillColor(29, 78, 216);
+      doc.rect(15, y, pageWidth - 30, 8, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7);
+      doc.setTextColor(255, 255, 255);
+      cols.forEach(c => doc.text(c.label, c.x + 1, y + 5.5));
+      y += 10;
+
+      // Filas
+      let page = 1;
+      listadoFiltrado.forEach((e, idx) => {
+        if (y > pageHeight - 30) {
+          drawFooter(page, 1);
+          doc.addPage();
+          page++;
+          drawHeader();
+          y = 45;
+          doc.setFillColor(29, 78, 216);
+          doc.rect(15, y, pageWidth - 30, 8, "F");
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(7);
+          doc.setTextColor(255, 255, 255);
+          cols.forEach(c => doc.text(c.label, c.x + 1, y + 5.5));
+          y += 10;
+        }
+        doc.setFillColor(idx % 2 === 0 ? 249 : 243, idx % 2 === 0 ? 250 : 244, idx % 2 === 0 ? 251 : 246);
+        doc.rect(15, y - 1, pageWidth - 30, 8, "F");
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7);
+        doc.setTextColor(30, 30, 30);
+        doc.text(e.nombre, cols[0].x + 1, y + 4.5);
+        doc.text(e.cantidad === 0 ? '—' : `★ ${Number(e.promedio).toFixed(1)}`, cols[1].x + 1, y + 4.5);
+        doc.text(String(e.cantidad), cols[2].x + 1, y + 4.5);
+        doc.text(String(e.cumplSi), cols[3].x + 1, y + 4.5);
+        doc.text(String(e.cumplNo), cols[4].x + 1, y + 4.5);
+        const comentario = e.ultimoComentario || '—';
+        doc.text(comentario.length > 30 ? comentario.slice(0, 30) + '...' : comentario, cols[5].x + 1, y + 4.5);
+        y += 9;
+      });
+
+      drawFooter(page, page);
+      doc.save(`Calificaciones_${fechaArchivo}.pdf`);
+    } catch (err) {
+      console.error('Error exportando PDF:', err);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Filter size={14} className="text-gray-500" />
-          <select
-            value={cargo}
-            onChange={(e) => setCargo(e.target.value)}
-            className="bg-gray-800 border border-gray-700 text-gray-300 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-gray-500"
-          >
-            {["Todos", "Inspector", "Supervisor"].map((o) => <option key={o}>{o}</option>)}
-          </select>
+        {/* Buscador */}
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <input
+            type="text"
+            placeholder="Buscar por nombre o apellido..."
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
         </div>
         <div className="flex gap-2">
-          <button className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 text-xs rounded-lg hover:border-gray-500 hover:text-gray-300 transition-all">
+          <button
+            onClick={exportToPDF}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 text-xs rounded-lg hover:border-gray-500 hover:text-gray-300 transition-all"
+          >
             <Download size={13} /> PDF
           </button>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 text-xs rounded-lg hover:border-gray-500 hover:text-gray-300 transition-all">
+          <button
+            onClick={exportToExcel}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 text-xs rounded-lg hover:border-gray-500 hover:text-gray-300 transition-all"
+          >
             <Download size={13} /> Excel
           </button>
         </div>
@@ -495,19 +674,19 @@ function TabListado() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-gray-700/50">
-                  {["Empleado", "Cargo", "Promedio", "Califs.", "Cumplimiento", "Último comentario"].map((h) => (
+                  {["Empleado", "Promedio", "Califs.", "Cumplimiento", "Último comentario"].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-gray-500 font-medium">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {listado.length === 0 ? (
+                {listadoFiltrado.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-gray-500">
-                      No hay calificaciones registradas.
+                    <td colSpan={5} className="px-4 py-10 text-center text-gray-500">
+                      {busqueda ? "No se encontraron resultados." : "No hay calificaciones registradas."}
                     </td>
                   </tr>
-                ) : listado.map((e) => (
+                ) : listadoFiltrado.map((e) => (
                   <tr key={e.id} className="border-b border-gray-700/30 hover:bg-gray-700/20 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -515,7 +694,6 @@ function TabListado() {
                         <span className="text-gray-200">{e.nombre}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-500 capitalize">{e.cargo.toLowerCase()}</td>
                     <td className="px-4 py-3">
                       {e.cantidad === 0 ? (
                         <span className="text-gray-600">Sin calificaciones</span>

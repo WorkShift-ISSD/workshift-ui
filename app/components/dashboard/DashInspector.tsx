@@ -366,7 +366,7 @@ export default function DashboardHome() {
             Bienvenido {user?.nombre} {user?.apellido}
             <span className="flex items-center gap-1 text-amber-400 text-base font-semibold ml-1">
               <Star className="w-6 h-6 fill-amber-400" />
-              4.6
+              {Number(user?.calificacion ?? 0).toFixed(1)}
             </span>
           </h1>
           <p className="text-gray-500 dark:text-gray-400 dark:text-gray-400 text-sm mt-0.5 capitalize">{user?.rol?.toLowerCase()}</p>
