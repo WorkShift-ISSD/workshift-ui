@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useCalificaciones, useListadoCalificaciones, TurnoPendiente, HistorialCalificacion } from "@/hooks/useCalificaciones";
 import { LoadingSpinner } from "@/app/components/LoadingSpinner";
+import { useSearchParams } from 'next/navigation';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -123,7 +124,7 @@ function ModalCalificar({
     if (!allFilled || cumplimiento === null) return;
     setLoading(true);
     try {
-      await onSubmit(item.id, item.otro_id, {
+      await onSubmit(item.id, esEdicion ? '' : (item as TurnoPendiente).otro_id, {
         comunicacion: scores[0],
         responsabilidad: scores[1],
         recomendacion: scores[2],
@@ -748,7 +749,9 @@ const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
 ];
 
 export default function CalificacionesPage() {
-  const [tab, setTab] = useState<Tab>("pendientes");
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab') as Tab | null;
+  const [tab, setTab] = useState<Tab>(tabParam || "pendientes");
   const [modalItem, setModal] = useState<TurnoPendiente | null>(null);
   const [editItem, setEditItem] = useState<HistorialCalificacion | null>(null);
 
