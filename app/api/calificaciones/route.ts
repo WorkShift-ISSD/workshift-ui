@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       -- Solo turnos pasados dentro de la ventana de 7 días
       WHERE te.fecha < NOW()::date
         AND te.fecha >= NOW()::date - INTERVAL '7 days'
-        AND te.estado = 'PENDIENTE'
+        AND te.estado = 'REALIZADO'
         -- El usuario participó
         AND (te.empleado_id = ${userId}::uuid OR te.empleado_intercambio_id = ${userId}::uuid)
         -- Todavía no calificó
