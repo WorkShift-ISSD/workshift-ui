@@ -91,8 +91,9 @@ function ModalCalificar({
   item,
   onClose,
   onSubmit,
+  initialValues,
 }: {
-  item: TurnoPendiente;
+  item: TurnoPendiente | HistorialCalificacion;
   onClose: () => void;
   onSubmit: (turnoId: string, calificadoId: string, data: {
     comunicacion: number;
@@ -101,10 +102,16 @@ function ModalCalificar({
     cumplimiento: boolean;
     comentario?: string;
   }) => Promise<void>;
+  initialValues?: HistorialCalificacion;
 }) {
-  const [cumplimiento, setCumplimiento] = useState<boolean | null>(null);
-  const [scores, setScores] = useState([0, 0, 0]);
-  const [comentario, setComentario] = useState("");
+  const esEdicion = !!initialValues;
+  const [cumplimiento, setCumplimiento] = useState<boolean | null>(initialValues?.cumplimiento ?? null);
+  const [scores, setScores] = useState([
+    Number(initialValues?.comunicacion ?? 0),
+    Number(initialValues?.responsabilidad ?? 0),
+    Number(initialValues?.recomendacion ?? 0),
+  ]);
+  const [comentario, setComentario] = useState(initialValues?.comentario ?? "");
   const [loading, setLoading] = useState(false);
 
   const allFilled = cumplimiento !== null && scores.every((s) => s > 0);
@@ -123,7 +130,7 @@ function ModalCalificar({
         cumplimiento,
         comentario: comentario || undefined,
       });
-      toast.success("Calificación registrada correctamente.", { position: "bottom-right" });
+      toast.success(esEdicion ? "Calificación actualizada." : "Calificación registrada correctamente.", { position: "bottom-right" });
       onClose();
     } catch (err) {
       toast.error("Error al registrar la calificación.", { position: "bottom-right" });
@@ -146,7 +153,7 @@ function ModalCalificar({
       >
         <div className="flex items-start justify-between p-5 border-b border-gray-700">
           <div>
-            <h2 className="text-white font-medium text-base">Calificar a {item.otro_nombre}</h2>
+            <h2 className="text-white font-medium text-base">{esEdicion ? 'Editar calificación' : 'Calificar'} a {item.otro_nombre}</h2>
             <p className="text-gray-400 text-xs mt-0.5">{formatFecha(item.fecha)} · {item.horario}</p>
           </div>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-300 transition-colors mt-0.5">
@@ -237,7 +244,7 @@ function ModalCalificar({
               disabled={!allFilled || loading}
               className="flex-1 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
             >
-              {loading ? 'Enviando...' : 'Enviar calificación'}
+              {loading ? 'Guardando...' : esEdicion ? 'Guardar cambios' : 'Enviar calificación'}
             </button>
           </div>
         </div>
@@ -833,6 +840,17 @@ export default function CalificacionesPage() {
             item={modalItem}
             onClose={() => setModal(null)}
             onSubmit={handleSubmitCalificacion}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editItem && (
+          <ModalCalificar
+            item={editItem}
+            onClose={() => setEditItem(null)}
+            onSubmit={async (_turnoId, _calificadoId, data) => handleEditarCalificacion(data)}
+            initialValues={editItem}
           />
         )}
       </AnimatePresence>
