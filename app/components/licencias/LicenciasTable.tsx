@@ -2,6 +2,30 @@ import { FileSearch } from "lucide-react";
 import { Licencia } from "@/app/api/types";
 import { useFormatters } from "@/hooks/useFormatters";
 
+function formatTipoLicencia(tipo: string) {
+  switch (tipo) {
+    case 'ORDINARIA':    return 'Ordinaria';
+    case 'MEDICA':       return 'Médica';
+    case 'ESPECIAL':     return 'Especial';
+    case 'ESTUDIO':      return 'Estudio';
+    case 'SIN_GOCE':     return 'Sin goce';
+    case 'ENFERMEDAD':   return 'Enfermedad';
+    default:             return tipo;
+  }
+}
+
+function formatEstado(estado: string) {
+  switch (estado) {
+    case 'PENDIENTE':   return 'Pendiente';
+    case 'APROBADA':    return 'Aprobada';
+    case 'ACTIVA':      return 'Activa';
+    case 'FINALIZADA':  return 'Finalizada';
+    case 'CANCELADA':   return 'Cancelada';
+    case 'RECHAZADA':   return 'Rechazada';
+    default:            return estado;
+  }
+}
+
 interface Props {
   licencias: Licencia[];
 }
@@ -42,7 +66,7 @@ export function LicenciasTable({ licencias }: Props) {
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
             {licencias.map((l) => (
               <tr key={l.id}>
-                <td className="px-6 py-4 dark:text-gray-300">{l.tipo}</td>
+                <td className="px-6 py-4 dark:text-gray-300">{formatTipoLicencia(l.tipo)}</td>
                 <td className="px-6 py-4 dark:text-gray-300">{formatDate2(l.fecha_desde)}</td>
                 <td className="px-6 py-4 dark:text-gray-300">{formatDate2(l.fecha_hasta)}</td>
                 <td className="px-6 py-4">
@@ -56,7 +80,7 @@ export function LicenciasTable({ licencias }: Props) {
                           : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
                       }`}
                   >
-                    {l.estado}
+                    {formatEstado(l.estado)}
                   </span>
                 </td>
               </tr>
