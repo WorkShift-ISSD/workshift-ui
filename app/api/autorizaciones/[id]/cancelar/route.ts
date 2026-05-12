@@ -71,10 +71,13 @@ export async function POST(
       );
     }
 
-    // Cancelar la autorización
+    // Cancelar la autorización con auditoría
     await sql`
       UPDATE autorizaciones
-      SET estado = ${EstadoAutorizacion.CANCELADA}, updated_at = NOW()
+      SET estado = ${EstadoAutorizacion.CANCELADA},
+          cancelado_por = ${userId}::uuid,
+          fecha_cancelacion = NOW(),
+          updated_at = NOW()
       WHERE id = ${id}::uuid;
     `;
 
@@ -86,12 +89,12 @@ export async function POST(
         WHERE id = ${autorizacion.solicitud_id}::uuid;
       `;
 
-      // Restaurar la oferta a DISPONIBLE si estaba COMPLETADO
+      // Cancelar la oferta vinculada
       const ofertaId = autorizacion.solicitud_oferta_id;
       if (ofertaId) {
         await sql`
           UPDATE ofertas
-          SET estado = 'DISPONIBLE', updated_at = NOW()
+          SET estado = 'CANCELADO', updated_at = NOW()
           WHERE id = ${ofertaId}::uuid
             AND estado = 'COMPLETADO';
         `;

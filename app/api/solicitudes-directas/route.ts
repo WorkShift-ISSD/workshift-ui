@@ -33,15 +33,16 @@ export async function GET(request: NextRequest) {
       const userId = payload.id as string;
 
       const solicitudes = await sql`
-        SELECT 
+        SELECT
           sd.id, sd.estado, sd.motivo, sd.prioridad, sd.fecha_solicitud,
           sd.turno_solicitante, sd.turno_destinatario, sd.origen,
           json_build_object('id', us.id, 'nombre', us.nombre, 'apellido', us.apellido, 'rol', us.rol, 'horario', us.horario) as solicitante,
-          json_build_object('id', ud.id, 'nombre', ud.nombre, 'apellido', ud.apellido, 'rol', ud.rol, 'horario', ud.horario) as destinatario
+          json_build_object('id', ud.id, 'nombre', ud.nombre, 'apellido', ud.apellido, 'rol', ud.rol, 'horario', ud.horario) as destinatario,
+          (SELECT a.id::text FROM autorizaciones a WHERE a.solicitud_id = sd.id AND a.estado = 'PENDIENTE' LIMIT 1) as autorizacion_id
         FROM solicitudes_directas sd
         JOIN users us ON sd.solicitante_id = us.id
         JOIN users ud ON sd.destinatario_id = ud.id
-        WHERE sd.solicitante_id = ${userId}::uuid 
+        WHERE sd.solicitante_id = ${userId}::uuid
             OR sd.destinatario_id = ${userId}::uuid
         ORDER BY sd.fecha_solicitud DESC;
       `;
@@ -52,7 +53,8 @@ export async function GET(request: NextRequest) {
         solicitante: s.solicitante, destinatario: s.destinatario,
         turnoSolicitante: typeof s.turno_solicitante === 'string' ? JSON.parse(s.turno_solicitante) : s.turno_solicitante,
         turnoDestinatario: typeof s.turno_destinatario === 'string' ? JSON.parse(s.turno_destinatario) : s.turno_destinatario,
-        origen: s.origen, 
+        origen: s.origen,
+        autorizacionId: s.autorizacion_id ?? null,
       })));
     }
 

@@ -425,6 +425,8 @@ async function seedAutorizaciones() {
       observaciones TEXT,
       aprobado_por UUID REFERENCES users(id) ON DELETE SET NULL,
       fecha_aprobacion TIMESTAMP,
+      cancelado_por UUID REFERENCES users(id) ON DELETE SET NULL,
+      fecha_cancelacion TIMESTAMPTZ,
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW(),
       CHECK (
