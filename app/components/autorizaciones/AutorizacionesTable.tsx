@@ -2,11 +2,13 @@
 
 // app/components/autorizaciones/AutorizacionesTable.tsx
 import { useState } from 'react';
-import { Check, X, Eye, Clock, AlertTriangle } from 'lucide-react';
+import { Check, X, Eye, Clock, AlertTriangle, Pencil } from 'lucide-react';
 import { Autorizacion } from '@/app/api/types';
 import { useFormatters } from '@/hooks/useFormatters';
 import { ModalAutorizacion } from './ModalAutorizacion';
 import { ImpactoBadge, Impacto } from './ImpactoBadge';
+import { useAuth } from '@/app/context/AuthContext';
+import { toast } from 'react-toastify';
 
 interface Props {
   autorizaciones: Autorizacion[];
@@ -25,17 +27,48 @@ export function AutorizacionesTable({
   onRechazar,
   impactoMap,
 }: Props) {
-  const [modalOpen, setModalOpen]                         = useState(false);
-  const [autorizacionSeleccionada, setAutorizacionSeleccionada] =
-    useState<Autorizacion | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [autorizacionSeleccionada, setAutorizacionSeleccionada] = useState<Autorizacion | null>(null);
+  const [editando, setEditando] = useState<Autorizacion | null>(null);
+  const [obsEdit, setObsEdit] = useState('');
+  const [savingObs, setSavingObs] = useState(false);
 
   const { formatFechaSafe } = useFormatters();
+  const { user } = useAuth();
+  const esJefe = user?.rol === 'JEFE' || user?.rol === 'ADMINISTRADOR';
 
   const mostrarImpacto = !!impactoMap;
 
   const abrirDetalle = (autorizacion: Autorizacion) => {
     setAutorizacionSeleccionada(autorizacion);
     setModalOpen(true);
+  };
+
+  const abrirEditar = (autorizacion: Autorizacion) => {
+    setEditando(autorizacion);
+    setObsEdit(autorizacion.observaciones ?? '');
+  };
+
+  const guardarObservaciones = async () => {
+    if (!editando) return;
+    setSavingObs(true);
+    try {
+      const res = await fetch(`/api/autorizaciones/${editando.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ observaciones: obsEdit }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success('Observaciones actualizadas.');
+      setEditando(null);
+      // Refrescar la tabla
+      window.location.reload();
+    } catch {
+      toast.error('Error al guardar las observaciones.');
+    } finally {
+      setSavingObs(false);
+    }
   };
 
   const getTipoLabel = (tipo: string) => {
@@ -174,6 +207,15 @@ export function AutorizacionesTable({
                         >
                           <Eye size={18} />
                         </button>
+                        {esJefe && ['APROBADA', 'RECHAZADA'].includes(auth.estado) && (
+                          <button
+                            onClick={() => abrirEditar(auth)}
+                            title="Editar observaciones"
+                            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -191,6 +233,38 @@ export function AutorizacionesTable({
         onAprobar={onAprobar}
         onRechazar={onRechazar}
       />
+
+      {/* Modal editar observaciones */}
+      {editando && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={e => e.target === e.currentTarget && setEditando(null)}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6 border border-gray-200 dark:border-gray-700">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">
+              Editar observaciones
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+              {editando.empleado ? `${editando.empleado.nombre} ${editando.empleado.apellido}` : ''} · {editando.estado}
+            </p>
+            <textarea
+              value={obsEdit}
+              onChange={e => setObsEdit(e.target.value)}
+              rows={4}
+              placeholder="Escribí las observaciones..."
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => setEditando(null)}
+                className="flex-1 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                Cancelar
+              </button>
+              <button onClick={guardarObservaciones} disabled={savingObs}
+                className="flex-1 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-500 disabled:opacity-50 transition">
+                {savingObs ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
