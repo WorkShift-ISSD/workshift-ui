@@ -23,7 +23,7 @@ export default function LicenciasPage() {
   const today = getTodayDate();
 
 
-  const { licencias, crearLicencia, loading } = useLicencias();
+  const { licencias, crearLicencia, loading, refetch } = useLicencias();
 
 
   const stats = useMemo(() => {
@@ -78,7 +78,7 @@ export default function LicenciasPage() {
       <LicenciaForm />
 
       {/* LISTADO */}
-      <LicenciasTable licencias={licencias} /> 
+      <LicenciasTable licencias={licencias} onRefetch={refetch} />
 
     </div>
   );
