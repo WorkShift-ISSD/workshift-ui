@@ -55,6 +55,12 @@ export function useCalificaciones() {
     return res;
   };
 
+  const eliminarCalificacion = async (id: string) => {
+    const res = await fetch(`/api/calificaciones/${id}`, { method: 'DELETE' });
+    mutate();
+    return res;
+  };
+
   const editarCalificacion = async (id: string, body: Partial<{
     comunicacion: number;
     responsabilidad: number;
@@ -75,6 +81,7 @@ export function useCalificaciones() {
     error,
     crearCalificacion,
     editarCalificacion,
+    eliminarCalificacion,
     refetch: mutate,
   };
 } // 👈 cierre de useCalificaciones
@@ -83,20 +90,25 @@ export function useCalificaciones() {
 
 export interface ListadoItem {
   id: string;
-  nombre: string;
-  cargo: string;
+  calificado_nombre: string;
+  calificado_turno: string;
+  calificador_nombre: string;
+  fecha: string;
   promedio: number;
-  cantidad: number;
-  cumplSi: number;
-  cumplNo: number;
   comunicacion: number;
   responsabilidad: number;
   recomendacion: number;
-  ultimoComentario: string | null;
+  cumplimiento: boolean;
+  comentario: string | null;
 }
 
-export function useListadoCalificaciones(rol?: string) {
-  const url = `/api/calificaciones/listado${rol ? `?rol=${rol}` : ''}`;
+export function useListadoCalificaciones(filters?: { desde?: string; hasta?: string; turno?: string }) {
+  const params = new URLSearchParams();
+  if (filters?.desde) params.set('desde', filters.desde);
+  if (filters?.hasta) params.set('hasta', filters.hasta);
+  if (filters?.turno) params.set('turno', filters.turno);
+  const url = `/api/calificaciones/listado${params.toString() ? `?${params}` : ''}`;
+
   const { data, error, isLoading } = useSWR<ListadoItem[]>(url, fetcher, {
     revalidateOnFocus: true,
   });

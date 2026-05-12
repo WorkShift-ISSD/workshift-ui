@@ -57,3 +57,43 @@ export async function PUT(
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth-token')?.value;
+    if (!token) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+
+    const { payload } = await jwtVerify(token, SECRET_KEY);
+    const userId = payload.id as string;
+
+    // Solo el calificador puede eliminar, dentro de las 24hs
+    const [cal] = await sql`
+      SELECT id, calificado_id FROM calificaciones
+      WHERE id = ${id}::uuid
+        AND calificador_id = ${userId}::uuid
+        AND created_at > NOW() - INTERVAL '24 hours';
+    `;
+    if (!cal) return NextResponse.json({ error: 'No autorizado o fuera de plazo' }, { status: 403 });
+
+    await sql`DELETE FROM calificaciones WHERE id = ${id}::uuid;`;
+
+    // Recalcular promedio del calificado
+    await sql`
+      UPDATE users SET
+        calificacion = (
+          SELECT ROUND(AVG(promedio), 1)
+          FROM calificaciones WHERE calificado_id = ${cal.calificado_id}::uuid
+        )
+      WHERE id = ${cal.calificado_id}::uuid;
+    `;
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 500 });
+  }
+}
