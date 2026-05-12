@@ -77,7 +77,15 @@ export async function GET(request: NextRequest) {
 
     const turnosCedidos = await sql`
       SELECT
-        TO_CHAR(fecha, 'YYYY-MM-DD') as fecha
+        id::text,
+        TO_CHAR(fecha, 'YYYY-MM-DD') as fecha,
+        horario_original,
+        horario_efectivo,
+        grupo_original,
+        grupo_efectivo,
+        tipo_cambio,
+        estado,
+        'CEDIDO' as tipo
       FROM turnos_efectivos
       WHERE empleado_intercambio_id = ${targetUserId}::uuid
         AND estado = 'PENDIENTE';
@@ -85,7 +93,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       ganados: turnosGanados,
-      cedidos: turnosCedidos.map((t: any) => t.fecha)
+      cedidos: turnosCedidos,
     });
 
   } catch (error) {
