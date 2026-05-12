@@ -330,7 +330,7 @@ export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOfer
                 <p className="font-medium">
                   {formatDate(soyElSolicitante
                     ? solicitud.turnoSolicitante?.fecha
-                    : solicitud.turnoDestinatario?.fecha
+                    : solicitud.turnoSolicitante?.fecha
                   )}
                 </p>
               </div>
@@ -345,7 +345,7 @@ export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOfer
                     <p className="font-medium">
                       {formatDate(soyElSolicitante
                         ? solicitud.turnoDestinatario.fecha
-                        : solicitud.turnoSolicitante?.fecha
+                        : solicitud.turnoDestinatario?.fecha
                       )}
                     </p>
                   </div>
