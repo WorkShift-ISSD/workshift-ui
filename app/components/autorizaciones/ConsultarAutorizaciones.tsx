@@ -6,6 +6,14 @@ import { useEmpleados } from '@/hooks/useEmpleados';
 import { CustomDatePicker } from '@/app/components/CustomDatePicker';
 import { generarExcel, generarPDF } from '@/app/lib/exportUtils';
 
+function formatTipo(tipo: string | null | undefined) {
+  switch (tipo) {
+    case 'CAMBIO_TURNO': return 'Cambio de Turno';
+    case 'LICENCIA_ORDINARIA': return 'Licencia Ordinaria';
+    default: return tipo ?? '—';
+  }
+}
+
 function EstadoBadge({ estado }: { estado: string }) {
   const map: Record<string, string> = {
     PENDIENTE: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
@@ -78,7 +86,7 @@ export function ConsultarAutorizaciones() {
       filtradas.map((a) => [
         `#${a.id?.slice(-8).toUpperCase()}`,
         a.empleado ?? '—',
-        a.tipo ?? '—',
+        formatTipo(a.tipo),
         a.subtipo ?? '—',
         a.fecha ? new Date(a.fecha + 'T12:00:00').toLocaleDateString('es-AR') : '—',
         a.estado ?? '—',
@@ -103,7 +111,7 @@ export function ConsultarAutorizaciones() {
         cells: [
           `#${a.id?.slice(-8).toUpperCase()}`,
           a.empleado ?? '—',
-          a.tipo ?? '—',
+          formatTipo(a.tipo),
           a.fecha ? new Date(a.fecha + 'T12:00:00').toLocaleDateString('es-AR') : '—',
           a.estado ?? '—',
           a.motivo ?? '—',
@@ -193,7 +201,9 @@ export function ConsultarAutorizaciones() {
                 <tr key={i} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
                   <td className="px-4 py-3 text-gray-400 dark:text-gray-500 text-xs font-mono">#{a.id?.slice(-8).toUpperCase()}</td>
                   <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{a.empleado ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">{a.tipo ?? '—'}</td>
+                  <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">
+                    {formatTipo(a.tipo)}
+                  </td>
                   <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">{a.subtipo ?? '—'}</td>
                   <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">{a.fecha ? new Date(a.fecha + 'T12:00:00').toLocaleDateString('es-AR') : '—'}</td>
                   <td className="px-4 py-3"><EstadoBadge estado={a.estado} /></td>

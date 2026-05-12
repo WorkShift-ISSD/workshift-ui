@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
           WHEN a.tipo = 'LICENCIA_ORDINARIA' THEN lic.tipo
           ELSE NULL
         END as subtipo,
-        COALESCE(
+        TO_CHAR(COALESCE(
           CASE WHEN sd.turno_solicitante->>'fecha' IS NOT NULL
             THEN (sd.turno_solicitante->>'fecha')::date
             ELSE NULL
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
           END,
           lic.fecha_desde,
           a.created_at::date
-        ) as fecha,
+        ), 'YYYY-MM-DD') as fecha,
         a.estado,
         COALESCE(sd.motivo, of.descripcion, lic.tipo) as motivo,
         ap.nombre || ' ' || ap.apellido as "aprobadoPor",
