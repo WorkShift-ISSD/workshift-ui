@@ -329,7 +329,7 @@ export function ModalSancion({
               ) : (
                 <textarea
                   name="motivo"
-                  value={form.motivo}
+                  value={form.motivo ?? ''}
                   onChange={handleChange}
                   rows={3}
                   className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2
