@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { X, Search } from "lucide-react";
+import { CustomDatePicker } from "@/app/components/CustomDatePicker";
 import { Sancion } from "@/app/api/types";
 import { useSanciones } from "@/hooks/useSanciones";
 import { useEmpleados } from "@/hooks/useEmpleados";
@@ -352,16 +353,12 @@ export function ModalSancion({
                       : '-'}
                   </div>
                 ) : (
-                  <input
-                    type="date"
-                    name="fecha_desde"
+                  <CustomDatePicker
                     value={form.fecha_desde}
-                    onChange={handleChange}
-                    min={hoy}
-                    className={`w-full border rounded-lg p-2
-                 bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                 focus:outline-none focus:ring-2 focus:ring-blue-500
-                 ${errors.fecha_desde ? "border-red-500" : "border-gray-300 dark:border-gray-600"}`}
+                    onChange={v => { setForm({ ...form, fecha_desde: v }); setErrors({ ...errors, fecha_desde: '' }); }}
+                    minDate={new Date(hoy + 'T00:00:00')}
+                    showGrupo={false}
+                    className={`w-full border rounded-lg p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.fecha_desde ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                   />
                 )}
                 {errors.fecha_desde && !soloLectura && (
@@ -383,16 +380,12 @@ export function ModalSancion({
                       : '-'}
                   </div>
                 ) : (
-                  <input
-                    type="date"
-                    name="fecha_hasta"
+                  <CustomDatePicker
                     value={form.fecha_hasta}
-                    onChange={handleChange}
-                    min={form.fecha_desde || hoy}
-                    className={`w-full border rounded-lg p-2
-                 bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                 focus:outline-none focus:ring-2 focus:ring-blue-500
-                 ${errors.fecha_hasta ? "border-red-500" : "border-gray-300 dark:border-gray-600"}`}
+                    onChange={v => { setForm({ ...form, fecha_hasta: v }); setErrors({ ...errors, fecha_hasta: '' }); }}
+                    minDate={new Date((form.fecha_desde || hoy) + 'T00:00:00')}
+                    showGrupo={false}
+                    className={`w-full border rounded-lg p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.fecha_hasta ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                   />
                 )}
                 {errors.fecha_hasta && !soloLectura && (
