@@ -49,11 +49,18 @@ export async function GET(request: NextRequest) {
         a.estado,
         COALESCE(sd.motivo, of.descripcion, lic.tipo) as motivo,
         ap.nombre || ' ' || ap.apellido as "aprobadoPor",
+        CASE
+          WHEN sd.destinatario_id IS NOT NULL THEN ud.nombre || ' ' || ud.apellido
+          WHEN of.tomador_id IS NOT NULL THEN ut.nombre || ' ' || ut.apellido
+          ELSE NULL
+        END as "otraPersona",
         a.created_at
       FROM autorizaciones a
       JOIN users u ON a.empleado_id = u.id
       LEFT JOIN solicitudes_directas sd ON a.solicitud_id = sd.id
+      LEFT JOIN users ud ON sd.destinatario_id = ud.id
       LEFT JOIN ofertas of ON a.oferta_id = of.id
+      LEFT JOIN users ut ON of.tomador_id = ut.id
       LEFT JOIN licencias lic ON a.licencia_id = lic.id
       LEFT JOIN users ap ON a.aprobado_por = ap.id
       WHERE u.activo = true

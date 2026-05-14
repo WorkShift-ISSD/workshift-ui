@@ -573,12 +573,27 @@ export function HeatmapOperativo({ autorizaciones, empleados }: Props) {
               {tooltip.dia} · {tooltip.turno}
             </p>
             {tooltip.count === 0 ? (
-              <p className="text-gray-400 dark:text-gray-500">Sin ausencias</p>
+              <p className="text-gray-400 dark:text-gray-500">Sin movimientos</p>
             ) : (
               <>
-                <p className="text-gray-500 dark:text-gray-400 mb-1.5">
-                  {tooltip.count} ausencia{tooltip.count !== 1 ? 's' : ''}
-                </p>
+                {(() => {
+                  const pendientes = tooltip.detalle.filter(i => i.startsWith('⏳'));
+                  const aprobados = tooltip.detalle.filter(i => i.startsWith('✓'));
+                  return (
+                    <>
+                      {pendientes.length > 0 && (
+                        <p className="text-amber-500 dark:text-amber-400 mb-1">
+                          {pendientes.length} autorización{pendientes.length !== 1 ? 'es' : ''} pendiente{pendientes.length !== 1 ? 's' : ''}
+                        </p>
+                      )}
+                      {aprobados.length > 0 && (
+                        <p className="text-green-500 dark:text-green-400 mb-1">
+                          {aprobados.length} cambio{aprobados.length !== 1 ? 's' : ''} aprobado{aprobados.length !== 1 ? 's' : ''}
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
                 <ul className="space-y-0.5">
                   {tooltip.detalle.slice(0, 7).map((item, i) => (
                     <li key={i} className="text-[10px] text-gray-600 dark:text-gray-300">{item}</li>

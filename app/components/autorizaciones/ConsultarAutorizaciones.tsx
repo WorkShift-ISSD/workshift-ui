@@ -187,7 +187,7 @@ export function ConsultarAutorizaciones() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-700">
-                {['#', 'Empleado', 'Tipo', 'Subtipo', 'Fecha', 'Estado', 'Motivo', 'Aprobado por'].map(h => (
+                {['#', 'Empleado', 'Con', 'Tipo', 'Subtipo', 'Fecha', 'Estado', 'Motivo', 'Aprobado por'].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">{h}</th>
                 ))}
               </tr>
@@ -201,6 +201,7 @@ export function ConsultarAutorizaciones() {
                 <tr key={i} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
                   <td className="px-4 py-3 text-gray-400 dark:text-gray-500 text-xs font-mono">#{a.id?.slice(-8).toUpperCase()}</td>
                   <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{a.empleado ?? '—'}</td>
+                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">{a.otraPersona ?? '—'}</td>
                   <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">
                     {formatTipo(a.tipo)}
                   </td>
