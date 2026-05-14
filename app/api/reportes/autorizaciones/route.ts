@@ -29,23 +29,17 @@ export async function GET(request: NextRequest) {
         u.rol,
         a.tipo,
         CASE
-          WHEN a.tipo = 'CAMBIO_TURNO' AND sd.turno_destinatario IS NOT NULL THEN 'Intercambio'
+          WHEN a.tipo = 'CAMBIO_TURNO' AND sd.fecha_destinatario IS NOT NULL THEN 'Intercambio'
           WHEN a.tipo = 'CAMBIO_TURNO' THEN 'Cobertura'
           WHEN a.tipo = 'LICENCIA_ORDINARIA' THEN lic.tipo
           ELSE NULL
         END as subtipo,
         TO_CHAR(COALESCE(
-          CASE WHEN sd.turno_solicitante->>'fecha' IS NOT NULL
-            THEN (sd.turno_solicitante->>'fecha')::date
-            ELSE NULL
-          END,
-          CASE WHEN of.turno_ofrece->>'fecha' IS NOT NULL
-            THEN (of.turno_ofrece->>'fecha')::date
-            ELSE NULL
-          END,
+          sd.fecha_solicitante,
           lic.fecha_desde,
           a.created_at::date
         ), 'YYYY-MM-DD') as fecha,
+        TO_CHAR(sd.fecha_destinatario, 'YYYY-MM-DD') as "fechaDestinatario",
         a.estado,
         COALESCE(sd.motivo, of.descripcion, lic.tipo) as motivo,
         ap.nombre || ' ' || ap.apellido as "aprobadoPor",

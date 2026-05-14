@@ -206,7 +206,12 @@ export function ConsultarAutorizaciones() {
                     {formatTipo(a.tipo)}
                   </td>
                   <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">{a.subtipo ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">{a.fecha ? new Date(a.fecha + 'T12:00:00').toLocaleDateString('es-AR') : '—'}</td>
+                  <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">
+                    {a.fecha ? new Date(a.fecha + 'T12:00:00').toLocaleDateString('es-AR') : '—'}
+                    {a.fechaDestinatario && (
+                      <span className="text-gray-400 dark:text-gray-500"> ↔ {new Date(a.fechaDestinatario + 'T12:00:00').toLocaleDateString('es-AR')}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3"><EstadoBadge estado={a.estado} /></td>
                   <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs max-w-[180px] truncate">{a.motivo ?? '—'}</td>
                   <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">{a.aprobadoPor ?? '—'}</td>
