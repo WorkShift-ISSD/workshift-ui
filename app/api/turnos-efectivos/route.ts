@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
         'GANADO' as tipo
       FROM turnos_efectivos
       WHERE empleado_id = ${targetUserId}::uuid
-        AND estado = 'PENDIENTE';
+        AND estado IN ('PENDIENTE', 'REALIZADO');
     `;
 
     const turnosCedidos = await sql`
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
         'CEDIDO' as tipo
       FROM turnos_efectivos
       WHERE empleado_intercambio_id = ${targetUserId}::uuid
-        AND estado = 'PENDIENTE';
+        AND estado IN ('PENDIENTE', 'REALIZADO');
     `;
 
     return NextResponse.json({
