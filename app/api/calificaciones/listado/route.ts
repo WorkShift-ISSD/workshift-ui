@@ -11,7 +11,8 @@ export async function GET(request: NextRequest) {
     const token = cookieStore.get('auth-token')?.value;
     if (!token) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
-    await jwtVerify(token, SECRET_KEY);
+    const { payload } = await jwtVerify(token, SECRET_KEY);
+    const rol = payload.rol as string;
 
     const { searchParams } = new URL(request.url);
     const desde = searchParams.get('desde') || null;
@@ -36,6 +37,7 @@ export async function GET(request: NextRequest) {
       JOIN users calificador ON calificador.id = c.calificador_id
       JOIN turnos_efectivos te ON te.id = c.turno_efectivo_id
       WHERE calificado.activo = true
+        AND calificado.rol = ${rol}
         ${desde ? sql`AND te.fecha >= ${desde}::date` : sql``}
         ${hasta ? sql`AND te.fecha <= ${hasta}::date` : sql``}
         ${turno ? sql`AND calificado.grupo_turno = ${turno}` : sql``}
