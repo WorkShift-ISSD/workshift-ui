@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     const userId = payload.id as string;
 
     const conversaciones = await sql`
+            SELECT * FROM (
             SELECT DISTINCT ON (oferta_id, otro_participante_id)
                 oferta_id::text,
                 ofertante_id::text,
@@ -91,11 +92,13 @@ export async function GET(request: NextRequest) {
                   END
                 WHERE m.emisor_id = ${userId}::uuid 
                     OR m.receptor_id = ${userId}::uuid
-                ORDER BY m.oferta_id, 
+                ORDER BY m.oferta_id,
                     CASE WHEN m.emisor_id = ${userId}::uuid THEN m.receptor_id ELSE m.emisor_id END,
                     m.created_at DESC
             ) sub
-            ORDER BY oferta_id, otro_participante_id, ultimo_mensaje_at DESC;
+            ORDER BY oferta_id, otro_participante_id, ultimo_mensaje_at DESC
+            ) conv
+            ORDER BY ultimo_mensaje_at DESC NULLS LAST;
         `;
 
     return NextResponse.json(conversaciones.map((c: any) => ({

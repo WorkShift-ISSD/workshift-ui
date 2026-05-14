@@ -24,6 +24,7 @@ import {
   UserX,
   CheckCircle,
   XCircle,
+  RefreshCw,
 } from 'lucide-react';
 import {
   BarChart,
@@ -43,11 +44,16 @@ import {
 
 
 
+import { InformeCambiosTurno } from '@/app/components/informes/InformeCambiosTurno';
+import { useAuth } from '@/app/context/AuthContext';
+
 type Rol = 'SUPERVISOR' | 'INSPECTOR';
 type GrupoTurno = 'A' | 'B';
-type TipoInforme = 'asistencia' | 'ausentismo' | 'comparativo' | 'individual';
+type TipoInforme = 'asistencia' | 'ausentismo' | 'comparativo' | 'individual' | 'cambios-turno';
 
 export default function InformesPage() {
+  const { user } = useAuth();
+  const esJefe = user?.rol === 'JEFE' || user?.rol === 'ADMINISTRADOR';
   const { empleados, isLoading: loadingEmpleados } = useEmpleados();
   const { faltas, isLoading: loadingFaltas } = useTodasLasFaltas();
 
@@ -511,11 +517,11 @@ export default function InformesPage() {
 
       {/* Selector de Tipo de Informe */}
 
-      <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="mb-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {/* Asistencia */}
         <button
           onClick={() => setTipoInforme('asistencia')}
-          className={`p-4 rounded-lg border-2 transition-all ${tipoInforme === 'asistencia'
+          className={`p-3 rounded-lg border-2 transition-all ${tipoInforme === 'asistencia'
             ? 'border-blue-500 bg-blue-500/10 dark:bg-blue-500/20'
             : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
             }`}
@@ -583,11 +589,27 @@ export default function InformesPage() {
             </span>
           </div>
         </button>
+
+        {/* Cambios de Turno — solo jefe */}
+        {esJefe && <button
+          onClick={() => setTipoInforme('cambios-turno')}
+          className={`p-4 rounded-lg border-2 transition-all ${tipoInforme === 'cambios-turno'
+            ? 'border-blue-500 bg-blue-500/10 dark:bg-blue-500/20'
+            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+            }`}
+        >
+          <div className="flex items-center gap-3">
+            <RefreshCw className={`h-6 w-6 ${tipoInforme === 'cambios-turno' ? 'text-blue-500' : 'text-gray-400'}`} />
+            <span className={`font-semibold ${tipoInforme === 'cambios-turno' ? 'text-blue-500' : 'text-gray-700 dark:text-gray-400'}`}>
+              Cambios de Turno
+            </span>
+          </div>
+        </button>}
       </div>
 
 
       {/* Panel de Filtros */}
-      <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+      {tipoInforme !== 'cambios-turno' && <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
         <button
           onClick={() => setMostrarFiltros(!mostrarFiltros)}
           className="w-full px-6 py-4 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -736,10 +758,10 @@ export default function InformesPage() {
             </div>
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Cards de Estadísticas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      {tipoInforme !== 'cambios-turno' && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-2">
             <Users className="h-8 w-8 text-blue-600" />
@@ -771,7 +793,7 @@ export default function InformesPage() {
           <p className="text-sm text-gray-600 dark:text-gray-400">Tasa Ausentismo</p>
           <p className="text-2xl font-bold text-gray-900 dark:text-white">{estadisticas.tasaAusentismo}%</p>
         </div>
-      </div>
+      </div>}
 
       {/* Contenido según tipo de informe */}
       {tipoInforme === 'asistencia' && (
@@ -1689,6 +1711,8 @@ export default function InformesPage() {
           )}
         </div>
       )}
+
+      {tipoInforme === 'cambios-turno' && <InformeCambiosTurno />}
     </div>
   );
 }

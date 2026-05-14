@@ -138,39 +138,55 @@ export async function GET(
   }
 }
 
-// PUT - Actualizar autorización
+// PUT - Actualizar observaciones (solo JEFE, solo APROBADA o RECHAZADA)
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const body = await request.json();
 
+    const { cookies } = await import('next/headers');
+    const { jwtVerify } = await import('jose');
+    const SECRET_KEY = new TextEncoder().encode(process.env.JWT_SECRET || 'Workshift25');
+
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth-token')?.value;
+    if (!token) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+
+    const { payload } = await jwtVerify(token, SECRET_KEY);
+    if (payload.rol !== 'JEFE' && payload.rol !== 'ADMINISTRADOR') {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+    }
+
+    const [autorizacion] = await sql`
+      SELECT estado FROM autorizaciones WHERE id = ${id}::uuid;
+    `;
+
+    if (!autorizacion) {
+      return NextResponse.json({ error: 'Autorización no encontrada' }, { status: 404 });
+    }
+
+    if (!['APROBADA', 'RECHAZADA'].includes(autorizacion.estado)) {
+      return NextResponse.json(
+        { error: 'Solo se pueden modificar autorizaciones ya procesadas (aprobadas o rechazadas)' },
+        { status: 400 }
+      );
+    }
+
+    const body = await request.json();
     const { observaciones } = body;
 
     const [actualizada] = await sql`
       UPDATE autorizaciones
-      SET
-        observaciones = COALESCE(${observaciones}, observaciones),
-        updated_at = NOW()
+      SET observaciones = ${observaciones ?? null}, updated_at = NOW()
       WHERE id = ${id}::uuid
       RETURNING id::text;
     `;
 
-    if (!actualizada) {
-      return NextResponse.json(
-        { error: 'Autorización no encontrada' },
-        { status: 404 }
-      );
-    }
-
     return NextResponse.json(actualizada);
   } catch (error) {
     console.error('❌ Error PUT /api/autorizaciones/[id]:', error);
-    return NextResponse.json(
-      { error: 'Error al actualizar autorización' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Error al actualizar autorización' }, { status: 500 });
   }
 }

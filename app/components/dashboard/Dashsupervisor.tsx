@@ -32,6 +32,7 @@ import { useFormatters } from '@/hooks/useFormatters';
 import { useSanciones } from '@/hooks/useSanciones';
 import { useLicencias } from '@/hooks/useLicencias';
 import { useEmpleados } from '@/hooks/useEmpleados';
+import Link from 'next/link';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -56,9 +57,10 @@ function DayIcon({
   type,
   isSancion = false,
 }: {
-  type: 'worked' | 'exchange' | 'off' | 'covered' | 'absent' | 'license';
+  type: 'worked' | 'exchange' | 'off' | 'covered' | 'absent' | 'license' | 'future';
   isSancion?: boolean;
 }) {
+  if (type === 'future') return <CheckCircle className="w-4 h-4 text-green-300 dark:text-green-700" />;
   if (type === 'worked') return <CheckCircle className="w-4 h-4 text-green-500 dark:text-green-400" />;
   if (type === 'exchange') return <RefreshCw className="w-4 h-4 text-amber-400" />;
   if (type === 'covered') return <RefreshCw className="w-4 h-4 text-orange-400" />;
@@ -198,8 +200,11 @@ export default function DashboardSupervisor() {
       case 'license':
         return 'bg-orange-100 dark:bg-orange-400/10 border-orange-300 dark:border-orange-400/20';
       case 'off':
-      case 'future':
         return 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700';
+      case 'future':
+        return esGuardia
+          ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800/30'
+          : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700';
     }
   }
 
@@ -263,10 +268,10 @@ export default function DashboardSupervisor() {
       const horario = esGanado
         ? turnosEfectivos.find(t => t.fecha === ymd)?.horario_efectivo || user?.horario || ''
         : esCedido
-        ? ''
-        : trabaja
-        ? user?.horario || ''
-        : '';
+          ? ''
+          : trabaja
+            ? user?.horario || ''
+            : '';
 
       return { label, tipo, horario, esSancion, esGuardia: trabaja };
     });
@@ -441,7 +446,7 @@ export default function DashboardSupervisor() {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') cerrarPopup(); };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [popupHorario]);
 
   // ── Agrupación por horario ───────────────────────────────────────────────
@@ -497,14 +502,14 @@ export default function DashboardSupervisor() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             Bienvenido {user?.nombre} {user?.apellido}
-            <span className="flex items-center gap-1 text-amber-400 text-base font-semibold ml-1">
-              <Star className="w-6 h-6 fill-amber-400" />
-              4.6
-            </span>
+            <Link href="/dashboard/calificaciones?tab=perfil">
+              <span className="flex items-center gap-1 text-amber-400 text-base font-semibold ml-1 hover:text-amber-300 transition-colors cursor-pointer" title="Ver mis calificaciones">
+                <Star className="w-6 h-6 fill-amber-400" />
+                {Number(user?.calificacion ?? 0).toFixed(1)}
+              </span>
+            </Link>
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5 capitalize">
-            {user?.rol?.toLowerCase()}
-          </p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5 capitalize">{user?.rol?.toLowerCase()}</p>
         </div>
       </div>
 
@@ -550,14 +555,14 @@ export default function DashboardSupervisor() {
                   <div className="w-full h-6 flex items-center justify-center">
                     <span className="text-[10px] font-medium text-gray-700 dark:text-gray-300">
                       {label}
-                      {tipo !== 'off' && tipo !== 'future' && horario
+                      {tipo !== 'off' && (tipo !== 'future' || esGuardia) && horario
                         ? ` · ${horario.split('-')[0]}`
                         : ''}
                     </span>
                   </div>
                   <div className="w-full h-px bg-black/20" />
                   <div className="w-full h-8 flex items-center justify-center">
-                    {tipo !== 'off' && tipo !== 'future' && (
+                    {tipo !== 'off' && (tipo !== 'future' || esGuardia) && (
                       <DayIcon type={tipo} isSancion={esSancion} />
                     )}
                   </div>
@@ -628,13 +633,12 @@ export default function DashboardSupervisor() {
                             🕐 {horario}
                           </span>
                           <span
-                            className={`text-xs font-bold ${
-                              pct >= 80
-                                ? 'text-green-500 dark:text-green-400'
-                                : pct >= 60
+                            className={`text-xs font-bold ${pct >= 80
+                              ? 'text-green-500 dark:text-green-400'
+                              : pct >= 60
                                 ? 'text-amber-400'
                                 : 'text-red-400'
-                            }`}
+                              }`}
                           >
                             {pct}% cobertura
                           </span>
@@ -642,19 +646,18 @@ export default function DashboardSupervisor() {
                         {/* Barra */}
                         <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mb-2.5 overflow-hidden">
                           <div
-                            className={`h-full rounded-full ${
-                              pct >= 80 ? 'bg-green-500' : pct >= 60 ? 'bg-amber-400' : 'bg-red-500'
-                            }`}
+                            className={`h-full rounded-full ${pct >= 80 ? 'bg-green-500' : pct >= 60 ? 'bg-amber-400' : 'bg-red-500'
+                              }`}
                             style={{ width: `${pct}%` }}
                           />
                         </div>
                         {/* Contadores clicables */}
                         <div className="flex items-center gap-3 text-xs flex-wrap">
                           {([
-                            { filtro: 'PRESENTE'   as const, count: presentes, icon: <UserCheck className="w-3.5 h-3.5" />, cls: 'text-green-500 dark:text-green-400', label: (n: number) => `${n} presente${n !== 1 ? 's' : ''}` },
-                            { filtro: 'AUSENTE'    as const, count: faltas,    icon: <UserX className="w-3.5 h-3.5" />,    cls: 'text-red-400',                         label: (n: number) => `${n} ${n === 1 ? 'falta' : 'faltas'}` },
-                            { filtro: 'LICENCIA'   as const, count: licencias, icon: <Clock className="w-3.5 h-3.5" />,    cls: 'text-orange-400',                      label: (n: number) => `${n} ${n === 1 ? 'licencia' : 'licencias'}` },
-                            { filtro: 'SANCIONADO' as const, count: sanciones, icon: <Ban className="w-3.5 h-3.5" />,      cls: 'text-red-600 dark:text-red-500',       label: (n: number) => `${n} ${n === 1 ? 'sanción' : 'sanciones'}` },
+                            { filtro: 'PRESENTE' as const, count: presentes, icon: <UserCheck className="w-3.5 h-3.5" />, cls: 'text-green-500 dark:text-green-400', label: (n: number) => `${n} presente${n !== 1 ? 's' : ''}` },
+                            { filtro: 'AUSENTE' as const, count: faltas, icon: <UserX className="w-3.5 h-3.5" />, cls: 'text-red-400', label: (n: number) => `${n} ${n === 1 ? 'falta' : 'faltas'}` },
+                            { filtro: 'LICENCIA' as const, count: licencias, icon: <Clock className="w-3.5 h-3.5" />, cls: 'text-orange-400', label: (n: number) => `${n} ${n === 1 ? 'licencia' : 'licencias'}` },
+                            { filtro: 'SANCIONADO' as const, count: sanciones, icon: <Ban className="w-3.5 h-3.5" />, cls: 'text-red-600 dark:text-red-500', label: (n: number) => `${n} ${n === 1 ? 'sanción' : 'sanciones'}` },
                           ]).map(({ filtro: f, count, icon, cls, label }) => (
                             <button
                               key={f}
@@ -692,13 +695,12 @@ export default function DashboardSupervisor() {
                     <div key={c.id} className="flex items-center justify-between group cursor-pointer">
                       <div className="flex items-center gap-3">
                         <span
-                          className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                            esAprobadoReal
-                              ? 'bg-green-400'
-                              : c.estado === 'PENDIENTE'
+                          className={`w-2 h-2 rounded-full flex-shrink-0 ${esAprobadoReal
+                            ? 'bg-green-400'
+                            : c.estado === 'PENDIENTE'
                               ? 'bg-amber-400'
                               : 'bg-red-400'
-                          }`}
+                            }`}
                         />
                         <p className="text-sm text-gray-900 dark:text-white font-medium">
                           Cambio con{' '}
@@ -709,13 +711,12 @@ export default function DashboardSupervisor() {
                           </span>
                         </p>
                         <p
-                          className={`text-xs mt-0.5 ${
-                            esAprobadoReal
-                              ? 'text-green-500 dark:text-green-400'
-                              : c.estado === 'PENDIENTE'
+                          className={`text-xs mt-0.5 ${esAprobadoReal
+                            ? 'text-green-500 dark:text-green-400'
+                            : c.estado === 'PENDIENTE'
                               ? 'text-amber-400'
                               : 'text-red-400'
-                          }`}
+                            }`}
                         >
                           — {esAprobadoReal ? 'Aprobado' : c.estado === 'PENDIENTE' ? 'Pendiente' : 'Rechazado'}
                         </p>
@@ -750,10 +751,10 @@ export default function DashboardSupervisor() {
                             ? `${s.solicitante.nombre} ${s.solicitante.apellido}`
                             : 'N/A'}
                         </span>{' '}
-                        quiere tu turno del{' '}
-                        <span className="text-gray-300">
-                          {formatFechaLargaConDia(s.turnoDestinatario.fecha)}
-                        </span>
+                        {s.turnoDestinatario
+                          ? <>quiere tu turno del{' '}<span className="text-gray-300">{formatFechaLargaConDia(s.turnoDestinatario.fecha)}</span></>
+                          : <>quiere cubrirte el{' '}<span className="text-gray-300">{formatFechaLargaConDia(s.turnoSolicitante?.fecha)}</span></>
+                        }
                       </p>
                     </div>
                   ))}
@@ -785,17 +786,16 @@ export default function DashboardSupervisor() {
                 <p className="text-gray-500 text-sm">No hay cambios próximos</p>
               )}
               {proximosCambios.map(c => {
-                const fechaCorta = formatFechaLargaConDia(c.fecha).split(' de ')[0];
+                const fecha = formatFechaLargaConDia(c.fecha);
                 return (
                   <div key={c.id} className="flex items-center gap-3 group cursor-pointer">
                     <span
-                      className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                        c.estado === 'APROBADO'
-                          ? 'bg-green-500/20'
-                          : c.estado === 'PENDIENTE'
+                      className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${c.estado === 'APROBADO'
+                        ? 'bg-green-500/20'
+                        : c.estado === 'PENDIENTE'
                           ? 'bg-amber-500/20'
                           : 'bg-gray-700'
-                      }`}
+                        }`}
                     >
                       {c.estado === 'APROBADO' ? (
                         <CheckCircle className="w-5 h-5 text-green-500 dark:text-green-400" />
@@ -805,7 +805,7 @@ export default function DashboardSupervisor() {
                     </span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 dark:text-white capitalize">
-                        {fechaCorta} <span className="text-gray-400">-</span> 🕐 {c.turno}
+                        {fecha} <span className="text-gray-400">-</span> 🕐 {c.turno}
                       </p>
                     </div>
                   </div>
@@ -815,18 +815,20 @@ export default function DashboardSupervisor() {
           </div>
 
           {/* ── Turnos disponibles ── */}
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">En oferta</p>
-                <p className="text-3xl font-bold text-blue-400 mt-1">{ofertasDisponibles.length}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Turnos disponibles</p>
-              </div>
-              <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+          <Link href="/dashboard/cambios?tab=ofertas-disponibles">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">En oferta</p>
+                  <p className="text-3xl font-bold text-blue-400 mt-1">{ofertasDisponibles.length}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Turnos disponibles</p>
+                </div>
+                <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                  <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                </div>
               </div>
             </div>
-          </div>
+          </Link>
 
           {/* ── Solicitudes stats ── */}
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5">
@@ -867,8 +869,8 @@ export default function DashboardSupervisor() {
               {porcentajeCubierto >= 95
                 ? 'Excelente trabajo'
                 : porcentajeCubierto >= 85
-                ? 'Buen trabajo'
-                : 'Mejorá tu asistencia'}
+                  ? 'Buen trabajo'
+                  : 'Mejorá tu asistencia'}
             </p>
             <p className="text-blue-200 text-xs mt-1">
               {guardiasTrabajadas} de {misGuardiasReales} turnos cubiertos
@@ -883,10 +885,10 @@ export default function DashboardSupervisor() {
       {/* ── Popup personas por horario ── */}
       {popupHorario && (() => {
         const BADGE_P: Record<string, { label: string; cls: string }> = {
-          PRESENTE:   { label: 'Presente',    cls: 'bg-green-500/10 text-green-500 dark:text-green-400 border-green-500/20' },
-          AUSENTE:    { label: 'Ausente',     cls: 'bg-red-500/10 text-red-400 border-red-500/20' },
-          LICENCIA:   { label: 'En licencia', cls: 'bg-orange-400/10 text-orange-400 border-orange-400/20' },
-          SANCIONADO: { label: 'Sancionado',  cls: 'bg-red-950/20 text-red-600 dark:text-red-500 border-red-900/30' },
+          PRESENTE: { label: 'Presente', cls: 'bg-green-500/10 text-green-500 dark:text-green-400 border-green-500/20' },
+          AUSENTE: { label: 'Ausente', cls: 'bg-red-500/10 text-red-400 border-red-500/20' },
+          LICENCIA: { label: 'En licencia', cls: 'bg-orange-400/10 text-orange-400 border-orange-400/20' },
+          SANCIONADO: { label: 'Sancionado', cls: 'bg-red-950/20 text-red-600 dark:text-red-500 border-red-900/30' },
         };
         const inspHorario = inspectoresDeHoy.filter(i =>
           (i.horario || 'Sin horario') === popupHorario.horario &&

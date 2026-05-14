@@ -14,7 +14,7 @@ function ModalConfirmarCancelar({ onConfirmar, onCerrar }: { onConfirmar: () => 
           ¿Cancelar solicitud?
         </h3>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
-          Esta acción cancelará la solicitud de autorización. El jefe ya no la verá y la oferta volverá a estar disponible.
+          Esta acción cancelará la solicitud de autorización. El jefe ya no la verá y se le avisará al otro participante por el chat.
         </p>
         <div className="flex gap-3 justify-end">
           <button
@@ -330,7 +330,7 @@ export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOfer
                 <p className="font-medium">
                   {formatDate(soyElSolicitante
                     ? solicitud.turnoSolicitante?.fecha
-                    : solicitud.turnoDestinatario?.fecha
+                    : solicitud.turnoSolicitante?.fecha
                   )}
                 </p>
               </div>
@@ -345,7 +345,7 @@ export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOfer
                     <p className="font-medium">
                       {formatDate(soyElSolicitante
                         ? solicitud.turnoDestinatario.fecha
-                        : solicitud.turnoSolicitante?.fecha
+                        : solicitud.turnoDestinatario?.fecha
                       )}
                     </p>
                   </div>
@@ -371,6 +371,15 @@ export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOfer
                   ? '✅ Aprobado por el jefe'
                   : '⏳ Pendiente de aprobación del jefe'}
               </div>
+            )}
+
+            {solicitud.estado === 'APROBADO' && solicitud.autorizacionId && (
+              <button
+                onClick={() => setAutorizacionAConfirmar(solicitud.autorizacionId)}
+                className="mt-2 text-xs text-red-500 hover:text-red-400 transition-colors"
+              >
+                Cancelar solicitud
+              </button>
             )}
 
             {solicitud.motivo && (

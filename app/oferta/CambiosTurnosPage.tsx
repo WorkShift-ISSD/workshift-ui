@@ -18,6 +18,8 @@ import { StatsBar } from '../components/cambios/StatsBar';
 import { AccionesPrincipales } from '../components/cambios/AccionesPrincipales';
 import { useCambiosPage } from '@/hooks/useCambiosPage';
 import { ModalSeleccionarFechaRango } from '../components/mensajes/ModalSeleccionarFechaRango';
+import { useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 export default function CambiosTurnosPage() {
   const {
@@ -56,6 +58,21 @@ export default function CambiosTurnosPage() {
     actualizarEstado,
     recargarConversaciones,
   } = useCambiosPage();
+
+  const searchParams = useSearchParams();
+
+    useEffect(() => {
+    const tab = searchParams.get('tab');
+
+    if (
+      tab === 'mis-solicitudes' ||
+      tab === 'historico' ||
+      tab === 'recibidas' ||
+      tab === 'ofertas-disponibles'
+    ) {
+      setActiveTab(tab);
+    }
+  }, [searchParams, setActiveTab]);
 
   const tabs = [
     {

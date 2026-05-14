@@ -30,6 +30,7 @@ import { calcularGrupoTrabaja } from '@/app/lib/turnosUtils';
 import { useFormatters } from '@/hooks/useFormatters';
 import { useSanciones } from '@/hooks/useSanciones';
 import { useLicencias } from '@/hooks/useLicencias';
+import Link from 'next/link';
 
 type SolicitudDirectaEstado = 'SOLICITADO' | 'APROBADO' | 'RECHAZADO' | 'CANCELADO';
 
@@ -364,12 +365,14 @@ export default function DashboardHome() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             Bienvenido {user?.nombre} {user?.apellido}
-            <span className="flex items-center gap-1 text-amber-400 text-base font-semibold ml-1">
-              <Star className="w-6 h-6 fill-amber-400" />
-              4.6
-            </span>
+            <Link href="/dashboard/calificaciones?tab=perfil">
+              <span className="flex items-center gap-1 text-amber-400 text-base font-semibold ml-1 hover:text-amber-300 transition-colors cursor-pointer" title="Ver mis calificaciones">
+                <Star className="w-6 h-6 fill-amber-400" />
+                {Number(user?.calificacion ?? 0).toFixed(1)}
+              </span>
+            </Link>
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 dark:text-gray-400 text-sm mt-0.5 capitalize">{user?.rol?.toLowerCase()}</p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5 capitalize">{user?.rol?.toLowerCase()}</p>
         </div>
       </div>
 
@@ -621,7 +624,7 @@ export default function DashboardHome() {
                 <p className="text-gray-500 text-sm">No hay cambios próximos</p>
               )}
               {proximosCambios.map(c => {
-                const fechaCorta = formatFechaLargaConDia(c.fecha).split(' de ')[0];
+                const fecha = formatFechaLargaConDia(c.fecha);
                 return (
                   <div key={c.id} className="flex items-center gap-3 group cursor-pointer">
                     <span className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${c.estado === 'APROBADO' ? 'bg-green-500/20' :
@@ -634,7 +637,7 @@ export default function DashboardHome() {
                     </span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 dark:text-white capitalize">
-                        {fechaCorta} <span className="text-gray-400">-</span> 🕐 {c.turno}
+                        {fecha} <span className="text-gray-400">-</span> 🕐 {c.turno}
                       </p>
                     </div>
                   </div>
@@ -644,18 +647,20 @@ export default function DashboardHome() {
           </div>
 
           {/* ── Turnos disponibles ── */}
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">En oferta</p>
-                <p className="text-3xl font-bold text-blue-400 mt-1">{ofertasDisponibles.length}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Turnos disponibles</p>
-              </div>
-              <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+          <Link href="/dashboard/cambios?tab=ofertas-disponibles">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">En oferta</p>
+                  <p className="text-3xl font-bold text-blue-400 mt-1">{ofertasDisponibles.length}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Turnos disponibles</p>
+                </div>
+                <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                  <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                </div>
               </div>
             </div>
-          </div>
+          </Link>
 
           {/* ── Solicitudes stats ── */}
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5">
