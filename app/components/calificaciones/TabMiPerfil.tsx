@@ -19,9 +19,9 @@ export function TabMiPerfil({ historial, miScore, isLoading, onEditar, onElimina
 
   const recibidas = historial.filter(h => h.direccion === 'recibida');
 
-  const promComun = recibidas.length ? recibidas.reduce((s, h) => s + h.comunicacion, 0) / recibidas.length : 0;
-  const promResp = recibidas.length ? recibidas.reduce((s, h) => s + h.responsabilidad, 0) / recibidas.length : 0;
-  const promRecom = recibidas.length ? recibidas.reduce((s, h) => s + h.recomendacion, 0) / recibidas.length : 0;
+  const promComun = recibidas.length ? recibidas.reduce((s, h) => s + Number(h.comunicacion), 0) / recibidas.length : 0;
+  const promResp = recibidas.length ? recibidas.reduce((s, h) => s + Number(h.responsabilidad), 0) / recibidas.length : 0;
+  const promRecom = recibidas.length ? recibidas.reduce((s, h) => s + Number(h.recomendacion), 0) / recibidas.length : 0;
   const cumplSi = recibidas.filter(h => h.cumplimiento).length;
   const cumplNo = recibidas.filter(h => !h.cumplimiento).length;
 

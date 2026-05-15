@@ -667,7 +667,7 @@ export default function DashJefe() {
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-              Mapa de ausencias por turno
+              Movimientos Planificados por Turno
             </h2>
             <span className="text-xs text-gray-400 dark:text-gray-500 hidden sm:block">
               pendientes + aprobadas

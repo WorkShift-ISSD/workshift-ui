@@ -84,11 +84,7 @@ export function ModalAutorizacion({
   const isPendiente = autorizacion.estado === "PENDIENTE";
   const solicitud = (autorizacion as any).solicitudDirecta;
   const oferta = (autorizacion as any).oferta;
-
-  // 🔍 AGREGAR ESTO TEMPORALMENTE:
-  console.log('🔍 Autorización completa:', autorizacion);
-  console.log('🔍 Solicitud Directa:', solicitud);
-  console.log('🔍 Oferta:', oferta);
+  const licencia = (autorizacion as any).licencia;
 
   return (
     <>
@@ -154,6 +150,47 @@ export function ModalAutorizacion({
                 )}
               </div>
             </div>
+
+            {/* ============= LICENCIA ============= */}
+            {licencia && (
+              <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                  <h4 className="font-semibold text-amber-900 dark:text-amber-300">
+                    Detalle de la Licencia
+                  </h4>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Tipo</p>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {licencia.tipo === 'ORDINARIA' ? 'Ordinaria'
+                        : licencia.tipo === 'MEDICA' ? 'Médica'
+                        : licencia.tipo === 'ESPECIAL' ? 'Especial'
+                        : licencia.tipo === 'ESTUDIO' ? 'Estudio'
+                        : licencia.tipo === 'SIN_GOCE' ? 'Sin goce'
+                        : licencia.tipo}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Días solicitados</p>
+                    <p className="font-medium text-gray-900 dark:text-white">{licencia.dias ?? '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Desde</p>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {formatFechaSafe(licencia.fechaDesde ?? licencia.fecha_desde)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Hasta</p>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {formatFechaSafe(licencia.fechaHasta ?? licencia.fecha_hasta)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* ============= SOLICITUD DIRECTA ============= */}
             {solicitud && (() => {

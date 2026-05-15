@@ -99,11 +99,11 @@ export function useDashboardJefe() {
     return { empleados: emps };
   }, [empleadosDelGrupo, idsConFaltaHoy, idsConLicenciaHoy]);
 
-  // ── Heatmap — autorizaciones del grupo ───────────────────────────────
+  // ── Heatmap — autorizaciones visibles para el jefe ───────────────────
   const heatmap = useMemo(() => {
     const map: Record<string, { total: number; pendientes: number }> = {};
     (autorizaciones ?? [])
-      .filter(a => idsDelGrupo.has(a.empleadoId))
+      .filter(a => a.tipo === 'CAMBIO_TURNO' || idsDelGrupo.has(a.empleadoId))
       .forEach(a => {
         const fecha = a.createdAt?.split('T')[0];
         if (!fecha) return;
@@ -119,7 +119,7 @@ export function useDashboardJefe() {
     if (!autorizaciones?.length || !empleadosDelGrupo.length) return [];
 
     return autorizaciones
-      .filter(a => a.estado === 'PENDIENTE' && idsDelGrupo.has(a.empleadoId))
+      .filter(a => a.estado === 'PENDIENTE' && (a.tipo === 'CAMBIO_TURNO' || idsDelGrupo.has(a.empleadoId)))
       .map(a => {
         const solicitante = empleadosDelGrupo.find(e => e.id === a.empleadoId);
 
@@ -174,7 +174,7 @@ export function useDashboardJefe() {
     pendientes:           pendientesConImpacto,
     // Todas las autorizaciones del grupo (pendientes + aprobadas + rechazadas)
     // para que HeatmapOperativo pueda mostrar el historial completo
-    autorizacionesGrupo:  (autorizaciones ?? []).filter(a => idsDelGrupo.has(a.empleadoId)),
+    autorizacionesGrupo:  (autorizaciones ?? []).filter(a => a.tipo === 'CAMBIO_TURNO' || idsDelGrupo.has(a.empleadoId)),
     aprobarAutorizacion,
     rechazarAutorizacion,
   };
