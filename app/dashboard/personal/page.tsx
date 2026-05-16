@@ -135,7 +135,7 @@ export default function DashboardPage() {
 
   // Filter employees con useMemo para optimizar
   const filteredEmployeesMemo = useMemo(() => {
-    let filtered = [...employees];
+    let filtered = employees.filter(e => e.rol !== 'ADMINISTRADOR');
 
     // Search filter
     if (searchTerm) {
