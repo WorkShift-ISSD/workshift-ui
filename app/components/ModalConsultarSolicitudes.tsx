@@ -212,6 +212,70 @@ function TabOfertas() {
   );
 }
 
+// ─── Movimiento Card ──────────────────────────────────────────────────────────
+
+function MovimientoCard({ t }: { t: any }) {
+  const [expanded, setExpanded] = useState(false);
+  const esGanado = t.rol === 'ganado';
+  const esIntercambio = t.tipoCambio === 'INTERCAMBIO';
+
+  return (
+    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+      <div
+        className="p-3 flex items-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors"
+        onClick={() => setExpanded(v => !v)}
+      >
+        <div className={`px-2.5 py-1 rounded text-xs font-medium flex-shrink-0 ${esGanado ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'}`}>
+          {esGanado ? 'Ganado' : 'Cedido'}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatFechaSimple(t.fecha)}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {t.horarioEfectivo || '—'} · {t.tipoCambio ? (esIntercambio ? 'Intercambio' : 'Cobertura') : '—'}
+            {t.companero ? ` · con ${t.companero}` : ''}
+          </p>
+        </div>
+        <EstadoBadge estado={t.estado || 'PENDIENTE'} />
+      </div>
+
+      {expanded && (
+        <div className="border-t border-gray-200 dark:border-gray-700 p-4 space-y-3 bg-gray-50 dark:bg-gray-800/50">
+          <div className={`grid gap-3 ${esIntercambio ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            <div className={`rounded-xl p-3 text-center border ${esGanado ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800'}`}>
+              <p className={`text-xs font-semibold mb-1 ${esGanado ? 'text-green-700 dark:text-green-300' : 'text-orange-700 dark:text-orange-300'}`}>
+                {esGanado ? 'Turno ganado' : 'Turno cedido'}
+              </p>
+              <p className="text-sm font-bold text-gray-900 dark:text-white">{formatFechaSimple(t.fecha)}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t.horarioEfectivo || '—'}</p>
+              {t.horario_original && t.horario_original !== t.horarioEfectivo && (
+                <p className="text-xs text-gray-400 line-through mt-0.5">{t.horario_original}</p>
+              )}
+            </div>
+            {esIntercambio && t.companero && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-center">
+                <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1">Compañero</p>
+                <p className="text-sm font-bold text-gray-900 dark:text-white">{t.companero}</p>
+              </div>
+            )}
+          </div>
+
+          {!esIntercambio && t.companero && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {esGanado ? 'Cubriste a' : 'Te cubrió'}: <span className="font-medium text-gray-700 dark:text-gray-300">{t.companero}</span>
+            </p>
+          )}
+
+          {t.motivo && (
+            <div className="bg-white dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
+              <span className="font-medium text-gray-500 dark:text-gray-400">Motivo: </span>{t.motivo}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Tab Cambios Efectivos ────────────────────────────────────────────────────
 
 function TabCambios() {
@@ -228,13 +292,8 @@ function TabCambios() {
   }, []);
 
   const todos = [
-    ...data.ganados.map((t: any) => ({ ...t, rol: 'ganado' })),
-    ...(data.cedidos || []).map((t: any) => ({
-      ...t,
-      rol: 'cedido',
-      horarioEfectivo: t.horario_efectivo,
-      tipoCambio: t.tipo_cambio,
-    })),
+    ...data.ganados.map((t: any) => ({ ...t, rol: 'ganado', horarioEfectivo: t.horario_efectivo, tipoCambio: t.tipo_cambio })),
+    ...(data.cedidos || []).map((t: any) => ({ ...t, rol: 'cedido', horarioEfectivo: t.horario_efectivo, tipoCambio: t.tipo_cambio })),
   ].filter(t => {
     if (desde && t.fecha < desde) return false;
     if (hasta && t.fecha > hasta) return false;
@@ -244,46 +303,54 @@ function TabCambios() {
   const fechaArchivo = new Date().toISOString().slice(0, 10);
 
   const exportarExcel = () => {
-    const rows = todos.map(t => [
-      formatFechaSimple(t.fecha),
-      t.rol === 'ganado' ? 'Ganado' : 'Cedido',
-      t.horarioEfectivo || t.horario || '—',
-      t.tipoCambio || '—',
-      t.estado || '—',
-    ]);
     generarExcel(
       { subtitle: 'Cambios de Turno Efectivos - Reporte Personal', filename: `CambiosEfectivos_${fechaArchivo}.xlsx`, sheetName: 'Cambios' },
       [
         { header: 'FECHA', width: 14 },
         { header: 'ROL', width: 12 },
-        { header: 'HORARIO', width: 16 },
         { header: 'TIPO', width: 18 },
+        { header: 'HORARIO EFECTIVO', width: 18 },
+        { header: 'HORARIO ORIGINAL', width: 18 },
+        { header: 'COMPAÑERO', width: 22 },
+        { header: 'MOTIVO', width: 30 },
         { header: 'ESTADO', width: 14 },
       ],
-      rows
+      todos.map(t => [
+        formatFechaSimple(t.fecha),
+        t.rol === 'ganado' ? 'Ganado' : 'Cedido',
+        t.tipoCambio || '—',
+        t.horarioEfectivo || '—',
+        t.horario_original || '—',
+        t.companero || '—',
+        t.motivo || '—',
+        t.estado || '—',
+      ])
     );
   };
 
   const exportarPDF = async () => {
-    const rows = todos.map(t => (_doc: any) => ({
-      cells: [
-        formatFechaSimple(t.fecha),
-        t.rol === 'ganado' ? 'Ganado' : 'Cedido',
-        t.horarioEfectivo || t.horario || '—',
-        t.tipoCambio || '—',
-        t.estado || '—',
-      ],
-    }));
     await generarPDF(
-      { subtitle: 'Cambios de Turno Efectivos - Reporte Personal', filename: `CambiosEfectivos_${fechaArchivo}.pdf` },
+      { subtitle: 'Cambios de Turno Efectivos - Reporte Personal', orientation: 'landscape', filename: `CambiosEfectivos_${fechaArchivo}.pdf` },
       [
-        { label: 'Fecha', x: 15, w: 35 },
-        { label: 'Rol', x: 52, w: 25 },
-        { label: 'Horario', x: 79, w: 35 },
-        { label: 'Tipo', x: 116, w: 40 },
-        { label: 'Estado', x: 158, w: 35 },
+        { label: 'Fecha', x: 15, w: 28 },
+        { label: 'Rol', x: 45, w: 18 },
+        { label: 'Tipo', x: 65, w: 25 },
+        { label: 'Horario', x: 92, w: 25 },
+        { label: 'Compañero', x: 119, w: 38 },
+        { label: 'Estado', x: 159, w: 24 },
+        { label: 'Motivo', x: 185, w: 95, wrap: true },
       ],
-      rows
+      todos.map(t => (_doc: any) => ({
+        cells: [
+          formatFechaSimple(t.fecha),
+          t.rol === 'ganado' ? 'Ganado' : 'Cedido',
+          t.tipoCambio ? (t.tipoCambio === 'INTERCAMBIO' ? 'Intercambio' : 'Cobertura') : '—',
+          t.horarioEfectivo || '—',
+          t.companero || '—',
+          t.estado || '—',
+          t.motivo || '—',
+        ],
+      }))
     );
   };
 
@@ -335,16 +402,7 @@ function TabCambios() {
         ) : todos.length === 0 ? (
           <div className="text-center py-12 text-gray-500 dark:text-gray-400 text-sm">No hay cambios efectivos para mostrar</div>
         ) : todos.map((t, i) => (
-          <div key={i} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
-            <div className={`px-2.5 py-1 rounded text-xs font-medium flex-shrink-0 ${t.rol === 'ganado' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'}`}>
-              {t.rol === 'ganado' ? 'Ganado' : 'Cedido'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatFechaSimple(t.fecha)}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{t.horarioEfectivo || t.horario || '—'} · {t.tipoCambio || '—'}</p>
-            </div>
-            <EstadoBadge estado={t.estado || 'PENDIENTE'} />
-          </div>
+          <MovimientoCard key={i} t={t} />
         ))}
       </div>
     </div>

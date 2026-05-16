@@ -61,34 +61,46 @@ export async function GET(request: NextRequest) {
 
     const turnosGanados = await sql`
       SELECT
-        id::text,
-        TO_CHAR(fecha, 'YYYY-MM-DD') as fecha,
-        horario_original,
-        horario_efectivo,
-        grupo_original,
-        grupo_efectivo,
-        tipo_cambio,
-        estado,
-        'GANADO' as tipo
-      FROM turnos_efectivos
-      WHERE empleado_id = ${targetUserId}::uuid
-        AND estado IN ('PENDIENTE', 'REALIZADO');
+        te.id::text,
+        TO_CHAR(te.fecha, 'YYYY-MM-DD') as fecha,
+        te.horario_original,
+        te.horario_efectivo,
+        te.grupo_original,
+        te.grupo_efectivo,
+        te.tipo_cambio,
+        te.estado,
+        'GANADO' as tipo,
+        uc.nombre || ' ' || uc.apellido as companero,
+        COALESCE(sd.motivo, of.descripcion) as motivo
+      FROM turnos_efectivos te
+      LEFT JOIN users uc ON te.empleado_intercambio_id = uc.id
+      LEFT JOIN autorizaciones a ON te.autorizacion_id = a.id
+      LEFT JOIN solicitudes_directas sd ON a.solicitud_id = sd.id
+      LEFT JOIN ofertas of ON a.oferta_id = of.id
+      WHERE te.empleado_id = ${targetUserId}::uuid
+        AND te.estado IN ('PENDIENTE', 'REALIZADO');
     `;
 
     const turnosCedidos = await sql`
       SELECT
-        id::text,
-        TO_CHAR(fecha, 'YYYY-MM-DD') as fecha,
-        horario_original,
-        horario_efectivo,
-        grupo_original,
-        grupo_efectivo,
-        tipo_cambio,
-        estado,
-        'CEDIDO' as tipo
-      FROM turnos_efectivos
-      WHERE empleado_intercambio_id = ${targetUserId}::uuid
-        AND estado IN ('PENDIENTE', 'REALIZADO');
+        te.id::text,
+        TO_CHAR(te.fecha, 'YYYY-MM-DD') as fecha,
+        te.horario_original,
+        te.horario_efectivo,
+        te.grupo_original,
+        te.grupo_efectivo,
+        te.tipo_cambio,
+        te.estado,
+        'CEDIDO' as tipo,
+        uc.nombre || ' ' || uc.apellido as companero,
+        COALESCE(sd.motivo, of.descripcion) as motivo
+      FROM turnos_efectivos te
+      LEFT JOIN users uc ON te.empleado_id = uc.id
+      LEFT JOIN autorizaciones a ON te.autorizacion_id = a.id
+      LEFT JOIN solicitudes_directas sd ON a.solicitud_id = sd.id
+      LEFT JOIN ofertas of ON a.oferta_id = of.id
+      WHERE te.empleado_intercambio_id = ${targetUserId}::uuid
+        AND te.estado IN ('PENDIENTE', 'REALIZADO');
     `;
 
     return NextResponse.json({
