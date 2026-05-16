@@ -255,6 +255,10 @@ function MovimientoCard({ t }: { t: any }) {
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-center">
                 <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1">Compañero</p>
                 <p className="text-sm font-bold text-gray-900 dark:text-white">{t.companero}</p>
+                <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                  {esGanado ? 'Cede' : 'Gana'}: {formatFechaSimple(t.fecha)}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t.horarioEfectivo || '—'}</p>
               </div>
             )}
           </div>
