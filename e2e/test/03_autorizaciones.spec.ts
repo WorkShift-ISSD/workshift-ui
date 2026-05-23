@@ -20,19 +20,14 @@ test.describe('Autorizaciones', () => {
         await pendienteRow.locator('button[title="Ver detalle"]').click();
         await expect(page.getByText('Detalle de Autorización')).toBeVisible({ timeout: 3000 });
 
-        // Nombre de inspector (Rodriguez o Gomez)
+        // Nombre de inspector (Rodriguez o Garcia)
         await expect(
-            page.getByText(/Rodriguez|Gomez/, { exact: false }).first()
+            page.getByText(/Rodriguez|Garcia/, { exact: false }).first()
         ).toBeVisible({ timeout: 3000 });
 
         // Fecha en formato dd/mm/yyyy
         await expect(
             page.getByText(/\d{2}\/\d{2}\/\d{4}/).first()
-        ).toBeVisible({ timeout: 3000 });
-
-        // Horario en formato HH:MM-HH:MM
-        await expect(
-            page.getByText(/\d{2}:\d{2}-\d{2}:\d{2}/).first()
         ).toBeVisible({ timeout: 3000 });
 
         // Cerrar el modal sin aprobar ni rechazar

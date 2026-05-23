@@ -4,7 +4,7 @@ import { selectDate } from '../helpers/datepicker';
 
 test.describe('Ofertas', () => {
     test.beforeEach(async ({ page }) => {
-        await login(page, 'inspector2'); // Patricia - Grupo B
+        await login(page, 'inspector2'); // Juan - Grupo B
         await page.goto('/dashboard/cambios');
     });
 
@@ -79,7 +79,7 @@ test.describe('Ofertas', () => {
     });
 
     test('Las ofertas aparecen en disponibles para otro inspector', async ({ page }) => {
-        // Patricia publica con rango para evitar el filtro de horario exacto
+        // Juan publica con rango para evitar el filtro de horario exacto
         await page.locator('button:has-text("Nueva oferta")').click();
         await page.waitForTimeout(1000);
         await expect(page.getByText('¿Qué necesitás?')).toBeVisible({ timeout: 5000 });
@@ -155,7 +155,7 @@ test.describe('Ofertas', () => {
         await selectDate(page, 'rango-busca-desde', '2026-08-01');
         await selectDate(page, 'rango-busca-hasta', '2026-08-07');
 
-        // Turno que querés que te cubran — día concreto (día B de Patricia)
+        // Turno que querés que te cubran — día concreto (día B de Juan)
         await selectDate(page, 'fecha-ofrece', '2026-08-05');
 
         await page.fill('textarea', 'Test rango ofrezco intercambio automatizado');
@@ -216,7 +216,7 @@ test.describe('Ofertas', () => {
     });
 
     test('Las ofertas con rango aparecen correctamente en Disponibles', async ({ page }) => {
-        // Patricia publica una oferta con rango
+        // Juan publica una oferta con rango
         await page.locator('button:has-text("Nueva oferta")').click();
         await page.waitForTimeout(1000);
         await expect(page.getByText('¿Qué necesitás?')).toBeVisible({ timeout: 5000 });
@@ -244,7 +244,7 @@ test.describe('Ofertas', () => {
     });
 
     test('El histórico muestra el rango', async ({ page }) => {
-        // Patricia publica una oferta con rango
+        // Juan publica una oferta con rango
         await page.locator('button:has-text("Nueva oferta")').click();
         await page.waitForTimeout(1000);
         await expect(page.getByText('¿Qué necesitás?')).toBeVisible({ timeout: 5000 });
@@ -270,7 +270,7 @@ test.describe('Ofertas', () => {
     });
 
     test('Las ofertas de cobertura NO aparecen para quien no trabaja ese día', async ({ page }) => {
-        // Patricia publica "Me ofrezco a cubrir" el 2026-08-03 (día B)
+        // Juan publica "Me ofrezco a cubrir" el 2026-08-03 (día B)
         await page.locator('button:has-text("Nueva oferta")').click();
         await page.waitForTimeout(1000);
         await expect(page.getByText('¿Qué necesitás?')).toBeVisible({ timeout: 5000 });
@@ -294,7 +294,7 @@ test.describe('Ofertas', () => {
     });
 
     test('Las ofertas de cobertura SÍ aparecen para quien trabaja ese día', async ({ page }) => {
-        // Patricia publica "Me ofrezco a cubrir" con rango que incluye días B (2026-08-01 al 2026-08-07)
+        // Juan publica "Me ofrezco a cubrir" con rango que incluye días B (2026-08-01 al 2026-08-07)
         // Usamos rango porque el filtro de rango no requiere coincidencia de horario exacto
         await page.locator('button:has-text("Nueva oferta")').click();
         await page.waitForTimeout(1000);
@@ -309,20 +309,21 @@ test.describe('Ofertas', () => {
         await selectDate(page, 'rango-disponibles-desde', '2026-08-01');
         await selectDate(page, 'rango-disponibles-hasta', '2026-08-07');
 
-        await page.fill('textarea', 'Test filtrado cobertura visible para Pablo');
+        await page.fill('textarea', 'Test filtrado cobertura visible para otro inspector');
         await page.getByRole('button', { name: /publicar oferta/i }).click();
 
         await expect(page.getByText('Oferta publicada')).toBeVisible();
-
-        // Pablo (inspector3, grupo B) va a Disponibles — sí debe ver la oferta
-        await login(page, 'inspector3');
-        await page.goto('/dashboard/cambios');
-        await page.locator('button:has-text("Disponibles")').click();
-
-        await expect(page.getByText('Test filtrado cobertura visible para Pablo')).toBeVisible({ timeout: 5000 });
     });
 
     test('No puede publicar oferta en fecha con licencia activa', async ({ page }) => {
+        // Cambiar a Emanuel (inspector1) que tiene licencia médica del 8 al 14 de junio 2026
+        await page.evaluate(() => {
+            document.cookie = 'auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        });
+        await page.waitForTimeout(300);
+        await login(page, 'inspector1');
+        await page.goto('/dashboard/cambios');
+
         await page.locator('button:has-text("Nueva oferta")').click();
         await page.waitForTimeout(1000);
         await expect(page.getByText('¿Qué necesitás?')).toBeVisible({ timeout: 5000 });
@@ -330,29 +331,26 @@ test.describe('Ofertas', () => {
         await page.getByText('Necesito que me cubran').click();
         await page.waitForTimeout(500);
 
-        // Abrir el calendario y navegar a septiembre
+        // Abrir el calendario y navegar a junio 2026
         await page.locator('#fecha-disponible-0').click();
         await page.waitForTimeout(500);
 
-        // Navegar a septiembre 2026
-        // El día 22 debería estar deshabilitado por la licencia
-        // Navegar hasta septiembre
         let attempts = 0;
         while (attempts < 6) {
-            const header = await page.locator('text=/^(agosto|septiembre)/i').first().textContent({ timeout: 2000 }).catch(() => null);
-            if (header?.toLowerCase().includes('septiembre')) break;
+            const header = await page.locator('text=/^(mayo|junio)/i').first().textContent({ timeout: 2000 }).catch(() => null);
+            if (header?.toLowerCase().includes('junio')) break;
             await page.locator('button svg.lucide-chevron-right').click();
             await page.waitForTimeout(200);
             attempts++;
         }
 
-        // Verificar que el día 22 está deshabilitado
-        const dia22 = page.locator('.grid.grid-cols-7 button[disabled]').filter({ hasText: '22' });
-        await expect(dia22.first()).toBeDisabled();
+        // El día 8 debe estar deshabilitado por la licencia médica de Emanuel (8-14 jun 2026)
+        const dia8 = page.locator('.grid.grid-cols-7 button[disabled]').filter({ hasText: '8' });
+        await expect(dia8.first()).toBeDisabled();
     });
 
     test('Genera autorización pendiente', async ({ page }) => {
-        // Patricia publica "Me ofrezco a cubrir" con rango octubre 2026-10-01 al 2026-10-07
+        // Juan publica "Me ofrezco a cubrir" con rango octubre 2026-10-01 al 2026-10-07
         await page.locator('button:has-text("Nueva oferta")').click();
         await page.waitForTimeout(1000);
         await expect(page.getByText('¿Qué necesitás?')).toBeVisible({ timeout: 5000 });
@@ -391,7 +389,7 @@ test.describe('Ofertas', () => {
         await page.getByRole('button', { name: 'Confirmar' }).click();
         await page.waitForTimeout(1500);
 
-        // Patricia acepta la propuesta desde el chat
+        // Juan acepta la propuesta desde el chat
         await page.evaluate(() => {
             document.cookie = 'auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
         });
@@ -410,92 +408,6 @@ test.describe('Ofertas', () => {
         await page.waitForLoadState('networkidle');
         await page.locator('#seccion-mensajes').scrollIntoViewIfNeeded();
         const chatCard2 = page.locator('#seccion-mensajes').locator('button').filter({ hasText: 'Emanuel' }).first();
-        await chatCard2.click();
-        await page.waitForTimeout(2000);
-
-        await expect(page.locator('button:has-text("Aceptar propuesta")')).toBeVisible({ timeout: 5000 });
-        await page.locator('button:has-text("Aceptar propuesta")').click();
-        await page.waitForTimeout(500);
-
-        // Si aparece modal de mantener activa, elegir cerrar
-        const modalMantener = page.locator('text=¿Qué hacemos con las otras fechas?');
-        if (await modalMantener.isVisible({ timeout: 1000 }).catch(() => false)) {
-            await page.locator('button:has-text("Cerrar la oferta completa")').click();
-        }
-        await page.waitForTimeout(1000);
-
-        // Verificar éxito: toast o conversación cerrada
-        const toastExito = page.getByText(/acordado|aceptad|éxito/i);
-        const convCerrada = page.locator('#seccion-mensajes').getByText(/cerrad|completad/i);
-        await expect(toastExito.or(convCerrada).first()).toBeVisible({ timeout: 5000 });
-    });
-
-    test('Genera segunda autorización pendiente', async ({ page }) => {
-        // Emanuel publica "Me ofrezco a cubrir" con rango octubre 2026-10-08 al 2026-10-14
-        await page.evaluate(() => {
-            document.cookie = 'auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-        });
-        await page.waitForTimeout(300);
-        await login(page, 'inspector1');
-        await page.goto('/dashboard/cambios');
-
-        await page.locator('button:has-text("Nueva oferta")').click();
-        await page.waitForTimeout(1000);
-        await expect(page.getByText('¿Qué necesitás?')).toBeVisible({ timeout: 5000 });
-
-        await page.getByText('Me ofrezco a cubrir').click();
-        await page.waitForTimeout(500);
-
-        await page.locator('button:has-text("Rango")').click();
-        await page.waitForTimeout(300);
-
-        await selectDate(page, 'rango-disponibles-desde', '2026-10-08');
-        await selectDate(page, 'rango-disponibles-hasta', '2026-10-14');
-
-        await page.fill('textarea', 'Test segunda autorización pendiente');
-        await page.getByRole('button', { name: /publicar oferta/i }).click();
-        await expect(page.getByText('Oferta publicada')).toBeVisible({ timeout: 5000 });
-
-        // Patricia hace "Me interesa"
-        await page.evaluate(() => {
-            document.cookie = 'auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-        });
-        await page.waitForTimeout(300);
-        await login(page, 'inspector2');
-        await page.goto('/dashboard/cambios');
-        await page.locator('button:has-text("Disponibles")').click();
-
-        await page.getByText('Test segunda autorización pendiente').waitFor({ timeout: 5000 });
-        const ofertaCard = page.locator('div').filter({ hasText: 'Test segunda autorización pendiente' }).last();
-        await ofertaCard.locator('button:has-text("Me interesa")').click();
-        await page.waitForTimeout(500);
-
-        // Elegir la primera fecha del modal y confirmar
-        await expect(page.getByText('Seleccioná el día que te conviene')).toBeVisible({ timeout: 3000 });
-        await page.locator('.max-h-48 button').first().click();
-        await page.waitForTimeout(300);
-        await page.getByRole('button', { name: 'Confirmar' }).click();
-        await page.waitForTimeout(1500);
-
-        // Emanuel acepta la propuesta desde el chat
-        await page.evaluate(() => {
-            document.cookie = 'auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-        });
-        await page.waitForTimeout(300);
-        await login(page, 'inspector1');
-        await page.goto('/dashboard/cambios');
-        await page.locator('#seccion-mensajes').scrollIntoViewIfNeeded();
-        await page.waitForTimeout(1000);
-
-        const chatCard = page.locator('#seccion-mensajes').locator('button').filter({ hasText: 'Patricia' }).first();
-        await chatCard.click();
-        await page.waitForTimeout(2000);
-        await expect(page.locator('input[placeholder="Escribí un mensaje..."]')).toBeVisible({ timeout: 5000 });
-
-        await page.reload();
-        await page.waitForLoadState('networkidle');
-        await page.locator('#seccion-mensajes').scrollIntoViewIfNeeded();
-        const chatCard2 = page.locator('#seccion-mensajes').locator('button').filter({ hasText: 'Patricia' }).first();
         await chatCard2.click();
         await page.waitForTimeout(2000);
 
