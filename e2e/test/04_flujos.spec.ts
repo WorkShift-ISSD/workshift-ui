@@ -82,10 +82,10 @@ test.describe('Flujos', () => {
         // Verificar que aparece el chat en la sección de mensajes
         await page.locator('#seccion-mensajes').scrollIntoViewIfNeeded();
         await expect(
-            page.locator('#seccion-mensajes').getByText('Patricia', { exact: false }).first()
+            page.locator('#seccion-mensajes').getByText('Juan', { exact: false }).first()
         ).toBeVisible({ timeout: 5000 });
 
-        // Patricia acepta la propuesta desde el chat
+        // Juan acepta la propuesta desde el chat
         await page.evaluate(() => {
             document.cookie = 'auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
         });
@@ -166,7 +166,7 @@ test.describe('Flujos', () => {
         // Verificar que aparece el chat en la sección de mensajes
         await page.locator('#seccion-mensajes').scrollIntoViewIfNeeded();
         await expect(
-            page.locator('#seccion-mensajes').getByText('Patricia', { exact: false }).first()
+            page.locator('#seccion-mensajes').getByText('Juan', { exact: false }).first()
         ).toBeVisible({ timeout: 5000 });
     });
 
@@ -197,7 +197,7 @@ test.describe('Flujos', () => {
         await page.getByRole('button', { name: /publicar oferta/i }).click();
         await expect(page.getByText('Oferta publicada')).toBeVisible();
 
-        // Patricia va a Disponibles y hace "Me interesa"
+        // Juan va a Disponibles y hace "Me interesa"
         await page.evaluate(() => {
             document.cookie = 'auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
         });
