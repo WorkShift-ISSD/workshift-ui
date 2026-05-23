@@ -13,9 +13,10 @@ function calcularFechasTest() {
     const year = base.getFullYear();
     const month = String(base.getMonth() + 1).padStart(2, '0');
 
-    // Encontrar el primer día Grupo A dentro del rango 1-7 del mes
+    // Encontrar el primer día Grupo A dentro del rango 8-14 del mes
+    // (evita conflicto con los tests de cobertura que usan el rango 1-7)
     let diaIntercambio = '';
-    for (let d = 1; d <= 7; d++) {
+    for (let d = 8; d <= 14; d++) {
         const fecha = new Date(year, base.getMonth(), d);
         const diffDays = Math.floor((fecha.getTime() - FECHA_REF.getTime()) / (1000 * 60 * 60 * 24));
         if (diffDays % 2 === 0) { // par = Grupo A
