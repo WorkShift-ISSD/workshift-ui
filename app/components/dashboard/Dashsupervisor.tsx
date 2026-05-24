@@ -32,6 +32,7 @@ import { useFormatters } from '@/hooks/useFormatters';
 import { useSanciones } from '@/hooks/useSanciones';
 import { useLicencias } from '@/hooks/useLicencias';
 import { useEmpleados } from '@/hooks/useEmpleados';
+import { useCalificaciones } from '@/hooks/useCalificaciones';
 import Link from 'next/link';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -78,6 +79,7 @@ function DayIcon({
 
 export default function DashboardSupervisor() {
   const { user } = useAuth();
+  const { miScore } = useCalificaciones();
 
   // ── Hooks personales (idénticos al Inspector) ────────────────────────────
   const { cambios, isLoading: loadingCambios, error: errorCambios } = useCambios();
@@ -505,7 +507,7 @@ export default function DashboardSupervisor() {
             <Link href="/dashboard/calificaciones?tab=perfil">
               <span className="flex items-center gap-1 text-amber-400 text-base font-semibold ml-1 hover:text-amber-300 transition-colors cursor-pointer" title="Ver mis calificaciones">
                 <Star className="w-6 h-6 fill-amber-400" />
-                {Number(user?.calificacion ?? 0).toFixed(1)}
+                {Number(miScore ?? 0).toFixed(1)}
               </span>
             </Link>
           </h1>
