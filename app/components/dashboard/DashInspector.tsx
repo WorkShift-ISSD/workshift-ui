@@ -30,6 +30,7 @@ import { calcularGrupoTrabaja } from '@/app/lib/turnosUtils';
 import { useFormatters } from '@/hooks/useFormatters';
 import { useSanciones } from '@/hooks/useSanciones';
 import { useLicencias } from '@/hooks/useLicencias';
+import { useCalificaciones } from '@/hooks/useCalificaciones';
 import Link from 'next/link';
 
 type SolicitudDirectaEstado = 'SOLICITADO' | 'APROBADO' | 'RECHAZADO' | 'CANCELADO';
@@ -70,6 +71,7 @@ function DayIcon({ type, isSancion = false, esFuturo = false }: { type: 'worked'
 
 export default function DashboardHome() {
   const { user } = useAuth();
+  const { miScore } = useCalificaciones();
 
   const { cambios, isLoading: loadingCambios, error: errorCambios } = useCambios();
   const { turnosData, isLoading: loadingTurnos, error: errorTurnos } = useTurnosData();
@@ -368,7 +370,7 @@ export default function DashboardHome() {
             <Link href="/dashboard/calificaciones?tab=perfil">
               <span className="flex items-center gap-1 text-amber-400 text-base font-semibold ml-1 hover:text-amber-300 transition-colors cursor-pointer" title="Ver mis calificaciones">
                 <Star className="w-6 h-6 fill-amber-400" />
-                {Number(user?.calificacion ?? 0).toFixed(1)}
+                {Number(miScore ?? 0).toFixed(1)}
               </span>
             </Link>
           </h1>
