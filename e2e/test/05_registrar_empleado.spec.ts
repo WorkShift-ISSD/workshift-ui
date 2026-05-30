@@ -257,7 +257,7 @@ test.describe('Registrar Empleado', () => {
             { type: 'Descripción del bug', description: 'El sistema acepta nombres y apellidos de más de 50 caracteres sin validar. La base de datos tiene un límite de 50 caracteres, lo que puede provocar un error al intentar guardar el registro.' },
         ],
     }, async ({ page }) => {
-        const nombreLargo = 'Mariadelcarmenisabelcristinaalejandravalentinaxyz'; // 51 chars
+        const nombreLargo = 'Mariadelcarmenisabelcristinaalejandravalentinaxyzab'; // 51 chars
 
         await test.step('Abrir el formulario e ingresar nombre de 51 caracteres', async () => {
             await abrirFormularioCrear(page);
