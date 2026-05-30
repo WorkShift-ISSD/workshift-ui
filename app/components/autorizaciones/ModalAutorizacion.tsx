@@ -213,7 +213,7 @@ export function ModalAutorizacion({
                         <h4 className="font-semibold text-blue-900 dark:text-blue-300">
                           {turnoDestinatario ? 'Intercambio de Turno' : 'Cobertura de Turno'}
                         </h4>
-                        {!turnoDestinatario && (
+                        {!turnoDestinatario && solicitud.destinatario && turnoSolicitante && (
                           <p className="text-sm text-blue-700 dark:text-gray-400 mt-1">
                             {solicitud.destinatario.apellido}, {solicitud.destinatario.nombre} cubre el turno de {solicitud.solicitante.apellido}, {solicitud.solicitante.nombre} el {formatFechaSafe(turnoSolicitante.fecha)} de {turnoSolicitante.horario}
                           </p>
@@ -243,7 +243,7 @@ export function ModalAutorizacion({
                         <div className="space-y-3">
                           <div>
                             <p className="text-xs text-gray-400 dark:text-gray-500 line-through">
-                              Turno original: {formatFechaSafe(turnoSolicitante.fecha)} · {turnoSolicitante.horario}
+                              Turno original: {turnoSolicitante ? `${formatFechaSafe(turnoSolicitante.fecha)} · ${turnoSolicitante.horario}` : '—'}
                             </p>
                           </div>
                           {turnoDestinatario && (
@@ -280,8 +280,8 @@ export function ModalAutorizacion({
                               </div>
                               <div>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Turno que queda:</p>
-                                <p className="font-bold text-gray-900 dark:text-white text-lg">{formatFechaSafe(turnoSolicitante.fecha)}</p>
-                                <p className="font-semibold text-gray-800 dark:text-gray-100">{turnoSolicitante.horario}</p>
+                                <p className="font-bold text-gray-900 dark:text-white text-lg">{formatFechaSafe(turnoSolicitante?.fecha)}</p>
+                                <p className="font-semibold text-gray-800 dark:text-gray-100">{turnoSolicitante?.horario}</p>
                               </div>
                             </>
                           ) : (
@@ -291,8 +291,8 @@ export function ModalAutorizacion({
                               </p>
                               <div>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Turno que cubre:</p>
-                                <p className="font-bold text-gray-900 dark:text-white text-lg">{formatFechaSafe(turnoSolicitante.fecha)}</p>
-                                <p className="font-semibold text-gray-800 dark:text-gray-100">{turnoSolicitante.horario} · Guardia {turnoSolicitante.grupoTurno}</p>
+                                <p className="font-bold text-gray-900 dark:text-white text-lg">{formatFechaSafe(turnoSolicitante?.fecha)}</p>
+                                <p className="font-semibold text-gray-800 dark:text-gray-100">{turnoSolicitante?.horario} · Guardia {turnoSolicitante?.grupoTurno}</p>
                               </div>
                             </div>
                           )}
