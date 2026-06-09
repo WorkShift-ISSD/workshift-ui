@@ -162,7 +162,11 @@ export default function FaltasPage() {
 
   const empleadosConSancion = useMemo(() => {
     const data = Array.isArray(sancionesDelDia) ? sancionesDelDia : [];
-    return new Set(data.map(s => String(s?.empleado_id || s?.empleadoId || '')).filter(id => id !== ''));
+    return new Set(
+      data
+        .map((s: any) => Number(s?.empleado_id ?? s?.empleadoId))
+        .filter((id: number) => Number.isFinite(id))
+    );
   }, [sancionesDelDia]);
 
   // ==== EMPLEADOS PARA EXPORTAR (sin filtros) ====
@@ -474,8 +478,8 @@ export default function FaltasPage() {
                   const falta = faltas?.find((f) => f.empleadoId === emp.id);
                   const enFalta = !!falta;
                   const enLicencia = empleadosConLicencia.has(emp.id);
-                  const enSancion = empleadosConSancion.has(emp.id);
-                  const esPresenteExplicito = presentesExplicitos.has(emp.id);
+                  const enSancion = empleadosConSancion.has(Number(emp.id));
+                  const esPresenteExplicito = presentesExplicitos.has(Number(emp.id));
                   const turnoGanado = turnosEfectivosDelDia.find((t: any) => t.tipo === 'GANADO' && t.empleadoId === emp.id);
                   const horarioMostrar = turnoGanado ? turnoGanado.horarioEfectivo : emp.horario;
 
@@ -535,7 +539,7 @@ export default function FaltasPage() {
                           <div className="flex gap-2 justify-center">
 
                             <button
-                              onClick={() => !esPresenteExplicito && handleRegistrarPresente(emp.id, falta || undefined)}
+                              onClick={() => !esPresenteExplicito && handleRegistrarPresente(Number(emp.id), falta || undefined)}
                               disabled={esPresenteExplicito}
                               className={`px-4 py-2 rounded-lg font-medium transition-colors
                                 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2
