@@ -399,7 +399,8 @@ useEffect(() => {
           turno: '',
           fechaIngreso: '',
           calificacion: null,
-          totalIntercambios: 0
+          totalIntercambios: 0,
+          turnosEsteMes: 0
         });
       } else if (modalMode === 'edit' && selectedEmployee) {
         const confirmEdit = window.confirm('¿Seguro quiere modificar los datos del empleado?');
