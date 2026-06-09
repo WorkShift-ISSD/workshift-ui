@@ -9,7 +9,6 @@ import { useFaltas, useTodasLasFaltas } from "@/hooks/useFaltas";
 import { useFormatters } from "@/hooks/useFormatters";
 import { useEmpleados } from "@/hooks/useEmpleados";
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
-import ModalFalta from '@/app/components/faltas/ModalFalta';
 import ModalConsultaFaltas from '@/app/components/faltas/ModalConsultaFaltas';
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -39,9 +38,8 @@ export default function FaltasPage() {
   const [selectedTurno, setSelectedTurno] = useState("TODOS");
   const today = useMemo(() => getTodayDate(), [getTodayDate]);
   const [selectedDate, setSelectedDate] = useState(today);
-  const [modalEmpleado, setModalEmpleado] = useState<any>(null);
-  const [faltaEnEdicion, setFaltaEnEdicion] = useState<any>(null);
   const [modalConsultaOpen, setModalConsultaOpen] = useState(false);
+  const [presentesExplicitos, setPresentesExplicitos] = useState<Set<number>>(new Set());
   const { licenciasDelDia } = useLicenciasDelDia(selectedDate);
   const { sancionesDelDia } = useSancionesDelDia(selectedDate);
 
@@ -114,6 +112,11 @@ export default function FaltasPage() {
   useEffect(() => {
     setSelectedTurno("TODOS");
   }, [selectedRole]);
+
+  // Reset presentes explícitos al cambiar de fecha
+  useEffect(() => {
+    setPresentesExplicitos(new Set());
+  }, [selectedDate]);
 
   // Filtrar empleados por fecha, rol, turno y grupo
   const empleadosDelDia = useMemo(() => {
@@ -189,11 +192,56 @@ export default function FaltasPage() {
     }
   };
 
-  // ==== CUANDO GUARDA FORM DE FALTA ====
-  const handleFaltaSaved = () => {
-    setModalEmpleado(null);
-    setFaltaEnEdicion(null);
-    mutate();
+  // ==== REGISTRAR PRESENTE ====
+  // Con falta: elimina de la BD y marca visual como presente
+  // Sin falta (estado -): solo marca visual como presente
+  const handleRegistrarPresente = async (empleadoId: number, falta?: any) => {
+    try {
+      if (falta) {
+        await eliminarFalta(falta.id);
+        mutate();
+      }
+      setPresentesExplicitos(prev => new Set(prev).add(empleadoId));
+      toast.success("Presente registrado correctamente");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al registrar presente";
+      toast.error(message);
+    }
+  };
+
+  // ==== REGISTRAR FALTA (directo, sin modal) ====
+  const handleRegistrarFalta = async (emp: any) => {
+    try {
+      const res = await fetch("/api/faltas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          empleadoId: emp.id,
+          fecha: selectedDate,
+          motivo: "Inasistencia",
+          observaciones: null,
+          justificada: false,
+        }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Error al registrar falta");
+      }
+
+      // Si estaba marcado como presente explícito, lo quitamos
+      setPresentesExplicitos(prev => {
+        const next = new Set(prev);
+        next.delete(emp.id);
+        return next;
+      });
+
+      toast.success("Falta registrada correctamente");
+      mutate();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al registrar falta";
+      toast.error(message);
+    }
   };
 
   // ==== MANEJAR CAMBIO DE FECHA ====
@@ -427,6 +475,7 @@ export default function FaltasPage() {
                   const enFalta = !!falta;
                   const enLicencia = empleadosConLicencia.has(emp.id);
                   const enSancion = empleadosConSancion.has(emp.id);
+                  const esPresenteExplicito = presentesExplicitos.has(emp.id);
                   const turnoGanado = turnosEfectivosDelDia.find((t: any) => t.tipo === 'GANADO' && t.empleadoId === emp.id);
                   const horarioMostrar = turnoGanado ? turnoGanado.horarioEfectivo : emp.horario;
 
@@ -464,53 +513,53 @@ export default function FaltasPage() {
                             <XCircle className="w-4 h-4" /> Falta
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200">
-                            <CheckCircle className="w-4 h-4" /> Presente
-                          </span>
+                          esPresenteExplicito ? (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200">
+                              <CheckCircle className="w-4 h-4" /> Presente
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold text-gray-400 dark:text-gray-500">
+                              —
+                            </span>
+                          )
                         )}
                       </td>
 
 
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        {/* 5. Bloquear acciones si está en licencia o sanción */}
                         {(enLicencia || enSancion) ? (
                           <span className="text-sm text-gray-500 italic">
                             {enLicencia ? "En licencia" : "Sancionado"}
                           </span>
-                        ) : !enFalta ? (
-                          <button
-                            onClick={() => setModalEmpleado(emp)}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600
-                                      text-white rounded-lg font-medium transition-colors
-                                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                                      dark:focus:ring-offset-gray-800"
-                          >
-                            Registrar Falta
-                          </button>
                         ) : (
                           <div className="flex gap-2 justify-center">
-                            <button
-                              onClick={() => {
-                                setFaltaEnEdicion(falta);
-                                setModalEmpleado(falta.empleado || emp);
-                              }}
-                              className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-500 dark:hover:bg-yellow-600
-                                        text-white rounded-lg font-medium transition-colors
-                                        focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2
-                                        dark:focus:ring-offset-gray-800"
-                            >
-                              Editar
-                            </button>
 
                             <button
-                              onClick={() => handleEliminarFalta(falta.id)}
-                              className="px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600
-                                        text-white rounded-lg font-medium transition-colors
-                                        focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
-                                        dark:focus:ring-offset-gray-800"
-                            >
-                              Eliminar
-                            </button>
+                              onClick={() => !esPresenteExplicito && handleRegistrarPresente(emp.id, falta || undefined)}
+                              disabled={esPresenteExplicito}
+                              className={`px-4 py-2 rounded-lg font-medium transition-colors
+                                focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2
+                                dark:focus:ring-offset-gray-800 text-white
+                                ${esPresenteExplicito
+                                  ? "bg-green-300 dark:bg-green-900 cursor-not-allowed opacity-50"
+                                  : "bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"
+                                }`}
+                              >
+                                Presente
+                              </button>
+                              <button
+                                onClick={() => !enFalta && handleRegistrarFalta(emp)}
+                                disabled={enFalta}
+                                className={`px-4 py-2 rounded-lg font-medium transition-colors
+                                focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
+                                dark:focus:ring-offset-gray-800 text-white
+                                ${enFalta
+                                    ? "bg-red-300 dark:bg-red-900 cursor-not-allowed opacity-50"
+                                    : "bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
+                                  }`}
+                              >
+                                Falta
+                              </button>
                           </div>
                         )}
                       </td>
@@ -523,26 +572,6 @@ export default function FaltasPage() {
           </div>
         )}
       </div>
-
-      {/* Modal Registrar/Editar Falta */}
-      {modalEmpleado && (
-        <ModalFalta
-          empleado={modalEmpleado}
-          fecha={selectedDate}
-          open={true}
-          onClose={() => {
-            setModalEmpleado(null);
-            setFaltaEnEdicion(null);
-          }}
-          onSaved={() => {
-            setModalEmpleado(null);
-            setFaltaEnEdicion(null);
-            mutate();
-          }}
-          falta={faltaEnEdicion}
-          mode={faltaEnEdicion ? 'edit' : 'create'}
-        />
-      )}
 
       {/* Modal Consultar Historial */}
       <ModalConsultaFaltas
