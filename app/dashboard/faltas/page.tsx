@@ -39,7 +39,7 @@ export default function FaltasPage() {
   const today = useMemo(() => getTodayDate(), [getTodayDate]);
   const [selectedDate, setSelectedDate] = useState(today);
   const [modalConsultaOpen, setModalConsultaOpen] = useState(false);
-  const [presentesExplicitos, setPresentesExplicitos] = useState<Set<number>>(new Set());
+  const [presentesExplicitos, setPresentesExplicitos] = useState<Set<String>>(new Set());
   const { licenciasDelDia } = useLicenciasDelDia(selectedDate);
   const { sancionesDelDia } = useSancionesDelDia(selectedDate);
 
@@ -199,13 +199,13 @@ export default function FaltasPage() {
   // ==== REGISTRAR PRESENTE ====
   // Con falta: elimina de la BD y marca visual como presente
   // Sin falta (estado -): solo marca visual como presente
-  const handleRegistrarPresente = async (empleadoId: number, falta?: any) => {
+  const handleRegistrarPresente = async (empleadoId: String, falta?: any) => {
     try {
       if (falta) {
         await eliminarFalta(falta.id);
         mutate();
       }
-      setPresentesExplicitos(prev => new Set(prev).add(empleadoId));
+      setPresentesExplicitos(prev => new Set([...prev, (empleadoId)]));
       toast.success("Presente registrado correctamente");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error al registrar presente";
@@ -234,11 +234,7 @@ export default function FaltasPage() {
       }
 
       // Si estaba marcado como presente explícito, lo quitamos
-      setPresentesExplicitos(prev => {
-        const next = new Set(prev);
-        next.delete(emp.id);
-        return next;
-      });
+      setPresentesExplicitos(prev => new Set([...prev].filter(id => id !== String(emp.id))));
 
       toast.success("Falta registrada correctamente");
       mutate();
@@ -479,7 +475,7 @@ export default function FaltasPage() {
                   const enFalta = !!falta;
                   const enLicencia = empleadosConLicencia.has(emp.id);
                   const enSancion = empleadosConSancion.has(Number(emp.id));
-                  const esPresenteExplicito = presentesExplicitos.has(Number(emp.id));
+                  const esPresenteExplicito = presentesExplicitos.has(String(emp.id));
                   const turnoGanado = turnosEfectivosDelDia.find((t: any) => t.tipo === 'GANADO' && t.empleadoId === emp.id);
                   const horarioMostrar = turnoGanado ? turnoGanado.horarioEfectivo : emp.horario;
 
@@ -539,12 +535,12 @@ export default function FaltasPage() {
                           <div className="flex gap-2 justify-center">
 
                             <button
-                              onClick={() => !esPresenteExplicito && handleRegistrarPresente(Number(emp.id), falta || undefined)}
-                              disabled={esPresenteExplicito}
+                              onClick={() => !(esPresenteExplicito && !enFalta) && handleRegistrarPresente(String(emp.id), falta || undefined)}
+                              disabled={(esPresenteExplicito && !enFalta)}
                               className={`px-4 py-2 rounded-lg font-medium transition-colors
                                 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2
                                 dark:focus:ring-offset-gray-800 text-white
-                                ${esPresenteExplicito
+                                ${(esPresenteExplicito && !enFalta)
                                   ? "bg-green-300 dark:bg-green-900 cursor-not-allowed opacity-50"
                                   : "bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"
                                 }`}

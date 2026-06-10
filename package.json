@@ -54,6 +54,7 @@
     "@types/react": "19.0.7",
     "@types/react-dom": "19.0.3",
     "@types/twilio": "^3.19.2",
+    "baseline-browser-mapping": "^2.10.35",
     "dotenv": "^17.4.2",
     "pg": "^8.21.0"
   },
