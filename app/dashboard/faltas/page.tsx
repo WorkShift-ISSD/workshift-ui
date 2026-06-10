@@ -53,7 +53,8 @@ export default function FaltasPage() {
   useEffect(() => {
     fetch(`/api/turnos-efectivos?fecha=${selectedDate}`, { credentials: 'include' })
       .then(r => r.json())
-      .then(data => setTurnosEfectivosDelDia(Array.isArray(data) ? data : []));
+      .then(data => {setTurnosEfectivosDelDia(Array.isArray(data) ? data : []);
+});
   }, [selectedDate]);
 
   const [searchText, setSearchText] = useState("");
@@ -490,6 +491,11 @@ export default function FaltasPage() {
 
                       <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium text-gray-900 dark:text-white">
                         {emp.apellido}, {emp.nombre}
+                        {turnoGanado?.companero && (
+                          <span className="ml-2 text-xs font-normal text-amber-400 dark:text-amber-300">
+                            (cambio x {turnoGanado.companero})
+                          </span>
+                        )}
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600 dark:text-gray-400">

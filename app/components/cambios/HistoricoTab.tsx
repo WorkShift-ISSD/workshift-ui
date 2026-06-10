@@ -344,7 +344,7 @@ export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOfer
                     </p>
                     <p className="font-medium">
                       {formatDate(soyElSolicitante
-                        ? solicitud.turnoDestinatario.fecha
+                        ? solicitud.turnoDestinatario?.fecha
                         : solicitud.turnoDestinatario?.fecha
                       )}
                     </p>

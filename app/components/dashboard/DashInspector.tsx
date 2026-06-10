@@ -502,11 +502,10 @@ export default function DashboardHome() {
                         <span className="font-semibold text-blue-400">{s.solicitante
                           ? `${s.solicitante.nombre} ${s.solicitante.apellido}`
                           : 'N/A'}</span>
-                        {' '}quiere tu turno del{' '}
-                        <span className="text-gray-300">
-                          {formatFechaLargaConDia(s.turnoDestinatario.fecha)}
-                        </span>
-                      </p>
+                         {s.turnoDestinatario
+                          ? <>{' '}quiere tu turno del{' '}<span className="text-gray-300">{formatFechaLargaConDia(s.turnoDestinatario.fecha)}</span></>
+                          : <>{' '}quiere que lo cubras el{' '}<span className="text-gray-300">{formatFechaLargaConDia(s.turnoSolicitante?.fecha)}</span></>
+                    } </p>
                     </div>
                   ))}
                 </div>

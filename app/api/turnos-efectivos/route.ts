@@ -34,10 +34,12 @@ export async function GET(request: NextRequest) {
           te.grupo_efectivo as "grupoEfectivo",
           te.tipo_cambio as "tipoCambio",
           'GANADO' as tipo,
-          u.nombre, u.apellido, u.horario, u.grupo_turno as "grupoTurno"
+          u.nombre, u.apellido, u.horario, u.grupo_turno as "grupoTurno",
+          uc.apellido || ', ' || uc.nombre as "companero"
         FROM turnos_efectivos te
         JOIN users u ON te.empleado_id = u.id
-        WHERE te.fecha = ${fecha}::date AND te.estado = 'PENDIENTE';
+        LEFT JOIN users uc ON te.empleado_intercambio_id = uc.id
+        WHERE te.fecha = ${fecha}::date AND te.estado = 'PENDIENTE'
       `;
 
       const cedidos = await sql`
