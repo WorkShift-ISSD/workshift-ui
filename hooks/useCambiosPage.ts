@@ -9,7 +9,6 @@ import { useConversaciones } from '@/hooks/useConversaciones';
 import type { SolicitudDirecta } from '@/app/api/types';
 import { calcularGrupoTrabaja } from '@/app/lib/turnosUtils';
 import { useTurnosEfectivos } from '@/hooks/useTurnosEfectivos';
-import { endpoints } from '@/app/api/endpoints';
 import { apiClient } from '@/app/lib/apiclient';
 
 type ModalTipo = 'solicitud-directa' | 'nueva-oferta' | null;
@@ -385,12 +384,8 @@ export function useCambiosPage() {
 
 
     const handleCancelarAutorizacion = useCallback(async (autorizacionId: string) => {
-        const res = await fetch(endpoints.autorizaciones.cancelar(autorizacionId), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-        });
-        if (!res.ok) {
-            const data = await res.json();
+        const data = await apiClient.post<any>(`/autorizaciones/${autorizacionId}/cancelar`, {});
+        if (data?.error) {
             throw new Error(data.error || 'Error al cancelar');
         }
         toast.success('Solicitud cancelada');
