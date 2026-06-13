@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
     const empleadoId = payload.id as string;
 
     // ✅ VALIDAR: Verificar sanciones y licencias activas
-    const hoy = new Date().toISOString().split('T')[0];
+    const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
 
     const [sancionActiva] = await sql`
       SELECT 1 FROM sanciones

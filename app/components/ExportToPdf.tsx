@@ -232,14 +232,21 @@ export const ExportData: React.FC<ExportDataProps> = ({
         y += 30;
       } else {
         // Cards para modo faltas
-        const presentes = employees.length - (faltasDelDia?.length || 0);
+        const presentes = (presentesDelDia?.length || 0);
+        const ausentes = (faltasDelDia?.length || 0) +
+          employees.filter(emp => {
+            const empId = String(emp.id);
+            return licenciasDelDia?.find(l => String(l.empleadoId ?? l.empleado_id) === empId) ||
+              sancionesDelDia?.find(s => String(s.empleadoId ?? s.empleado_id) === empId);
+          }).length;
         const cards = [
           { label: "Total", value: employees.length, color: [37, 99, 235] },
           { label: "Presentes", value: presentes, color: [34, 197, 94] },
           { label: "Faltas", value: faltasDelDia?.length || 0, color: [239, 68, 68] },
+          { label: "Licencias/Sanciones", value: ausentes - (faltasDelDia?.length || 0), color: [234, 179, 8] },
         ];
 
-        const cardWidth = (pageWidth - 40) / 3;
+        const cardWidth = (pageWidth - 40) / 4;
         cards.forEach((card, i) => {
           const x = 15 + i * (cardWidth + 2);
           doc.setFillColor(card.color[0], card.color[1], card.color[2]);
@@ -429,9 +436,14 @@ export const ExportData: React.FC<ExportDataProps> = ({
       wsData.push(['', '', '', 'TOTAL', 'ACTIVOS', 'EN LICENCIA', 'INACTIVOS/BLOQUEADOS']);
       wsData.push(['', '', '', stats.total, stats.activos, stats.enLicencia, stats.inactivo]);
     } else {
-      const presentes = employees.length - (faltasDelDia?.length || 0);
-      wsData.push(['', '', '', 'TOTAL', 'PRESENTES', 'FALTAS']);
-      wsData.push(['', '', '', employees.length, presentes, faltasDelDia?.length || 0]);
+      const presentes = (presentesDelDia?.length || 0);
+       const licSan = employees.filter(emp => {
+    const empId = String(emp.id);
+    return licenciasDelDia?.find(l => String(l.empleadoId ?? l.empleado_id) === empId) ||
+           sancionesDelDia?.find(s => String(s.empleadoId ?? s.empleado_id) === empId);
+  }).length;
+      wsData.push(['', '', '', 'TOTAL', 'PRESENTES', 'FALTAS', 'LIC/SANCIONES']);
+      wsData.push(['', '', '', employees.length, presentes, faltasDelDia?.length || 0, licSan]);
     }
     wsData.push([]);
 
@@ -731,9 +743,13 @@ export const ExportData: React.FC<ExportDataProps> = ({
       xml += `      <en_licencia>${stats.enLicencia}</en_licencia>\n`;
       xml += `      <inactivo>${stats.inactivo}</inactivo>\n`;
     } else {
-      const presentes = employees.length - (faltasDelDia?.length || 0);
-      xml += `      <presentes>${presentes}</presentes>\n`;
-      xml += `      <inactivos>${stats.inactivo ?? stats.ausentes ?? 0}</inactivos>\n`;
+      xml += `      <presentes>${presentesDelDia?.length || 0}</presentes>\n`;
+      xml += `      <faltas>${faltasDelDia?.length || 0}</faltas>\n`;
+      xml += `      <licencias_sanciones>${employees.filter(emp => {
+        const empId = String(emp.id);
+        return licenciasDelDia?.find(l => String(l.empleadoId ?? l.empleado_id) === empId) ||
+          sancionesDelDia?.find(s => String(s.empleadoId ?? s.empleado_id) === empId);
+      }).length}</licencias_sanciones>\n`;
     }
 
     xml += `    </estadisticas>\n`;
@@ -749,18 +765,13 @@ export const ExportData: React.FC<ExportDataProps> = ({
       xml += `      <rol>${emp.rol}</rol>\n`;
       xml += `      <grupo_turno>${emp.grupoTurno}</grupo_turno>\n`;
       xml += `      <horario>${emp.horario || 'No asignado'}</horario>\n`;
-      xml += `      <estado>${estado}</estado>\n`;
 
       if (mode === 'faltas') {
         const falta = faltasDelDia?.find(f => f.empleadoId === emp.id);
-        if (falta) {
-          xml += `      <falta>\n`;
-          xml += `      <estado>${resolverEstado(emp)}</estado>\n`;
-          xml += `        <motivo>${resolverMotivo(emp)}</motivo>\n`;
-          xml += `        <justificada>${falta ? falta.justificada : false}</justificada>\n`;
-          xml += `        <observaciones>${falta?.observaciones || resolverMotivo(emp)}</observaciones>\n`;
-          xml += `      </falta>\n`;
-        }
+        xml += `      <estado>${resolverEstado(emp)}</estado>\n`;
+        xml += `      <motivo>${resolverMotivo(emp)}</motivo>\n`;
+        xml += `      <justificada>${falta ? falta.justificada : false}</justificada>\n`;
+        xml += `      <observaciones>${falta?.observaciones || ''}</observaciones>\n`;
       } else {
         xml += `      <email>${emp.email}</email>\n`;
         xml += `      <telefono>${emp.telefono || ''}</telefono>\n`;

@@ -310,7 +310,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ✅ VALIDACIÓN: Verificar que el empleado NO tenga sanciones activas
-    const hoy = new Date().toISOString().split('T')[0];
+    const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
 
     const [sancionActiva] = await sql`
       SELECT 1 FROM sanciones

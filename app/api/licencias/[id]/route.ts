@@ -65,7 +65,7 @@ export async function PUT(
     if (!licencia) return NextResponse.json({ error: "Licencia no encontrada" }, { status: 404 });
     if (licencia.empleado_id !== userId) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
-    const hoy = new Date().toISOString().split('T')[0];
+    const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
     const esOrdinaria = licencia.tipo === 'ORDINARIA';
     const esPendiente = licencia.estado === 'PENDIENTE';
     const noEmpezó = licencia.fecha_desde > hoy;
@@ -133,7 +133,7 @@ export async function DELETE(
     if (!licencia) return NextResponse.json({ error: "Licencia no encontrada" }, { status: 404 });
     if (licencia.empleado_id !== userId) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
-    const hoy = new Date().toISOString().split('T')[0];
+    const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
     const esOrdinaria = licencia.tipo === 'ORDINARIA';
     const esPendiente = licencia.estado === 'PENDIENTE';
     const noEmpezó = licencia.fecha_desde > hoy;

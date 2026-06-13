@@ -48,7 +48,7 @@ export default function DashboardHome() {
   const [paginaHistorial, setPaginaHistorial] = useState(1);
   const ITEMS_HISTORIAL = 5;
 
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
 
   const proximos = useMemo(() =>
     cambios?.filter(c => c.fecha >= hoy)

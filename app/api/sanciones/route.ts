@@ -10,7 +10,7 @@ async function actualizarSancionesVencidas() {
     SET estado = ${EstadoSancion.FINALIZADA},
         updated_at = NOW()
     WHERE estado = ${EstadoSancion.ACTIVA}
-      AND CURRENT_DATE > fecha_hasta
+      AND (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date > fecha_hasta
   `;
 }
 
@@ -71,7 +71,7 @@ export async function POST(req: Request) {
       FROM sanciones
       WHERE empleado_id = ${empleado_id}
       AND estado = ${EstadoSancion.ACTIVA}
-      AND CURRENT_DATE BETWEEN fecha_desde AND fecha_hasta
+      AND (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date BETWEEN fecha_desde AND fecha_hasta
     `;
 
     if (sancionActiva.length > 0) {
