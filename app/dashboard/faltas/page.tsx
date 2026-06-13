@@ -412,6 +412,7 @@ export default function FaltasPage() {
             id="fecha-faltas"
             value={selectedDate}
             onChange={handleDateChange}
+            minDate={new Date(2024, 0, 1)}
             className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
           />
         </div>
@@ -519,6 +520,7 @@ export default function FaltasPage() {
                   const esPresenteExplicito = presentesExplicitos.has(String(emp.id));
                   const turnoGanado = turnosEfectivosDelDia.find((t: any) => t.tipo === 'GANADO' && t.empleadoId === emp.id);
                   const horarioMostrar = turnoGanado ? turnoGanado.horarioEfectivo : emp.horario;
+                  const esFechaHoy = selectedDate === today;
 
                   return (
                     <tr
@@ -582,11 +584,11 @@ export default function FaltasPage() {
 
                             <button
                               onClick={() => !(esPresenteExplicito && !enFalta) && handleRegistrarPresente(String(emp.id), falta || undefined)}
-                              disabled={procesando.has(String(emp.id)) || (esPresenteExplicito && !enFalta)}
+                              disabled={procesando.has(String(emp.id)) || (esPresenteExplicito && !enFalta || !esFechaHoy)}
                               className={`px-4 py-2 rounded-lg font-medium transition-colors
                                 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2
                                 dark:focus:ring-offset-gray-800 text-white
-                                ${procesando.has(String(emp.id)) || (esPresenteExplicito && !enFalta)
+                                ${procesando.has(String(emp.id)) || (esPresenteExplicito && !enFalta || !esFechaHoy)
                                   ? "bg-green-300 dark:bg-green-900 cursor-not-allowed opacity-50"
                                   : "bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"
                                 }`}
@@ -595,11 +597,11 @@ export default function FaltasPage() {
                               </button>
                               <button
                                 onClick={() => !enFalta && handleRegistrarFalta(emp)}
-                                disabled={procesando.has(String(emp.id)) || enFalta}
+                                disabled={procesando.has(String(emp.id)) || enFalta || !esFechaHoy}
                                 className={`px-4 py-2 rounded-lg font-medium transition-colors
                                 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
                                 dark:focus:ring-offset-gray-800 text-white
-                                ${procesando.has(String(emp.id)) || enFalta
+                                ${procesando.has(String(emp.id)) || enFalta || !esFechaHoy
                                     ? "bg-red-300 dark:bg-red-900 cursor-not-allowed opacity-50"
                                     : "bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
                                   }`}
@@ -629,9 +631,9 @@ export default function FaltasPage() {
                                       setProcesando(prev => { const s = new Set(prev); s.delete(id); return s; });
                                     }
                                   }}
-                                disabled={procesando.has(String(emp.id)) || (!enFalta && !esPresenteExplicito)}
+                                disabled={procesando.has(String(emp.id)) || (!enFalta && !esPresenteExplicito || !esFechaHoy)}
                                 className={`p-2 rounded-lg transition-colors
-                                  ${(enFalta || esPresenteExplicito)
+                                  ${(enFalta || esPresenteExplicito) && esFechaHoy
                                     ? "text-gray-400 hover:text-white hover:bg-gray-600 dark:hover:bg-gray-500 cursor-pointer"
                                     : "invisible cursor-default"
                                   }`}
