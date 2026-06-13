@@ -364,7 +364,7 @@ export function HeatmapOperativo({ autorizaciones, empleados }: Props) {
       </div>
 
       {/* ── Grilla ── */}
-      <div className="overflow-x-auto pb-2 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-400 dark:[&::-webkit-scrollbar-thumb]:bg-gray-600 [&::-webkit-scrollbar-track]:bg-transparent">
+      <div className="overflow-x-auto pb-2">
         <div style={{ minWidth: dias.length * (cellW + gap) + 80 }}>
 
           {/* Header de días */}
