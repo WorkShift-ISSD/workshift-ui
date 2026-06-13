@@ -60,7 +60,6 @@ useEffect(() => {
 
     return () => {
       try { channel.unbind_all(); } catch (e) { }
-      try { pusher.unsubscribe(`usuario-${user.id}`); } catch (e) { }
       try { pusher.disconnect(); } catch (e) { }
     };
   }, [user?.id]);
