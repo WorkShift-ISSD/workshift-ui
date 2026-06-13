@@ -44,6 +44,27 @@ interface Falta {
   observaciones?: string;
 }
 
+interface Licencia {
+  id?: string;
+  empleadoId?: string;
+  empleado_id?: string;
+  motivo?: string;
+  tipo?: string;
+}
+
+interface Sancion {
+  id?: string;
+  empleadoId?: string;
+  empleado_id?: string;
+  motivo?: string;
+}
+
+interface TurnoEfectivo {
+  empleadoId: string;
+  tipo: 'GANADO' | 'CEDIDO';
+  companero?: string;
+}
+
 type ExportMode = 'personal' | 'faltas';
 
 interface ExportDataProps {
@@ -66,6 +87,10 @@ interface ExportDataProps {
   mode: ExportMode; // Modo de exportación
   faltasDelDia?: Falta[] | null; // Solo para modo faltas
   fechaSeleccionada?: string; // Solo para modo faltas
+  licenciasDelDia?: Licencia[] | null;      
+  sancionesDelDia?: Sancion[] | null;       
+  turnosEfectivosDelDia?: TurnoEfectivo[] | null;
+  presentesDelDia?: string[] | null;
 }
 
 export const ExportData: React.FC<ExportDataProps> = ({
@@ -76,7 +101,11 @@ export const ExportData: React.FC<ExportDataProps> = ({
   className = '',
   mode = 'personal',
   faltasDelDia = null,
-  fechaSeleccionada
+  fechaSeleccionada,
+  licenciasDelDia = null,
+  sancionesDelDia = null,
+  turnosEfectivosDelDia = null,
+  presentesDelDia = null,
 }) => {
   const employees = employeesRaw.filter(e => (e.rol as string) !== 'ADMINISTRADOR');
   const [isOpen, setIsOpen] = useState(false);
@@ -96,6 +125,29 @@ export const ExportData: React.FC<ExportDataProps> = ({
   }, []);
 
   const usuarioNombre = `${user?.nombre ?? ""} ${user?.apellido ?? ""}`;
+
+  const resolverEstado = (emp: Inspector): string => {
+    const empId = String(emp.id);
+    if (licenciasDelDia?.find(l => String(l.empleadoId ?? l.empleado_id) === empId)) return 'LICENCIA';
+    if (sancionesDelDia?.find(s => String(s.empleadoId ?? s.empleado_id) === empId)) return 'SANCIONADO';
+    if (faltasDelDia?.find(f => f.empleadoId === empId)) return 'FALTA';
+    if (presentesDelDia?.includes(empId)) return 'PRESENTE';
+    return '-';
+  };
+
+  const resolverMotivo = (emp: Inspector): string => {
+    const empId = String(emp.id);
+    console.log("empId:", empId, "turnos:", turnosEfectivosDelDia?.map(t => t.empleadoId));
+    const falta = faltasDelDia?.find(f => f.empleadoId === empId);
+    if (falta) return falta.motivo || 'Inasistencia';
+    const licencia = licenciasDelDia?.find(l => String(l.empleadoId ?? l.empleado_id) === empId);
+    if (licencia) return licencia.motivo ?? licencia.tipo ?? 'Licencia';
+    const sancion = sancionesDelDia?.find(s => String(s.empleadoId ?? s.empleado_id) === empId);
+    if (sancion) return sancion.motivo ?? 'Sancion';
+    const turno = turnosEfectivosDelDia?.find(t => String(t.empleadoId) === empId && t.tipo === 'GANADO');
+    if (turno?.companero) return `Cambio x ${turno.companero}`;
+    return '-';
+  };
 
   // ======== PDF MEJORADO ========
   const exportToPDF = async () => {
@@ -279,13 +331,13 @@ export const ExportData: React.FC<ExportDataProps> = ({
           drawTableHeader();
         }
 
-        const estado = calcularEstado(emp);
+        const estadoReal = mode === 'faltas' ? resolverEstado(emp) : calcularEstado(emp) === 'presente' ? 'PRESENTE' : 'FALTA';
         const colorEstado =
-          estado === "ACTIVO" || estado === "presente"
+          estadoReal === 'PRESENTE'
             ? [34, 197, 94]
-            : estado === "LICENCIA"
+            : estadoReal === 'LICENCIA'
               ? [234, 179, 8]
-              : estado === "AUSENTE" || estado === "ausente"
+              : estadoReal === 'FALTA' || estadoReal === 'SANCIONADO'
                 ? [239, 68, 68]
                 : [156, 163, 175];
 
@@ -297,18 +349,17 @@ export const ExportData: React.FC<ExportDataProps> = ({
             emp.rol,
             emp.grupoTurno || "-",
             emp.horario || "No asignado",
-            estado === 'presente' ? 'PRESENTE' : estado === 'ausente' ? 'FALTA' : estado,
+            estadoReal  === 'presente' ? 'PRESENTE' : estadoReal  === 'ausente' ? 'FALTA' : estadoReal ,
             emp.telefono || "-",
           ];
         } else {
-          const falta = faltasDelDia?.find(f => f.empleadoId === emp.id);
-          const motivoCompleto = falta?.motivo || '-';
+          const motivoCompleto = resolverMotivo(emp);
           const motivo = motivoCompleto.length > 40 ? motivoCompleto.substring(0, 37) + '...' : motivoCompleto;
           row = [
             emp.horario || "-",
             `${emp.apellido}, ${emp.nombre}`,
             emp.rol,
-            estado === 'presente' ? 'PRESENTE' : 'FALTA',
+            resolverEstado(emp),
             motivo,
           ];
         }
@@ -431,8 +482,8 @@ export const ExportData: React.FC<ExportDataProps> = ({
           emp.rol,
           emp.grupoTurno,
           emp.horario || "No asignado",
-          estado === 'presente' ? 'PRESENTE' : 'FALTA',
-          falta?.motivo || '-',
+          resolverEstado(emp),
+          resolverMotivo(emp),
           falta ? (falta.justificada ? 'SÍ' : 'NO') : '-',
           falta?.observaciones || '-',
         ]);
@@ -704,9 +755,10 @@ export const ExportData: React.FC<ExportDataProps> = ({
         const falta = faltasDelDia?.find(f => f.empleadoId === emp.id);
         if (falta) {
           xml += `      <falta>\n`;
-          xml += `        <motivo>${falta.motivo || ''}</motivo>\n`;
-          xml += `        <justificada>${falta.justificada}</justificada>\n`;
-          xml += `        <observaciones>${falta.observaciones || ''}</observaciones>\n`;
+          xml += `      <estado>${resolverEstado(emp)}</estado>\n`;
+          xml += `        <motivo>${resolverMotivo(emp)}</motivo>\n`;
+          xml += `        <justificada>${falta ? falta.justificada : false}</justificada>\n`;
+          xml += `        <observaciones>${falta?.observaciones || resolverMotivo(emp)}</observaciones>\n`;
           xml += `      </falta>\n`;
         }
       } else {

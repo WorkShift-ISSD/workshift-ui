@@ -22,6 +22,7 @@ import {
   Clock,
   FileSearch,
   AlertCircle,
+  Trash2,
 } from "lucide-react";
 import { calcularGrupoTrabaja, type GrupoTurno } from "@/app/lib/turnosUtils";
 import { ExportData } from "@/app/components/ExportToPdf";
@@ -39,7 +40,6 @@ export default function FaltasPage() {
   const today = useMemo(() => getTodayDate(), [getTodayDate]);
   const [selectedDate, setSelectedDate] = useState(today);
   const [modalConsultaOpen, setModalConsultaOpen] = useState(false);
-  const [presentesExplicitos, setPresentesExplicitos] = useState<Set<String>>(new Set());
   const { licenciasDelDia } = useLicenciasDelDia(selectedDate);
   const { sancionesDelDia } = useSancionesDelDia(selectedDate);
 
@@ -53,9 +53,18 @@ export default function FaltasPage() {
   useEffect(() => {
     fetch(`/api/turnos-efectivos?fecha=${selectedDate}`, { credentials: 'include' })
       .then(r => r.json())
-      .then(data => {setTurnosEfectivosDelDia(Array.isArray(data) ? data : []);
-});
+      .then(data => {
+        if (Array.isArray(data)) {
+          console.log("turno ejemplo:", data[0]);
+          setTurnosEfectivosDelDia(data);
+        }
+      });
   }, [selectedDate]);
+
+  const { data: presentesData, mutate: mutatePresentes } = useSWR(
+    selectedDate ? `/api/presentes?fecha=${selectedDate}` : null,
+    fetcher
+  );
 
   const [searchText, setSearchText] = useState("");
 
@@ -66,6 +75,10 @@ export default function FaltasPage() {
     refetch: refetchFaltas,
   } = useTodasLasFaltas();
 
+  const presentesExplicitos = useMemo(() => {
+    if (!Array.isArray(presentesData)) return new Set<string>();
+    return new Set<string>(presentesData.map((p: any) => String(p.empleadoId)));
+  }, [presentesData]);
 
   const registrosAusencias = useMemo(() => {
     return (todasLasFaltas || []).map((f) => ({
@@ -114,10 +127,6 @@ export default function FaltasPage() {
     setSelectedTurno("TODOS");
   }, [selectedRole]);
 
-  // Reset presentes explícitos al cambiar de fecha
-  useEffect(() => {
-    setPresentesExplicitos(new Set());
-  }, [selectedDate]);
 
   // Filtrar empleados por fecha, rol, turno y grupo
   const empleadosDelDia = useMemo(() => {
@@ -165,8 +174,8 @@ export default function FaltasPage() {
     const data = Array.isArray(sancionesDelDia) ? sancionesDelDia : [];
     return new Set(
       data
-        .map((s: any) => Number(s?.empleado_id ?? s?.empleadoId))
-        .filter((id: number) => Number.isFinite(id))
+        .map((s: any) => String(s?.empleado_id ?? s?.empleadoId))
+        .filter((id: string) => !!id && id !== 'undefined')
     );
   }, [sancionesDelDia]);
 
@@ -198,15 +207,18 @@ export default function FaltasPage() {
   };
 
   // ==== REGISTRAR PRESENTE ====
-  // Con falta: elimina de la BD y marca visual como presente
-  // Sin falta (estado -): solo marca visual como presente
   const handleRegistrarPresente = async (empleadoId: String, falta?: any) => {
     try {
       if (falta) {
         await eliminarFalta(falta.id);
         mutate();
       }
-      setPresentesExplicitos(prev => new Set([...prev, (empleadoId)]));
+      await fetch('/api/presentes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ empleadoId, fecha: selectedDate }),
+      });
+      mutatePresentes();
       toast.success("Presente registrado correctamente");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error al registrar presente";
@@ -233,10 +245,12 @@ export default function FaltasPage() {
         const error = await res.json();
         throw new Error(error.error || "Error al registrar falta");
       }
-
-      // Si estaba marcado como presente explícito, lo quitamos
-      setPresentesExplicitos(prev => new Set([...prev].filter(id => id !== String(emp.id))));
-
+      await fetch('/api/presentes', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ empleadoId: String(emp.id), fecha: selectedDate }),
+      });
+      mutatePresentes();
       toast.success("Falta registrada correctamente");
       mutate();
     } catch (error) {
@@ -295,7 +309,6 @@ export default function FaltasPage() {
             Consultar Faltas
           </button>
 
-
           <ExportData
             employees={empleadosParaExportar}
             stats={{
@@ -314,7 +327,11 @@ export default function FaltasPage() {
               return empleadosConFalta.includes(empleado.id) ? 'ausente' : 'presente';
             }}
             mode="faltas"
-          />
+            presentesDelDia={Array.from(presentesExplicitos)}
+            licenciasDelDia={(licenciasDelDia ?? []) as any[]}
+            sancionesDelDia={(sancionesDelDia ?? []) as any[]}
+            turnosEfectivosDelDia={turnosEfectivosDelDia ?? []}
+/>
         </div>
       </div>
 
@@ -475,7 +492,7 @@ export default function FaltasPage() {
                   const falta = faltas?.find((f) => f.empleadoId === emp.id);
                   const enFalta = !!falta;
                   const enLicencia = empleadosConLicencia.has(emp.id);
-                  const enSancion = empleadosConSancion.has(Number(emp.id));
+                  const enSancion = empleadosConSancion.has(String(emp.id));
                   const esPresenteExplicito = presentesExplicitos.has(String(emp.id));
                   const turnoGanado = turnosEfectivosDelDia.find((t: any) => t.tipo === 'GANADO' && t.empleadoId === emp.id);
                   const horarioMostrar = turnoGanado ? turnoGanado.horarioEfectivo : emp.horario;
@@ -538,7 +555,7 @@ export default function FaltasPage() {
                             {enLicencia ? "En licencia" : "Sancionado"}
                           </span>
                         ) : (
-                          <div className="flex gap-2 justify-center">
+                          <div className="flex gap-2 justify-center items-center min-w-[200px]">
 
                             <button
                               onClick={() => !(esPresenteExplicito && !enFalta) && handleRegistrarPresente(String(emp.id), falta || undefined)}
@@ -566,6 +583,31 @@ export default function FaltasPage() {
                               >
                                 Falta
                               </button>
+
+                                <button
+                                  title="Limpiar estado"
+                                  onClick={async () => {
+                                    if (enFalta) {
+                                      await eliminarFalta(falta!.id);
+                                      mutate();
+                                    }
+                                    await fetch('/api/presentes', {
+                                      method: 'DELETE',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ empleadoId: String(emp.id), fecha: selectedDate }),
+                                    });
+                                    mutatePresentes();
+                                    toast.success("Estado limpiado");
+                                  }}
+                                disabled={!enFalta && !esPresenteExplicito}
+                                className={`p-2 rounded-lg transition-colors
+                                  ${(enFalta || esPresenteExplicito)
+                                    ? "text-gray-400 hover:text-white hover:bg-gray-600 dark:hover:bg-gray-500 cursor-pointer"
+                                    : "invisible cursor-default"
+                                  }`}
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
                           </div>
                         )}
                       </td>

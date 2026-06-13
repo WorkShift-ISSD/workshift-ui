@@ -331,6 +331,27 @@ async function seedCambios() {
   return insertedCambios;
 }
 
+async function seedPresentes() {
+  await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS presentes (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      empleado_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      fecha DATE NOT NULL,
+      registrado_por UUID REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(empleado_id, fecha)
+    );
+  `;
+
+  await sql`CREATE INDEX IF NOT EXISTS idx_presentes_fecha ON presentes(fecha)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_presentes_empleado ON presentes(empleado_id)`;
+
+  console.log("✅ Tabla presentes creada");
+  return true;
+}
+
 async function seedFaltas() {
   await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
 
@@ -1150,7 +1171,7 @@ async function dropAllTables() {
 
   await sql`DROP TABLE IF EXISTS calificaciones CASCADE`;
   await sql`DROP TABLE IF EXISTS turnos_efectivos CASCADE`;
-    await sql`DROP TABLE IF EXISTS password_reset_tokens CASCADE`;
+  await sql`DROP TABLE IF EXISTS password_reset_tokens CASCADE`;
   await sql`DROP TABLE IF EXISTS conversaciones CASCADE`;
   await sql`DROP TABLE IF EXISTS mensajes CASCADE`;
   await sql`DROP TABLE IF EXISTS solicitudes_directas CASCADE`;
@@ -1159,9 +1180,10 @@ async function dropAllTables() {
   await sql`DROP TABLE IF EXISTS cambios CASCADE`;
   await sql`DROP TABLE IF EXISTS stats CASCADE`;
   await sql`DROP TABLE IF EXISTS turnos CASCADE`;
+  await sql`DROP TABLE IF EXISTS presentes CASCADE`;
   await sql`DROP TABLE IF EXISTS faltas CASCADE`;
   await sql`DROP TABLE IF EXISTS licencias CASCADE`;
-    await sql`DROP TABLE IF EXISTS users CASCADE`;
+  await sql`DROP TABLE IF EXISTS users CASCADE`;
   await sql`DROP TABLE IF EXISTS sanciones CASCADE`;
   await sql`DROP TABLE IF EXISTS autorizaciones CASCADE`;
   await sql`DROP TABLE IF EXISTS docs_help CASCADE`;
@@ -1193,6 +1215,9 @@ export async function GET() {
 
       await seedFaltas();
       console.log('✅ Faltas creadas');
+
+      await seedPresentes();
+      console.log('✅ Presentes creados');
 
       await seedTurnos();
       console.log('✅ Turnos creados');
