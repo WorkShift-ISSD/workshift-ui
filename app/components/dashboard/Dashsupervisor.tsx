@@ -1,6 +1,8 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
+import useSWR from 'swr';
+import { fetcher } from '@/app/api/fetcher';
 import {
   Calendar,
   CheckCircle,
@@ -97,6 +99,12 @@ export default function DashboardSupervisor() {
 
   const hoy = new Date();
   const hoyYMD = toYMD(hoy);
+
+  const { data: presentesHoyData } = useSWR(`/api/presentes?fecha=${hoyYMD}`, fetcher);
+  const presentesHoyIds = useMemo(() => {
+    if (!Array.isArray(presentesHoyData)) return new Set<string>();
+    return new Set<string>(presentesHoyData.map((p: any) => String(p.empleadoId)));
+  }, [presentesHoyData]);
 
   // ── Mes actual ──────────────────────────────────────────────────────────
   const monthInfo = useMemo(() => {
@@ -394,15 +402,16 @@ export default function DashboardSupervisor() {
         c => c.fecha === hoyYMD && c.destinatario?.id === inspector.id && c.estado === 'APROBADO'
       );
 
-      let estado: 'PRESENTE' | 'AUSENTE' | 'LICENCIA' | 'SANCIONADO';
+      let estado: 'PRESENTE' | 'AUSENTE' | 'LICENCIA' | 'SANCIONADO' | 'SIN_REGISTRAR';
       if (tieneSancion) estado = 'SANCIONADO';
       else if (tieneLicencia) estado = 'LICENCIA';
       else if (tieneFalta) estado = 'AUSENTE';
-      else estado = 'PRESENTE';
+      else if (presentesHoyIds.has(String(inspector.id))) estado = 'PRESENTE';
+      else estado = 'SIN_REGISTRAR';
 
       return { ...inspector, estado, esSuDia, tieneReemplazo };
     });
-  }, [inspectores, faltas, sanciones, licencias, cambios, hoy, hoyYMD]);
+  }, [inspectores, faltas, sanciones, licencias, cambios, hoy, hoyYMD, presentesHoyIds]);
 
   // Solo los que deberían trabajar hoy
   const inspectoresDeHoy = useMemo(
@@ -453,15 +462,16 @@ export default function DashboardSupervisor() {
 
   // ── Agrupación por horario ───────────────────────────────────────────────
   const porHorario = useMemo(() => {
-    const map = new Map<string, { presentes: number; faltas: number; licencias: number; sanciones: number }>();
+    const map = new Map<string, { presentes: number; faltas: number; licencias: number; sanciones: number; sinRegistrar: number }>();
     for (const inspector of inspectoresDeHoy) {
       const horario = inspector.horario || 'Sin horario';
-      if (!map.has(horario)) map.set(horario, { presentes: 0, faltas: 0, licencias: 0, sanciones: 0 });
+      if (!map.has(horario)) map.set(horario, { presentes: 0, faltas: 0, licencias: 0, sanciones: 0, sinRegistrar: 0 });
       const entry = map.get(horario)!;
       if (inspector.estado === 'PRESENTE') entry.presentes++;
       else if (inspector.estado === 'AUSENTE') entry.faltas++;
       else if (inspector.estado === 'LICENCIA') entry.licencias++;
       else if (inspector.estado === 'SANCIONADO') entry.sanciones++;
+      else entry.sinRegistrar++;
     }
     return Array.from(map.entries())
       .map(([horario, stats]) => ({ horario, ...stats }))
@@ -621,8 +631,8 @@ export default function DashboardSupervisor() {
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {porHorario.map(({ horario, presentes, faltas, licencias, sanciones }) => {
-                    const total = presentes + faltas + licencias + sanciones;
+                  {porHorario.map(({ horario, presentes, faltas, licencias, sanciones, sinRegistrar }) => {
+                    const total = presentes + faltas + licencias + sanciones + sinRegistrar;
                     const pct = total === 0 ? 100 : Math.round((presentes / total) * 100);
                     return (
                       <div

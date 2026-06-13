@@ -379,7 +379,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
 
           doc.setFontSize(8);
 
-          if ((mode === 'personal' && i === 1) || (mode === 'faltas' && (i === 1 || i === 4))) {
+          if ((mode === 'personal' && i === 1) || (mode === 'faltas' && i === 1)) {
             doc.text(text, x + 2, y);
           } else {
             doc.text(text, colCenter, y, { align: "center" });
