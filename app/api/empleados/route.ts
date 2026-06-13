@@ -1,82 +1,36 @@
-// app/api/empleados/route.ts
-import { sql } from '@/app/lib/postgres';
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+
+const API = process.env.NESTJS_API_URL || 'http://localhost:3001';
+
+async function getToken() {
+  const cookieStore = await cookies();
+  return cookieStore.get('auth-token')?.value;
+}
 
 export async function GET() {
-  try {
-    const empleados = await sql`
-      SELECT 
-        id::text,
-        legajo,
-        email,
-        nombre,
-        apellido,
-        rol,
-        telefono,
-        direccion,
-        horario,
-        fecha_nacimiento::text as "fechaNacimiento",
-        activo,
-        grupo_turno as "grupoTurno",
-        foto_perfil as "fotoPerfil",
-        ultimo_login::text as "ultimoLogin",
-        created_at::text as "createdAt",
-        updated_at::text as "updatedAt"
-      FROM users 
-      ORDER BY apellido, nombre
-    `;
-    
-    return NextResponse.json(empleados);
-  } catch (error) {
-    console.error('Error fetching empleados:', error);
-    return NextResponse.json(
-      { error: 'Error al leer empleados', details: String(error) },
-      { status: 500 }
-    );
-  }
+  const token = await getToken();
+  if (!token) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+
+  const res = await fetch(`${API}/empleados`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  const data = await res.json();
+  return NextResponse.json(data, { status: res.status });
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const empleado = await request.json();
+  const token = await getToken();
+  if (!token) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
+  const body = await request.json();
+  const res = await fetch(`${API}/empleados`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
 
-    
-    const [newEmpleado] = await sql`
-      INSERT INTO users (
-        legajo, email, nombre, apellido, password, rol, telefono, 
-        direccion, horario, fecha_nacimiento, activo, grupo_turno
-      )
-      VALUES (
-        ${empleado.legajo}, ${empleado.email}, ${empleado.nombre}, 
-        ${empleado.apellido},  ${empleado.password}, ${empleado.rol}, ${empleado.telefono || null},
-        ${empleado.direccion || null}, ${empleado.horario || null}, 
-        ${empleado.fechaNacimiento || null}, ${empleado.activo}, ${empleado.grupoTurno}
-      )
-      RETURNING 
-        id::text,
-        legajo,
-        email,
-        nombre,
-        apellido,
-        password,
-        rol,
-        telefono,
-        direccion,
-        horario,
-        fecha_nacimiento::text as "fechaNacimiento",
-        activo,
-        grupo_turno as "grupoTurno",
-        created_at::text as "createdAt",
-        updated_at::text as "updatedAt"
-    `;
-    
-    return NextResponse.json(newEmpleado, { status: 201 });
-  } catch (error) {
-    console.error('Error creating empleado:', error);
-    return NextResponse.json(
-      { error: 'Error al crear empleado', details: String(error) },
-      { status: 500 }
-    );
-  }
+  const data = await res.json();
+  return NextResponse.json(data, { status: res.status });
 }

@@ -1,143 +1,21 @@
-// app/api/autorizaciones/[id]/rechazar/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '@/app/lib/postgres';
 import { cookies } from 'next/headers';
-import { jwtVerify } from 'jose';
-import { EstadoAutorizacion } from '@/app/lib/enum';
-import Pusher from 'pusher';
 
-const pusher = new Pusher({
-  appId: process.env.PUSHER_APP_ID!,
-  key: process.env.PUSHER_KEY!,
-  secret: process.env.PUSHER_SECRET!,
-  cluster: process.env.PUSHER_CLUSTER!,
-  useTLS: true,
-});
+const API = process.env.NESTJS_API_URL || 'http://localhost:3001';
 
-const SECRET_KEY = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'Workshift25'
-);
+type Ctx = { params: Promise<{ id: string }> };
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const body = await request.json();
-    const { observaciones } = body;
+export async function POST(request: NextRequest, { params }: Ctx) {
+  const { id } = await params;
+  const cookieStore = await cookies();
+  const token = cookieStore.get('auth-token')?.value;
+  if (!token) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
-    if (!observaciones || observaciones.trim().length < 10) {
-      return NextResponse.json(
-        { error: 'Debe especificar el motivo del rechazo (mínimo 10 caracteres)' },
-        { status: 400 }
-      );
-    }
-
-    // Verificar autenticación
-    const cookieStore = await cookies();
-    const token = cookieStore.get('auth-token')?.value;
-
-    if (!token) {
-      return NextResponse.json(
-        { error: 'No autenticado' },
-        { status: 401 }
-      );
-    }
-
-    const { payload } = await jwtVerify(token, SECRET_KEY);
-    const jefeId = payload.id as string;
-    const jefeRol = payload.rol as string;
-
-    // Verificar que sea JEFE
-    if (jefeRol !== 'JEFE' && jefeRol !== 'ADMINISTRADOR') {
-      return NextResponse.json(
-        { error: 'Solo el Jefe puede rechazar autorizaciones' },
-        { status: 403 }
-      );
-    }
-
-    // Obtener la autorización
-    const [autorizacion] = await sql`
-      SELECT * FROM autorizaciones WHERE id = ${id}::uuid;
-    `;
-
-    if (!autorizacion) {
-      return NextResponse.json(
-        { error: 'Autorización no encontrada' },
-        { status: 404 }
-      );
-    }
-
-    if (autorizacion.estado !== EstadoAutorizacion.PENDIENTE) {
-      return NextResponse.json(
-        { error: 'Esta autorización ya fue procesada' },
-        { status: 400 }
-      );
-    }
-
-    // Rechazar autorización
-    await sql`
-      UPDATE autorizaciones
-      SET
-        estado = ${EstadoAutorizacion.RECHAZADA},
-        aprobado_por = ${jefeId}::uuid,
-        fecha_aprobacion = NOW(),
-        observaciones = ${observaciones},
-        updated_at = NOW()
-      WHERE id = ${id}::uuid;
-    `;
-
-    // ✅ ACTUALIZAR ESTADO DE LA SOLICITUD/OFERTA/LICENCIA VINCULADA
-    if (autorizacion.solicitud_id) {
-      await sql`
-        UPDATE solicitudes_directas
-        SET estado = 'RECHAZADO', updated_at = NOW()
-        WHERE id = ${autorizacion.solicitud_id}::uuid;
-      `;
-      console.log('✅ Solicitud directa actualizada a RECHAZADO');
-    }
-
-    if (autorizacion.oferta_id) {
-      await sql`
-        UPDATE ofertas
-        SET estado = 'CANCELADO', updated_at = NOW()
-        WHERE id = ${autorizacion.oferta_id}::uuid;
-      `;
-      console.log('✅ Oferta actualizada a CANCELADO');
-    }
-
-    if (autorizacion.licencia_id) {
-      await sql`
-        UPDATE licencias
-        SET estado = 'RECHAZADA', updated_at = NOW()
-        WHERE id = ${autorizacion.licencia_id}::uuid;
-      `;
-      console.log('✅ Licencia actualizada a RECHAZADA');
-    }
-
-    // Notificar al solicitante vía Pusher
-    const solicitanteId = autorizacion.solicitud_id
-      ? (await sql`SELECT solicitante_id FROM solicitudes_directas WHERE id = ${autorizacion.solicitud_id}::uuid`)[0]?.solicitante_id
-      : autorizacion.oferta_id
-        ? (await sql`SELECT ofertante_id FROM ofertas WHERE id = ${autorizacion.oferta_id}::uuid`)[0]?.ofertante_id
-        : null;
-
-    if (solicitanteId) {
-      await pusher.trigger(`usuario-${solicitanteId}`, 'autorizacion-actualizada', { autorizacionId: id });
-    }
-
-    return NextResponse.json({
-      message: 'Autorización rechazada'
-    });
-  } catch (error) {
-    console.error('❌ Error al rechazar autorización:', error);
-    return NextResponse.json(
-      { 
-        error: 'Error al rechazar autorización',
-        details: error instanceof Error ? error.message : String(error)
-      },
-      { status: 500 }
-    );
-  }
+  const body = await request.json().catch(() => ({}));
+  const res = await fetch(`${API}/autorizaciones/${id}/rechazar`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return NextResponse.json(await res.json(), { status: res.status });
 }

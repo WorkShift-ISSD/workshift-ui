@@ -1,100 +1,48 @@
-// app/api/faltas/[id]/route.ts
-
-import { sql } from '@/app/lib/postgres';
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
-// GET - Obtener una falta por id
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> } // <-- Promise aquí
-) {
-  const { id } = await params; // <-- await aquí
+const API = process.env.NESTJS_API_URL || 'http://localhost:3001';
 
-  try {
-    const [falta] = await sql`
-      SELECT 
-        f.id::text,
-        f.empleado_id::text as "empleadoId",
-        to_char(f.fecha, 'YYYY-MM-DD') as fecha,
-        f.causa,
-        f.observaciones,
-        f.justificada,
-        f.registrado_por as "registradoPor",
-        to_char(f.created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "createdAt",
-        to_char(f.updated_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "updatedAt"
-      FROM faltas f
-      WHERE f.id = ${id}::uuid
-    `;
-
-    if (!falta) {
-      return NextResponse.json({ error: "No encontrado" }, { status: 404 });
-    }
-
-    return NextResponse.json(falta);
-  } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
-  }
+async function getToken() {
+  const cookieStore = await cookies();
+  return cookieStore.get('auth-token')?.value;
 }
 
-// PUT - Editar una falta
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+type Ctx = { params: Promise<{ id: string }> };
+
+export async function GET(_: NextRequest, { params }: Ctx) {
   const { id } = await params;
-  const body = await request.json();
+  const token = await getToken();
+  if (!token) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
-  try {
-
-    // Normalizar: convertir undefined → null
-    const causa = body.causa ?? null;
-    const observaciones = body.observaciones ?? null;
-    const justificada =
-      body.justificada === undefined ? null : body.justificada;
-
-    // Ejecutar UPDATE
-    const [updated] = await sql`
-      UPDATE faltas SET
-        causa = COALESCE(${causa}, causa),
-        observaciones = COALESCE(${observaciones}, observaciones),
-        justificada = COALESCE(${justificada}, justificada),
-        updated_at = NOW()
-      WHERE id = ${id}::uuid
-      RETURNING id::text;
-    `;
-
-    if (!updated) {
-      return NextResponse.json({ error: "No encontrado" }, { status: 404 });
-    }
-
-    return NextResponse.json(updated);
-
-  } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
-  }
+  const res = await fetch(`${API}/faltas/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return NextResponse.json(await res.json(), { status: res.status });
 }
 
+export async function PUT(request: NextRequest, { params }: Ctx) {
+  const { id } = await params;
+  const token = await getToken();
+  if (!token) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
-// DELETE - Borrar falta
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> } // <-- Promise aquí
-) {
-  const { id } = await params; // <-- await aquí
+  const body = await request.json();
+  const res = await fetch(`${API}/faltas/${id}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return NextResponse.json(await res.json(), { status: res.status });
+}
 
-  try {
-    const [deleted] = await sql`
-      DELETE FROM faltas
-      WHERE id = ${id}::uuid
-      RETURNING id::text;
-    `;
+export async function DELETE(_: NextRequest, { params }: Ctx) {
+  const { id } = await params;
+  const token = await getToken();
+  if (!token) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
-    if (!deleted) {
-      return NextResponse.json({ error: "No encontrado" }, { status: 404 });
-    }
-
-    return NextResponse.json(deleted);
-  } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
-  }
+  const res = await fetch(`${API}/faltas/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return NextResponse.json(await res.json(), { status: res.status });
 }
