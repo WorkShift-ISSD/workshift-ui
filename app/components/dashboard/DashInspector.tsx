@@ -665,7 +665,7 @@ export default function DashboardHome() {
           </Link>
 
           {/* ── Solicitudes stats ── */}
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5">
+          <Link href="/dashboard/cambios" className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 block hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-md transition-all">
             <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Solicitudes</h2>
             <div className="grid grid-cols-3 gap-3">
               <div className="flex flex-col items-center gap-1 p-3 rounded-xl bg-green-500/10 border border-green-500/20">
@@ -681,7 +681,7 @@ export default function DashboardHome() {
                 <span className="text-xs text-red-400/70 text-center leading-tight">Rechazada</span>
               </div>
             </div>
-          </div>
+          </Link>
         </div>
       </div>
 

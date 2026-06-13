@@ -2,6 +2,7 @@
 
 // app/components/dashboard/DashJefe.tsx
 import { useState, useMemo, useCallback } from 'react';
+import Link from 'next/link';
 import {
   AlertCircle,
   Users,
@@ -246,6 +247,7 @@ function AuthCard({
   const [obs, setObs]           = useState('');
   const [loading, setLoading]   = useState(false);
   const [done, setDone]         = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const { impacto } = auth;
   const esIntercambio = !!auth.solicitudId;
@@ -261,10 +263,20 @@ function AuthCard({
       document.getElementById(`obs-${auth.id}`)?.focus();
       return;
     }
+    if (action === 'rechazar' && obs.trim().length < 10) {
+      setErrorMsg('Las observaciones deben tener al menos 10 caracteres');
+      return;
+    }
     setLoading(true);
-    await onAction(auth.id, action, obs);
-    setDone(true);
-    setLoading(false);
+    setErrorMsg('');
+    try {
+      await onAction(auth.id, action, obs);
+      setDone(true);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Ocurrió un error al procesar la solicitud');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (done) return null;
@@ -480,6 +492,13 @@ function AuthCard({
             </p>
           </div>
 
+          {/* Error */}
+          {errorMsg && (
+            <p className="text-xs text-red-600 dark:text-red-400 text-center bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
+              {errorMsg}
+            </p>
+          )}
+
           {/* Acciones */}
           <div className="flex gap-2">
             <button
@@ -622,6 +641,7 @@ export default function DashJefe() {
               icon:    <Users className="h-5 w-5 text-blue-500 dark:text-blue-400" />,
               iconBg:  'bg-blue-50 dark:bg-blue-900/30',
               color:   'text-gray-900 dark:text-white',
+              href:    '/dashboard/personal',
             },
             {
               label:   'Ausentismo mes',
@@ -634,6 +654,7 @@ export default function DashJefe() {
               color:   metricas?.ausentismo_mes_pct > 10
                          ? 'text-red-600 dark:text-red-400'
                          : 'text-amber-600 dark:text-amber-400',
+              href:    '/dashboard/faltas',
             },
             {
               label:   'Pendientes de aprobación',
@@ -642,6 +663,7 @@ export default function DashJefe() {
               icon:    <Clock className="h-5 w-5 text-amber-500 dark:text-amber-400" />,
               iconBg:  'bg-amber-50 dark:bg-amber-900/30',
               color:   pendientes.length > 5 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white',
+              href:    '/dashboard/autorizaciones',
             },
             {
               label:   'Faltas justificadas',
@@ -650,16 +672,21 @@ export default function DashJefe() {
               icon:    <CheckCircle className="h-5 w-5 text-green-500 dark:text-green-400" />,
               iconBg:  'bg-green-50 dark:bg-green-900/30',
               color:   'text-gray-900 dark:text-white',
+              href:    '/dashboard/faltas',
             },
           ].map((kpi, i) => (
-            <div key={i} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4">
+            <Link
+              key={i}
+              href={kpi.href}
+              className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-700 transition-all block"
+            >
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs text-gray-500 dark:text-gray-400">{kpi.label}</p>
                 <div className={`p-1.5 rounded-lg ${kpi.iconBg}`}>{kpi.icon}</div>
               </div>
               <p className={`text-3xl font-bold ${kpi.color}`}>{kpi.value}</p>
               {kpi.aux && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{kpi.aux}</p>}
-            </div>
+            </Link>
           ))}
         </div>
 

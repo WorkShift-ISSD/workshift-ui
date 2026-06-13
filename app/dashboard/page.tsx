@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import Link from 'next/link';
 import {
   Calendar,
   CheckCircle,
@@ -232,7 +233,7 @@ export default function DashboardHome() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+        <Link href="/dashboard/cambios?tab=ofertas-disponibles" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all block">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
               <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
@@ -241,9 +242,9 @@ export default function DashboardHome() {
           </div>
           <p className="text-3xl font-bold text-blue-400">{statsReales.turnosOferta}</p>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Turnos disponibles</p>
-        </div>
+        </Link>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+        <Link href="/dashboard/cambios" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-green-300 dark:hover:border-green-600 transition-all block">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
               <CheckCircle className="h-6 w-6 text-green-500" />
@@ -252,9 +253,9 @@ export default function DashboardHome() {
           </div>
           <p className="text-3xl font-bold text-green-600 dark:text-green-400">{statsReales.aprobados}</p>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes aprobadas</p>
-        </div>
+        </Link>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+        <Link href="/dashboard/cambios" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-yellow-300 dark:hover:border-yellow-600 transition-all block">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
               <Clock className="h-6 w-6 text-yellow-500" />
@@ -263,9 +264,9 @@ export default function DashboardHome() {
           </div>
           <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{statsReales.pendientes}</p>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes pendientes</p>
-        </div>
+        </Link>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
+        <Link href="/dashboard/cambios" className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-red-300 dark:hover:border-red-600 transition-all block">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-red-100 dark:bg-red-900 rounded-lg">
               <XCircle className="h-6 w-6 text-red-500" />
@@ -274,7 +275,7 @@ export default function DashboardHome() {
           </div>
           <p className="text-3xl font-bold text-red-600 dark:text-red-400">{statsReales.rechazados}</p>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Solicitudes rechazadas</p>
-        </div>
+        </Link>
       </div>
 
       {/* Sección Principal */}
