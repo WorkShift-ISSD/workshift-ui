@@ -14,7 +14,7 @@ export function useDashboardJefe() {
   const { faltas, isLoading: loadingFaltas }                          = useTodasLasFaltas();
   const { licencias, loading: loadingLic }                            = useLicencias();
 
-  const hoy         = new Date().toISOString().split('T')[0];
+  const hoy         = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
   const grupoJefe   = user?.grupoTurno; // 'A' | 'B' | 'C' | 'D'
 
   // ── Empleados del grupo del jefe (base de todos los filtros) ──────────
