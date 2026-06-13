@@ -1,5 +1,5 @@
 import useSWR from "swr";
-import { fetcher } from "@/app/api/fetcher";
+import { apiClient } from "@/app/lib/apiclient";
 
 export type LicenciaDelDia = {
   id: string;
@@ -10,9 +10,11 @@ export type LicenciaDelDia = {
 };
 
 export function useLicenciasDelDia(fecha: string) {
+  const path = fecha ? `/licencias?fecha=${fecha}` : null;
+
   const { data, error, isLoading } = useSWR<LicenciaDelDia[]>(
-    fecha ? `/api/licencias?fecha=${fecha}` : null,
-    fetcher
+    path,
+    () => apiClient.get<LicenciaDelDia[]>(path!)
   );
 
   return {

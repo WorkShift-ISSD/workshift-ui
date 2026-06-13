@@ -1,9 +1,10 @@
 import useSWR from "swr";
-import { fetcher } from "@/app/api/fetcher";
+import { apiClient } from "@/app/lib/apiclient";
 
 
 export const useSancionesDelDia = (fecha: string) => {
-  const { data, error, mutate } = useSWR(`/api/sanciones?fecha=${fecha}`, fetcher);
+  const path = `/sanciones?fecha=${fecha}`;
+  const { data, error, mutate } = useSWR(path, () => apiClient.get(path));
   return {
     sancionesDelDia: data,
     isLoading: !error && !data,

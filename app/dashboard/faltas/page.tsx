@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react";
 import useSWR from "swr";
-import { fetcher } from "@/app/api/fetcher";
 import { useLicenciasDelDia } from "@/hooks/useLicenciasPorDia";
 import { useSancionesDelDia } from "@/hooks/useSancionesDelDia";
 import { useFaltas, useTodasLasFaltas } from "@/hooks/useFaltas";
@@ -65,8 +64,8 @@ export default function FaltasPage() {
   }, [selectedDate]);
 
   const { data: presentesData, mutate: mutatePresentes } = useSWR(
-    selectedDate ? `/api/presentes?fecha=${selectedDate}` : null,
-    fetcher
+    selectedDate ? `/presentes?fecha=${selectedDate}` : null,
+    (path: string) => apiClient.get(path)
   );
 
   const [searchText, setSearchText] = useState("");
@@ -246,32 +245,28 @@ export default function FaltasPage() {
     if (procesando.has(id)) return;
     setProcesando(prev => new Set(prev).add(id));
     try {
-      const res = await fetch("/api/faltas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          empleadoId: emp.id,
-          fecha: selectedDate,
-          motivo: "Inasistencia",
-          observaciones: null,
-          justificada: false,
-        }),
+      const data = await apiClient.post<any>("/faltas", {
+        empleadoId: emp.id,
+        fecha: selectedDate,
+        motivo: "Inasistencia",
+        observaciones: null,
+        justificada: false,
       });
 
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Error al registrar falta");
+      if (data?.error) {
+        throw new Error(data.error);
       }
+
       await apiClient.delete('/presentes', { empleadoId: String(emp.id), fecha: selectedDate });
-        mutatePresentes();
-        toast.success("Falta registrada correctamente");
-        mutate();
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Error al registrar falta";
-        toast.error(message);
-      } finally {
-        setProcesando(prev => { const s = new Set(prev); s.delete(id); return s; });
-      }
+      mutatePresentes();
+      toast.success("Falta registrada correctamente");
+      mutate();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al registrar falta";
+      toast.error(message);
+    } finally {
+      setProcesando(prev => { const s = new Set(prev); s.delete(id); return s; });
+    }
   };
 
   // ==== MANEJAR CAMBIO DE FECHA ====

@@ -1,25 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import useSWR from "swr";
-import { endpoints } from "@/app/api/endpoints";
-import { fetcher, poster, putter } from "@/app/api/fetcher";
+import { apiClient } from "@/app/lib/apiclient";
 import { Sancion, NuevaSancion, User } from "@/app/api/types";
 
 export function useSanciones() {
   const [sanciones, setSanciones] = useState<Sancion[]>([]);
   const [loading, setLoading] = useState(false);
 
-  /* -------------------- */
-  /* Cargar sanciones */
-  /* -------------------- */
   const cargarSanciones = async () => {
     setLoading(true);
     try {
-      const data = await fetcher<Sancion[]>(
-        endpoints.sanciones.list()
-      );
-      setSanciones(data);
+      const data = await apiClient.get<Sancion[]>('/sanciones');
+      setSanciones(Array.isArray(data) ? data : []);
     } finally {
       setLoading(false);
     }
@@ -30,32 +23,23 @@ export function useSanciones() {
   }, []);
 
 
-  /* Crear sanción */
   const crearSancion = async (data: NuevaSancion) => {
-    const nueva = await poster<Sancion>(
-      endpoints.sanciones.create(),
-      data
-    );
+    const nueva = await apiClient.post<Sancion>('/sanciones', data);
     setSanciones((prev) => [nueva, ...prev]);
   };
 
-  /* Actualizar sanción */
   const actualizarSancion = async (
     id: string,
     data: Partial<NuevaSancion>
   ) => {
-    const actualizada = await putter<Sancion>(
-      endpoints.sanciones.update(id),
-      data
-    );
+    const actualizada = await apiClient.put<Sancion>(`/sanciones/${id}`, data);
 
     setSanciones((prev) =>
-  prev.map((s) => (s.id === id ? actualizada : s))
-);
+      prev.map((s) => (s.id === id ? actualizada : s))
+    );
   };
 
-  
-  /* ¿Tiene sanción activa? */
+
   const tieneSancionActiva = (empleadoId: string): boolean => {
     const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
 

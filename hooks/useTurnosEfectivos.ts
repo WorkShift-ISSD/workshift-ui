@@ -1,6 +1,5 @@
 import useSWR from 'swr';
-import { fetcher } from '@/app/api/fetcher';
-import { endpoints } from '@/app/api/endpoints';
+import { apiClient } from '@/app/lib/apiclient';
 
 interface TurnoEfectivo {
     id: string;
@@ -20,8 +19,8 @@ interface TurnosEfectivosData {
 
 export function useTurnosEfectivos() {
     const { data, error, isLoading } = useSWR<TurnosEfectivosData>(
-        endpoints.turnosEfectivos.list(),
-        fetcher
+        '/turnos-efectivos',
+        () => apiClient.get<TurnosEfectivosData>('/turnos-efectivos')
     );
 
     return {

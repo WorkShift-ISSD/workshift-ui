@@ -1,18 +1,15 @@
-import {  endpoints } from '@/app/api/endpoints';
-import { deleter, fetcher, poster, putter } from '@/app/api/fetcher';
+import { apiClient } from '@/app/lib/apiclient';
 import { Stats, Turno } from '@/app/api/types';
 import useSWR from 'swr';
+
 export function useStats() {
   const { data, error, isLoading, mutate } = useSWR<Stats>(
-    endpoints.stats.get(),
-    fetcher
+    '/stats',
+    () => apiClient.get<Stats>('/stats')
   );
 
   const updateStats = async (stats: Partial<Stats>) => {
-    const updated = await putter<Stats>(
-      endpoints.stats.update(),
-      { ...data, ...stats }
-    );
+    const updated = await apiClient.put<Stats>('/stats', { ...data, ...stats });
     mutate(updated, false);
     return updated;
   };

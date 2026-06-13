@@ -1,29 +1,22 @@
 // hooks/useTurnos.ts
-import { endpoints } from '@/app/api/endpoints';
-import { deleter, fetcher, poster, putter } from '@/app/api/fetcher';
+import { apiClient } from '@/app/lib/apiclient';
 import { Turno } from '@/app/api/types';
 import useSWR from 'swr';
 
 export function useTurnos() {
   const { data, error, isLoading, mutate } = useSWR<Turno[]>(
-    endpoints.turnos.list(),
-    fetcher
+    '/turnos',
+    () => apiClient.get<Turno[]>('/turnos')
   );
 
   const createTurno = async (turno: Omit<Turno, 'id'>) => {
-    const newTurno = await poster<Turno>(
-      endpoints.turnos.create(),
-      turno
-    );
+    const newTurno = await apiClient.post<Turno>('/turnos', turno);
     mutate([...(data || []), newTurno], false);
     return newTurno;
   };
 
   const updateTurno = async (id: string, turno: Partial<Turno>) => {
-    const updated = await putter<Turno>(
-      endpoints.turnos.update(id),
-      turno
-    );
+    const updated = await apiClient.put<Turno>(`/turnos/${id}`, turno);
     mutate(
       data?.map((t) => (t.id === id ? updated : t)),
       false
@@ -32,7 +25,7 @@ export function useTurnos() {
   };
 
   const deleteTurno = async (id: string) => {
-    await deleter(endpoints.turnos.delete(id));
+    await apiClient.delete(`/turnos/${id}`);
     mutate(
       data?.filter((t) => t.id !== id),
       false

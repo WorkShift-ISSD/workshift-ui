@@ -1,28 +1,21 @@
-import { endpoints } from '@/app/api/endpoints';
-import { deleter, fetcher, poster, putter } from '@/app/api/fetcher';
+import { apiClient } from '@/app/lib/apiclient';
 import { Turno, User } from '@/app/api/types';
 import useSWR from 'swr';
 
 export function useUsers() {
   const { data, error, isLoading, mutate } = useSWR<User[]>(
-    endpoints.users.list(),
-    fetcher
+    '/users',
+    () => apiClient.get<User[]>('/users')
   );
 
   const createUser = async (user: Omit<User, 'id'>) => {
-    const newUser = await poster<User>(
-      endpoints.users.create(),
-      user
-    );
+    const newUser = await apiClient.post<User>('/users', user);
     mutate([...(data || []), newUser], false);
     return newUser;
   };
 
   const updateUser = async (id: string, user: Partial<User>) => {
-    const updated = await putter<User>(
-      endpoints.users.update(id),
-      user
-    );
+    const updated = await apiClient.put<User>(`/users/${id}`, user);
     mutate(
       data?.map((u) => (u.id === id ? updated : u)),
       false
@@ -31,7 +24,7 @@ export function useUsers() {
   };
 
   const deleteUser = async (id: string) => {
-    await deleter(endpoints.users.delete(id));
+    await apiClient.delete(`/users/${id}`);
     mutate(
       data?.filter((u) => u.id !== id),
       false

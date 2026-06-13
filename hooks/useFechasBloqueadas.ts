@@ -1,11 +1,10 @@
 import useSWR from 'swr';
-import { fetcher } from '@/app/api/fetcher';
-import { endpoints } from '@/app/api/endpoints';
+import { apiClient } from '@/app/lib/apiclient';
 
 export function useFechasBloqueadas() {
     const { data, error, isLoading } = useSWR<string[]>(
-        endpoints.fechasBloqueadas.list(),
-        fetcher
+        '/fechas-bloqueadas',
+        () => apiClient.get<string[]>('/fechas-bloqueadas')
     );
 
     return {

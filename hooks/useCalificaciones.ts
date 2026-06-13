@@ -1,5 +1,4 @@
 import useSWR from 'swr';
-import { fetcher, poster, putter } from '@/app/api/fetcher';
 import { apiClient } from '@/app/lib/apiclient';
 
 export interface TurnoPendiente {
@@ -37,8 +36,8 @@ interface CalificacionesData {
 
 export function useCalificaciones() {
   const { data, error, isLoading, mutate } = useSWR<CalificacionesData>(
-    '/api/calificaciones',
-    fetcher,
+    '/calificaciones',
+    () => apiClient.get<CalificacionesData>('/calificaciones'),
     { revalidateOnFocus: true }
   );
 
@@ -51,7 +50,7 @@ export function useCalificaciones() {
     cumplimiento: boolean;
     comentario?: string;
   }) => {
-    const res = await poster('/api/calificaciones', body);
+    const res = await apiClient.post('/calificaciones', body);
     mutate();
     return res;
   };
@@ -69,7 +68,7 @@ export function useCalificaciones() {
     cumplimiento: boolean;
     comentario: string;
   }>) => {
-    const res = await putter(`/api/calificaciones/${id}`, body);
+    const res = await apiClient.put(`/calificaciones/${id}`, body);
     mutate();
     return res;
   };
@@ -85,9 +84,7 @@ export function useCalificaciones() {
     eliminarCalificacion,
     refetch: mutate,
   };
-} // 👈 cierre de useCalificaciones
-
-// 👇 todo esto va AFUERA
+}
 
 export interface ListadoItem {
   id: string;
@@ -108,11 +105,13 @@ export function useListadoCalificaciones(filters?: { desde?: string; hasta?: str
   if (filters?.desde) params.set('desde', filters.desde);
   if (filters?.hasta) params.set('hasta', filters.hasta);
   if (filters?.turno) params.set('turno', filters.turno);
-  const url = `/api/calificaciones/listado${params.toString() ? `?${params}` : ''}`;
+  const path = `/calificaciones/listado${params.toString() ? `?${params}` : ''}`;
 
-  const { data, error, isLoading } = useSWR<ListadoItem[]>(url, fetcher, {
-    revalidateOnFocus: true,
-  });
+  const { data, error, isLoading } = useSWR<ListadoItem[]>(
+    path,
+    () => apiClient.get<ListadoItem[]>(path),
+    { revalidateOnFocus: true }
+  );
 
   return {
     listado: data || [],
