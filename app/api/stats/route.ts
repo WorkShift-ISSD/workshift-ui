@@ -1,76 +1,30 @@
-// app/api/stats/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '../../lib/postgres';
+import { cookies } from 'next/headers';
 
-export async function GET(request: NextRequest) {
-  try {
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    
-    const [stats] = await sql`
-      SELECT turnos_oferta, aprobados, pendientes, rechazados
-      FROM stats 
-      WHERE mes = ${currentMonth}
-    `;
-    
-    if (!stats) {
-      // Retornar stats por defecto si no existe para este mes
-      return NextResponse.json({
-        turnos_oferta: 0,
-        aprobados: 0,
-        pendientes: 0,
-        rechazados: 0
-      });
-    }
-    
-    return NextResponse.json({
-      turnosOferta: stats.turnos_oferta,
-      aprobados: stats.aprobados,
-      pendientes: stats.pendientes,
-      rechazados: stats.rechazados
-    });
-  } catch (error) {
-    console.error('Error fetching stats:', error);
-    return NextResponse.json(
-      { error: 'Error al leer estadísticas' },
-      { status: 500 }
-    );
-  }
+const API = process.env.NESTJS_API_URL || 'http://localhost:3001';
+
+async function getToken() {
+  const cookieStore = await cookies();
+  return cookieStore.get('auth-token')?.value;
+}
+
+export async function GET() {
+  const token = await getToken();
+  if (!token) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+  const res = await fetch(`${API}/stats`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return NextResponse.json(await res.json(), { status: res.status });
 }
 
 export async function PUT(request: NextRequest) {
-  try {
-    const updates = await request.json();
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    
-    const [updatedStats] = await sql`
-      INSERT INTO stats (turnos_oferta, aprobados, pendientes, rechazados, mes)
-      VALUES (
-        ${updates.turnosOferta}, 
-        ${updates.aprobados}, 
-        ${updates.pendientes}, 
-        ${updates.rechazados}, 
-        ${currentMonth}
-      )
-      ON CONFLICT (mes) DO UPDATE SET
-        turnos_oferta = EXCLUDED.turnos_oferta,
-        aprobados = EXCLUDED.aprobados,
-        pendientes = EXCLUDED.pendientes,
-        rechazados = EXCLUDED.rechazados,
-        updated_at = NOW()
-      RETURNING *
-    `;
-    
-    return NextResponse.json({
-      turnosOferta: updatedStats.turnos_oferta,
-      aprobados: updatedStats.aprobados,
-      pendientes: updatedStats.pendientes,
-      rechazados: updatedStats.rechazados
-    });
-  } catch (error) {
-    console.error('Error updating stats:', error);
-    return NextResponse.json(
-      { error: 'Error al actualizar estadísticas' },
-      { status: 500 }
-    );
-  }
+  const token = await getToken();
+  if (!token) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+  const body = await request.json();
+  const res = await fetch(`${API}/stats`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return NextResponse.json(await res.json(), { status: res.status });
 }

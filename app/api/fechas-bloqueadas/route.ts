@@ -1,91 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '@/app/lib/postgres';
+import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { jwtVerify } from 'jose';
 
-const SECRET_KEY = new TextEncoder().encode(
-    process.env.JWT_SECRET || 'Workshift25'
-);
+const API = process.env.NESTJS_API_URL || 'http://localhost:3001';
 
-export async function GET(request: NextRequest) {
-    try {
-        const cookieStore = await cookies();
-        const token = cookieStore.get('auth-token')?.value;
-        if (!token) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+async function getToken() {
+  const cookieStore = await cookies();
+  return cookieStore.get('auth-token')?.value;
+}
 
-        const { payload } = await jwtVerify(token, SECRET_KEY);
-        const userId = payload.id as string;
-
-        // Obtener rangos de licencias aprobadas
-        const licencias = await sql`
-      SELECT fecha_desde::text, fecha_hasta::text
-      FROM licencias
-      WHERE empleado_id = ${userId}::uuid
-        AND estado IN ('APROBADA', 'ACTIVA')
-        AND fecha_hasta >= NOW()::date;
-    `;
-
-        // Obtener rangos de sanciones activas
-        const sanciones = await sql`
-      SELECT fecha_desde::text, fecha_hasta::text
-      FROM sanciones
-      WHERE empleado_id = ${userId}::uuid
-        AND estado = 'ACTIVA'
-        AND fecha_hasta >= NOW()::date;
-    `;
-
-        // Expandir rangos a fechas individuales
-        const fechasBloqueadas: string[] = [];
-
-        const expandirRango = (desde: string, hasta: string) => {
-            const inicio = new Date(desde + 'T00:00:00');
-            const fin = new Date(hasta + 'T00:00:00');
-            const fechas: string[] = [];
-            const current = new Date(inicio);
-            while (current <= fin) {
-                fechas.push(current.toISOString().split('T')[0]);
-                current.setDate(current.getDate() + 1);
-            }
-            return fechas;
-        };
-
-        for (const l of licencias) {
-            fechasBloqueadas.push(...expandirRango(l.fecha_desde, l.fecha_hasta));
-        }
-        for (const s of sanciones) {
-            fechasBloqueadas.push(...expandirRango(s.fecha_desde, s.fecha_hasta));
-        }
-
-        // Fechas comprometidas en autorizaciones PENDIENTES o APROBADAS
-        // — como solicitante: la fecha que están cediendo
-        const comprometidasComoSolicitante = await sql`
-            SELECT sd.fecha_solicitante::text as fecha
-            FROM solicitudes_directas sd
-            JOIN autorizaciones a ON a.solicitud_id = sd.id
-            WHERE sd.solicitante_id = ${userId}::uuid
-              AND a.estado IN ('PENDIENTE', 'APROBADA')
-              AND sd.fecha_solicitante IS NOT NULL
-              AND sd.fecha_solicitante >= NOW()::date;
-        `;
-        for (const r of comprometidasComoSolicitante) fechasBloqueadas.push(r.fecha);
-
-        // — como destinatario en intercambio: la fecha que están cediendo
-        const comprometidasComoDestinatario = await sql`
-            SELECT sd.fecha_destinatario::text as fecha
-            FROM solicitudes_directas sd
-            JOIN autorizaciones a ON a.solicitud_id = sd.id
-            WHERE sd.destinatario_id = ${userId}::uuid
-              AND a.estado IN ('PENDIENTE', 'APROBADA')
-              AND sd.fecha_destinatario IS NOT NULL
-              AND sd.fecha_destinatario >= NOW()::date;
-        `;
-        for (const r of comprometidasComoDestinatario) fechasBloqueadas.push(r.fecha);
-
-        // Deduplicar
-        return NextResponse.json([...new Set(fechasBloqueadas)]);
-
-    } catch (error) {
-        console.error('❌ Error fetching fechas bloqueadas:', error);
-        return NextResponse.json({ error: 'Error al obtener fechas bloqueadas' }, { status: 500 });
-    }
+export async function GET() {
+  const token = await getToken();
+  if (!token) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+  const res = await fetch(`${API}/fechas-bloqueadas`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return NextResponse.json(await res.json(), { status: res.status });
 }
