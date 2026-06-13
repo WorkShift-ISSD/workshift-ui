@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetcher } from '@/app/api/fetcher';
-import { endpoints } from '@/app/api/endpoints';
+import { apiClient } from '@/app/lib/apiclient';
 
 export interface OtroParticipante {
     id: string;
@@ -11,7 +10,7 @@ export interface OtroParticipante {
 
 export interface Conversacion {
     id: string;
-    ofertaId: string; 
+    ofertaId: string;
     ofertanteId: string;
     conversacionEstado: string;
     ofertaEstado: string;
@@ -37,8 +36,8 @@ export function useConversaciones() {
     const cargar = async () => {
         setIsLoading(true);
         try {
-            const data = await fetcher<Conversacion[]>(endpoints.mensajes.conversaciones());
-            setConversaciones(data);
+            const data = await apiClient.get<Conversacion[]>('/mensajes/conversaciones');
+            setConversaciones(Array.isArray(data) ? data : []);
         } catch (err) {
             setError('Error al cargar conversaciones');
         } finally {

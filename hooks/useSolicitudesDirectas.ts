@@ -45,36 +45,25 @@ export interface SolicitudDirectaForm {
   prioridad: Prioridad;
 }
 
-// ✅ Fetcher con credentials
-const fetcher = async (url: string) => {
-  const res = await fetch(url, {
-    credentials: 'include', // ✅ Enviar cookies
-  });
-  if (!res.ok) throw new Error(`Error al obtener ${url}`);
-  return res.json();
-};
-
 export const useSolicitudesDirectas = () => {
   const {
     data: solicitudes,
     error,
     isLoading,
     mutate,
-  } = useSWR<SolicitudesDirectas[]>("/api/solicitudes-directas?usuario=yo", fetcher, {
-    refreshInterval: 5000,
-  });
+  } = useSWR<SolicitudesDirectas[]>(
+    "/solicitudes-directas?usuario=yo",
+    () => apiClient.get<SolicitudesDirectas[]>("/solicitudes-directas?usuario=yo"),
+    { refreshInterval: 5000 }
+  );
 
-  // ✅ Crear nueva solicitud directa con cookies
   const agregarSolicitud = async (solicitud: SolicitudDirectaForm) => {
-    // ❌ NO enviar solicitanteId en el body (el servidor lo obtiene del token)
     const { solicitanteId, ...solicitudSinSolicitante } = solicitud;
 
-    const res = await apiClient.post('/solicitudes-directas', solicitudSinSolicitante);
+    const data = await apiClient.post<any>('/solicitudes-directas', solicitudSinSolicitante);
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Error al crear solicitud");
+    if (data?.error) throw new Error(data.error);
 
-    // ✅ Actualización optimista
     mutate(
       (currentData) => {
         if (!currentData) return [data.solicitud || data];
@@ -86,48 +75,39 @@ export const useSolicitudesDirectas = () => {
     return data;
   };
 
-  // ✅ Actualizar solicitud completa (para edición de campos)
   const actualizarSolicitud = async (id: string, solicitud: SolicitudDirectaForm) => {
-    // ❌ NO enviar solicitanteId ni destinatarioId en la edición
     const { solicitanteId, destinatarioId, ...solicitudParaActualizar } = solicitud;
 
-    const res = await apiClient.patch(`/solicitudes-directas/${id}`, solicitudParaActualizar);
+    const data = await apiClient.patch<any>(`/solicitudes-directas/${id}`, solicitudParaActualizar);
 
-
-    const data = await res.json();
-    if (!res.ok) {
+    if (data?.error) {
       throw new Error(data.error || data.details || "Error al actualizar solicitud");
     }
 
-    // ✅ Manejar diferentes formatos de respuesta del servidor
     const solicitudActualizada = data.solicitud || data;
 
-    // ✅ Actualización optimista: actualizar el estado local inmediatamente
     mutate(
       (currentData) => {
         if (!currentData) return currentData;
-        return currentData.map((s) => 
+        return currentData.map((s) =>
           s.id === id ? solicitudActualizada : s
         );
       },
-      { revalidate: true } // Revalidar en segundo plano
+      { revalidate: true }
     );
 
     return solicitudActualizada;
   };
 
-  // ✅ Actualizar solo el estado (para aceptar/rechazar/cancelar)
   const actualizarEstado = async (id: string, nuevoEstado: EstadoOferta) => {
-    const res = await apiClient.patch(`/solicitudes-directas/${id}`, { estado: nuevoEstado });
+    const data = await apiClient.patch<any>(`/solicitudes-directas/${id}`, { estado: nuevoEstado });
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Error al actualizar estado");
+    if (data?.error) throw new Error(data.error);
 
-    // ✅ Actualización optimista
     mutate(
       (currentData) => {
         if (!currentData) return currentData;
-        return currentData.map((s) => 
+        return currentData.map((s) =>
           s.id === id ? { ...s, estado: nuevoEstado } : s
         );
       },
@@ -140,7 +120,7 @@ export const useSolicitudesDirectas = () => {
   return {
     solicitudes: solicitudes || [],
     agregarSolicitud,
-    actualizarSolicitud, // ✅ Nueva función para editar
+    actualizarSolicitud,
     actualizarEstado,
     isLoading,
     error: error?.message || null,

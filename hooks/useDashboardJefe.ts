@@ -19,7 +19,7 @@ export function useDashboardJefe() {
 
   // ── Empleados del grupo del jefe (base de todos los filtros) ──────────
   const empleadosDelGrupo = useMemo(() =>
-    (empleados ?? []).filter(e =>
+    (Array.isArray(empleados) ? empleados : []).filter(e =>
       (e.rol === 'INSPECTOR' || e.rol === 'SUPERVISOR') &&
       e.activo &&
       e.grupoTurno === grupoJefe
@@ -35,7 +35,7 @@ export function useDashboardJefe() {
   // ── Ausentes hoy ──────────────────────────────────────────────────────
   const idsConFaltaHoy = useMemo(() =>
     new Set(
-      (faltas ?? [])
+      (Array.isArray(faltas) ? faltas : [])
         .filter(f => f.fecha.split('T')[0] === hoy && idsDelGrupo.has(f.empleadoId))
         .map(f => f.empleadoId)
     ),
@@ -44,7 +44,7 @@ export function useDashboardJefe() {
 
   const idsConLicenciaHoy = useMemo(() =>
     new Set(
-      (licencias ?? [])
+      (Array.isArray(licencias) ? licencias : [])
         .filter(l => {
           if (l.estado !== 'APROBADA') return false;
           const empId = l.empleado_id ?? l.empleado_id;
@@ -57,13 +57,12 @@ export function useDashboardJefe() {
     ),
     [licencias, hoy, idsDelGrupo]
   );
-
   // ── Métricas — solo del grupo ─────────────────────────────────────────
   const metricas = useMemo(() => {
     const totalActivos = empleadosDelGrupo.length;
     const mesActual    = hoy.slice(0, 7);
 
-    const faltasMes = (faltas ?? []).filter(f =>
+    const faltasMes = (Array.isArray(faltas) ? faltas : []).filter(f =>
       f.fecha.slice(0, 7) === mesActual && idsDelGrupo.has(f.empleadoId)
     );
     const empleadosConFalta = new Set(faltasMes.map(f => f.empleadoId)).size;
@@ -141,7 +140,7 @@ export function useDashboardJefe() {
         );
 
         const yaAusentes = mismoRolGrupo.filter(e =>
-          (licencias ?? []).some(l => {
+          (Array.isArray(licencias) ? licencias : []).some(l => {
             if (l.estado !== 'APROBADA') return false;
             const empId  = l.empleado_id ?? l.empleado_id;
             const lDesde = l.fecha_desde?.split('T')[0] ?? '';

@@ -100,7 +100,7 @@ export function LicenciasTable({ licencias, onRefetch }: Props) {
     if (!editando) return;
     setSaving(true);
     try {
-      const res = await apiClient.put(`/api/licencias/${editando.id}`, {
+      const res = await apiClient.put<any>(`/api/licencias/${editando.id}`, {
         fecha_desde: editFechaDesde,
         fecha_hasta: editFechaHasta,
         observaciones: editObs,
@@ -121,7 +121,7 @@ export function LicenciasTable({ licencias, onRefetch }: Props) {
     if (!eliminando) return;
     setSaving(true);
     try {
-      const res = await apiClient.delete(`/licencias/${eliminando.id}`);
+      const res = await apiClient.delete<any>(`/licencias/${eliminando.id}`);
       if (!res.ok) throw new Error(res.data.error);
       toast.success('Licencia eliminada correctamente.');
       setEliminando(null);

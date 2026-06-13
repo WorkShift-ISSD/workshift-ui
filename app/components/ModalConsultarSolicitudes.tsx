@@ -42,7 +42,7 @@ function TabSolicitudes() {
   const { formatFechaSafe } = useFormatters();
 
   useEffect(() => {
-    apiClient.get('/solicitudes-directas?usuario=yo')
+    apiClient.get<any>('/solicitudes-directas?usuario=yo')
       .then(setSolicitudes)
       .finally(() => setIsLoading(false));
   }, []);
@@ -288,7 +288,7 @@ function TabCambios() {
   const [hasta, setHasta] = useState('');
 
   useEffect(() => {
-    apiClient.get('/turnos-efectivos')
+    apiClient.get<any>('/turnos-efectivos')
       .then(setData)
       .finally(() => setIsLoading(false));
   }, []);

@@ -1,19 +1,16 @@
-import { endpoints } from '@/app/api/endpoints';
-import { fetcher, putter } from '@/app/api/fetcher';
-import { Turno, TurnosData } from '@/app/api/types';
+// hooks/useTurnosData.ts
 import useSWR from 'swr';
+import { apiClient } from '@/app/lib/apiclient';
+import { TurnosData } from '@/app/api/types';
 
 export function useTurnosData() {
   const { data, error, isLoading, mutate } = useSWR<TurnosData>(
-    endpoints.turnosData.get(),
-    fetcher
+    '/turnos-data',
+    () => apiClient.get<TurnosData>('/turnos-data')
   );
 
   const updateTurnosData = async (turnosData: Partial<TurnosData>) => {
-    const updated = await putter<TurnosData>(
-      endpoints.turnosData.update(),
-      { ...data, ...turnosData }
-    );
+    const updated = await apiClient.put<TurnosData>('/turnos-data', { ...data, ...turnosData });
     mutate(updated, false);
     return updated;
   };

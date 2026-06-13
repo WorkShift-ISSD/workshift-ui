@@ -55,8 +55,7 @@ export default function FaltasPage() {
   const [turnosEfectivosDelDia, setTurnosEfectivosDelDia] = useState<any[]>([]);
 
   useEffect(() => {
-    apiClient.get(`/turnos-efectivos?fecha=${selectedDate}`)
-      .then(r => r.json())
+    apiClient.get<any>(`/turnos-efectivos?fecha=${selectedDate}`)
       .then(data => {
         if (Array.isArray(data)) {
           console.log("turno ejemplo:", data[0]);
@@ -107,11 +106,10 @@ export default function FaltasPage() {
 
   // Extraer roles únicos de los empleados
   const rolesDisponibles = useMemo(() => {
-    if (!empleados) return [];
+    if (!Array.isArray(empleados)) return [];
     const roles = new Set(empleados.map(emp => emp.rol));
     return Array.from(roles).filter(rol => rol === 'SUPERVISOR' || rol === 'INSPECTOR').sort();
   }, [empleados]);
-
   // ==== TURNOS DISPONIBLES SEGÚN ROL ====
   const turnosDisponibles = useMemo(() => {
     if (!empleados || selectedRole === "TODOS") return [];
@@ -144,29 +142,29 @@ export default function FaltasPage() {
     const empleadosGanaron = turnosEfectivosDelDia.filter((t: any) => t.tipo === 'GANADO');
     const empleadosCedieron = new Set(turnosEfectivosDelDia.filter((t: any) => t.tipo === 'CEDIDO').map((t: any) => t.empleadoId));
 
-    return empleados
-      .filter((emp) => {
-        const estaActivo = emp.activo;
-        const perteneceAlGrupo = emp.grupoTurno === grupoQueTrabaja;
-        const turnoGanado = empleadosGanaron.find((t: any) => t.empleadoId === emp.id);
-        const ganoTurno = !!turnoGanado;
-        const cedioTurno = empleadosCedieron.has(emp.id);
-        const rolCoincide = selectedRole === "TODOS"
-          ? (emp.rol === 'SUPERVISOR' || emp.rol === 'INSPECTOR')
-          : emp.rol === selectedRole;
-        const horarioEfectivo = turnoGanado ? turnoGanado.horarioEfectivo : emp.horario;
-        const turnoCoincide = selectedTurno === "TODOS" || horarioEfectivo === selectedTurno;
-        const coincideTexto = searchText === "" ||
-          emp.nombre.toLowerCase().includes(searchText.toLowerCase()) ||
-          emp.apellido.toLowerCase().includes(searchText.toLowerCase());
+  return (Array.isArray(empleados) ? empleados : [])
+    .filter((emp) => {
+      const estaActivo = emp.activo;
+      const perteneceAlGrupo = emp.grupoTurno === grupoQueTrabaja;
+      const turnoGanado = empleadosGanaron.find((t: any) => t.empleadoId === emp.id);
+      const ganoTurno = !!turnoGanado;
+      const cedioTurno = empleadosCedieron.has(emp.id);
+      const rolCoincide = selectedRole === "TODOS"
+        ? (emp.rol === 'SUPERVISOR' || emp.rol === 'INSPECTOR')
+        : emp.rol === selectedRole;
+      const horarioEfectivo = turnoGanado ? turnoGanado.horarioEfectivo : emp.horario;
+      const turnoCoincide = selectedTurno === "TODOS" || horarioEfectivo === selectedTurno;
+      const coincideTexto = searchText === "" ||
+        emp.nombre.toLowerCase().includes(searchText.toLowerCase()) ||
+        emp.apellido.toLowerCase().includes(searchText.toLowerCase());
 
-        return estaActivo && (perteneceAlGrupo || ganoTurno) && !cedioTurno && rolCoincide && turnoCoincide && coincideTexto;
-      })
-      .sort((a, b) => {
-        const horaA = a.horario?.split("-")[0] ?? "";
-        const horaB = b.horario?.split("-")[0] ?? "";
-        return horaA.localeCompare(horaB);
-      });
+      return estaActivo && (perteneceAlGrupo || ganoTurno) && !cedioTurno && rolCoincide && turnoCoincide && coincideTexto;
+    })
+    .sort((a, b) => {
+      const horaA = a.horario?.split("-")[0] ?? "";
+      const horaB = b.horario?.split("-")[0] ?? "";
+      return horaA.localeCompare(horaB);
+    });
   }, [empleados, selectedDate, selectedRole, selectedTurno, grupoQueTrabaja, searchText, turnosEfectivosDelDia]);
 
 
@@ -195,7 +193,8 @@ export default function FaltasPage() {
     const empleadosGanaron = turnosEfectivosDelDia.filter((t: any) => t.tipo === 'GANADO');
     const empleadosCedieron = new Set(turnosEfectivosDelDia.filter((t: any) => t.tipo === 'CEDIDO').map((t: any) => t.empleadoId));
 
-    return empleados.filter((emp) => {
+    return (Array.isArray(empleados) ? empleados : [])
+    .filter((emp) => {
       const estaActivo = emp.activo;
       const perteneceAlGrupo = emp.grupoTurno === grupoQueTrabaja;
       const esRolValido = emp.rol === 'SUPERVISOR' || emp.rol === 'INSPECTOR';

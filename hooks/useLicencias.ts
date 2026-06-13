@@ -1,34 +1,27 @@
 import useSWR from "swr";
-import { fetcher, poster, putter, deleter } from "@/app/api/fetcher";
-import { endpoints } from "@/app/api/endpoints";
+import { apiClient } from "@/app/lib/apiclient";
 import { Licencia, NuevaLicencia } from "@/app/api/types";
 
 export function useLicencias() {
   const { data, error, isLoading, mutate } = useSWR<Licencia[]>(
-    endpoints.licencias.list(),
-    fetcher
+    '/licencias',
+    () => apiClient.get<Licencia[]>('/licencias')
   );
 
   const crearLicencia = async (licencia: NuevaLicencia) => {
-    const res = await poster<Licencia>(
-      endpoints.licencias.create(),
-      licencia
-    );
+    const res = await apiClient.post<Licencia>('/licencias', licencia);
     mutate();
     return res;
   };
 
   const modificarLicencia = async (id: string, data: Partial<NuevaLicencia>) => {
-    const res = await putter<Licencia>(
-      endpoints.licencias.update(id),
-      data
-    );
+    const res = await apiClient.put<Licencia>(`/licencias/${id}`, data);
     mutate();
     return res;
   };
 
   const eliminarLicencia = async (id: string) => {
-    await deleter(endpoints.licencias.delete(id));
+    await apiClient.delete(`/licencias/${id}`);
     mutate();
   };
 

@@ -62,7 +62,7 @@ export default function ModalConsultaFaltas({
 
 
   const registrosConEmpleado = useMemo(() => {
-    if (!registros || !empleados) return [];
+    if (!Array.isArray(registros) || !Array.isArray(empleados)) return [];
 
     return registros.map((r) => ({
       ...r,

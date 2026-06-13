@@ -56,7 +56,7 @@ export function AutorizacionesTable({
     try {
       const res = await apiClient.put(`/autorizaciones/${editando.id}`, {
         observaciones: obsEdit,
-      });
+      }) as { ok: boolean };
       if (!res.ok) throw new Error();
       toast.success('Observaciones actualizadas.');
       setEditando(null);

@@ -2,8 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { endpoints } from "@/app/api/endpoints";
-import { fetcher, poster } from "@/app/api/fetcher";
+import { apiClient } from "@/app/lib/apiclient";
 import { Autorizacion } from "@/app/api/types";
 import { useAuth } from "@/app/context/AuthContext";
 import Pusher from "pusher-js";
@@ -18,12 +17,12 @@ export function useAutorizaciones(estado?: string) {
     setLoading(true);
     setError(null);
     try {
-      const url = estado 
-        ? endpoints.autorizaciones.list(estado)
-        : endpoints.autorizaciones.list();
-        
-      const data = await fetcher<Autorizacion[]>(url);
-      setAutorizaciones(data);
+      const url = estado
+        ? `/autorizaciones?estado=${estado}`
+        : `/autorizaciones`;
+
+      const data = await apiClient.get<Autorizacion[]>(url);
+      setAutorizaciones(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error cargando autorizaciones:', err);
       setError('Error al cargar autorizaciones');
@@ -37,13 +36,13 @@ export function useAutorizaciones(estado?: string) {
   }, [estado]);
 
 
-useEffect(() => {
+  useEffect(() => {
     const interval = setInterval(() => {
-        cargarAutorizaciones();
-    }, 300000); // cada 30 segundos
-    
+      cargarAutorizaciones();
+    }, 300000); // cada 5 minutos
+
     return () => clearInterval(interval);
-}, [estado]);
+  }, [estado]);
 
 
   useEffect(() => {
@@ -67,10 +66,7 @@ useEffect(() => {
 
   const aprobarAutorizacion = async (id: string, observaciones?: string) => {
     try {
-      await poster(
-        endpoints.autorizaciones.aprobar(id),
-        { observaciones }
-      );
+      await apiClient.post(`/autorizaciones/${id}/aprobar`, { observaciones });
       await cargarAutorizaciones();
     } catch (err) {
       console.error('Error aprobando autorización:', err);
@@ -80,10 +76,7 @@ useEffect(() => {
 
   const rechazarAutorizacion = async (id: string, observaciones: string) => {
     try {
-      await poster(
-        endpoints.autorizaciones.rechazar(id),
-        { observaciones }
-      );
+      await apiClient.post(`/autorizaciones/${id}/rechazar`, { observaciones });
       await cargarAutorizaciones();
     } catch (err) {
       console.error('Error rechazando autorización:', err);

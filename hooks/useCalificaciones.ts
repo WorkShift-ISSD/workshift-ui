@@ -1,5 +1,6 @@
 import useSWR from 'swr';
 import { fetcher, poster, putter } from '@/app/api/fetcher';
+import { apiClient } from '@/app/lib/apiclient';
 
 export interface TurnoPendiente {
   id: string;

@@ -1,8 +1,6 @@
 // hooks/useEmpleados.ts
 import useSWR from 'swr';
-import { deleter, fetcher, poster, putter } from '../app/api/fetcher';
-
-const API_BASE = '/api';
+import { apiClient } from '../app/lib/apiclient';
 
 interface Inspector {
   turno: string;
@@ -30,24 +28,20 @@ interface Inspector {
 
 export function useEmpleados() {
   const { data, error, isLoading, mutate } = useSWR<Inspector[]>(
-    `${API_BASE}/empleados`,
-    fetcher
+    '/empleados',
+    () => apiClient.get<Inspector[]>('/empleados')
   );
 
+  console.log('empleados data:', data);
+
   const createEmpleado = async (empleado: Omit<Inspector, 'id' | 'createdAt' | 'updatedAt' | 'ultimoLogin' | 'fotoPerfil'>) => {
-    const newEmpleado = await poster<Inspector>(
-      `${API_BASE}/empleados`,
-      empleado
-    );
+    const newEmpleado = await apiClient.post<Inspector>('/empleados', empleado);
     mutate([...(data || []), newEmpleado], false);
     return newEmpleado;
   };
 
   const updateEmpleado = async (id: string, empleado: Partial<Inspector>) => {
-    const updated = await putter<Inspector>(
-      `${API_BASE}/empleados/${id}`,
-      empleado
-    );
+    const updated = await apiClient.patch<Inspector>(`/empleados/${id}`, empleado);
     mutate(
       data?.map((e) => (e.id === id ? updated : e)),
       false
@@ -56,7 +50,7 @@ export function useEmpleados() {
   };
 
   const deleteEmpleado = async (id: string) => {
-    await deleter(`${API_BASE}/empleados/${id}`);
+    await apiClient.delete(`/empleados/${id}`);
     mutate(
       data?.filter((e) => e.id !== id),
       false

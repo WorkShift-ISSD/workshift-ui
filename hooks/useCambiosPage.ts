@@ -210,7 +210,7 @@ export function useCambiosPage() {
     // Handlers oferta
     const handleSubmitOferta = useCallback(async (form: NuevaOfertaForm) => {
         if (ofertaEditando) {
-            const res = await apiClient.patch(`/ofertas/${ofertaEditando.id}`, form);
+            const res = await apiClient.patch<any>(`/ofertas/${ofertaEditando.id}`, form);
             if (!res.ok) {
                 const data = await res.json();
                 throw new Error(data.error || 'Error al actualizar la oferta');
@@ -273,7 +273,7 @@ export function useCambiosPage() {
             return;
         }
 
-        const res = await apiClient.post(`/ofertas/${ofertaId}/tomar`, { tomadorId: user.id });
+        const res = await apiClient.post<any>(`/ofertas/${ofertaId}/tomar`, { tomadorId: user.id });
         if (!res.ok) {
             const data = await res.json();
             throw new Error(data.error || 'Error al tomar la oferta');
@@ -302,7 +302,7 @@ export function useCambiosPage() {
                 });
                 setOfertaChatId(ofertaParaSeleccionar.id);
             } else {
-                const data = await apiClient.post(`/ofertas/${ofertaParaSeleccionar.id}/tomar`, {
+                const data = await apiClient.post<any>(`/ofertas/${ofertaParaSeleccionar.id}/tomar`, {
                     tomadorId: user.id,
                     turnoSeleccionado,
                 });

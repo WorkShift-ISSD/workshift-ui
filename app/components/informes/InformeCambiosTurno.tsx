@@ -43,7 +43,7 @@ export function InformeCambiosTurno() {
     if (hasta) params.set('hasta', hasta);
     if (empleadoId !== 'TODOS') params.set('empleadoId', empleadoId);
 
-    apiClient.get(`/reportes/cambios-turno?${params}`)
+    apiClient.get<any>(`/reportes/cambios-turno?${params}`)
       .then(r => r.json())
       .then(d => { if (!d.error) setData(d); else console.error('Error API:', d.error); })
       .finally(() => setIsLoading(false));

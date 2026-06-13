@@ -74,9 +74,8 @@ export function ModalSolicitudDirecta({ isOpen, onClose, onSubmit, solicitudEdit
   useEffect(() => {
     if (!isOpen || !user) return;
     setLoadingUsuarios(true);
-    apiClient.get('/users')
-      .then(r => r.json())
-      .then((data: Usuario[]) => {
+    apiClient.get<Usuario[]>('/users')
+      .then((data) => {
         setUsuarios(data.filter(u => u.rol === user.rol && u.id !== user.id));
       })
       .catch(() => setError('No se pudo cargar la lista de compañeros'))
@@ -107,9 +106,9 @@ export function ModalSolicitudDirecta({ isOpen, onClose, onSubmit, solicitudEdit
       setTurnosEfectivosCompanero([]);
       return;
     }
-    apiClient.get(`/turnos-efectivos?userId=${companeroSeleccionado.id}`)
+    apiClient.get<{ ganados?: { fecha: string }[] }>(`/turnos-efectivos?userId=${companeroSeleccionado.id}`)
       .then(data => {
-        setTurnosEfectivosCompanero(data.ganados?.map((t: any) => t.fecha) || []);
+        setTurnosEfectivosCompanero(data.ganados?.map((t) => t.fecha) || []);
       });
   }, [companeroSeleccionado?.id]);
 

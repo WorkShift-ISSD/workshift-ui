@@ -1,29 +1,22 @@
-import {  endpoints } from '@/app/api/endpoints';
-import { deleter, fetcher, poster, putter } from '@/app/api/fetcher';
+import { apiClient } from '@/app/lib/apiclient';
 import { Cambio, Turno } from '@/app/api/types';
 import useSWR from 'swr';
 
 
 export function useCambios() {
   const { data, error, isLoading, mutate } = useSWR<Cambio[]>(
-    endpoints.cambios.list(),
-    fetcher
+    '/cambios',
+    () => apiClient.get<Cambio[]>('/cambios')
   );
 
   const createCambio = async (cambio: Omit<Cambio, 'id'>) => {
-    const newCambio = await poster<Cambio>(
-      endpoints.cambios.create(),
-      cambio
-    );
+    const newCambio = await apiClient.post<Cambio>('/cambios', cambio);
     mutate([...(data || []), newCambio], false);
     return newCambio;
   };
 
   const updateCambio = async (id: string, cambio: Partial<Cambio>) => {
-    const updated = await putter<Cambio>(
-      endpoints.cambios.update(id),
-      cambio
-    );
+    const updated = await apiClient.put<Cambio>(`/cambios/${id}`, cambio);
     mutate(
       data?.map((c) => (c.id === id ? updated : c)),
       false
@@ -32,7 +25,7 @@ export function useCambios() {
   };
 
   const deleteCambio = async (id: string) => {
-    await deleter(endpoints.cambios.delete(id));
+    await apiClient.delete(`/cambios/${id}`);
     mutate(
       data?.filter((c) => c.id !== id),
       false
@@ -52,8 +45,8 @@ export function useCambios() {
 
 export function useCambio(id: string | null) {
   const { data, error, isLoading, mutate } = useSWR<Cambio>(
-    id ? endpoints.cambios.byId(id) : null,
-    fetcher
+    id ? `/cambios/${id}` : null,
+    () => apiClient.get<Cambio>(`/cambios/${id}`)
   );
 
   return {

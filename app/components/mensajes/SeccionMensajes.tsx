@@ -78,7 +78,7 @@ export function SeccionMensajes({ ofertaAbrirId, onChatAbierto, onMensajesLeidos
     const cargarMensajes = useCallback(async (ofertaId: string, otroId: string) => {
         setLoadingMensajes(true);
         try {
-            const res = await apiClient.get(`/mensajes?ofertaId=${ofertaId}&otroId=${otroId}`);
+            const res = await apiClient.get<any>(`/mensajes?ofertaId=${ofertaId}&otroId=${otroId}`);
             setMensajes(res.data);
         } catch (err) {
             console.error('Error cargando mensajes:', err);
@@ -197,7 +197,7 @@ export function SeccionMensajes({ ofertaAbrirId, onChatAbierto, onMensajesLeidos
     };
 
     const aceptarPropuesta = async (conv: any, turnoParaEnviar: any, cancelarOferta: boolean) => {
-        const res = await apiClient.post(`/ofertas/${conv.ofertaId}/tomar`, {
+        const res = await apiClient.post<any>(`/ofertas/${conv.ofertaId}/tomar`, {
             tomadorId: conv.otroParticipante.id,
             turnoSeleccionado: turnoParaEnviar,
             cancelarOferta,
@@ -224,7 +224,7 @@ export function SeccionMensajes({ ofertaAbrirId, onChatAbierto, onMensajesLeidos
     };
 
     const handleRechazar = async (conv: any) => {
-        const res = await apiClient.patch(`/ofertas/${conv.ofertaId}`, { estado: 'CANCELADO' });
+        const res = await apiClient.patch<any>(`/ofertas/${conv.ofertaId}`, { estado: 'CANCELADO' });
         if (res.ok) await recargar();
     };
 

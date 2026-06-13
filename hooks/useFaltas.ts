@@ -1,7 +1,6 @@
 // hooks/useFaltas.ts
 import useSWR from 'swr';
-import { endpoints } from '@/app/api/endpoints';
-import { deleter, fetcher, poster, putter } from '@/app/api/fetcher';
+import { apiClient } from '@/app/lib/apiclient';
 
 export interface Falta {
   motivo: string;
@@ -19,7 +18,6 @@ export interface Falta {
   };
   createdAt: string;
   updatedAt: string;
-  // Relaciones opcionales
   empleado?: {
     id: string;
     nombre: string;
@@ -32,17 +30,14 @@ export interface Falta {
 
 // Normalizar fecha para evitar problemas de zona horaria
 const normalizarFecha = (fecha: string): string => {
-  // Si la fecha ya está en formato YYYY-MM-DD, devolverla tal cual
   if (/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
     return fecha;
   }
 
-  // Si viene con timestamp ISO (ejemplo: "2024-12-05T03:00:00.000Z"), extraer solo la fecha
   if (fecha.includes('T')) {
     return fecha.split('T')[0];
   }
 
-  // Si viene en otro formato, intentar extraer la fecha manualmente
   try {
     const match = fecha.match(/(\d{4})-(\d{2})-(\d{2})/);
     if (match) {
@@ -52,51 +47,42 @@ const normalizarFecha = (fecha: string): string => {
     console.error('Error normalizando fecha:', error);
   }
 
-  // Si todo falla, devolver la fecha original
   return fecha;
 };
 
 // Hook para obtener faltas de una fecha específica
 export function useFaltas(fecha?: string) {
-  // Normalizar la fecha antes de hacer la petición
   const fechaNormalizada = fecha ? normalizarFecha(fecha) : undefined;
 
+  const path = fechaNormalizada ? `/faltas?fecha=${fechaNormalizada}` : null;
+
   const { data, error, isLoading, mutate } = useSWR<Falta[]>(
-    fechaNormalizada ? endpoints.faltas.list(fechaNormalizada) : null,
-    fetcher,
+    path,
+    () => apiClient.get<Falta[]>(path!),
     {
       revalidateOnFocus: true,
-      dedupingInterval: 5000, // 5 segundos de cache
+      dedupingInterval: 5000,
     }
   );
 
   const createFalta = async (falta: Omit<Falta, 'id' | 'createdAt' | 'updatedAt'>) => {
-    // Normalizar la fecha antes de enviar
     const faltaConFechaNormalizada = {
       ...falta,
       fecha: normalizarFecha(falta.fecha)
     };
 
-    const newFalta = await poster<Falta>(
-      endpoints.faltas.create(),
-      faltaConFechaNormalizada
-    );
+    const newFalta = await apiClient.post<Falta>('/faltas', faltaConFechaNormalizada);
 
-    // Actualizar cache local
     mutate([...(data || []), newFalta], false);
     return newFalta;
   };
 
   const updateFalta = async (id: string, falta: Partial<Falta>) => {
-    // Normalizar la fecha si está presente
     const faltaConFechaNormalizada = falta.fecha
       ? { ...falta, fecha: normalizarFecha(falta.fecha) }
       : falta;
 
-    const updated = await putter<Falta>(
-      endpoints.faltas.update(id),
-      faltaConFechaNormalizada
-    );
+    const updated = await apiClient.put<Falta>(`/faltas/${id}`, faltaConFechaNormalizada);
 
     mutate(
       data?.map((f) => (f.id === id ? updated : f)),
@@ -106,7 +92,7 @@ export function useFaltas(fecha?: string) {
   };
 
   const deleteFalta = async (id: string) => {
-    await deleter(endpoints.faltas.delete(id));
+    await apiClient.delete(`/faltas/${id}`);
     mutate(
       data?.filter((f) => f.id !== id),
       false
@@ -127,11 +113,11 @@ export function useFaltas(fecha?: string) {
 // Hook para obtener TODAS las faltas (sin filtro de fecha)
 export function useTodasLasFaltas() {
   const { data, error, isLoading, mutate } = useSWR<Falta[]>(
-    '/api/faltas',
-    fetcher,
+    '/faltas',
+    () => apiClient.get<Falta[]>('/faltas'),
     {
       revalidateOnFocus: false,
-      dedupingInterval: 60000, // Cache de 1 minuto
+      dedupingInterval: 60000,
     }
   );
 
@@ -141,5 +127,4 @@ export function useTodasLasFaltas() {
     error,
     refetch: mutate,
   };
-
 }

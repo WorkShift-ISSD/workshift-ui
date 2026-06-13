@@ -4,7 +4,7 @@ import { apiClient } from "@/app/lib/apiclient";
 
 export type Rol = "SUPERVISOR" | "INSPECTOR" | "JEFE";
 export type GrupoTurno = "A" | "B";
-export type TipoOferta = "OFREZCO" | "BUSCO"; 
+export type TipoOferta = "OFREZCO" | "BUSCO";
 export type ModalidadBusqueda = "INTERCAMBIO" | "ABIERTO";
 export type Prioridad = "NORMAL" | "URGENTE";
 export type EstadoOferta =
@@ -15,7 +15,6 @@ export type EstadoOferta =
   | "CANCELADO";
 
 export interface Oferta {
-  // destinatario: any;
   id: string;
   ofertante: {
     id: string;
@@ -26,7 +25,7 @@ export interface Oferta {
     totalIntercambios: number;
   };
   tipo: TipoOferta;
-  modalidadBusqueda?: ModalidadBusqueda; //  Nuevo campo opcional
+  modalidadBusqueda?: ModalidadBusqueda;
   turnoOfrece: {
     fecha: string;
     horario: string;
@@ -37,7 +36,7 @@ export interface Oferta {
     horario: string;
     grupoTurno: GrupoTurno;
   } | null;
-  turnosBusca?: Array<{ //  Nuevo para múltiples fechas
+  turnosBusca?: Array<{
     fecha: string;
     horario: string;
   }>;
@@ -45,11 +44,11 @@ export interface Oferta {
     desde: string;
     hasta: string;
   };
-  fechasDisponibles?: Array<{ //  Nuevo para modalidad abierta
+  fechasDisponibles?: Array<{
     fecha: string;
     horario: string;
   }>;
-  fechaDesde?: string | null; 
+  fechaDesde?: string | null;
   fechaHasta?: string | null;
   horarioRango?: string | null;
   descripcion: string;
@@ -83,12 +82,12 @@ export interface Oferta {
     tomadorId: string;
     tomadorNombre: string;
     tomadorApellido: string;
-}> | null;
+  }> | null;
 }
 
 export interface NuevaOfertaForm {
-  tipo: TipoOferta; 
-  modalidadBusqueda: ModalidadBusqueda; 
+  tipo: TipoOferta;
+  modalidadBusqueda: ModalidadBusqueda;
   fechaOfrece: string;
   horarioOfrece: string;
   grupoOfrece: GrupoTurno;
@@ -96,24 +95,13 @@ export interface NuevaOfertaForm {
   fechaHasta: string;
   descripcion: string;
   prioridad: Prioridad;
-  fechasBusca: Array<{ fecha: string; horario: string }>; 
-  fechasDisponibles: Array<{ fecha: string; horario: string }>; 
-  // Rango para fechas disponibles (Me ofrezco a cubrir, Necesito cobertura, Días a cambio)
+  fechasBusca: Array<{ fecha: string; horario: string }>;
+  fechasDisponibles: Array<{ fecha: string; horario: string }>;
   usaRangoDisponibles: boolean;
   rangoDisponibles: { desde: string; hasta: string; horario: string };
-  // Rango para fechas busca (Turno que me ofrezco a hacer en OFREZCO_INTERCAMBIO)
   usaRangoBusca: boolean;
   rangoBusca: { desde: string; hasta: string; horario: string };
 }
-
-//  Fetcher con credentials
-const fetcher = async (url: string) => {
-  const res = await fetch(url, {
-    credentials: 'include', //  Enviar cookies
-  });
-  if (!res.ok) throw new Error(`Error al obtener ${url}`);
-  return res.json();
-};
 
 export const useOfertas = () => {
   const {
@@ -121,58 +109,46 @@ export const useOfertas = () => {
     error,
     isLoading,
     mutate,
-  } = useSWR<Oferta[]>("/api/ofertas", fetcher, {
-    refreshInterval: 5000,
-  });
+  } = useSWR<Oferta[]>(
+    "/ofertas",
+    () => apiClient.get<Oferta[]>("/ofertas"),
+    { refreshInterval: 5000 }
+  );
 
-  //  Crear nueva oferta con cookies
   const agregarOferta = async (oferta: NuevaOfertaForm) => {
     console.log('📤 Enviando oferta:', oferta);
 
-    const res = await apiClient.post('/ofertas', {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: 'include', // Enviar cookies automáticamente
-      body: JSON.stringify(oferta),
-    });
-
-    const data = await res.json();
+    const data = await apiClient.post<any>('/ofertas', oferta);
     console.log('📥 Respuesta del servidor:', data);
 
-    if (!res.ok) throw new Error(data.error || data.details || "Error al crear oferta");
+    if (data?.error) throw new Error(data.error || data.details || "Error al crear oferta");
 
     mutate();
     return data;
   };
 
-  // Actualizar estado de oferta
   const actualizarEstado = async (id: string, nuevoEstado: EstadoOferta) => {
-    const res = await apiClient.patch(`/ofertas/${id}`, { estado: nuevoEstado });
+    const updated = await apiClient.patch<any>(`/ofertas/${id}`, { estado: nuevoEstado });
 
-    if (!res.ok) throw new Error("Error al actualizar estado");
-    const updated = await res.json();
+    if (updated?.error) throw new Error(updated.error || "Error al actualizar estado");
 
     mutate();
     return updated;
   };
 
-  //  Eliminar oferta
   const eliminarOferta = async (id: string) => {
-    const res = await apiClient.delete(`/ofertas/${id}`);
-    if (!res.ok) throw new Error("Error al eliminar oferta");
+    const data = await apiClient.delete<any>(`/ofertas/${id}`);
+    if (data?.error) throw new Error(data.error || "Error al eliminar oferta");
 
     mutate();
   };
 
-  // Estadísticas actualizadas
   const stats = useMemo(() => {
     if (!ofertas) return { total: 0, ofrezco: 0, busco: 0, urgentes: 0 };
     return {
       total: ofertas.length,
       ofrezco: ofertas.filter((o) => o.tipo === "OFREZCO").length,
-      busco: ofertas.filter((o) => o.modalidadBusqueda === "INTERCAMBIO").length, //  Correcto
+      busco: ofertas.filter((o) => o.modalidadBusqueda === "INTERCAMBIO").length,
       urgentes: ofertas.filter((o) => o.prioridad === "URGENTE").length,
     };
   }, [ofertas]);
