@@ -7,6 +7,7 @@ import { useFormatters } from "@/hooks/useFormatters";
 import { toast } from "react-toastify";
 import { CustomDatePicker } from "@/app/components/CustomDatePicker";
 import { generarExcel, generarPDF } from "@/app/lib/exportUtils";
+import { apiClient } from "@/app/lib/apiclient";
 
 function formatTipoLicencia(tipo: string) {
   switch (tipo) {
@@ -99,11 +100,10 @@ export function LicenciasTable({ licencias, onRefetch }: Props) {
     if (!editando) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/licencias/${editando.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ fecha_desde: editFechaDesde, fecha_hasta: editFechaHasta, observaciones: editObs }),
+      const res = await apiClient.put(`/api/licencias/${editando.id}`, {
+        fecha_desde: editFechaDesde,
+        fecha_hasta: editFechaHasta,
+        observaciones: editObs,
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -121,12 +121,8 @@ export function LicenciasTable({ licencias, onRefetch }: Props) {
     if (!eliminando) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/licencias/${eliminando.id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const res = await apiClient.delete(`/licencias/${eliminando.id}`);
+      if (!res.ok) throw new Error(res.data.error);
       toast.success('Licencia eliminada correctamente.');
       setEliminando(null);
       onRefetch();

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
-const NESTJS_API_URL = process.env.NESTJS_API_URL || 'http://localhost:3001';
+const NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 async function handler(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
@@ -14,7 +14,7 @@ async function handler(request: NextRequest, { params }: { params: Promise<{ pat
 
   const rutaNestJS = path.join('/');
   const queryString = request.nextUrl.search;
-  const url = `${NESTJS_API_URL}/${rutaNestJS}${queryString}`;
+  const url = `${NEXT_PUBLIC_API_URL}/${rutaNestJS}${queryString}`;
 
   const headers: Record<string, string> = {
     'Authorization': `Bearer ${token}`,

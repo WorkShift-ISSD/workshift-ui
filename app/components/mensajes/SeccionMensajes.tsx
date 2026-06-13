@@ -7,6 +7,7 @@ import { useAuth } from '@/app/context/AuthContext';
 import Pusher from 'pusher-js';
 import { ChatCard } from './ChatCards';
 import { ModalConfirmarFechas } from './ModalConfirmarFechas';
+import { apiClient } from '@/app/lib/apiclient';
 
 interface Mensaje {
     id: string;
@@ -77,11 +78,8 @@ export function SeccionMensajes({ ofertaAbrirId, onChatAbierto, onMensajesLeidos
     const cargarMensajes = useCallback(async (ofertaId: string, otroId: string) => {
         setLoadingMensajes(true);
         try {
-            const res = await fetch(`/api/mensajes?ofertaId=${ofertaId}&otroId=${otroId}`, {
-                credentials: 'include',
-            });
-            const data = await res.json();
-            setMensajes(data);
+            const res = await apiClient.get(`/mensajes?ofertaId=${ofertaId}&otroId=${otroId}`);
+            setMensajes(res.data);
         } catch (err) {
             console.error('Error cargando mensajes:', err);
         } finally {
@@ -185,15 +183,10 @@ export function SeccionMensajes({ ofertaAbrirId, onChatAbierto, onMensajesLeidos
 
         setEnviando(true);
         try {
-            await fetch('/api/mensajes', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                    ofertaId: chatAbiertoOfertaId,
-                    receptorId: conversacion.otroParticipante.id,
-                    contenido: texto.trim(),
-                }),
+            await apiClient.post('/mensajes', {
+                ofertaId: chatAbiertoOfertaId,
+                receptorId: conversacion.otroParticipante.id,
+                contenido: texto.trim(),
             });
             setTexto('');
         } catch (err) {
@@ -204,15 +197,10 @@ export function SeccionMensajes({ ofertaAbrirId, onChatAbierto, onMensajesLeidos
     };
 
     const aceptarPropuesta = async (conv: any, turnoParaEnviar: any, cancelarOferta: boolean) => {
-        const res = await fetch(`/api/ofertas/${conv.ofertaId}/tomar`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({
-                tomadorId: conv.otroParticipante.id,
-                turnoSeleccionado: turnoParaEnviar,
-                cancelarOferta,
-            }),
+        const res = await apiClient.post(`/ofertas/${conv.ofertaId}/tomar`, {
+            tomadorId: conv.otroParticipante.id,
+            turnoSeleccionado: turnoParaEnviar,
+            cancelarOferta,
         });
         if (res.ok) {
             await recargar();
@@ -236,12 +224,7 @@ export function SeccionMensajes({ ofertaAbrirId, onChatAbierto, onMensajesLeidos
     };
 
     const handleRechazar = async (conv: any) => {
-        const res = await fetch(`/api/ofertas/${conv.ofertaId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ estado: 'CANCELADO' }),
-        });
+        const res = await apiClient.patch(`/ofertas/${conv.ofertaId}`, { estado: 'CANCELADO' });
         if (res.ok) await recargar();
     };
 
@@ -271,8 +254,7 @@ export function SeccionMensajes({ ofertaAbrirId, onChatAbierto, onMensajesLeidos
                             setChatAbierto(null);
                             setChatAbiertoOfertaId(null);
                             if (tab === 'cerrados') {
-                                fetch('/api/mensajes/conversaciones', {
-                                    method: 'PATCH',
+                                apiClient.patch('/mensajes/conversaciones', {
                                     credentials: 'include',
                                 }).then(async () => await recargar());
                             }

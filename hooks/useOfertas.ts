@@ -1,5 +1,6 @@
 import useSWR from "swr";
 import { useMemo } from "react";
+import { apiClient } from "@/app/lib/apiclient";
 
 export type Rol = "SUPERVISOR" | "INSPECTOR" | "JEFE";
 export type GrupoTurno = "A" | "B";
@@ -128,7 +129,7 @@ export const useOfertas = () => {
   const agregarOferta = async (oferta: NuevaOfertaForm) => {
     console.log('📤 Enviando oferta:', oferta);
 
-    const res = await fetch("/api/ofertas", {
+    const res = await apiClient.post('/ofertas', {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -148,12 +149,7 @@ export const useOfertas = () => {
 
   // Actualizar estado de oferta
   const actualizarEstado = async (id: string, nuevoEstado: EstadoOferta) => {
-    const res = await fetch(`/api/ofertas/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      credentials: 'include', 
-      body: JSON.stringify({ estado: nuevoEstado }),
-    });
+    const res = await apiClient.patch(`/ofertas/${id}`, { estado: nuevoEstado });
 
     if (!res.ok) throw new Error("Error al actualizar estado");
     const updated = await res.json();
@@ -164,10 +160,7 @@ export const useOfertas = () => {
 
   //  Eliminar oferta
   const eliminarOferta = async (id: string) => {
-    const res = await fetch(`/api/ofertas/${id}`, {
-      method: "DELETE",
-      credentials: 'include', //  Agregar esto
-    });
+    const res = await apiClient.delete(`/ofertas/${id}`);
     if (!res.ok) throw new Error("Error al eliminar oferta");
 
     mutate();

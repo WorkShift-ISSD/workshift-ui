@@ -56,7 +56,7 @@ export function useCalificaciones() {
   };
 
   const eliminarCalificacion = async (id: string) => {
-    const res = await fetch(`/api/calificaciones/${id}`, { method: 'DELETE' });
+    const res = await apiClient.delete(`/calificaciones/${id}`);
     mutate();
     return res;
   };

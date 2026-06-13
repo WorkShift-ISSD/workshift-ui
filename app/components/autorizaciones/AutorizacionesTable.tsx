@@ -9,6 +9,7 @@ import { ModalAutorizacion } from './ModalAutorizacion';
 import { ImpactoBadge, Impacto } from './ImpactoBadge';
 import { useAuth } from '@/app/context/AuthContext';
 import { toast } from 'react-toastify';
+import { apiClient } from '@/app/lib/apiclient';
 
 interface Props {
   autorizaciones: Autorizacion[];
@@ -53,11 +54,8 @@ export function AutorizacionesTable({
     if (!editando) return;
     setSavingObs(true);
     try {
-      const res = await fetch(`/api/autorizaciones/${editando.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ observaciones: obsEdit }),
+      const res = await apiClient.put(`/autorizaciones/${editando.id}`, {
+        observaciones: obsEdit,
       });
       if (!res.ok) throw new Error();
       toast.success('Observaciones actualizadas.');

@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { calcularGrupoTrabaja, type GrupoTurno } from "@/app/lib/turnosUtils";
 import { ExportData } from "@/app/components/ExportToPdf";
+import { apiClient } from "@/app/lib/apiclient";
 
 
 export default function FaltasPage() {
@@ -54,7 +55,7 @@ export default function FaltasPage() {
   const [turnosEfectivosDelDia, setTurnosEfectivosDelDia] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch(`/api/turnos-efectivos?fecha=${selectedDate}`, { credentials: 'include' })
+    apiClient.get(`/turnos-efectivos?fecha=${selectedDate}`)
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -229,11 +230,7 @@ export default function FaltasPage() {
         await eliminarFalta(falta.id);
         mutate();
       }
-      await fetch('/api/presentes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ empleadoId, fecha: selectedDate }),
-      });
+      await apiClient.post('/presentes', { empleadoId, fecha: selectedDate });
       mutatePresentes();
       toast.success("Presente registrado correctamente");
     } catch (error) {
@@ -266,20 +263,16 @@ export default function FaltasPage() {
         const error = await res.json();
         throw new Error(error.error || "Error al registrar falta");
       }
-      await fetch('/api/presentes', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ empleadoId: String(emp.id), fecha: selectedDate }),
-      });
-      mutatePresentes();
-      toast.success("Falta registrada correctamente");
-      mutate();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Error al registrar falta";
-      toast.error(message);
-    } finally {
-      setProcesando(prev => { const s = new Set(prev); s.delete(id); return s; });
-    }
+      await apiClient.delete('/presentes', { empleadoId: String(emp.id), fecha: selectedDate });
+        mutatePresentes();
+        toast.success("Falta registrada correctamente");
+        mutate();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Error al registrar falta";
+        toast.error(message);
+      } finally {
+        setProcesando(prev => { const s = new Set(prev); s.delete(id); return s; });
+      }
   };
 
   // ==== MANEJAR CAMBIO DE FECHA ====
@@ -620,11 +613,7 @@ export default function FaltasPage() {
                                         await eliminarFalta(falta!.id);
                                         mutate();
                                       }
-                                      await fetch('/api/presentes', {
-                                        method: 'DELETE',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ empleadoId: id, fecha: selectedDate }),
-                                      });
+                                      await apiClient.delete('/presentes', { empleadoId: id, fecha: selectedDate });
                                       mutatePresentes();
                                       toast.success("Estado limpiado");
                                     } finally {

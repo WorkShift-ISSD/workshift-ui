@@ -5,6 +5,7 @@ import { Download, Search } from 'lucide-react';
 import { useEmpleados } from '@/hooks/useEmpleados';
 import { CustomDatePicker } from '@/app/components/CustomDatePicker';
 import { generarExcel, generarPDF } from '@/app/lib/exportUtils';
+import { apiClient } from '@/app/lib/apiclient';
 
 function formatTipo(tipo: string | null | undefined) {
   switch (tipo) {
@@ -46,8 +47,7 @@ export function ConsultarAutorizaciones() {
     if (tipo !== 'TODOS') params.set('tipo', tipo);
 
     setIsLoading(true);
-    fetch(`/api/reportes/autorizaciones?${params}`, { credentials: 'include' })
-      .then(r => r.json())
+    apiClient.get(`/reportes/autorizaciones?${params}`)
       .then(d => Array.isArray(d) ? setAutorizaciones(d) : setAutorizaciones([]))
       .finally(() => setIsLoading(false));
   }, [desde, hasta, empleadoId, tipo]);

@@ -10,6 +10,7 @@ import { useTurnosEfectivos } from '@/hooks/useTurnosEfectivos';
 import { useFechasBloqueadas } from '@/hooks/useFechasBloqueadas';
 import { useRef } from 'react';
 import { Search } from 'lucide-react';
+import { apiClient } from '@/app/lib/apiclient';
 
 
 type TipoCambio = 'INTERCAMBIO' | 'COBERTURA';
@@ -73,7 +74,7 @@ export function ModalSolicitudDirecta({ isOpen, onClose, onSubmit, solicitudEdit
   useEffect(() => {
     if (!isOpen || !user) return;
     setLoadingUsuarios(true);
-    fetch('/api/users', { credentials: 'include' })
+    apiClient.get('/users')
       .then(r => r.json())
       .then((data: Usuario[]) => {
         setUsuarios(data.filter(u => u.rol === user.rol && u.id !== user.id));
@@ -106,10 +107,7 @@ export function ModalSolicitudDirecta({ isOpen, onClose, onSubmit, solicitudEdit
       setTurnosEfectivosCompanero([]);
       return;
     }
-    fetch(`/api/turnos-efectivos?userId=${companeroSeleccionado.id}`, {
-      credentials: 'include'
-    })
-      .then(r => r.json())
+    apiClient.get(`/turnos-efectivos?userId=${companeroSeleccionado.id}`)
       .then(data => {
         setTurnosEfectivosCompanero(data.ganados?.map((t: any) => t.fecha) || []);
       });

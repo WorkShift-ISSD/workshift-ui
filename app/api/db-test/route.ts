@@ -1,4 +1,3 @@
-/*
 import { sql } from '@/app/lib/postgres';
 import { NextResponse } from 'next/server';
 
@@ -20,4 +19,3 @@ export async function GET() {
     }, { status: 500 });
   }
 }
-*/

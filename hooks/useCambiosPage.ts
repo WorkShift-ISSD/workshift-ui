@@ -10,6 +10,7 @@ import type { SolicitudDirecta } from '@/app/api/types';
 import { calcularGrupoTrabaja } from '@/app/lib/turnosUtils';
 import { useTurnosEfectivos } from '@/hooks/useTurnosEfectivos';
 import { endpoints } from '@/app/api/endpoints';
+import { apiClient } from '@/app/lib/apiclient';
 
 type ModalTipo = 'solicitud-directa' | 'nueva-oferta' | null;
 export type MainTab = 'mis-solicitudes' | 'historico' | 'recibidas' | 'ofertas-disponibles';
@@ -209,11 +210,7 @@ export function useCambiosPage() {
     // Handlers oferta
     const handleSubmitOferta = useCallback(async (form: NuevaOfertaForm) => {
         if (ofertaEditando) {
-            const res = await fetch(`/api/ofertas/${ofertaEditando.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(form),
-            });
+            const res = await apiClient.patch(`/ofertas/${ofertaEditando.id}`, form);
             if (!res.ok) {
                 const data = await res.json();
                 throw new Error(data.error || 'Error al actualizar la oferta');
@@ -276,11 +273,7 @@ export function useCambiosPage() {
             return;
         }
 
-        const res = await fetch(`/api/ofertas/${ofertaId}/tomar`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tomadorId: user.id }),
-        });
+        const res = await apiClient.post(`/ofertas/${ofertaId}/tomar`, { tomadorId: user.id });
         if (!res.ok) {
             const data = await res.json();
             throw new Error(data.error || 'Error al tomar la oferta');
@@ -300,28 +293,20 @@ export function useCambiosPage() {
             if (esCobertura) {
                 turnoSeleccionadoChatRef.current = turnoSeleccionado;
                 setOfertaChatId(null);
-                await fetch('/api/mensajes', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({
-                        ofertaId: ofertaParaSeleccionar.id,
-                        receptorId: ofertaParaSeleccionar.ofertante.id,
-                        contenido: esCobertura
-                            ? `Hola, me interesa cubrir tu turno del ${turnoSeleccionado.fecha || ''}`
-                            : `Hola, me interesa tu oferta de intercambio del ${turnoSeleccionado.fecha || ''}`,
-                    }),
+                await apiClient.post('/mensajes', {
+                    ofertaId: ofertaParaSeleccionar.id,
+                    receptorId: ofertaParaSeleccionar.ofertante.id,
+                    contenido: esCobertura
+                        ? `Hola, me interesa cubrir tu turno del ${turnoSeleccionado.fecha || ''}`
+                        : `Hola, me interesa tu oferta de intercambio del ${turnoSeleccionado.fecha || ''}`,
                 });
                 setOfertaChatId(ofertaParaSeleccionar.id);
             } else {
-                // Para intercambio, tomar directamente
-                const res = await fetch(`/api/ofertas/${ofertaParaSeleccionar.id}/tomar`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ tomadorId: user.id, turnoSeleccionado }),
+                const data = await apiClient.post(`/ofertas/${ofertaParaSeleccionar.id}/tomar`, {
+                    tomadorId: user.id,
+                    turnoSeleccionado,
                 });
-                if (!res.ok) {
-                    const data = await res.json();
+                if (data.error) {
                     throw new Error(data.error);
                 }
                 toast.success('¡Oferta tomada! Pendiente de autorización del jefe.');
@@ -332,7 +317,6 @@ export function useCambiosPage() {
         },
         [ofertaParaSeleccionar, user, refetch]
     );
-
     const handleMeInteresa = useCallback(async (id: string) => {
         const oferta = ofertas.find(o => o.id === id);
         if (!oferta || !user) return;
@@ -391,15 +375,10 @@ export function useCambiosPage() {
 
         turnoSeleccionadoChatRef.current = null;
         setOfertaChatId(null);
-        await fetch('/api/mensajes', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({
-                ofertaId: id,
-                receptorId: oferta.ofertante.id,
-                contenido: `Hola, me interesa tu oferta del ${fechaDirecta || ''}`,
-            }),
+        await apiClient.post('/mensajes', {
+            ofertaId: id,
+            receptorId: oferta.ofertante.id,
+            contenido: `Hola, me interesa tu oferta del ${fechaDirecta || ''}`,
         });
         setOfertaChatId(id);
     }, [ofertas, user, turnosEfectivos]);
@@ -424,15 +403,10 @@ export function useCambiosPage() {
         const ofertaId = ofertaParaSeleccionar.id;
         const receptorId = ofertaParaSeleccionar.ofertante.id;
         setOfertaParaSeleccionar(null);
-        await fetch('/api/mensajes', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({
-                ofertaId: ofertaId,
-                receptorId: receptorId,
-                contenido: `Hola, me interesa tu oferta. Me gustaría ir el ${fecha} en horario ${horario}`,
-            }),
+        await apiClient.post('/mensajes', {
+            ofertaId: ofertaId,
+            receptorId: receptorId,
+            contenido: `Hola, me interesa tu oferta. Me gustaría ir el ${fecha} en horario ${horario}`,
         });
         setOfertaChatId(ofertaId);
     }, [ofertaParaSeleccionar, user]);

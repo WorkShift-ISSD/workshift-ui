@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { apiClient } from '../lib/apiclient';
 
 // Tipos
 interface User {
@@ -46,9 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Verificar autenticación
   const checkAuth = async () => {
     try {
-      const res = await fetch('/api/auth/me', {
-        credentials: 'include',
-      });
+      const res = await apiClient.get('/auth/me');
       
       if (res.ok) {
         const data = await res.json();
@@ -72,10 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Logout
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', { 
-        method: 'POST',
-        credentials: 'include',
-      });
+      await apiClient.post('/auth/logout', {});
+
     } catch (error) {
       console.error('Error en logout:', error);
     } finally {

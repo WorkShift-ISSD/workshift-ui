@@ -9,6 +9,7 @@ import {
 import { useEmpleados } from '@/hooks/useEmpleados';
 import { CustomDatePicker } from '@/app/components/CustomDatePicker';
 import { generarExcel, generarPDF } from '@/app/lib/exportUtils';
+import { apiClient } from '@/app/lib/apiclient';
 
 const COLORS = ['#3B82F6', '#F59E0B', '#EF4444', '#10B981', '#8B5CF6'];
 
@@ -42,7 +43,7 @@ export function InformeCambiosTurno() {
     if (hasta) params.set('hasta', hasta);
     if (empleadoId !== 'TODOS') params.set('empleadoId', empleadoId);
 
-    fetch(`/api/reportes/cambios-turno?${params}`, { credentials: 'include' })
+    apiClient.get(`/reportes/cambios-turno?${params}`)
       .then(r => r.json())
       .then(d => { if (!d.error) setData(d); else console.error('Error API:', d.error); })
       .finally(() => setIsLoading(false));

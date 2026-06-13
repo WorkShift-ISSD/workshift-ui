@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
-const API = process.env.NESTJS_API_URL || 'http://localhost:3001';
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 async function getToken() {
   const cookieStore = await cookies();
@@ -9,9 +9,13 @@ async function getToken() {
 }
 
 export async function GET() {
+  console.log('Llamando por el token')
   const token = await getToken();
+  
   if (!token) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
+  console.log('URL: ', API);
+  console.log('Token: ', token);
   const res = await fetch(`${API}/empleados`, {
     headers: { Authorization: `Bearer ${token}` },
   });

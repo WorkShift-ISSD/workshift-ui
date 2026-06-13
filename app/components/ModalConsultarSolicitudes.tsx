@@ -6,6 +6,7 @@ import { useFormatters } from '@/hooks/useFormatters';
 import { useAuth } from '@/app/context/AuthContext';
 import { generarExcel, generarPDF } from '@/app/lib/exportUtils';
 import { CustomDatePicker } from '@/app/components/CustomDatePicker';
+import { apiClient } from '../lib/apiclient';
 
 type Tab = 'solicitudes' | 'ofertas' | 'cambios';
 
@@ -41,8 +42,7 @@ function TabSolicitudes() {
   const { formatFechaSafe } = useFormatters();
 
   useEffect(() => {
-    fetch('/api/solicitudes-directas?usuario=yo', { credentials: 'include' })
-      .then(r => r.json())
+    apiClient.get('/solicitudes-directas?usuario=yo')
       .then(setSolicitudes)
       .finally(() => setIsLoading(false));
   }, []);
@@ -137,8 +137,7 @@ function TabOfertas() {
   const { user } = useAuth();
 
   useEffect(() => {
-    fetch('/api/ofertas', { credentials: 'include' })
-      .then(r => r.json())
+    apiClient.get('/ofertas')
       .then(data => setOfertas(Array.isArray(data) ? data : []))
       .finally(() => setIsLoading(false));
   }, []);
@@ -289,8 +288,7 @@ function TabCambios() {
   const [hasta, setHasta] = useState('');
 
   useEffect(() => {
-    fetch('/api/turnos-efectivos', { credentials: 'include' })
-      .then(r => r.json())
+    apiClient.get('/turnos-efectivos')
       .then(setData)
       .finally(() => setIsLoading(false));
   }, []);

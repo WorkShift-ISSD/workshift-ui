@@ -1,4 +1,4 @@
-/*
+
 // app/api/seed/route.ts
 import bcryptjs from 'bcryptjs';
 import postgres from 'postgres';
@@ -1333,4 +1333,3 @@ export async function GET() {
 export async function POST() {
   return GET();
 }
-*/

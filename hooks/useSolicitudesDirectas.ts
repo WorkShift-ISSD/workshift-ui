@@ -1,5 +1,6 @@
 import useSWR from "swr";
 import { GrupoTurno, Prioridad, EstadoOferta } from "./useOfertas";
+import { apiClient } from "@/app/lib/apiclient";
 
 export interface SolicitudesDirectas {
   id: string;
@@ -68,14 +69,7 @@ export const useSolicitudesDirectas = () => {
     // ❌ NO enviar solicitanteId en el body (el servidor lo obtiene del token)
     const { solicitanteId, ...solicitudSinSolicitante } = solicitud;
 
-    const res = await fetch("/api/solicitudes-directas", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: 'include', // ✅ Enviar cookies automáticamente
-      body: JSON.stringify(solicitudSinSolicitante),
-    });
+    const res = await apiClient.post('/solicitudes-directas', solicitudSinSolicitante);
 
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Error al crear solicitud");
@@ -97,12 +91,8 @@ export const useSolicitudesDirectas = () => {
     // ❌ NO enviar solicitanteId ni destinatarioId en la edición
     const { solicitanteId, destinatarioId, ...solicitudParaActualizar } = solicitud;
 
-    const res = await fetch(`/api/solicitudes-directas/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      credentials: 'include',
-      body: JSON.stringify(solicitudParaActualizar),
-    });
+    const res = await apiClient.patch(`/solicitudes-directas/${id}`, solicitudParaActualizar);
+
 
     const data = await res.json();
     if (!res.ok) {
@@ -128,12 +118,7 @@ export const useSolicitudesDirectas = () => {
 
   // ✅ Actualizar solo el estado (para aceptar/rechazar/cancelar)
   const actualizarEstado = async (id: string, nuevoEstado: EstadoOferta) => {
-    const res = await fetch(`/api/solicitudes-directas/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      credentials: 'include',
-      body: JSON.stringify({ estado: nuevoEstado }),
-    });
+    const res = await apiClient.patch(`/solicitudes-directas/${id}`, { estado: nuevoEstado });
 
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Error al actualizar estado");
