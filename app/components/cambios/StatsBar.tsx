@@ -22,7 +22,7 @@ export function StatsBar({
     ofertasUrgentes,
 }: Props) {
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
 
             {/* Mensajes sin leer */}
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 flex items-start justify-between min-h-[88px]">
@@ -30,7 +30,10 @@ export function StatsBar({
                     <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{totalSinLeer}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Mensajes sin leer</p>
                 </div>
-                <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center relative">                    <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <div className="relative flex-shrink-0">
+                    <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                        <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
                     {totalSinLeer > 0 && (
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center font-bold">
                             {totalSinLeer > 9 ? '9+' : totalSinLeer}
@@ -47,10 +50,10 @@ export function StatsBar({
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">En negociación</p>
                     <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
-                        {enNegociacionComoOfertante} oferente. · {enNegociacionComoInteresado} interesado
+                        {enNegociacionComoOfertante} oferente · {enNegociacionComoInteresado} interesado
                     </p>
                 </div>
-                <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center flex-shrink-0">
                     <ArrowLeftRight className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
                 </div>
             </div>
@@ -61,7 +64,7 @@ export function StatsBar({
                     <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{solicitudesRecibidas}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Solicitudes recibidas</p>
                 </div>
-                <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
                     <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
                 </div>
             </div>
@@ -72,26 +75,26 @@ export function StatsBar({
                     <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{misOfertas}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Mis ofertas activas</p>
                 </div>
-                <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
                     <Gift className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
             </div>
 
             {/* Disponibles */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 flex items-start justify-between min-h-[88px]">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 flex items-start justify-between min-h-[88px] col-span-2 md:col-span-1">
                 <div>
                     <div className="flex items-center gap-2">
                         <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{ofertasDisponibles}</p>
                         {ofertasUrgentes > 0 && (
-                            <span className="flex items-center gap-0.5 text-red-600 dark:text-red-400">
-                                <Flame className="h-4 w-4" />
-                                <span className="text-sm font-bold">{ofertasUrgentes}</span>
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold">
+                                <Flame className="h-3 w-3" />
+                                {ofertasUrgentes}
                             </span>
                         )}
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Disponibles</p>
                 </div>
-                <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
                     <Search className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                 </div>
             </div>
