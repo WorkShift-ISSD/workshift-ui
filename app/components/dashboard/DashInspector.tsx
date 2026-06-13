@@ -502,10 +502,11 @@ export default function DashboardHome() {
                         <span className="font-semibold text-blue-400">{s.solicitante
                           ? `${s.solicitante.nombre} ${s.solicitante.apellido}`
                           : 'N/A'}</span>
-                         {s.turnoDestinatario
-                          ? <>{' '}quiere tu turno del{' '}<span className="text-gray-300">{formatFechaLargaConDia(s.turnoDestinatario.fecha)}</span></>
-                          : <>{' '}quiere que lo cubras el{' '}<span className="text-gray-300">{formatFechaLargaConDia(s.turnoSolicitante?.fecha)}</span></>
-                    } </p>
+                        {' '}quiere tu turno del{' '}
+                        <span className="text-gray-300">
+                          {formatFechaLargaConDia(s.turnoDestinatario.fecha)}
+                        </span>
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -520,7 +521,7 @@ export default function DashboardHome() {
 
           {/* ── Turnos cubiertos (donut) ── */}
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5">
-            <h3 className="text-base text-center font-semibold text-gray-900 dark:text-white mb-4">GUARDIAS</h3>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Turnos cubiertos</h2>
 
             <div className="flex items-center justify-center mb-5">
               <div className="relative">

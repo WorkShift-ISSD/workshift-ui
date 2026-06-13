@@ -17,7 +17,6 @@ export default async function globalSetup() {
 
     await client.query(`DELETE FROM mensajes WHERE oferta_id IN (${TEST_OFERTAS})`);
     await client.query(`DELETE FROM conversaciones WHERE oferta_id IN (${TEST_OFERTAS})`);
-    await client.query(`DELETE FROM autorizaciones WHERE solicitud_id IN (SELECT id FROM solicitudes_directas WHERE oferta_id IN (${TEST_OFERTAS}))`);
     await client.query(`DELETE FROM solicitudes_directas WHERE oferta_id IN (${TEST_OFERTAS})`);
     await client.query(`DELETE FROM autorizaciones WHERE oferta_id IN (${TEST_OFERTAS})`);
     await client.query(`DELETE FROM ofertas WHERE descripcion LIKE 'Test%'`);
@@ -41,11 +40,11 @@ export default async function globalSetup() {
     }
     await client.query(`DELETE FROM turnos_efectivos WHERE fecha = $1 AND estado = 'PENDIENTE'`, [diaIntercambio]);
 
-    // Borrar autorizaciones de licencias (cualquier estado) y recrearlas como pendientes
+    // Borrar autorizaciones de licencias rechazadas/canceladas y recrearlas como pendientes
     await client.query(`
         WITH eliminadas AS (
             DELETE FROM autorizaciones
-            WHERE estado != 'PENDIENTE'
+            WHERE estado IN ('RECHAZADA', 'CANCELADA')
               AND licencia_id IS NOT NULL
               AND oferta_id IS NULL
             RETURNING licencia_id, empleado_id, tipo

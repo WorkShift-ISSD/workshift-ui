@@ -5,7 +5,6 @@ import { deleter, fetcher, poster, putter } from '../app/api/fetcher';
 const API_BASE = '/api';
 
 interface Inspector {
-  turnosEsteMes: number;
   turno: string;
   fechaIngreso: string;
   id: string;

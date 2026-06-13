@@ -147,6 +147,7 @@ export function SeccionMensajes({ ofertaAbrirId, onChatAbierto, onMensajesLeidos
 
         return () => {
             try { channel.unbind_all(); } catch (e) { }
+            try { pusher.unsubscribe(`conv-${chatAbiertoOfertaId}-${participantes}`); } catch (e) { }
             try { pusher.disconnect(); } catch (e) { }
         };
     }, [chatAbiertoOfertaId, chatAbiertoOtroId, user?.id]);
@@ -168,6 +169,7 @@ export function SeccionMensajes({ ofertaAbrirId, onChatAbierto, onMensajesLeidos
 
         return () => {
             try { channel.unbind_all(); } catch (e) { }
+            try { pusher.unsubscribe(`usuario-${user.id}`); } catch (e) { }
             try { pusher.disconnect(); } catch (e) { }
         };
     }, [user?.id]);

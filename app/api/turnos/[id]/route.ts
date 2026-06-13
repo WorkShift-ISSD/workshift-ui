@@ -1,61 +1,30 @@
-// app/api/turnos/route.ts
-import { sql } from '@/app/lib/postgres';
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const turnos = await sql`
-      SELECT * FROM turnos 
-      ORDER BY tipo, hora_inicio
-    `;
-    
-    // Transformar snake_case a camelCase para el frontend
-    const turnosFormatted = turnos.map(turno => ({
-      id: turno.id,
-      nombre: turno.nombre,
-      tipo: turno.tipo,
-      horaInicio: turno.hora_inicio,
-      horaFin: turno.hora_fin
-    }));
-    
-    return NextResponse.json(turnosFormatted);
-  } catch (error) {
-    console.error('Error fetching turnos:', error);
-    return NextResponse.json(
-      { error: 'Error al leer turnos' },
-      { status: 500 }
-    );
-  }
+const API = process.env.NESTJS_API_URL || 'http://localhost:3001';
+
+async function getToken() {
+  const cookieStore = await cookies();
+  return cookieStore.get('auth-token')?.value;
 }
 
-export async function POST(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const turno = await request.json();
-    
-    const [newTurno] = await sql`
-      INSERT INTO turnos (nombre, tipo, hora_inicio, hora_fin)
-      VALUES (${turno.nombre}, ${turno.tipo}, ${turno.horaInicio}, ${turno.horaFin})
-      RETURNING *
-    `;
-    
-    return NextResponse.json({
-      id: newTurno.id,
-      nombre: newTurno.nombre,
-      tipo: newTurno.tipo,
-      horaInicio: newTurno.hora_inicio,
-      horaFin: newTurno.hora_fin
-    }, { status: 201 });
-  } catch (error) {
-    console.error('Error creating turno:', error);
-    return NextResponse.json(
-      { error: 'Error al crear turno' },
-      { status: 500 }
-    );
-  }
+export async function GET() {
+  const token = await getToken();
+  if (!token) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+  const res = await fetch(`${API}/turnos`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return NextResponse.json(await res.json(), { status: res.status });
+}
+
+export async function POST(request: NextRequest) {
+  const token = await getToken();
+  if (!token) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+  const body = await request.json();
+  const res = await fetch(`${API}/turnos`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return NextResponse.json(await res.json(), { status: res.status });
 }

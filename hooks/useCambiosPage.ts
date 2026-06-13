@@ -55,15 +55,14 @@ export function useCambiosPage() {
         form: NuevaOfertaForm;
     } | null>(null);
 
-    const esAdmin = user?.rol === 'ADMINISTRADOR';
-
     // Derived data
     const misOfertas = useMemo(
         () => {
-            if (esAdmin) return ofertas.filter(o => o.estado === 'DISPONIBLE');
-            return ofertas.filter(o => o.ofertante?.id === user?.id && o.estado === 'DISPONIBLE');
+            const resultado = ofertas.filter(o => o.ofertante?.id === user?.id && o.estado === 'DISPONIBLE');
+            console.log('misOfertas:', resultado, 'user?.id:', user?.id, 'ofertas total:', ofertas.length);
+            return resultado;
         },
-        [ofertas, user?.id, esAdmin]
+        [ofertas, user?.id]
     );
 
     // Un día cedido ya no es "tuyo": no contás como trabajando ese día
@@ -75,7 +74,6 @@ export function useCambiosPage() {
 
     const ofertasDisponibles = useMemo(() => {
         if (!user) return [];
-        if (esAdmin) return ofertas.filter(o => o.estado === 'DISPONIBLE' && o.ofertante?.id !== user.id);
         return ofertas.filter(o => {
             if (o.ofertante?.id === user.id) return false;
             if (o.estado !== 'DISPONIBLE') return false;
@@ -159,15 +157,13 @@ export function useCambiosPage() {
     const ofertasUrgentes = ofertasDisponibles.filter(o => o.prioridad === 'URGENTE').length;
 
     const solicitudesEnviadas = useMemo(
-        () => esAdmin ? solicitudesDirectas : solicitudesDirectas.filter(s => s.solicitante.id === user?.id),
-        [solicitudesDirectas, user?.id, esAdmin]
+        () => solicitudesDirectas.filter(s => s.solicitante.id === user?.id),
+        [solicitudesDirectas, user?.id]
     );
 
     const solicitudesRecibidas = useMemo(
-        () => esAdmin
-            ? solicitudesDirectas.filter(s => s.estado === 'SOLICITADO')
-            : solicitudesDirectas.filter(s => s.destinatario.id === user?.id && s.estado === 'SOLICITADO'),
-        [solicitudesDirectas, user?.id, esAdmin]
+        () => solicitudesDirectas.filter(s => s.destinatario.id === user?.id && s.estado === 'SOLICITADO'),
+        [solicitudesDirectas, user?.id]
     );
 
     const totalSinLeer = conversaciones.reduce((acc, c) => acc + c.sinLeer, 0);

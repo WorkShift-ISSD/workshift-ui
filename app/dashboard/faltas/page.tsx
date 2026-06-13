@@ -9,6 +9,7 @@ import { useFaltas, useTodasLasFaltas } from "@/hooks/useFaltas";
 import { useFormatters } from "@/hooks/useFormatters";
 import { useEmpleados } from "@/hooks/useEmpleados";
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
+import ModalFalta from '@/app/components/faltas/ModalFalta';
 import ModalConsultaFaltas from '@/app/components/faltas/ModalConsultaFaltas';
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -22,7 +23,6 @@ import {
   Clock,
   FileSearch,
   AlertCircle,
-  Trash2,
 } from "lucide-react";
 import { calcularGrupoTrabaja, type GrupoTurno } from "@/app/lib/turnosUtils";
 import { ExportData } from "@/app/components/ExportToPdf";
@@ -35,14 +35,13 @@ export default function FaltasPage() {
     parseFechaLocal,
   } = useFormatters();
 
-  const ITEMS_POR_PAGINA = 20;
-  const [procesando, setProcesando] = useState<Set<string>>(new Set());
   const [selectedRole, setSelectedRole] = useState("TODOS");
   const [selectedTurno, setSelectedTurno] = useState("TODOS");
   const today = useMemo(() => getTodayDate(), [getTodayDate]);
   const [selectedDate, setSelectedDate] = useState(today);
+  const [modalEmpleado, setModalEmpleado] = useState<any>(null);
+  const [faltaEnEdicion, setFaltaEnEdicion] = useState<any>(null);
   const [modalConsultaOpen, setModalConsultaOpen] = useState(false);
-  const [paginaActual, setPaginaActual] = useState(1);
   const { licenciasDelDia } = useLicenciasDelDia(selectedDate);
   const { sancionesDelDia } = useSancionesDelDia(selectedDate);
 
@@ -56,18 +55,8 @@ export default function FaltasPage() {
   useEffect(() => {
     fetch(`/api/turnos-efectivos?fecha=${selectedDate}`, { credentials: 'include' })
       .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          console.log("turno ejemplo:", data[0]);
-          setTurnosEfectivosDelDia(data);
-        }
-      });
+      .then(data => setTurnosEfectivosDelDia(Array.isArray(data) ? data : []));
   }, [selectedDate]);
-
-  const { data: presentesData, mutate: mutatePresentes } = useSWR(
-    selectedDate ? `/api/presentes?fecha=${selectedDate}` : null,
-    fetcher
-  );
 
   const [searchText, setSearchText] = useState("");
 
@@ -78,10 +67,6 @@ export default function FaltasPage() {
     refetch: refetchFaltas,
   } = useTodasLasFaltas();
 
-  const presentesExplicitos = useMemo(() => {
-    if (!Array.isArray(presentesData)) return new Set<string>();
-    return new Set<string>(presentesData.map((p: any) => String(p.empleadoId)));
-  }, [presentesData]);
 
   const registrosAusencias = useMemo(() => {
     return (todasLasFaltas || []).map((f) => ({
@@ -130,12 +115,6 @@ export default function FaltasPage() {
     setSelectedTurno("TODOS");
   }, [selectedRole]);
 
-  // Reset página al cambiar cualquier filtro
-  useEffect(() => {
-    setPaginaActual(1);
-  }, [selectedDate, selectedRole, selectedTurno, searchText]);
-
-
   // Filtrar empleados por fecha, rol, turno y grupo
   const empleadosDelDia = useMemo(() => {
     if (!selectedDate || !empleados) return [];
@@ -180,30 +159,21 @@ export default function FaltasPage() {
 
   const empleadosConSancion = useMemo(() => {
     const data = Array.isArray(sancionesDelDia) ? sancionesDelDia : [];
-    return new Set(
-      data
-        .map((s: any) => String(s?.empleado_id ?? s?.empleadoId))
-        .filter((id: string) => !!id && id !== 'undefined')
-    );
+    return new Set(data.map(s => String(s?.empleado_id || s?.empleadoId || '')).filter(id => id !== ''));
   }, [sancionesDelDia]);
 
   // ==== EMPLEADOS PARA EXPORTAR (sin filtros) ====
   const empleadosParaExportar = useMemo(() => {
     if (!empleados) return [];
 
-    const empleadosGanaron = turnosEfectivosDelDia.filter((t: any) => t.tipo === 'GANADO');
-    const empleadosCedieron = new Set(turnosEfectivosDelDia.filter((t: any) => t.tipo === 'CEDIDO').map((t: any) => t.empleadoId));
-
     return empleados.filter((emp) => {
       const estaActivo = emp.activo;
       const perteneceAlGrupo = emp.grupoTurno === grupoQueTrabaja;
       const esRolValido = emp.rol === 'SUPERVISOR' || emp.rol === 'INSPECTOR';
-      const ganoTurno = empleadosGanaron.some((t: any) => t.empleadoId === emp.id);
-      const cedioTurno = empleadosCedieron.has(emp.id);
 
-      return estaActivo && (perteneceAlGrupo || ganoTurno) && !cedioTurno && esRolValido;
+      return estaActivo && perteneceAlGrupo && esRolValido;
     });
-  }, [empleados, grupoQueTrabaja, turnosEfectivosDelDia]);
+  }, [empleados, grupoQueTrabaja]);
 
   // ==== ELIMINAR FALTA ====
   const handleEliminarFalta = async (id: string) => {
@@ -219,67 +189,11 @@ export default function FaltasPage() {
     }
   };
 
-  // ==== REGISTRAR PRESENTE ====
-  const handleRegistrarPresente = async (empleadoId: String, falta?: any) => {
-    const id = String(empleadoId);
-    if (procesando.has(id)) return;
-    setProcesando(prev => new Set(prev).add(id));
-    try {
-      if (falta) {
-        await eliminarFalta(falta.id);
-        mutate();
-      }
-      await fetch('/api/presentes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ empleadoId, fecha: selectedDate }),
-      });
-      mutatePresentes();
-      toast.success("Presente registrado correctamente");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Error al registrar presente";
-      toast.error(message);
-    } finally {
-      setProcesando(prev => { const s = new Set(prev); s.delete(id); return s; });
-    }
-  };
-
-  // ==== REGISTRAR FALTA (directo, sin modal) ====
-  const handleRegistrarFalta = async (emp: any) => {
-    const id = String(emp.id);
-    if (procesando.has(id)) return;
-    setProcesando(prev => new Set(prev).add(id));
-    try {
-      const res = await fetch("/api/faltas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          empleadoId: emp.id,
-          fecha: selectedDate,
-          motivo: "Inasistencia",
-          observaciones: null,
-          justificada: false,
-        }),
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Error al registrar falta");
-      }
-      await fetch('/api/presentes', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ empleadoId: String(emp.id), fecha: selectedDate }),
-      });
-      mutatePresentes();
-      toast.success("Falta registrada correctamente");
-      mutate();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Error al registrar falta";
-      toast.error(message);
-    } finally {
-      setProcesando(prev => { const s = new Set(prev); s.delete(id); return s; });
-    }
+  // ==== CUANDO GUARDA FORM DE FALTA ====
+  const handleFaltaSaved = () => {
+    setModalEmpleado(null);
+    setFaltaEnEdicion(null);
+    mutate();
   };
 
   // ==== MANEJAR CAMBIO DE FECHA ====
@@ -332,6 +246,7 @@ export default function FaltasPage() {
             Consultar Faltas
           </button>
 
+
           <ExportData
             employees={empleadosParaExportar}
             stats={{
@@ -350,11 +265,7 @@ export default function FaltasPage() {
               return empleadosConFalta.includes(empleado.id) ? 'ausente' : 'presente';
             }}
             mode="faltas"
-            presentesDelDia={Array.from(presentesExplicitos)}
-            licenciasDelDia={(licenciasDelDia ?? []) as any[]}
-            sancionesDelDia={(sancionesDelDia ?? []) as any[]}
-            turnosEfectivosDelDia={turnosEfectivosDelDia ?? []}
-/>
+          />
         </div>
       </div>
 
@@ -511,12 +422,11 @@ export default function FaltasPage() {
               </thead>
 
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {empleadosDelDia.slice((paginaActual - 1) * ITEMS_POR_PAGINA, paginaActual * ITEMS_POR_PAGINA).map((emp) => {
+                {empleadosDelDia.map((emp) => {
                   const falta = faltas?.find((f) => f.empleadoId === emp.id);
                   const enFalta = !!falta;
                   const enLicencia = empleadosConLicencia.has(emp.id);
-                  const enSancion = empleadosConSancion.has(String(emp.id));
-                  const esPresenteExplicito = presentesExplicitos.has(String(emp.id));
+                  const enSancion = empleadosConSancion.has(emp.id);
                   const turnoGanado = turnosEfectivosDelDia.find((t: any) => t.tipo === 'GANADO' && t.empleadoId === emp.id);
                   const horarioMostrar = turnoGanado ? turnoGanado.horarioEfectivo : emp.horario;
 
@@ -531,11 +441,6 @@ export default function FaltasPage() {
 
                       <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium text-gray-900 dark:text-white">
                         {emp.apellido}, {emp.nombre}
-                        {turnoGanado?.companero && (
-                          <span className="ml-2 text-xs font-normal text-amber-400 dark:text-amber-300">
-                            (cambio x {turnoGanado.companero})
-                          </span>
-                        )}
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600 dark:text-gray-400">
@@ -559,85 +464,53 @@ export default function FaltasPage() {
                             <XCircle className="w-4 h-4" /> Falta
                           </span>
                         ) : (
-                          esPresenteExplicito ? (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200">
-                              <CheckCircle className="w-4 h-4" /> Presente
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold text-gray-400 dark:text-gray-500">
-                              —
-                            </span>
-                          )
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200">
+                            <CheckCircle className="w-4 h-4" /> Presente
+                          </span>
                         )}
                       </td>
 
 
                       <td className="px-6 py-4 whitespace-nowrap text-center">
+                        {/* 5. Bloquear acciones si está en licencia o sanción */}
                         {(enLicencia || enSancion) ? (
                           <span className="text-sm text-gray-500 italic">
                             {enLicencia ? "En licencia" : "Sancionado"}
                           </span>
+                        ) : !enFalta ? (
+                          <button
+                            onClick={() => setModalEmpleado(emp)}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600
+                                      text-white rounded-lg font-medium transition-colors
+                                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                                      dark:focus:ring-offset-gray-800"
+                          >
+                            Registrar Falta
+                          </button>
                         ) : (
-                          <div className="flex gap-2 justify-center items-center min-w-[200px]">
+                          <div className="flex gap-2 justify-center">
+                            <button
+                              onClick={() => {
+                                setFaltaEnEdicion(falta);
+                                setModalEmpleado(falta.empleado || emp);
+                              }}
+                              className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-500 dark:hover:bg-yellow-600
+                                        text-white rounded-lg font-medium transition-colors
+                                        focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2
+                                        dark:focus:ring-offset-gray-800"
+                            >
+                              Editar
+                            </button>
 
                             <button
-                              onClick={() => !(esPresenteExplicito && !enFalta) && handleRegistrarPresente(String(emp.id), falta || undefined)}
-                              disabled={procesando.has(String(emp.id)) || (esPresenteExplicito && !enFalta)}
-                              className={`px-4 py-2 rounded-lg font-medium transition-colors
-                                focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2
-                                dark:focus:ring-offset-gray-800 text-white
-                                ${procesando.has(String(emp.id)) || (esPresenteExplicito && !enFalta)
-                                  ? "bg-green-300 dark:bg-green-900 cursor-not-allowed opacity-50"
-                                  : "bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"
-                                }`}
-                              >
-                                Presente
-                              </button>
-                              <button
-                                onClick={() => !enFalta && handleRegistrarFalta(emp)}
-                                disabled={procesando.has(String(emp.id)) || enFalta}
-                                className={`px-4 py-2 rounded-lg font-medium transition-colors
-                                focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
-                                dark:focus:ring-offset-gray-800 text-white
-                                ${procesando.has(String(emp.id)) || enFalta
-                                    ? "bg-red-300 dark:bg-red-900 cursor-not-allowed opacity-50"
-                                    : "bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
-                                  }`}
-                              >
-                                Falta
-                              </button>
-
-                                <button
-                                  title="Limpiar estado"
-                                  onClick={async () => {
-                                    const id = String(emp.id);
-                                    if (procesando.has(id)) return;
-                                    setProcesando(prev => new Set(prev).add(id));
-                                    try {
-                                      if (enFalta) {
-                                        await eliminarFalta(falta!.id);
-                                        mutate();
-                                      }
-                                      await fetch('/api/presentes', {
-                                        method: 'DELETE',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ empleadoId: id, fecha: selectedDate }),
-                                      });
-                                      mutatePresentes();
-                                      toast.success("Estado limpiado");
-                                    } finally {
-                                      setProcesando(prev => { const s = new Set(prev); s.delete(id); return s; });
-                                    }
-                                  }}
-                                disabled={procesando.has(String(emp.id)) || (!enFalta && !esPresenteExplicito)}
-                                className={`p-2 rounded-lg transition-colors
-                                  ${(enFalta || esPresenteExplicito)
-                                    ? "text-gray-400 hover:text-white hover:bg-gray-600 dark:hover:bg-gray-500 cursor-pointer"
-                                    : "invisible cursor-default"
-                                  }`}
-                                >
-                                  <XCircle className="w-4 h-4" />
-                                </button>
+                              onClick={() => handleEliminarFalta(falta.id)}
+                              className="px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600
+                                        text-white rounded-lg font-medium transition-colors
+                                        focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
+                                        dark:focus:ring-offset-gray-800"
+                            >
+                              Eliminar
+                            </button>
                           </div>
                         )}
                       </td>
@@ -651,32 +524,24 @@ export default function FaltasPage() {
         )}
       </div>
 
-      {/* Paginación */}
-      {empleadosDelDia.length > ITEMS_POR_PAGINA && (
-        <div className="flex items-center justify-between mt-4 px-2">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Mostrando {(paginaActual - 1) * ITEMS_POR_PAGINA + 1}–{Math.min(paginaActual * ITEMS_POR_PAGINA, empleadosDelDia.length)} de {empleadosDelDia.length} empleados
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
-              disabled={paginaActual === 1}
-              className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              ← Anterior
-            </button>
-            <span className="text-sm text-gray-600 dark:text-gray-400 min-w-[80px] text-center">
-              Página {paginaActual} de {Math.ceil(empleadosDelDia.length / ITEMS_POR_PAGINA)}
-            </span>
-            <button
-              onClick={() => setPaginaActual(p => Math.min(Math.ceil(empleadosDelDia.length / ITEMS_POR_PAGINA), p + 1))}
-              disabled={paginaActual === Math.ceil(empleadosDelDia.length / ITEMS_POR_PAGINA)}
-              className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              Siguiente →
-            </button>
-          </div>
-        </div>
+      {/* Modal Registrar/Editar Falta */}
+      {modalEmpleado && (
+        <ModalFalta
+          empleado={modalEmpleado}
+          fecha={selectedDate}
+          open={true}
+          onClose={() => {
+            setModalEmpleado(null);
+            setFaltaEnEdicion(null);
+          }}
+          onSaved={() => {
+            setModalEmpleado(null);
+            setFaltaEnEdicion(null);
+            mutate();
+          }}
+          falta={faltaEnEdicion}
+          mode={faltaEnEdicion ? 'edit' : 'create'}
+        />
       )}
 
       {/* Modal Consultar Historial */}
