@@ -28,8 +28,7 @@ export async function GET(req: Request) {
       sanciones = await sql`
         SELECT *
         FROM sanciones
-        WHERE estado = ${EstadoSancion.ACTIVA}
-          AND ${fecha}::date BETWEEN fecha_desde AND fecha_hasta
+        WHERE ${fecha}::date BETWEEN fecha_desde AND fecha_hasta
         ORDER BY created_at DESC
       `;
     } else {
@@ -65,7 +64,7 @@ export async function POST(req: Request) {
       motivo,
     } = body;
 
-    // 🔒 Validación: sanción activa existente
+    //Validación: sanción activa existente
     const sancionActiva = await sql`
       SELECT 1
       FROM sanciones

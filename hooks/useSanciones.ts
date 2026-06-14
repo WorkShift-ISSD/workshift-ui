@@ -16,9 +16,7 @@ export function useSanciones() {
   const cargarSanciones = async () => {
     setLoading(true);
     try {
-      const data = await fetcher<Sancion[]>(
-        endpoints.sanciones.list()
-      );
+      const data = await fetcher<Sancion[]>('/api/sanciones');
       setSanciones(data);
     } finally {
       setLoading(false);
