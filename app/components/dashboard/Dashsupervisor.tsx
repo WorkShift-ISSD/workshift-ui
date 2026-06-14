@@ -244,7 +244,6 @@ export default function DashboardSupervisor() {
         sanciones?.some(
           s =>
             s.empleado_id === user?.id &&
-            s.estado === 'ACTIVA' &&
             ymd >= s.fecha_desde.split('T')[0] &&
             ymd <= s.fecha_hasta.split('T')[0]
         ) ?? false;

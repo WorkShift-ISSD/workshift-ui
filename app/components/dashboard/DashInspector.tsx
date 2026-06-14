@@ -124,7 +124,7 @@ export default function DashboardHome() {
 
     // Sanciones activas en días de guardia del mes
     const sancionesReales = sanciones?.filter(s => {
-      if (s.empleado_id !== user.id || s.estado !== 'ACTIVA') return false;
+      if (s.empleado_id !== user.id) return false;
       const desde = new Date(s.fecha_desde.split('T')[0] + 'T00:00:00');
       const hasta = new Date(s.fecha_hasta.split('T')[0] + 'T00:00:00');
       // Contar días del mes que caen en la sanción y son días de guardia hasta hoy
@@ -212,7 +212,6 @@ export default function DashboardHome() {
 
       const esSancion = sanciones?.some(s =>
         s.empleado_id === user?.id &&
-        s.estado === 'ACTIVA' &&
         ymd >= s.fecha_desde.split('T')[0] &&
         ymd <= s.fecha_hasta.split('T')[0]
       ) ?? false;

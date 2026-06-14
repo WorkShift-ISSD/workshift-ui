@@ -61,7 +61,6 @@ export default function CalendarioTurnos() {
 
     const esSancion = sanciones?.some(s =>
       s.empleado_id === user?.id &&
-      s.estado === 'ACTIVA' &&
       fechaStr >= s.fecha_desde.split('T')[0] &&
       fechaStr <= s.fecha_hasta.split('T')[0]
     ) ?? false;

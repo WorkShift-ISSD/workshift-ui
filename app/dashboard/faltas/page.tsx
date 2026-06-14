@@ -76,6 +76,8 @@ export default function FaltasPage() {
     faltas: todasLasFaltas = [],
     refetch: refetchFaltas,
   } = useTodasLasFaltas();
+  const { data: todasLasLicencias = [] } = useSWR<any[]>("/api/licencias", fetcher);
+  const { data: todasLasSanciones = [] } = useSWR<any[]>("/api/sanciones", fetcher);
 
   const presentesExplicitos = useMemo(() => {
     if (!Array.isArray(presentesData)) return new Set<string>();
@@ -83,11 +85,32 @@ export default function FaltasPage() {
   }, [presentesData]);
 
   const registrosAusencias = useMemo(() => {
-    return (todasLasFaltas || []).map((f) => ({
+    const faltas = (todasLasFaltas || []).map((f: any) => ({
       ...f,
       tipo: "FALTA" as const,
     }));
-  }, [todasLasFaltas]);
+
+    const licencias = (todasLasLicencias || []).map((l: any) => ({
+      id: String(l.id),
+      tipo: "LICENCIA" as const,
+      empleadoId: l.empleado_id ?? l.empleadoId,
+      fecha: l.fecha_desde?.split("T")[0] ?? l.fecha,
+      motivo: l.tipo ?? l.motivo ?? "Licencia",
+    }));
+
+    const sanciones = (todasLasSanciones || []).map((s: any) => ({
+      id: String(s.id),
+      tipo: "SANCION" as const,
+      empleadoId: s.empleado_id ?? s.empleadoId,
+      fecha: s.fecha_desde?.split("T")[0] ?? s.fecha,
+      motivo: s.motivo ?? "Sanción",
+      observaciones: s.observaciones ?? null,
+    }));
+
+    return [...faltas, ...licencias, ...sanciones].sort((a, b) =>
+      b.fecha.localeCompare(a.fecha)
+    );
+  }, [todasLasFaltas, todasLasLicencias, todasLasSanciones]);
 
   // ==== VALIDAR FECHA FUTURA ====
   const esFechaFutura = useMemo(() => {
