@@ -32,6 +32,17 @@ export const apiClient = {
     return res.json();
   },
 
+  async postFormData<T = unknown>(path: string, formData: FormData): Promise<T> {
+    const headers = await getHeaders();
+    const res = await fetch(`${API}${path}`, {
+      method: 'POST',
+      headers, // sin Content-Type — el browser lo setea con el boundary correcto
+      credentials: 'include',
+      body: formData,
+    });
+    return res.json();
+  },
+
   async put<T = unknown>(path: string, body?: unknown): Promise<T> {
     const headers = await getHeaders();
     const res = await fetch(`${API}${path}`, {

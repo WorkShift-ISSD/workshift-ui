@@ -1,5 +1,6 @@
 "use client";
 
+import { apiClient } from "@/app/lib/apiclient";
 import { useState, useRef, useEffect } from "react";
 import { FaRobot, FaTimes, FaPaperPlane } from "react-icons/fa";
 
@@ -44,7 +45,6 @@ export default function AsistenteBot() {
   async function handleAsk() {
     if (!question.trim()) return;
 
-    // Agregar pregunta del usuario
     const userMessage: Message = {
       id: Date.now(),
       type: 'user',
@@ -53,22 +53,14 @@ export default function AsistenteBot() {
     };
 
     setMessages(prev => [...prev, userMessage]);
-    
-    // Limpiar input INMEDIATAMENTE
+
     const currentQuestion = question;
     setQuestion("");
     setLoading(true);
 
     try {
-      const res = await fetch("/api/docs/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: currentQuestion }),
-      });
+      const data = await apiClient.post<any>("/docs/ask", { question: currentQuestion });
 
-      const data = await res.json();
-
-      // Agregar respuesta del bot
       const botMessage: Message = {
         id: Date.now() + 1,
         type: 'bot',
@@ -79,7 +71,7 @@ export default function AsistenteBot() {
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       console.error('Error al consultar:', error);
-      
+
       const errorMessage: Message = {
         id: Date.now() + 1,
         type: 'bot',

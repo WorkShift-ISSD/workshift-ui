@@ -30,19 +30,13 @@ export default function ResetPasswordPage() {
 
   const verifyToken = async () => {
     try {
-      const res = await fetch("/api/auth/verify-reset-token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
-      });
+      const data = await apiClient.post<any>("/auth/verify-reset-token", { token });
 
-      const data = await res.json();
-
-      if (res.ok && data.valid) {
+      if (data?.valid) {
         setTokenValid(true);
         setUserName(`${data.user.nombre} ${data.user.apellido}`);
       } else {
-        setError(data.error || "El enlace es inválido o ha expirado");
+        setError(data?.error || data?.message || "El enlace es inválido o ha expirado");
         setTokenValid(false);
       }
     } catch (err) {
@@ -106,16 +100,12 @@ export default function ResetPasswordPage() {
     setLoading(true);
 
     try {
-      const res = await apiClient.post<any>(`/auth/reset-password/${token}`, { newPassword });
+      const data = await apiClient.post<any>(`/auth/reset-password/${token}`, { newPassword });
 
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Error al actualizar contraseña");
+      if (data?.error || data?.message) {
+        throw new Error(data.error || data.message || "Error al actualizar contraseña");
       }
 
-      // Éxito
       setSuccess(true);
       setTimeout(() => {
         router.push("/");

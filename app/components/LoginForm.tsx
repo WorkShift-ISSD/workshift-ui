@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Eye, EyeOff, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import ChangePasswordModal from "./editar datos usuario/ChangePasswordModal";
+import { apiClient } from "../lib/apiclient";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -44,38 +45,29 @@ export default function LoginForm() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, password, rememberMe }),
-      });
+      const data = await apiClient.post<any>('/auth/login', { email, password, rememberMe });
 
-      const data = await response.json();
+      if (data?.error || data?.message === 'Unauthorized' || data?.statusCode === 401) {
+        setError(data.error || data.message || "Credenciales incorrectas");
+        return;
+      }
 
-      if (response.ok) {
-        // Guardar o eliminar email según checkbox
-        if (rememberMe) {
-          localStorage.setItem('remembered-email', email);
-        } else {
-          localStorage.removeItem('remembered-email');
-        }
-
-        // Verificar si es primer ingreso
-        if (data.primerIngreso) {
-          setPrimerIngreso(true);
-          setTempUserData(data.user);
-          setShowChangePasswordModal(true);
-        } else {
-          // Login normal
-          await login(data.user);
-          router.push("/loading");
-          setTimeout(() => {
-            router.push("/dashboard");
-          }, 2000);
-        }
+      if (rememberMe) {
+        localStorage.setItem('remembered-email', email);
       } else {
-        setError(data.error || "Credenciales incorrectas");
+        localStorage.removeItem('remembered-email');
+      }
+
+      if (data.primerIngreso) {
+        setPrimerIngreso(true);
+        setTempUserData(data.user);
+        setShowChangePasswordModal(true);
+      } else {
+        await login(data.user);
+        router.push("/loading");
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 2000);
       }
     } catch (err) {
       console.error("Error en login:", err);
@@ -104,16 +96,10 @@ export default function LoginForm() {
     setResetMessage("");
 
     try {
-      const res = await fetch("/api/auth/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: resetEmail }),
-      });
+      const data = await apiClient.post<any>("/auth/forgot-password", { email: resetEmail });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Error al enviar el correo");
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
       setResetMessage("✓ Se ha enviado un correo con las instrucciones para restablecer tu contraseña");

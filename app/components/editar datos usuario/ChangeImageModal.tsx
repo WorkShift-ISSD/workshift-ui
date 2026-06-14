@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Image as ImageIcon, X, AlertCircle } from "lucide-react";
+import { apiClient } from "@/app/lib/apiclient";
 
 interface ChangeImageModalProps {
   isOpen: boolean;
@@ -59,22 +60,16 @@ export default function ChangeImageModal({
       const formData = new FormData();
       formData.append("image", file);
 
-      // ✅ CORREGIDO: Ruta correcta
-      const res = await fetch("/api/users/change-image", {
-        method: "POST",
-        body: formData,
-        credentials: "include"
-      });
+      const data = await apiClient.postFormData<any>("/users/me/image", formData);
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al actualizar imagen");
+      if (data?.error) {
+        throw new Error(data.error || "Error al actualizar imagen");
+      }
 
-      // Limpiar el preview local
       if (preview) {
         URL.revokeObjectURL(preview);
       }
-      
-      // data.url contiene la URL de Cloudinary
+
       onSuccess();
       onClose();
     } catch (err: any) {

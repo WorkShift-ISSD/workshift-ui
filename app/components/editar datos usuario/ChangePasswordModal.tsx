@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { Eye, EyeOff, Lock, AlertCircle, CheckCircle2 } from "lucide-react";
+import { apiClient } from "@/app/lib/apiclient";
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -79,23 +80,15 @@ export default function ChangePasswordModal({
       setError("Las contraseñas no coinciden");
       return;
     }
-
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/change-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          currentPassword: isPrimerIngreso ? undefined : currentPassword,
-          newPassword,
-        }),
+      const data = await apiClient.post<any>("/auth/change-password", {
+        currentPassword: isPrimerIngreso ? undefined : currentPassword,
+        newPassword,
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
+      if (data?.error) {
         throw new Error(data.error || "Error al cambiar contraseña");
       }
 
