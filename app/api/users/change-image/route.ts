@@ -97,9 +97,9 @@ export async function POST(req: NextRequest) {
     console.log("🔵 [DEBUG] Actualizando BD...");
 
     await sql`
-      UPDATE users 
-      SET 
-        imagen = ${result.secure_url},
+      UPDATE users
+      SET
+        foto_perfil = ${result.secure_url},
         cloudinary_public_id = ${result.public_id}
       WHERE id = ${sessionUser.id}
     `;

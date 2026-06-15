@@ -45,13 +45,17 @@ export const useFormatters = () => {
     if (!fecha) return 'Fecha no disponible';
 
     try {
-      const date = fecha.includes('T')
-        ? new Date(fecha)
-        : parseFechaLocal(fecha);
-
+      // Si tiene hora (T o espacio), tratar como UTC y convertir a Argentina
+      const tieneHora = fecha.includes('T') || fecha.includes(' ');
+      console.log('fecha:', fecha, 'tieneHora:', tieneHora);
+      const fechaNormalizada = fecha.replace(' ', 'T').replace(/Z+$/, '') + 'Z';
+      console.log('fechaNormalizada:', fechaNormalizada);
+      const date = tieneHora ? new Date(fechaNormalizada) : parseFechaLocal(fecha);
+      console.log('date:', date, 'isNaN:', date ? isNaN(date.getTime()) : 'null');
       if (!date || isNaN(date.getTime())) return 'Fecha inválida';
 
       return date.toLocaleDateString('es-AR', {
+        timeZone: 'America/Argentina/Buenos_Aires',
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -65,7 +69,7 @@ export const useFormatters = () => {
   const formatTimeAgo = (dateString: string) => {
     if (!dateString) return '';
 
-    const date = new Date(dateString); 
+    const date = new Date(dateString);
     if (isNaN(date.getTime())) return '';
 
     const now = new Date();
@@ -121,6 +125,22 @@ export const useFormatters = () => {
     }
   };
 
+  //FORMATO FECHA DIA + NUMERO DIA + MES (EJ MARTES 21 DE ABRIL)
+  const formatFechaLargaConDia = (fechaString: string) => {
+    if (!fechaString) return '';
+
+    const date = parseFechaLocal(fechaString);
+    if (!date || isNaN(date.getTime())) return '';
+
+    const weekday = date.toLocaleDateString('es-AR', { weekday: 'long' });
+    const day = date.getDate();
+    const month = date.toLocaleDateString('es-AR', { month: 'long' });
+
+    const result = `${weekday} ${day} de ${month}`;
+
+    return result.charAt(0).toUpperCase() + result.slice(1);
+  };
+
 
   return {
     parseFechaLocal,
@@ -129,6 +149,7 @@ export const useFormatters = () => {
     formatFechaSafe,
     formatTimeAgo,
     getTodayDate,
-    formatDiaYHorario
+    formatDiaYHorario,
+    formatFechaLargaConDia,
   };
 };

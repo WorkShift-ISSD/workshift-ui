@@ -44,6 +44,27 @@ interface Falta {
   observaciones?: string;
 }
 
+interface Licencia {
+  id?: string;
+  empleadoId?: string;
+  empleado_id?: string;
+  motivo?: string;
+  tipo?: string;
+}
+
+interface Sancion {
+  id?: string;
+  empleadoId?: string;
+  empleado_id?: string;
+  motivo?: string;
+}
+
+interface TurnoEfectivo {
+  empleadoId: string;
+  tipo: 'GANADO' | 'CEDIDO';
+  companero?: string;
+}
+
 type ExportMode = 'personal' | 'faltas';
 
 interface ExportDataProps {
@@ -52,7 +73,8 @@ interface ExportDataProps {
     total: number;
     activos: number;
     enLicencia: number;
-    ausentes: number;
+    inactivo: number;
+    ausentes?: number;
   };
   filters?: {
     searchTerm?: string;
@@ -65,18 +87,27 @@ interface ExportDataProps {
   mode: ExportMode; // Modo de exportación
   faltasDelDia?: Falta[] | null; // Solo para modo faltas
   fechaSeleccionada?: string; // Solo para modo faltas
+  licenciasDelDia?: Licencia[] | null;      
+  sancionesDelDia?: Sancion[] | null;       
+  turnosEfectivosDelDia?: TurnoEfectivo[] | null;
+  presentesDelDia?: string[] | null;
 }
 
 export const ExportData: React.FC<ExportDataProps> = ({
-  employees,
+  employees: employeesRaw,
   stats,
   filters,
   calcularEstado,
   className = '',
   mode = 'personal',
   faltasDelDia = null,
-  fechaSeleccionada
+  fechaSeleccionada,
+  licenciasDelDia = null,
+  sancionesDelDia = null,
+  turnosEfectivosDelDia = null,
+  presentesDelDia = null,
 }) => {
+  const employees = employeesRaw.filter(e => (e.rol as string) !== 'ADMINISTRADOR');
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
@@ -94,6 +125,29 @@ export const ExportData: React.FC<ExportDataProps> = ({
   }, []);
 
   const usuarioNombre = `${user?.nombre ?? ""} ${user?.apellido ?? ""}`;
+
+  const resolverEstado = (emp: Inspector): string => {
+    const empId = String(emp.id);
+    if (licenciasDelDia?.find(l => String(l.empleadoId ?? l.empleado_id) === empId)) return 'LICENCIA';
+    if (sancionesDelDia?.find(s => String(s.empleadoId ?? s.empleado_id) === empId)) return 'SANCIONADO';
+    if (faltasDelDia?.find(f => f.empleadoId === empId)) return 'FALTA';
+    if (presentesDelDia?.includes(empId)) return 'PRESENTE';
+    return '-';
+  };
+
+  const resolverMotivo = (emp: Inspector): string => {
+    const empId = String(emp.id);
+    console.log("empId:", empId, "turnos:", turnosEfectivosDelDia?.map(t => t.empleadoId));
+    const falta = faltasDelDia?.find(f => f.empleadoId === empId);
+    if (falta) return falta.motivo || 'Inasistencia';
+    const licencia = licenciasDelDia?.find(l => String(l.empleadoId ?? l.empleado_id) === empId);
+    if (licencia) return licencia.motivo ?? licencia.tipo ?? 'Licencia';
+    const sancion = sancionesDelDia?.find(s => String(s.empleadoId ?? s.empleado_id) === empId);
+    if (sancion) return sancion.motivo ?? 'Sancion';
+    const turno = turnosEfectivosDelDia?.find(t => String(t.empleadoId) === empId && t.tipo === 'GANADO');
+    if (turno?.companero) return `Cambio x ${turno.companero}`;
+    return '-';
+  };
 
   // ======== PDF MEJORADO ========
   const exportToPDF = async () => {
@@ -145,7 +199,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
         doc.setTextColor(120, 120, 120);
         doc.text("Migraciones - WSMS © 2025", 40, pageHeight - 12);
         doc.text(`Página ${pageNumber} de ${totalPages}`, pageWidth - 15, pageHeight - 12, { align: "right" });
-        doc.text(`Total empleados: ${employees.length}`, pageWidth - 15, pageHeight - 7, { align: "right" });
+        doc.text(`Total empleados: ${employees.filter(e => (e.rol as string) !== 'ADMINISTRADOR').length}`, pageWidth - 15, pageHeight - 7, { align: "right" });
       };
 
       let y = 45;
@@ -158,7 +212,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
           { label: "Total", value: stats.total, color: [37, 99, 235] },
           { label: "Activos", value: stats.activos, color: [34, 197, 94] },
           { label: "En Licencia", value: stats.enLicencia, color: [234, 179, 8] },
-          { label: "Sancionados", value: stats.ausentes, color: [239, 68, 68] },
+          { label: "Inactivos", value: stats.inactivo ?? stats.ausentes ?? 0, color: [239, 68, 68] },
         ];
 
         const cardWidth = (pageWidth - 40) / 4;
@@ -178,14 +232,21 @@ export const ExportData: React.FC<ExportDataProps> = ({
         y += 30;
       } else {
         // Cards para modo faltas
-        const presentes = employees.length - (faltasDelDia?.length || 0);
+        const presentes = (presentesDelDia?.length || 0);
+        const ausentes = (faltasDelDia?.length || 0) +
+          employees.filter(emp => {
+            const empId = String(emp.id);
+            return licenciasDelDia?.find(l => String(l.empleadoId ?? l.empleado_id) === empId) ||
+              sancionesDelDia?.find(s => String(s.empleadoId ?? s.empleado_id) === empId);
+          }).length;
         const cards = [
           { label: "Total", value: employees.length, color: [37, 99, 235] },
           { label: "Presentes", value: presentes, color: [34, 197, 94] },
           { label: "Faltas", value: faltasDelDia?.length || 0, color: [239, 68, 68] },
+          { label: "Licencias/Sanciones", value: ausentes - (faltasDelDia?.length || 0), color: [234, 179, 8] },
         ];
 
-        const cardWidth = (pageWidth - 40) / 3;
+        const cardWidth = (pageWidth - 40) / 4;
         cards.forEach((card, i) => {
           const x = 15 + i * (cardWidth + 2);
           doc.setFillColor(card.color[0], card.color[1], card.color[2]);
@@ -259,16 +320,16 @@ export const ExportData: React.FC<ExportDataProps> = ({
       doc.setFontSize(8);
 
       let page = 1;
-
+      let employeesToRender = employees;
       if (mode === 'faltas') {
-        employees = [...employees].sort((a, b) => {
+        employeesToRender = [...employees].sort((a, b) => {
           const horaA = a.horario?.slice(0, 5) || "99:99";
           const horaB = b.horario?.slice(0, 5) || "99:99";
           return horaA.localeCompare(horaB);
         });
       }
 
-      for (let emp of employees) {
+      for (let emp of employeesToRender) {
         if (y > pageHeight - 30) {
           doc.addPage();
           page++;
@@ -277,13 +338,13 @@ export const ExportData: React.FC<ExportDataProps> = ({
           drawTableHeader();
         }
 
-        const estado = calcularEstado(emp);
+        const estadoReal = mode === 'faltas' ? resolverEstado(emp) : calcularEstado(emp) === 'presente' ? 'PRESENTE' : 'FALTA';
         const colorEstado =
-          estado === "ACTIVO" || estado === "presente"
+          estadoReal === 'PRESENTE'
             ? [34, 197, 94]
-            : estado === "LICENCIA"
+            : estadoReal === 'LICENCIA'
               ? [234, 179, 8]
-              : estado === "AUSENTE" || estado === "ausente"
+              : estadoReal === 'FALTA' || estadoReal === 'SANCIONADO'
                 ? [239, 68, 68]
                 : [156, 163, 175];
 
@@ -295,19 +356,17 @@ export const ExportData: React.FC<ExportDataProps> = ({
             emp.rol,
             emp.grupoTurno || "-",
             emp.horario || "No asignado",
-            estado === 'presente' ? 'PRESENTE' : estado === 'ausente' ? 'FALTA' : estado,
+            estadoReal  === 'presente' ? 'PRESENTE' : estadoReal  === 'ausente' ? 'FALTA' : estadoReal ,
             emp.telefono || "-",
           ];
         } else {
-          const falta = faltasDelDia?.find(f => f.empleadoId === emp.id);
-          const motivoCompleto = falta?.motivo || '-';
-          // Limitar el motivo a 40 caracteres para que quepa en la celda
+          const motivoCompleto = resolverMotivo(emp);
           const motivo = motivoCompleto.length > 40 ? motivoCompleto.substring(0, 37) + '...' : motivoCompleto;
           row = [
             emp.horario || "-",
             `${emp.apellido}, ${emp.nombre}`,
             emp.rol,
-            estado === 'presente' ? 'PRESENTE' : 'FALTA',
+            resolverEstado(emp),
             motivo,
           ];
         }
@@ -317,7 +376,6 @@ export const ExportData: React.FC<ExportDataProps> = ({
         row.forEach((text, i) => {
           const colCenter = x + colWidth[i] / 2;
 
-          // Color del estado
           if ((mode === 'personal' && i === 5) || (mode === 'faltas' && i === 3)) {
             doc.setTextColor(colorEstado[0], colorEstado[1], colorEstado[2]);
             doc.setFont("helvetica", "bold");
@@ -328,12 +386,9 @@ export const ExportData: React.FC<ExportDataProps> = ({
 
           doc.setFontSize(8);
 
-          // Alineación
-          if ((mode === 'personal' && i === 1) || (mode === 'faltas' && (i === 1 || i === 4))) {
-            // Nombre y motivo alineados a la izquierda
+          if ((mode === 'personal' && i === 1) || (mode === 'faltas' && i === 1)) {
             doc.text(text, x + 2, y);
           } else {
-            // Resto centrado
             doc.text(text, colCenter, y, { align: "center" });
           }
 
@@ -378,12 +433,17 @@ export const ExportData: React.FC<ExportDataProps> = ({
 
     // ===== ESTADÍSTICAS =====
     if (mode === 'personal') {
-      wsData.push(['', '', '', 'TOTAL', 'ACTIVOS', 'EN LICENCIA', 'SANCIONADOS']);
-      wsData.push(['', '', '', stats.total, stats.activos, stats.enLicencia, stats.ausentes]);
+      wsData.push(['', '', '', 'TOTAL', 'ACTIVOS', 'EN LICENCIA', 'INACTIVOS/BLOQUEADOS']);
+      wsData.push(['', '', '', stats.total, stats.activos, stats.enLicencia, stats.inactivo]);
     } else {
-      const presentes = employees.length - (faltasDelDia?.length || 0);
-      wsData.push(['', '', '', 'TOTAL', 'PRESENTES', 'FALTAS']);
-      wsData.push(['', '', '', employees.length, presentes, faltasDelDia?.length || 0]);
+      const presentes = (presentesDelDia?.length || 0);
+       const licSan = employees.filter(emp => {
+    const empId = String(emp.id);
+    return licenciasDelDia?.find(l => String(l.empleadoId ?? l.empleado_id) === empId) ||
+           sancionesDelDia?.find(s => String(s.empleadoId ?? s.empleado_id) === empId);
+  }).length;
+      wsData.push(['', '', '', 'TOTAL', 'PRESENTES', 'FALTAS', 'LIC/SANCIONES']);
+      wsData.push(['', '', '', employees.length, presentes, faltasDelDia?.length || 0, licSan]);
     }
     wsData.push([]);
 
@@ -434,8 +494,8 @@ export const ExportData: React.FC<ExportDataProps> = ({
           emp.rol,
           emp.grupoTurno,
           emp.horario || "No asignado",
-          estado === 'presente' ? 'PRESENTE' : 'FALTA',
-          falta?.motivo || '-',
+          resolverEstado(emp),
+          resolverMotivo(emp),
           falta ? (falta.justificada ? 'SÍ' : 'NO') : '-',
           falta?.observaciones || '-',
         ]);
@@ -446,7 +506,7 @@ export const ExportData: React.FC<ExportDataProps> = ({
 
     // ===== FOOTER =====
     wsData.push([`Migraciones - WSMS © 2025`]);
-    wsData.push([`Total empleados: ${employees.length}`]);
+    wsData.push([`Total empleados: ${employees.filter(e => (e.rol as string) !== 'ADMINISTRADOR').length}`]);
 
     // Crear hoja
     const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -675,17 +735,21 @@ export const ExportData: React.FC<ExportDataProps> = ({
       xml += `    <fecha_consulta>${fechaSeleccionada}</fecha_consulta>\n`;
     }
 
-    xml += `    <total_empleados>${employees.length}</total_empleados>\n`;
+    xml += `    <total_empleados>${employees.filter(e => (e.rol as string) !== 'ADMINISTRADOR').length}</total_empleados>\n`;
     xml += `    <estadisticas>\n`;
 
     if (mode === 'personal') {
       xml += `      <activos>${stats.activos}</activos>\n`;
       xml += `      <en_licencia>${stats.enLicencia}</en_licencia>\n`;
-      xml += `      <sancionados>${stats.ausentes}</ausentes>\n`;
+      xml += `      <inactivo>${stats.inactivo}</inactivo>\n`;
     } else {
-      const presentes = employees.length - (faltasDelDia?.length || 0);
-      xml += `      <presentes>${presentes}</presentes>\n`;
+      xml += `      <presentes>${presentesDelDia?.length || 0}</presentes>\n`;
       xml += `      <faltas>${faltasDelDia?.length || 0}</faltas>\n`;
+      xml += `      <licencias_sanciones>${employees.filter(emp => {
+        const empId = String(emp.id);
+        return licenciasDelDia?.find(l => String(l.empleadoId ?? l.empleado_id) === empId) ||
+          sancionesDelDia?.find(s => String(s.empleadoId ?? s.empleado_id) === empId);
+      }).length}</licencias_sanciones>\n`;
     }
 
     xml += `    </estadisticas>\n`;
@@ -701,17 +765,13 @@ export const ExportData: React.FC<ExportDataProps> = ({
       xml += `      <rol>${emp.rol}</rol>\n`;
       xml += `      <grupo_turno>${emp.grupoTurno}</grupo_turno>\n`;
       xml += `      <horario>${emp.horario || 'No asignado'}</horario>\n`;
-      xml += `      <estado>${estado}</estado>\n`;
 
       if (mode === 'faltas') {
         const falta = faltasDelDia?.find(f => f.empleadoId === emp.id);
-        if (falta) {
-          xml += `      <falta>\n`;
-          xml += `        <motivo>${falta.motivo || ''}</motivo>\n`;
-          xml += `        <justificada>${falta.justificada}</justificada>\n`;
-          xml += `        <observaciones>${falta.observaciones || ''}</observaciones>\n`;
-          xml += `      </falta>\n`;
-        }
+        xml += `      <estado>${resolverEstado(emp)}</estado>\n`;
+        xml += `      <motivo>${resolverMotivo(emp)}</motivo>\n`;
+        xml += `      <justificada>${falta ? falta.justificada : false}</justificada>\n`;
+        xml += `      <observaciones>${falta?.observaciones || ''}</observaciones>\n`;
       } else {
         xml += `      <email>${emp.email}</email>\n`;
         xml += `      <telefono>${emp.telefono || ''}</telefono>\n`;

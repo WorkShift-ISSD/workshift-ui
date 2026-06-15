@@ -24,6 +24,7 @@ import {
   UserX,
   CheckCircle,
   XCircle,
+  RefreshCw,
 } from 'lucide-react';
 import {
   BarChart,
@@ -43,13 +44,22 @@ import {
 
 
 
+import { InformeCambiosTurno } from '@/app/components/informes/InformeCambiosTurno';
+import { InformeSanciones } from '@/app/components/informes/InformeSanciones';
+import { InformeLicencias } from '@/app/components/informes/InformeLicencias';
+import { useAuth } from '@/app/context/AuthContext';
+import { useLicencias } from '@/hooks/useLicencias';
+
 type Rol = 'SUPERVISOR' | 'INSPECTOR';
 type GrupoTurno = 'A' | 'B';
-type TipoInforme = 'asistencia' | 'ausentismo' | 'comparativo' | 'individual';
+type TipoInforme = 'asistencia' | 'ausentismo' | 'comparativo' | 'individual' | 'cambios-turno' | 'sanciones' | 'licencias';
 
 export default function InformesPage() {
+  const { user } = useAuth();
+  const esJefe = user?.rol === 'JEFE' || user?.rol === 'ADMINISTRADOR';
   const { empleados, isLoading: loadingEmpleados } = useEmpleados();
   const { faltas, isLoading: loadingFaltas } = useTodasLasFaltas();
+  const { licencias } = useLicencias();
 
   // Estados para filtros
   const [tipoInforme, setTipoInforme] = useState<TipoInforme>('asistencia');
@@ -69,6 +79,39 @@ export default function InformesPage() {
   const [horarioSeleccionado, setHorarioSeleccionado] = useState<string>('TODOS');
 
   const [soloConFaltas, setSoloConFaltas] = useState(false);
+
+  // Turnos efectivos del empleado seleccionado
+  const [turnosEfectivos, setTurnosEfectivos] = useState<{ ganados: any[]; cedidos: any[] }>({ ganados: [], cedidos: [] });
+
+  useEffect(() => {
+    if (empleadoSeleccionado === 'TODOS') {
+      setTurnosEfectivos({ ganados: [], cedidos: [] });
+      return;
+    }
+    fetch(`/api/turnos-efectivos?userId=${empleadoSeleccionado}`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => { if (d.ganados) setTurnosEfectivos(d); })
+      .catch(() => {});
+  }, [empleadoSeleccionado]);
+
+  const turnosEfectivosFiltrados = useMemo(() => {
+    const inicio = new Date(fechaInicio);
+    const fin = new Date(fechaFin);
+    fin.setHours(23, 59, 59);
+    const enRango = (t: any) => { const f = new Date(t.fecha); return f >= inicio && f <= fin; };
+    return {
+      ganados: turnosEfectivos.ganados.filter(enRango),
+      cedidos: turnosEfectivos.cedidos.filter(enRango),
+    };
+  }, [turnosEfectivos, fechaInicio, fechaFin]);
+
+  const licenciasDelEmpleado = useMemo(() => {
+    if (!licencias || empleadoSeleccionado === 'TODOS') return [];
+    return licencias.filter(l => {
+      if (l.empleado_id !== empleadoSeleccionado) return false;
+      return l.fecha_desde <= fechaFin && l.fecha_hasta >= fechaInicio;
+    });
+  }, [licencias, empleadoSeleccionado, fechaInicio, fechaFin]);
 
   // Estados para el segundo grupo de comparación
   const [compararActivo, setCompararActivo] = useState(false);
@@ -267,7 +310,6 @@ export default function InformesPage() {
         porcentajeAsistencia: estadisticas.porcentajeAsistencia,
       };
     })
-      .filter(emp => emp.faltas > 0)
       .sort((a, b) => b.porcentajeAsistencia - a.porcentajeAsistencia);
 
     return porEmpleado;
@@ -476,7 +518,7 @@ export default function InformesPage() {
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex justify-between items-start">
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
               Informes y Reportes
@@ -511,83 +553,116 @@ export default function InformesPage() {
 
       {/* Selector de Tipo de Informe */}
 
-      <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="mb-6 grid grid-cols-4 lg:grid-cols-7 gap-2 lg:gap-3">
         {/* Asistencia */}
         <button
           onClick={() => setTipoInforme('asistencia')}
-          className={`p-4 rounded-lg border-2 transition-all ${tipoInforme === 'asistencia'
+          title="Asistencia"
+          className={`p-3 rounded-lg border-2 transition-all ${tipoInforme === 'asistencia'
             ? 'border-blue-500 bg-blue-500/10 dark:bg-blue-500/20'
             : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
             }`}
         >
-          <div className="flex items-center gap-3">
-            <CheckCircle className={`h-6 w-6 ${tipoInforme === 'asistencia' ? 'text-blue-500' : 'text-gray-400'
-              }`} />
-            <span className={`font-semibold ${tipoInforme === 'asistencia' ? 'text-blue-500' : 'text-gray-700 dark:text-gray-400'
-              }`}>
-              Asistencia
-            </span>
+          <div className="flex flex-col items-center gap-1">
+            <CheckCircle className={`h-5 w-5 ${tipoInforme === 'asistencia' ? 'text-blue-500' : 'text-gray-400'}`} />
+            <span className={`text-xs font-semibold text-center ${tipoInforme === 'asistencia' ? 'text-blue-500' : 'text-gray-700 dark:text-gray-400'}`}>Asistencia</span>
           </div>
         </button>
 
         {/* Ausentismo */}
         <button
           onClick={() => setTipoInforme('ausentismo')}
-          className={`p-4 rounded-lg border-2 transition-all ${tipoInforme === 'ausentismo'
+          title="Ausentismo"
+          className={`p-3 rounded-lg border-2 transition-all ${tipoInforme === 'ausentismo'
             ? 'border-red-500 bg-red-500/10 dark:bg-red-500/20'
             : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
             }`}
         >
-          <div className="flex items-center gap-3">
-            <UserX className={`h-6 w-6 ${tipoInforme === 'ausentismo' ? 'text-red-500' : 'text-gray-400'
-              }`} />
-            <span className={`font-semibold ${tipoInforme === 'ausentismo' ? 'text-red-500' : 'text-gray-700 dark:text-gray-400'
-              }`}>
-              Ausentismo
-            </span>
+          <div className="flex flex-col items-center gap-1">
+            <UserX className={`h-5 w-5 ${tipoInforme === 'ausentismo' ? 'text-red-500' : 'text-gray-400'}`} />
+            <span className={`text-xs font-semibold text-center ${tipoInforme === 'ausentismo' ? 'text-red-500' : 'text-gray-700 dark:text-gray-400'}`}>Ausentismo</span>
           </div>
         </button>
 
         {/* Comparativo */}
         <button
           onClick={() => setTipoInforme('comparativo')}
-          className={`p-4 rounded-lg border-2 transition-all ${tipoInforme === 'comparativo'
+          title="Comparativo"
+          className={`p-3 rounded-lg border-2 transition-all ${tipoInforme === 'comparativo'
             ? 'border-purple-500 bg-purple-500/10 dark:bg-purple-500/20'
             : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
             }`}
         >
-          <div className="flex items-center gap-3">
-            <BarChart3 className={`h-6 w-6 ${tipoInforme === 'comparativo' ? 'text-purple-500' : 'text-gray-400'
-              }`} />
-            <span className={`font-semibold ${tipoInforme === 'comparativo' ? 'text-purple-500' : 'text-gray-700 dark:text-gray-400'
-              }`}>
-              Comparativo
-            </span>
+          <div className="flex flex-col items-center gap-1">
+            <BarChart3 className={`h-5 w-5 ${tipoInforme === 'comparativo' ? 'text-purple-500' : 'text-gray-400'}`} />
+            <span className={`text-xs font-semibold text-center ${tipoInforme === 'comparativo' ? 'text-purple-500' : 'text-gray-700 dark:text-gray-400'}`}>Comparativo</span>
           </div>
         </button>
 
         {/* Individual */}
         <button
           onClick={() => setTipoInforme('individual')}
-          className={`p-4 rounded-lg border-2 transition-all ${tipoInforme === 'individual'
+          title="Individual"
+          className={`p-3 rounded-lg border-2 transition-all ${tipoInforme === 'individual'
             ? 'border-green-500 bg-green-500/10 dark:bg-green-500/20'
             : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
             }`}
         >
-          <div className="flex items-center gap-3">
-            <FileBarChart className={`h-6 w-6 ${tipoInforme === 'individual' ? 'text-green-500' : 'text-gray-400'
-              }`} />
-            <span className={`font-semibold ${tipoInforme === 'individual' ? 'text-green-500' : 'text-gray-700 dark:text-gray-400'
-              }`}>
-              Individual
-            </span>
+          <div className="flex flex-col items-center gap-1">
+            <FileBarChart className={`h-5 w-5 ${tipoInforme === 'individual' ? 'text-green-500' : 'text-gray-400'}`} />
+            <span className={`text-xs font-semibold text-center ${tipoInforme === 'individual' ? 'text-green-500' : 'text-gray-700 dark:text-gray-400'}`}>Individual</span>
+          </div>
+        </button>
+
+        {/* Cambios de Turno — solo jefe */}
+        {esJefe && <button
+          onClick={() => setTipoInforme('cambios-turno')}
+          title="Cambios de Turno"
+          className={`p-3 rounded-lg border-2 transition-all ${tipoInforme === 'cambios-turno'
+            ? 'border-blue-500 bg-blue-500/10 dark:bg-blue-500/20'
+            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+            }`}
+        >
+          <div className="flex flex-col items-center gap-1">
+            <RefreshCw className={`h-5 w-5 ${tipoInforme === 'cambios-turno' ? 'text-blue-500' : 'text-gray-400'}`} />
+            <span className={`text-xs font-semibold text-center ${tipoInforme === 'cambios-turno' ? 'text-blue-500' : 'text-gray-700 dark:text-gray-400'}`}>Cambios de Turno</span>
+          </div>
+        </button>}
+
+        {/* Sanciones */}
+        <button
+          onClick={() => setTipoInforme('sanciones')}
+          title="Sanciones"
+          className={`p-3 rounded-lg border-2 transition-all ${tipoInforme === 'sanciones'
+            ? 'border-red-500 bg-red-500/10 dark:bg-red-500/20'
+            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+            }`}
+        >
+          <div className="flex flex-col items-center gap-1">
+            <AlertCircle className={`h-5 w-5 ${tipoInforme === 'sanciones' ? 'text-red-500' : 'text-gray-400'}`} />
+            <span className={`text-xs font-semibold text-center ${tipoInforme === 'sanciones' ? 'text-red-500' : 'text-gray-700 dark:text-gray-400'}`}>Sanciones</span>
+          </div>
+        </button>
+
+        {/* Licencias */}
+        <button
+          onClick={() => setTipoInforme('licencias')}
+          title="Licencias"
+          className={`p-3 rounded-lg border-2 transition-all ${tipoInforme === 'licencias'
+            ? 'border-purple-500 bg-purple-500/10 dark:bg-purple-500/20'
+            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+            }`}
+        >
+          <div className="flex flex-col items-center gap-1">
+            <Calendar className={`h-5 w-5 ${tipoInforme === 'licencias' ? 'text-purple-500' : 'text-gray-400'}`} />
+            <span className={`text-xs font-semibold text-center ${tipoInforme === 'licencias' ? 'text-purple-500' : 'text-gray-700 dark:text-gray-400'}`}>Licencias</span>
           </div>
         </button>
       </div>
 
 
       {/* Panel de Filtros */}
-      <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+      {!['cambios-turno', 'sanciones', 'licencias'].includes(tipoInforme) && <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
         <button
           onClick={() => setMostrarFiltros(!mostrarFiltros)}
           className="w-full px-6 py-4 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -623,7 +698,7 @@ export default function InformesPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               {/* Fecha Inicio */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -705,7 +780,7 @@ export default function InformesPage() {
 
               {/* Empleado Individual */}
               {tipoInforme === 'individual' && (
-                <div>
+                <div className="col-span-full lg:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Empleado
                   </label>
@@ -736,10 +811,10 @@ export default function InformesPage() {
             </div>
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Cards de Estadísticas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      {!['cambios-turno', 'sanciones', 'licencias'].includes(tipoInforme) && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-2">
             <Users className="h-8 w-8 text-blue-600" />
@@ -771,7 +846,7 @@ export default function InformesPage() {
           <p className="text-sm text-gray-600 dark:text-gray-400">Tasa Ausentismo</p>
           <p className="text-2xl font-bold text-gray-900 dark:text-white">{estadisticas.tasaAusentismo}%</p>
         </div>
-      </div>
+      </div>}
 
       {/* Contenido según tipo de informe */}
       {tipoInforme === 'asistencia' && (
@@ -1047,7 +1122,7 @@ export default function InformesPage() {
                       'B': '#10B981'     // Verde para grupo B
                     };
 
-                    const color = colorMap[data.name] || '#6B7280';
+                    const color = colorMap[data.name ?? ''] ?? '#6B7280';
 
                     return (
                       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-lg">
@@ -1252,7 +1327,7 @@ export default function InformesPage() {
               {compararActivo && estadisticasComparativas && (
                 <div className="space-y-6">
                   {/* Cards comparativos */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {/* Empleados */}
                     <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Empleados</p>
@@ -1488,7 +1563,7 @@ export default function InformesPage() {
                         'INSPECTOR': '#10B981'
                       };
 
-                      const color = colorMap[data.name] || '#6B7280';
+                      const color = colorMap[data.name ?? ''] ?? '#6B7280';
 
                       return (
                         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-lg">
@@ -1542,7 +1617,7 @@ export default function InformesPage() {
                         'INSPECTOR': '#34D399'    // Verde
                       };
 
-                      const color = colorMap[data.name] || '#E5E7EB';
+                      const color = colorMap[data.name ?? ''] ?? '#E5E7EB';
 
                       return (
                         <div style={{
@@ -1615,7 +1690,7 @@ export default function InformesPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                           <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Faltas</p>
                           <p className="text-2xl font-bold text-gray-900 dark:text-white">{datosEmp.faltas}</p>
@@ -1633,6 +1708,123 @@ export default function InformesPage() {
                           <p className="text-2xl font-bold text-blue-600">{datosEmp.diasTrabajados}</p>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Turnos Efectivos */}
+                    {/* Cambios de Turno Efectivos */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                        Cambios de Turno Efectivos en el Período
+                      </h3>
+                      {(turnosEfectivosFiltrados.ganados.length === 0 && turnosEfectivosFiltrados.cedidos.length === 0) ? (
+                        <p className="text-center text-gray-500 dark:text-gray-400 py-6 text-sm">No hubo cambios de turno en este período</p>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Turnos Ganados</p>
+                              <p className="text-2xl font-bold text-blue-600">{turnosEfectivosFiltrados.ganados.length}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Trabajó el turno de otro</p>
+                            </div>
+                            <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg">
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Turnos Cedidos</p>
+                              <p className="text-2xl font-bold text-orange-600">{turnosEfectivosFiltrados.cedidos.length}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Otro trabajó su turno</p>
+                            </div>
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead className="bg-gray-50 dark:bg-gray-700">
+                                <tr>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Fecha</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Tipo</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Horario Original</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Horario Efectivo</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Compañero</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                                {[
+                                  ...turnosEfectivosFiltrados.ganados.map(t => ({ ...t, _tipo: 'GANADO' })),
+                                  ...turnosEfectivosFiltrados.cedidos.map(t => ({ ...t, _tipo: 'CEDIDO' })),
+                                ]
+                                  .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
+                                  .map((t, i) => (
+                                    <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                      <td className="px-4 py-3 text-gray-900 dark:text-white">
+                                        {new Date(t.fecha + 'T12:00:00').toLocaleDateString('es-AR')}
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                          t._tipo === 'GANADO'
+                                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                                            : 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'
+                                        }`}>
+                                          {t._tipo}
+                                        </span>
+                                      </td>
+                                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{t.horario_original || '—'}</td>
+                                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{t.horario_efectivo || '—'}</td>
+                                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{t.companero || '—'}</td>
+                                    </tr>
+                                  ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Licencias en el período */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                        Licencias en el Período
+                      </h3>
+                      {licenciasDelEmpleado.length === 0 ? (
+                        <p className="text-center text-gray-500 dark:text-gray-400 py-6 text-sm">No hubo licencias en este período</p>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-50 dark:bg-gray-700">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Tipo</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Artículo</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Desde</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Hasta</th>
+                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Días</th>
+                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Estado</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                              {licenciasDelEmpleado.map(l => (
+                                <tr key={l.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                  <td className="px-4 py-3 text-gray-900 dark:text-white">
+                                    {{ ORDINARIA: 'Ordinaria', ESPECIAL: 'Especial', MEDICA: 'Médica', ESTUDIO: 'Estudio', SIN_GOCE: 'Sin goce' }[l.tipo] ?? l.tipo}
+                                  </td>
+                                  <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{l.articulo ?? '—'}</td>
+                                  <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                                    {new Date(l.fecha_desde + 'T12:00:00').toLocaleDateString('es-AR')}
+                                  </td>
+                                  <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                                    {new Date(l.fecha_hasta + 'T12:00:00').toLocaleDateString('es-AR')}
+                                  </td>
+                                  <td className="px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">{l.dias}</td>
+                                  <td className="px-4 py-3 text-center">
+                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                      l.estado === 'ACTIVA' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                                      l.estado === 'PENDIENTE' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' :
+                                      l.estado === 'FINALIZADA' ? 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400' :
+                                      'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                                    }`}>
+                                      {l.estado}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
 
                     {/* Detalle de Faltas */}
@@ -1689,6 +1881,10 @@ export default function InformesPage() {
           )}
         </div>
       )}
+
+      {tipoInforme === 'cambios-turno' && <InformeCambiosTurno />}
+      {tipoInforme === 'sanciones' && <InformeSanciones />}
+      {tipoInforme === 'licencias' && <InformeLicencias />}
     </div>
   );
 }

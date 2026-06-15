@@ -1,5 +1,6 @@
 import { sql } from '@/app/lib/postgres';
 import { NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 
 // GET /api/users - Obtener todos los usuarios
 export async function GET() {
@@ -30,7 +31,7 @@ export async function GET() {
   }
 }
 
-// POST /api/users - Crear nuevo usuario (opcional)
+// POST /api/users - Crear nuevo usuario
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -48,13 +49,18 @@ export async function POST(request: Request) {
       grupo_turno
     } = body;
 
-    // Validación básica
     if (!legajo || !email || !nombre || !apellido || !rol) {
       return NextResponse.json(
         { error: 'Faltan campos obligatorios' },
         { status: 400 }
       );
     }
+
+    // Generar contraseña: iniciales del nombre en mayúscula + apellido con inicial mayúscula + "25"
+    const inicialesNombre = nombre.trim().split(/\s+/).map((n: string) => n[0].toUpperCase()).join('');
+    const apellidoCapital = apellido.trim().charAt(0).toUpperCase() + apellido.trim().slice(1);
+    const passwordFinal = password || `${inicialesNombre}${apellidoCapital}25`;
+    const hashedPassword = await bcrypt.hash(passwordFinal, 10);
 
     const [nuevoUsuario] = await sql`
       INSERT INTO users (
@@ -72,14 +78,15 @@ export async function POST(request: Request) {
         activo,
         grupo_turno,
         calificacion,
-        total_intercambios
+        total_intercambios,
+        primer_ingreso
       ) VALUES (
         gen_random_uuid(),
         ${legajo},
         ${email},
         ${nombre},
         ${apellido},
-        ${password || 'password123'},
+        ${hashedPassword},
         ${rol},
         ${telefono || null},
         ${direccion || null},
@@ -88,7 +95,8 @@ export async function POST(request: Request) {
         true,
         ${grupo_turno || 'A'},
         0,
-        0
+        0,
+        true
       )
       RETURNING id::text, legajo, nombre, apellido, email, rol;
     `;

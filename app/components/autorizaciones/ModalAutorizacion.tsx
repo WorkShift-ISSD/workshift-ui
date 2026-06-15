@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Check, XCircle, Calendar, User, FileText, ArrowRightLeft } from "lucide-react";
+import { X, Check, XCircle, User, FileText, ArrowRightLeft } from "lucide-react";
 import { Autorizacion } from "@/app/api/types";
 import { useFormatters } from '@/hooks/useFormatters';
 import { toast } from "react-toastify";
@@ -84,11 +84,7 @@ export function ModalAutorizacion({
   const isPendiente = autorizacion.estado === "PENDIENTE";
   const solicitud = (autorizacion as any).solicitudDirecta;
   const oferta = (autorizacion as any).oferta;
-
-  // 🔍 AGREGAR ESTO TEMPORALMENTE:
-  console.log('🔍 Autorización completa:', autorizacion);
-  console.log('🔍 Solicitud Directa:', solicitud);
-  console.log('🔍 Oferta:', oferta);
+  const licencia = (autorizacion as any).licencia;
 
   return (
     <>
@@ -155,6 +151,47 @@ export function ModalAutorizacion({
               </div>
             </div>
 
+            {/* ============= LICENCIA ============= */}
+            {licencia && (
+              <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                  <h4 className="font-semibold text-amber-900 dark:text-amber-300">
+                    Detalle de la Licencia
+                  </h4>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Tipo</p>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {licencia.tipo === 'ORDINARIA' ? 'Ordinaria'
+                        : licencia.tipo === 'MEDICA' ? 'Médica'
+                        : licencia.tipo === 'ESPECIAL' ? 'Especial'
+                        : licencia.tipo === 'ESTUDIO' ? 'Estudio'
+                        : licencia.tipo === 'SIN_GOCE' ? 'Sin goce'
+                        : licencia.tipo}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Días solicitados</p>
+                    <p className="font-medium text-gray-900 dark:text-white">{licencia.dias ?? '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Desde</p>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {formatFechaSafe(licencia.fechaDesde ?? licencia.fecha_desde)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Hasta</p>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {formatFechaSafe(licencia.fechaHasta ?? licencia.fecha_hasta)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* ============= SOLICITUD DIRECTA ============= */}
             {solicitud && (() => {
               // 🔧 Parsear turnos si vienen como string
@@ -174,8 +211,13 @@ export function ModalAutorizacion({
                       <div className="flex items-center gap-2">
                         <ArrowRightLeft className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                         <h4 className="font-semibold text-blue-900 dark:text-blue-300">
-                          Cambio de Turno - Solicitud Directa
+                          {turnoDestinatario ? 'Intercambio de Turno' : 'Cobertura de Turno'}
                         </h4>
+                        {!turnoDestinatario && solicitud.destinatario && turnoSolicitante && (
+                          <p className="text-sm text-blue-700 dark:text-gray-400 mt-1">
+                            {solicitud.destinatario.apellido}, {solicitud.destinatario.nombre} cubre el turno de {solicitud.solicitante.apellido}, {solicitud.solicitante.nombre} el {formatFechaSafe(turnoSolicitante.fecha)} de {turnoSolicitante.horario}
+                          </p>
+                        )}
                       </div>
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${solicitud.prioridad === 'ALTA' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
                         solicitud.prioridad === 'MEDIA' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
@@ -197,28 +239,25 @@ export function ModalAutorizacion({
                             {solicitud.solicitante.apellido}, {solicitud.solicitante.nombre}
                           </p>
                           <p className="text-xs text-gray-600 dark:text-gray-400">{solicitud.solicitante.rol}</p>
-                          <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mt-1">SOLICITANTE</p>
                         </div>
-
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           <div>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">Fecha que ofrece</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              {formatFechaSafe(turnoSolicitante.fecha)}
+                            <p className="text-xs text-gray-400 dark:text-gray-500 line-through">
+                              Turno original: {turnoSolicitante ? `${formatFechaSafe(turnoSolicitante.fecha)} · ${turnoSolicitante.horario}` : '—'}
                             </p>
                           </div>
-                          <div>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">Horario</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              {turnoSolicitante.horario}
+                          {turnoDestinatario && (
+                            <div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Turno que queda:</p>
+                              <p className="font-bold text-gray-900 dark:text-white text-lg">{formatFechaSafe(turnoDestinatario.fecha)}</p>
+                              <p className="font-semibold text-gray-800 dark:text-gray-100">{turnoDestinatario.horario}</p>
+                            </div>
+                          )}
+                          {!turnoDestinatario && (
+                            <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                              No trabaja este día — solicitó cobertura
                             </p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">Grupo</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              {turnoSolicitante.grupoTurno}
-                            </p>
-                          </div>
+                          )}
                         </div>
                       </div>
 
@@ -230,33 +269,37 @@ export function ModalAutorizacion({
                             {solicitud.destinatario.apellido}, {solicitud.destinatario.nombre}
                           </p>
                           <p className="text-xs text-gray-600 dark:text-gray-400">{solicitud.destinatario.rol}</p>
-                          <p className="text-xs font-medium text-green-600 dark:text-green-400 mt-1">DESTINATARIO</p>
                         </div>
-
-                        <div className="space-y-2">
-                          <div>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">Fecha que ofrece</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              {formatFechaSafe(turnoDestinatario.fecha)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">Horario</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              {turnoDestinatario.horario}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">Grupo</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">
-                              {turnoDestinatario.grupoTurno}
-                            </p>
-                          </div>
+                        <div className="space-y-3">
+                          {turnoDestinatario ? (
+                            <>
+                              <div>
+                                <p className="text-xs text-gray-400 dark:text-gray-500 line-through">
+                                  Turno original: {formatFechaSafe(turnoDestinatario.fecha)} · {turnoDestinatario.horario}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Turno que queda:</p>
+                                <p className="font-bold text-gray-900 dark:text-white text-lg">{formatFechaSafe(turnoSolicitante?.fecha)}</p>
+                                <p className="font-semibold text-gray-800 dark:text-gray-100">{turnoSolicitante?.horario}</p>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="space-y-2">
+                              <p className="text-xs text-gray-400 dark:text-gray-500 italic">
+                                Día libre — hace cobertura
+                              </p>
+                              <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Turno que cubre:</p>
+                                <p className="font-bold text-gray-900 dark:text-white text-lg">{formatFechaSafe(turnoSolicitante?.fecha)}</p>
+                                <p className="font-semibold text-gray-800 dark:text-gray-100">{turnoSolicitante?.horario} · Guardia {turnoSolicitante?.grupoTurno}</p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
                   </div>
-
                   {/* Motivo */}
                   {solicitud.motivo && (
                     <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
@@ -451,8 +494,8 @@ export function ModalAutorizacion({
                   placeholder="Agregar observaciones..."
                   rows={3}
                   className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-3
-                           bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                           focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                          focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   {observaciones.length} caracteres

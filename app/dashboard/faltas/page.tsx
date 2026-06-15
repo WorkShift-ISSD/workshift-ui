@@ -9,10 +9,11 @@ import { useFaltas, useTodasLasFaltas } from "@/hooks/useFaltas";
 import { useFormatters } from "@/hooks/useFormatters";
 import { useEmpleados } from "@/hooks/useEmpleados";
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
-import ModalFalta from '@/app/components/faltas/ModalFalta';
 import ModalConsultaFaltas from '@/app/components/faltas/ModalConsultaFaltas';
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { CustomDatePicker } from '@/app/components/CustomDatePicker';
+
 import {
   UserCircle,
   XCircle,
@@ -21,25 +22,27 @@ import {
   Clock,
   FileSearch,
   AlertCircle,
+  Trash2,
 } from "lucide-react";
 import { calcularGrupoTrabaja, type GrupoTurno } from "@/app/lib/turnosUtils";
 import { ExportData } from "@/app/components/ExportToPdf";
 
 
 export default function FaltasPage() {
-    const {
+  const {
     getTodayDate,
     formatDate,
     parseFechaLocal,
   } = useFormatters();
 
+  const ITEMS_POR_PAGINA = 20;
+  const [procesando, setProcesando] = useState<Set<string>>(new Set());
   const [selectedRole, setSelectedRole] = useState("TODOS");
   const [selectedTurno, setSelectedTurno] = useState("TODOS");
   const today = useMemo(() => getTodayDate(), [getTodayDate]);
   const [selectedDate, setSelectedDate] = useState(today);
-  const [modalEmpleado, setModalEmpleado] = useState<any>(null);
-  const [faltaEnEdicion, setFaltaEnEdicion] = useState<any>(null);
   const [modalConsultaOpen, setModalConsultaOpen] = useState(false);
+  const [paginaActual, setPaginaActual] = useState(1);
   const { licenciasDelDia } = useLicenciasDelDia(selectedDate);
   const { sancionesDelDia } = useSancionesDelDia(selectedDate);
 
@@ -48,6 +51,23 @@ export default function FaltasPage() {
     setModalConsultaOpen(true);
   };
 
+  const [turnosEfectivosDelDia, setTurnosEfectivosDelDia] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch(`/api/turnos-efectivos?fecha=${selectedDate}`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          console.log("turno ejemplo:", data[0]);
+          setTurnosEfectivosDelDia(data);
+        }
+      });
+  }, [selectedDate]);
+
+  const { data: presentesData, mutate: mutatePresentes } = useSWR(
+    selectedDate ? `/api/presentes?fecha=${selectedDate}` : null,
+    fetcher
+  );
 
   const [searchText, setSearchText] = useState("");
 
@@ -57,14 +77,41 @@ export default function FaltasPage() {
     faltas: todasLasFaltas = [],
     refetch: refetchFaltas,
   } = useTodasLasFaltas();
+  const { data: todasLasLicencias = [] } = useSWR<any[]>("/api/licencias", fetcher);
+  const { data: todasLasSanciones = [] } = useSWR<any[]>("/api/sanciones", fetcher);
 
+  const presentesExplicitos = useMemo(() => {
+    if (!Array.isArray(presentesData)) return new Set<string>();
+    return new Set<string>(presentesData.map((p: any) => String(p.empleadoId)));
+  }, [presentesData]);
 
   const registrosAusencias = useMemo(() => {
-    return (todasLasFaltas || []).map((f) => ({
+    const faltas = (todasLasFaltas || []).map((f: any) => ({
       ...f,
       tipo: "FALTA" as const,
     }));
-  }, [todasLasFaltas]);
+
+    const licencias = (todasLasLicencias || []).map((l: any) => ({
+      id: String(l.id),
+      tipo: "LICENCIA" as const,
+      empleadoId: l.empleado_id ?? l.empleadoId,
+      fecha: l.fecha_desde?.split("T")[0] ?? l.fecha,
+      motivo: l.tipo ?? l.motivo ?? "Licencia",
+    }));
+
+    const sanciones = (todasLasSanciones || []).map((s: any) => ({
+      id: String(s.id),
+      tipo: "SANCION" as const,
+      empleadoId: s.empleado_id ?? s.empleadoId,
+      fecha: s.fecha_desde?.split("T")[0] ?? s.fecha,
+      motivo: s.motivo ?? "Sanción",
+      observaciones: s.observaciones ?? null,
+    }));
+
+    return [...faltas, ...licencias, ...sanciones].sort((a, b) =>
+      b.fecha.localeCompare(a.fecha)
+    );
+  }, [todasLasFaltas, todasLasLicencias, todasLasSanciones]);
 
   // ==== VALIDAR FECHA FUTURA ====
   const esFechaFutura = useMemo(() => {
@@ -106,33 +153,43 @@ export default function FaltasPage() {
     setSelectedTurno("TODOS");
   }, [selectedRole]);
 
+  // Reset página al cambiar cualquier filtro
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [selectedDate, selectedRole, selectedTurno, searchText]);
+
+
   // Filtrar empleados por fecha, rol, turno y grupo
   const empleadosDelDia = useMemo(() => {
     if (!selectedDate || !empleados) return [];
+
+    const empleadosGanaron = turnosEfectivosDelDia.filter((t: any) => t.tipo === 'GANADO');
+    const empleadosCedieron = new Set(turnosEfectivosDelDia.filter((t: any) => t.tipo === 'CEDIDO').map((t: any) => t.empleadoId));
 
     return empleados
       .filter((emp) => {
         const estaActivo = emp.activo;
         const perteneceAlGrupo = emp.grupoTurno === grupoQueTrabaja;
+        const turnoGanado = empleadosGanaron.find((t: any) => t.empleadoId === emp.id);
+        const ganoTurno = !!turnoGanado;
+        const cedioTurno = empleadosCedieron.has(emp.id);
         const rolCoincide = selectedRole === "TODOS"
           ? (emp.rol === 'SUPERVISOR' || emp.rol === 'INSPECTOR')
           : emp.rol === selectedRole;
-        const turnoCoincide = selectedTurno === "TODOS" || emp.horario === selectedTurno;
-
-        // 👇 Filtro por texto (nombre o apellido)
+        const horarioEfectivo = turnoGanado ? turnoGanado.horarioEfectivo : emp.horario;
+        const turnoCoincide = selectedTurno === "TODOS" || horarioEfectivo === selectedTurno;
         const coincideTexto = searchText === "" ||
           emp.nombre.toLowerCase().includes(searchText.toLowerCase()) ||
           emp.apellido.toLowerCase().includes(searchText.toLowerCase());
 
-        // 👇 AGREGÁ coincideTexto ACÁ
-        return estaActivo && perteneceAlGrupo && rolCoincide && turnoCoincide && coincideTexto;
+        return estaActivo && (perteneceAlGrupo || ganoTurno) && !cedioTurno && rolCoincide && turnoCoincide && coincideTexto;
       })
       .sort((a, b) => {
         const horaA = a.horario?.split("-")[0] ?? "";
         const horaB = b.horario?.split("-")[0] ?? "";
         return horaA.localeCompare(horaB);
       });
-  }, [empleados, selectedDate, selectedRole, selectedTurno, grupoQueTrabaja, searchText]);
+  }, [empleados, selectedDate, selectedRole, selectedTurno, grupoQueTrabaja, searchText, turnosEfectivosDelDia]);
 
 
   // Lista de faltas del día
@@ -146,21 +203,30 @@ export default function FaltasPage() {
 
   const empleadosConSancion = useMemo(() => {
     const data = Array.isArray(sancionesDelDia) ? sancionesDelDia : [];
-    return new Set(data.map(s => String(s?.empleado_id || s?.empleadoId || '')).filter(id => id !== ''));
+    return new Set(
+      data
+        .map((s: any) => String(s?.empleado_id ?? s?.empleadoId))
+        .filter((id: string) => !!id && id !== 'undefined')
+    );
   }, [sancionesDelDia]);
 
   // ==== EMPLEADOS PARA EXPORTAR (sin filtros) ====
   const empleadosParaExportar = useMemo(() => {
     if (!empleados) return [];
 
+    const empleadosGanaron = turnosEfectivosDelDia.filter((t: any) => t.tipo === 'GANADO');
+    const empleadosCedieron = new Set(turnosEfectivosDelDia.filter((t: any) => t.tipo === 'CEDIDO').map((t: any) => t.empleadoId));
+
     return empleados.filter((emp) => {
       const estaActivo = emp.activo;
       const perteneceAlGrupo = emp.grupoTurno === grupoQueTrabaja;
       const esRolValido = emp.rol === 'SUPERVISOR' || emp.rol === 'INSPECTOR';
+      const ganoTurno = empleadosGanaron.some((t: any) => t.empleadoId === emp.id);
+      const cedioTurno = empleadosCedieron.has(emp.id);
 
-      return estaActivo && perteneceAlGrupo && esRolValido;
+      return estaActivo && (perteneceAlGrupo || ganoTurno) && !cedioTurno && esRolValido;
     });
-  }, [empleados, grupoQueTrabaja]);
+  }, [empleados, grupoQueTrabaja, turnosEfectivosDelDia]);
 
   // ==== ELIMINAR FALTA ====
   const handleEliminarFalta = async (id: string) => {
@@ -176,11 +242,67 @@ export default function FaltasPage() {
     }
   };
 
-  // ==== CUANDO GUARDA FORM DE FALTA ====
-  const handleFaltaSaved = () => {
-    setModalEmpleado(null);
-    setFaltaEnEdicion(null);
-    mutate();
+  // ==== REGISTRAR PRESENTE ====
+  const handleRegistrarPresente = async (empleadoId: String, falta?: any) => {
+    const id = String(empleadoId);
+    if (procesando.has(id)) return;
+    setProcesando(prev => new Set(prev).add(id));
+    try {
+      if (falta) {
+        await eliminarFalta(falta.id);
+        mutate();
+      }
+      await fetch('/api/presentes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ empleadoId, fecha: selectedDate }),
+      });
+      mutatePresentes();
+      toast.success("Presente registrado correctamente");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al registrar presente";
+      toast.error(message);
+    } finally {
+      setProcesando(prev => { const s = new Set(prev); s.delete(id); return s; });
+    }
+  };
+
+  // ==== REGISTRAR FALTA (directo, sin modal) ====
+  const handleRegistrarFalta = async (emp: any) => {
+    const id = String(emp.id);
+    if (procesando.has(id)) return;
+    setProcesando(prev => new Set(prev).add(id));
+    try {
+      const res = await fetch("/api/faltas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          empleadoId: emp.id,
+          fecha: selectedDate,
+          motivo: "Inasistencia",
+          observaciones: null,
+          justificada: false,
+        }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Error al registrar falta");
+      }
+      await fetch('/api/presentes', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ empleadoId: String(emp.id), fecha: selectedDate }),
+      });
+      mutatePresentes();
+      toast.success("Falta registrada correctamente");
+      mutate();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al registrar falta";
+      toast.error(message);
+    } finally {
+      setProcesando(prev => { const s = new Set(prev); s.delete(id); return s; });
+    }
   };
 
   // ==== MANEJAR CAMBIO DE FECHA ====
@@ -188,10 +310,10 @@ export default function FaltasPage() {
     const fechaSeleccionada = new Date(newDate);
     const hoy = new Date(today);
 
-    if (fechaSeleccionada > hoy) {
-      toast.warning("No se pueden consultar fechas futuras");
-      return;
-    }
+    //if (fechaSeleccionada > hoy) {
+    //toast.warning("No se pueden consultar fechas futuras");
+    //return;
+    //}
 
     setSelectedDate(newDate);
   };
@@ -233,7 +355,6 @@ export default function FaltasPage() {
             Consultar Faltas
           </button>
 
-
           <ExportData
             employees={empleadosParaExportar}
             stats={{
@@ -241,6 +362,7 @@ export default function FaltasPage() {
               activos: empleadosParaExportar.filter(emp => !empleadosConFalta.includes(emp.id)).length,
               ausentes: empleadosConFalta.length,
               enLicencia: 0,
+              inactivo: 0,
             }}
             faltasDelDia={(faltas ?? []).map(f => ({
               ...f,
@@ -251,12 +373,16 @@ export default function FaltasPage() {
               return empleadosConFalta.includes(empleado.id) ? 'ausente' : 'presente';
             }}
             mode="faltas"
-          />
+            presentesDelDia={Array.from(presentesExplicitos)}
+            licenciasDelDia={(licenciasDelDia ?? []) as any[]}
+            sancionesDelDia={(sancionesDelDia ?? []) as any[]}
+            turnosEfectivosDelDia={turnosEfectivosDelDia ?? []}
+/>
         </div>
       </div>
 
       {/* Alerta de fecha futura */}
-      {esFechaFutura && (
+      {/*{esFechaFutura && (
         <div className="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
           <div className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
@@ -265,7 +391,7 @@ export default function FaltasPage() {
             </p>
           </div>
         </div>
-      )}
+      )}*/}
 
       {/* Info del grupo que trabaja */}
       <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
@@ -305,15 +431,12 @@ export default function FaltasPage() {
             <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             Fecha
           </label>
-          <input
-            type="date"
+          <CustomDatePicker
+            id="fecha-faltas"
             value={selectedDate}
-            max={today}
-            onChange={(e) => handleDateChange(e.target.value)}
-            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 
-                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                    focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 
-                    focus:border-transparent transition-all"
+            onChange={handleDateChange}
+            minDate={new Date(2024, 0, 1)}
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
           />
         </div>
 
@@ -327,9 +450,9 @@ export default function FaltasPage() {
             value={selectedRole}
             onChange={(e) => setSelectedRole(e.target.value)}
             className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 
-                     bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                     focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 
-                     focus:border-transparent transition-all"
+                    bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                    focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 
+                    focus:border-transparent transition-all"
           >
             <option value="TODOS">Todos los roles</option>
             {rolesDisponibles.map((rol) => (
@@ -350,10 +473,10 @@ export default function FaltasPage() {
             value={selectedTurno}
             onChange={(e) => setSelectedTurno(e.target.value)}
             className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 
-                     bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                     focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 
-                     focus:border-transparent transition-all
-                     disabled:opacity-50 disabled:cursor-not-allowed"
+                  bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                  focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 
+                  focus:border-transparent transition-all
+                  disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={selectedRole === "TODOS"}
           >
             <option value="TODOS">Todos los Horarios</option>
@@ -380,15 +503,7 @@ export default function FaltasPage() {
         </div>
 
         {/* Contenido */}
-        {esFechaFutura ? (
-          <div className="text-center text-gray-500 dark:text-gray-400 py-12">
-            <AlertCircle className="w-16 h-16 mx-auto mb-4 text-yellow-500" />
-            <p className="text-lg font-medium">Fecha no válida</p>
-            <p className="text-sm">
-              No se pueden consultar fechas futuras
-            </p>
-          </div>
-        ) : empleadosDelDia.length === 0 ? (
+        {empleadosDelDia.length === 0 ? (
           <div className="text-center text-gray-500 dark:text-gray-400 py-12">
             <UserCircle className="w-16 h-16 mx-auto mb-4 opacity-50" />
             <p className="text-lg font-medium">No hay empleados</p>
@@ -420,11 +535,15 @@ export default function FaltasPage() {
               </thead>
 
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {empleadosDelDia.map((emp) => {
+                {empleadosDelDia.slice((paginaActual - 1) * ITEMS_POR_PAGINA, paginaActual * ITEMS_POR_PAGINA).map((emp) => {
                   const falta = faltas?.find((f) => f.empleadoId === emp.id);
                   const enFalta = !!falta;
                   const enLicencia = empleadosConLicencia.has(emp.id);
-                  const enSancion = empleadosConSancion.has(emp.id);
+                  const enSancion = empleadosConSancion.has(String(emp.id));
+                  const esPresenteExplicito = presentesExplicitos.has(String(emp.id));
+                  const turnoGanado = turnosEfectivosDelDia.find((t: any) => t.tipo === 'GANADO' && t.empleadoId === emp.id);
+                  const horarioMostrar = turnoGanado ? turnoGanado.horarioEfectivo : emp.horario;
+                  const esFechaHoy = selectedDate === today;
 
                   return (
                     <tr
@@ -432,11 +551,16 @@ export default function FaltasPage() {
                       className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-600 dark:text-gray-400">
-                        {emp.horario}
+                        {horarioMostrar}
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium text-gray-900 dark:text-white">
                         {emp.apellido}, {emp.nombre}
+                        {turnoGanado?.companero && (
+                          <span className="ml-2 text-xs font-normal text-amber-400 dark:text-amber-300">
+                            (cambio x {turnoGanado.companero})
+                          </span>
+                        )}
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600 dark:text-gray-400">
@@ -460,53 +584,85 @@ export default function FaltasPage() {
                             <XCircle className="w-4 h-4" /> Falta
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200">
-                            <CheckCircle className="w-4 h-4" /> Presente
-                          </span>
+                          esPresenteExplicito ? (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200">
+                              <CheckCircle className="w-4 h-4" /> Presente
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold text-gray-400 dark:text-gray-500">
+                              —
+                            </span>
+                          )
                         )}
                       </td>
 
 
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        {/* 5. Bloquear acciones si está en licencia o sanción */}
                         {(enLicencia || enSancion) ? (
                           <span className="text-sm text-gray-500 italic">
                             {enLicencia ? "En licencia" : "Sancionado"}
                           </span>
-                        ) : !enFalta ? (
-                          <button
-                            onClick={() => setModalEmpleado(emp)}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600
-                                       text-white rounded-lg font-medium transition-colors
-                                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                                       dark:focus:ring-offset-gray-800"
-                          >
-                            Registrar Falta
-                          </button>
                         ) : (
-                          <div className="flex gap-2 justify-center">
-                            <button
-                              onClick={() => {
-                                setFaltaEnEdicion(falta);
-                                setModalEmpleado(falta.empleado || emp);
-                              }}
-                              className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-500 dark:hover:bg-yellow-600
-                                         text-white rounded-lg font-medium transition-colors
-                                         focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2
-                                         dark:focus:ring-offset-gray-800"
-                            >
-                              Editar
-                            </button>
+                          <div className="flex gap-2 justify-center items-center min-w-[200px]">
 
                             <button
-                              onClick={() => handleEliminarFalta(falta.id)}
-                              className="px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600
-                                         text-white rounded-lg font-medium transition-colors
-                                         focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
-                                         dark:focus:ring-offset-gray-800"
-                            >
-                              Eliminar
-                            </button>
+                              onClick={() => !(esPresenteExplicito && !enFalta) && handleRegistrarPresente(String(emp.id), falta || undefined)}
+                              disabled={procesando.has(String(emp.id)) || (esPresenteExplicito && !enFalta || !esFechaHoy)}
+                              className={`px-4 py-2 rounded-lg font-medium transition-colors
+                                focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2
+                                dark:focus:ring-offset-gray-800 text-white
+                                ${procesando.has(String(emp.id)) || (esPresenteExplicito && !enFalta || !esFechaHoy)
+                                  ? "bg-green-300 dark:bg-green-900 cursor-not-allowed opacity-50"
+                                  : "bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"
+                                }`}
+                              >
+                                Presente
+                              </button>
+                              <button
+                                onClick={() => !enFalta && handleRegistrarFalta(emp)}
+                                disabled={procesando.has(String(emp.id)) || enFalta || !esFechaHoy}
+                                className={`px-4 py-2 rounded-lg font-medium transition-colors
+                                focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
+                                dark:focus:ring-offset-gray-800 text-white
+                                ${procesando.has(String(emp.id)) || enFalta || !esFechaHoy
+                                    ? "bg-red-300 dark:bg-red-900 cursor-not-allowed opacity-50"
+                                    : "bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
+                                  }`}
+                              >
+                                Falta
+                              </button>
+
+                                <button
+                                  title="Limpiar estado"
+                                  onClick={async () => {
+                                    const id = String(emp.id);
+                                    if (procesando.has(id)) return;
+                                    setProcesando(prev => new Set(prev).add(id));
+                                    try {
+                                      if (enFalta) {
+                                        await eliminarFalta(falta!.id);
+                                        mutate();
+                                      }
+                                      await fetch('/api/presentes', {
+                                        method: 'DELETE',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ empleadoId: id, fecha: selectedDate }),
+                                      });
+                                      mutatePresentes();
+                                      toast.success("Estado limpiado");
+                                    } finally {
+                                      setProcesando(prev => { const s = new Set(prev); s.delete(id); return s; });
+                                    }
+                                  }}
+                                disabled={procesando.has(String(emp.id)) || (!enFalta && !esPresenteExplicito || !esFechaHoy)}
+                                className={`p-2 rounded-lg transition-colors
+                                  ${(enFalta || esPresenteExplicito) && esFechaHoy
+                                    ? "text-gray-400 hover:text-white hover:bg-gray-600 dark:hover:bg-gray-500 cursor-pointer"
+                                    : "invisible cursor-default"
+                                  }`}
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
                           </div>
                         )}
                       </td>
@@ -520,24 +676,32 @@ export default function FaltasPage() {
         )}
       </div>
 
-      {/* Modal Registrar/Editar Falta */}
-      {modalEmpleado && (
-        <ModalFalta
-          empleado={modalEmpleado}
-          fecha={selectedDate}
-          open={true}
-          onClose={() => {
-            setModalEmpleado(null);
-            setFaltaEnEdicion(null);
-          }}
-          onSaved={() => {
-            setModalEmpleado(null);
-            setFaltaEnEdicion(null);
-            mutate();
-          }}
-          falta={faltaEnEdicion}
-          mode={faltaEnEdicion ? 'edit' : 'create'}
-        />
+      {/* Paginación */}
+      {empleadosDelDia.length > ITEMS_POR_PAGINA && (
+        <div className="flex items-center justify-between mt-4 px-2">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Mostrando {(paginaActual - 1) * ITEMS_POR_PAGINA + 1}–{Math.min(paginaActual * ITEMS_POR_PAGINA, empleadosDelDia.length)} de {empleadosDelDia.length} empleados
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
+              disabled={paginaActual === 1}
+              className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              ← Anterior
+            </button>
+            <span className="text-sm text-gray-600 dark:text-gray-400 min-w-[80px] text-center">
+              Página {paginaActual} de {Math.ceil(empleadosDelDia.length / ITEMS_POR_PAGINA)}
+            </span>
+            <button
+              onClick={() => setPaginaActual(p => Math.min(Math.ceil(empleadosDelDia.length / ITEMS_POR_PAGINA), p + 1))}
+              disabled={paginaActual === Math.ceil(empleadosDelDia.length / ITEMS_POR_PAGINA)}
+              className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Siguiente →
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Modal Consultar Historial */}

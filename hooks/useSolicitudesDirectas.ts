@@ -59,7 +59,7 @@ export const useSolicitudesDirectas = () => {
     error,
     isLoading,
     mutate,
-  } = useSWR<SolicitudesDirectas[]>("/api/solicitudes-directas", fetcher, {
+  } = useSWR<SolicitudesDirectas[]>("/api/solicitudes-directas?usuario=yo", fetcher, {
     refreshInterval: 5000,
   });
 

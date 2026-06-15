@@ -1,5 +1,5 @@
 // lib/api/endpoints.ts
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || '/api';
 
 export const endpoints = {
   // Cambios
@@ -28,6 +28,13 @@ export const endpoints = {
     update: (id: string) => `${API_BASE_URL}/solicitudes-directas/${id}`,
     delete: (id: string) => `${API_BASE_URL}/solicitudes-directas/${id}`,
   },
+
+
+  fechasBloqueadas: {
+    list: () => `${API_BASE_URL}/fechas-bloqueadas`,
+  },
+
+
 
   // Faltas
   faltas: {
@@ -71,6 +78,10 @@ export const endpoints = {
     delete: (id: string) => `${API_BASE_URL}/turnos/${id}`,
   },
 
+  turnosEfectivos: {
+    list: () => `${API_BASE_URL}/turnos-efectivos`,
+  },
+
   // Licencias
   licencias: {
     list: () => `${API_BASE_URL}/licencias`,
@@ -100,6 +111,15 @@ export const endpoints = {
     create: () => `${API_BASE_URL}/autorizaciones`,
     aprobar: (id: string) => `${API_BASE_URL}/autorizaciones/${id}/aprobar`,
     rechazar: (id: string) => `${API_BASE_URL}/autorizaciones/${id}/rechazar`,
+    cancelar: (id: string) => `${API_BASE_URL}/autorizaciones/${id}/cancelar`,
+  },
+
+
+  //mensajes
+  mensajes: {
+    list: (ofertaId: string) => `${API_BASE_URL}/mensajes?ofertaId=${ofertaId}`,
+    create: () => `${API_BASE_URL}/mensajes`,
+    conversaciones: () => `${API_BASE_URL}/mensajes/conversaciones`,
   },
 
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Search,
   Plus,
@@ -32,6 +32,7 @@ import bcryptjs from 'bcryptjs';
 
 // Types based on our Prisma schema
 type Rol = 'SUPERVISOR' | 'INSPECTOR' | 'JEFE' | 'ADMINISTRADOR';
+type RolEmpleado = Exclude<Rol, 'ADMINISTRADOR'>;
 type GrupoTurno = 'A' | 'B';
 type EstadoEmpleado = 'ACTIVO' | 'LICENCIA' | 'AUSENTE' | 'INACTIVO';
 
@@ -63,7 +64,6 @@ interface Inspector {
 }
 
 export default function DashboardPage() {
-  const [filteredEmployees, setFilteredEmployees] = useState<Inspector[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<Rol | 'TODOS'>('TODOS');
   const [selectedShift, setSelectedShift] = useState<GrupoTurno | 'TODOS'>('TODOS');
@@ -74,12 +74,18 @@ export default function DashboardPage() {
   const [formData, setFormData] = useState<Partial<Inspector>>({});
   const [formError, setFormError] = useState('');
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { can } = usePermissions();
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
+  useEffect(() => {
+    if (formError && modalRef.current) {
+      modalRef.current.scrollTop = 0;
+    }
+  }, [formError]);
 
   const {
     empleados,
@@ -113,7 +119,7 @@ export default function DashboardPage() {
       const ahora = new Date();
       const diasSinAcceso = Math.floor((ahora.getTime() - ultimoAcceso.getTime()) / (1000 * 60 * 60 * 24));
 
-      if (diasSinAcceso > 7) return 'AUSENTE';
+    // if (diasSinAcceso > 7) return 'AUSENTE'; VER SI VAMOS A UTILIZAR, LO DEJO COMENTADO
     }
 
     return 'ACTIVO';
@@ -133,8 +139,8 @@ export default function DashboardPage() {
   }, [selectedRole]);
 
   // Filter employees con useMemo para optimizar
-  const filteredEmployeesMemo = useMemo(() => {
-    let filtered = [...employees];
+  const currentEmployeesMemo = useMemo(() => {
+    let filtered = employees.filter(e => (e.rol as string) !== 'ADMINISTRADOR');
 
     // Search filter
     if (searchTerm) {
@@ -180,16 +186,14 @@ export default function DashboardPage() {
   // Calcular índices de paginación
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentEmployees = filteredEmployeesMemo.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(filteredEmployeesMemo.length / itemsPerPage);
+  const currentEmployees = currentEmployeesMemo.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(currentEmployeesMemo.length / itemsPerPage);
 
   useEffect(() => {
-    setFilteredEmployees(currentEmployees);
-    // Si la página actual es mayor al total de páginas, volver a la página 1
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(1);
     }
-  }, [filteredEmployeesMemo, currentPage, itemsPerPage]);
+  }, [currentPage, totalPages]);
 
 
   // Resetear a página 1 cuando cambien los filtros
@@ -199,12 +203,15 @@ useEffect(() => {
 
 
   // Calcular estadísticas
-  const stats = useMemo(() => ({
-    total: filteredEmployeesMemo.length,
-    activos: filteredEmployeesMemo.filter(e => e.activo && calcularEstado(e) === 'ACTIVO').length,
-    enLicencia: filteredEmployeesMemo.filter(e => calcularEstado(e) === 'LICENCIA').length,
-    ausentes: filteredEmployeesMemo.filter(e => calcularEstado(e) === 'AUSENTE').length
-  }), [filteredEmployeesMemo]);
+  const stats = useMemo(() => {
+  const sinAdmin = employees.filter(e => (e.rol as string) !== 'ADMINISTRADOR');
+  return {
+    total: sinAdmin.length,
+    activos: sinAdmin.filter(e => e.activo && calcularEstado(e) === 'ACTIVO').length,
+    enLicencia: sinAdmin.filter(e => calcularEstado(e) === 'LICENCIA').length,
+    inactivo: sinAdmin.filter(e => calcularEstado(e) === 'INACTIVO').length
+  };
+}, [employees, calcularEstado]);
   // Modal handlers
   const openModal = (mode: 'view' | 'edit' | 'create', employee?: Inspector) => {
     setModalMode(mode);
@@ -250,6 +257,11 @@ useEffect(() => {
       return;
     }
 
+    if (formData.nombre.trim().length > 50) {
+      setFormError('El nombre no puede superar los 50 caracteres');
+      return;
+    }
+
     // Validar apellido
     if (!formData.apellido || formData.apellido.trim() === '') {
       setFormError('El apellido es obligatorio');
@@ -261,14 +273,19 @@ useEffect(() => {
       return;
     }
 
+    if (formData.apellido.trim().length > 50) {
+      setFormError('El apellido no puede superar los 50 caracteres');
+      return;
+    }
+
     // Validar legajo
     if (!formData.legajo) {
       setFormError('El legajo es obligatorio');
       return;
     }
 
-    if (isNaN(Number(formData.legajo))) {
-      setFormError('El legajo debe ser numérico');
+    if (isNaN(Number(formData.legajo)) || Number(formData.legajo) <= 0 || !Number.isInteger(Number(formData.legajo))) {
+      setFormError('El legajo debe ser un número entero positivo');
       return;
     }
 
@@ -380,7 +397,10 @@ useEffect(() => {
           activo: formData.activo !== undefined ? formData.activo : true,
           grupoTurno: formData.grupoTurno || 'A',
           turno: '',
-          fechaIngreso: ''
+          fechaIngreso: '',
+          calificacion: null,
+          totalIntercambios: 0,
+          turnosEsteMes: 0
         });
       } else if (modalMode === 'edit' && selectedEmployee) {
         const confirmEdit = window.confirm('¿Seguro quiere modificar los datos del empleado?');
@@ -441,8 +461,8 @@ useEffect(() => {
   // Format date
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "";
-    const [year, month, day] = dateString.split("-");
-
+    const datePart = dateString.split('T')[0].split(' ')[0];
+    const [year, month, day] = datePart.split('-');
     return `${day}/${month}/${year}`;
   };
 
@@ -510,7 +530,7 @@ useEffect(() => {
         {/* Botón Exportar */}
 
         <ExportData
-          employees={filteredEmployeesMemo}
+          employees={currentEmployeesMemo}
           stats={stats}
           filters={{
             searchTerm,
@@ -564,8 +584,8 @@ useEffect(() => {
         <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-2 sm:mb-4">
             <div className="flex-1 min-w-0">
-              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Sancionados</p>
-              <p className="text-xl sm:text-2xl font-bold text-red-600 truncate">{stats.ausentes}</p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-1">Inactivo/Bloqueado</p>
+              <p className="text-xl sm:text-2xl font-bold text-red-600 truncate">{stats.inactivo}</p>
             </div>
             <div className="p-2 sm:p-3 bg-red-100 dark:bg-red-900 rounded-lg ml-2 flex-shrink-0">
               <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
@@ -591,7 +611,7 @@ useEffect(() => {
         </div>
 
         {/* Selects y botones */}
-        <div className="flex flex-col sm:flex-wrap md:flex-row gap-3 md:gap-4 w-full justify-between items-stretch">
+        <div className="flex flex-col md:flex-row flex-wrap gap-3 md:gap-4 w-full justify-between items-stretch">
           {/* Rol */}
           <select
             className="flex-1 dark:text-white min-w-[180px] px-4 py-2 dark:bg-gray-700 border dark:border-gray-600 border-gray-200 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 text-sm sm:text-base"
@@ -672,7 +692,7 @@ useEffect(() => {
 
           {/* Info de registros */}
           <div className="text-sm text-gray-600 dark:text-gray-400">
-            Mostrando {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, filteredEmployeesMemo.length)} de {filteredEmployeesMemo.length} empleados
+            Mostrando {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, currentEmployeesMemo.length)} de {currentEmployeesMemo.length} empleados
           </div>
 
           {/* Botones de navegación */}
@@ -747,7 +767,7 @@ useEffect(() => {
 
             {/* CUERPO */}
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 transition-colors">
-              {filteredEmployees.length === 0 ? (
+              {currentEmployees.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
@@ -762,7 +782,7 @@ useEffect(() => {
                   </td>
                 </tr>
               ) : (
-                filteredEmployees.map((employee) => (
+                currentEmployees.map((employee) => (
                   <tr
                     key={employee.id}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -871,14 +891,14 @@ useEffect(() => {
 
       {/* Vista móvil tipo lista de contactos */}
       <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800 rounded-lg shadow-sm mt-4">
-        {filteredEmployees.length === 0 ? (
+        {currentEmployees.length === 0 ? (
           <div className="p-6 text-center text-gray-500 dark:text-gray-400">
             <AlertCircle className="h-8 w-8 mb-2 mx-auto text-blue-500" />
             <p className="font-medium text-gray-700 dark:text-gray-200">No se encontraron empleados</p>
             <p className="text-sm text-gray-500 dark:text-gray-400">Intenta ajustar los filtros</p>
           </div>
         ) : (
-          filteredEmployees.map((emp) => (
+          currentEmployees.map((emp) => (
             <div key={emp.id} className="transition-colors">
               {/* Parte superior de la card (siempre visible) */}
               <div
@@ -945,7 +965,7 @@ useEffect(() => {
               {/* Parte expandible (detalles adicionales) */}
               {expandedCardId === emp.id && (
                 <div className="px-4 pb-4 bg-gray-50 dark:bg-gray-600 border-t border-gray-200 dark:border-gray-600">
-                  <div className="grid grid-cols-[1fr_1.2fr_1.5fr_1.3fr] gap-3 pt-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3">
                     <div className="text-center">
                       <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Legajo</p>
                       <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -984,7 +1004,7 @@ useEffect(() => {
       {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl transition-colors">
+          <div ref={modalRef} className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl transition-colors">
             <div className="p-6 border-b border-gray-200 dark:border-gray-700">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
@@ -1152,7 +1172,7 @@ useEffect(() => {
                       </label>
                       <input
                         type="number"
-                        className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${formError && (!formData.legajo || isNaN(Number(formData.legajo)))
+                        className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${formError && (!formData.legajo || isNaN(Number(formData.legajo)) || Number(formData.legajo) <= 0 || !Number.isInteger(Number(formData.legajo)))
                           ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
                           : 'border-gray-300 dark:border-gray-600'
                           }`}

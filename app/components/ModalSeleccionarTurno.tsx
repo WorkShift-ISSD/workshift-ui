@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, Calendar, Clock, CheckCircle } from "lucide-react";
+import type { Oferta } from '@/hooks/useOfertas';
 
 interface TurnoOpcion {
   fecha: string;
@@ -12,15 +13,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onConfirmar: (turnoSeleccionado: TurnoOpcion) => void;
-  oferta: {
-    id: string;
-    ofertante: {
-      nombre: string;
-      apellido: string;
-    };
-    turnoOfrece?: TurnoOpcion;
-    turnosBusca?: TurnoOpcion[];
-  } | null;
+  oferta: Oferta | null;
 }
 
 export function ModalSeleccionarTurno({ isOpen, onClose, onConfirmar, oferta }: Props) {
@@ -28,7 +21,10 @@ export function ModalSeleccionarTurno({ isOpen, onClose, onConfirmar, oferta }: 
 
   if (!isOpen || !oferta) return null;
 
-  const opciones = oferta.turnosBusca || [];
+  const esCobertura = oferta.modalidadBusqueda === 'ABIERTO';
+  const opciones = esCobertura 
+    ? (oferta.fechasDisponibles || [])
+    : (oferta.turnosBusca || []);
 
   const formatearFecha = (fecha: string) => {
     if (!fecha) return "N/A";
@@ -50,27 +46,24 @@ export function ModalSeleccionarTurno({ isOpen, onClose, onConfirmar, oferta }: 
         <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
           <div>
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Seleccionar Turno
+              {esCobertura ? 'Seleccionar fecha a cubrir' : 'Seleccionar turno'}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
               Oferta de {oferta.ofertante.nombre} {oferta.ofertante.apellido}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">
             <X className="w-6 h-6" />
           </button>
         </div>
 
         {/* Content */}
         <div className="p-6 space-y-4">
-          {/* Turno que ofrece */}
-          {oferta.turnoOfrece && (
+          {/* Turno que ofrece — solo intercambio */}
+          {!esCobertura && oferta.turnoOfrece && (
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <p className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">
-                📅 Turno disponible:
+                Turno disponible:
               </p>
               <div className="flex items-center gap-4 text-sm text-blue-800 dark:text-blue-400">
                 <span className="flex items-center gap-1">
@@ -85,10 +78,12 @@ export function ModalSeleccionarTurno({ isOpen, onClose, onConfirmar, oferta }: 
             </div>
           )}
 
-          {/* Opciones de turnos a cambio */}
+          {/* Opciones */}
           <div>
             <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-              🔄 Selecciona el turno que ofrecerás a cambio:
+              {esCobertura 
+                ? 'Seleccioná qué fecha querés cubrir:'
+                : 'Seleccioná el turno que ofrecerás a cambio:'}
             </p>
 
             {opciones.length === 0 ? (
@@ -101,19 +96,15 @@ export function ModalSeleccionarTurno({ isOpen, onClose, onConfirmar, oferta }: 
                   <label
                     key={index}
                     className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      turnoSeleccionado?.fecha === opcion.fecha &&
-                      turnoSeleccionado?.horario === opcion.horario
-                        ? "border-green-500 bg-green-50 dark:bg-green-900/20"
-                        : "border-gray-300 dark:border-gray-600 hover:border-green-300 dark:hover:border-green-700"
+                      turnoSeleccionado?.fecha === opcion.fecha && turnoSeleccionado?.horario === opcion.horario
+                        ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                        : 'border-gray-300 dark:border-gray-600 hover:border-green-300 dark:hover:border-green-700'
                     }`}
                   >
                     <input
                       type="radio"
                       name="turno"
-                      checked={
-                        turnoSeleccionado?.fecha === opcion.fecha &&
-                        turnoSeleccionado?.horario === opcion.horario
-                      }
+                      checked={turnoSeleccionado?.fecha === opcion.fecha && turnoSeleccionado?.horario === opcion.horario}
                       onChange={() => setTurnoSeleccionado(opcion)}
                       className="w-5 h-5 text-green-600 focus:ring-green-500"
                     />
@@ -129,24 +120,14 @@ export function ModalSeleccionarTurno({ isOpen, onClose, onConfirmar, oferta }: 
                         </span>
                       </div>
                     </div>
-                    {turnoSeleccionado?.fecha === opcion.fecha &&
-                      turnoSeleccionado?.horario === opcion.horario && (
-                        <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-                      )}
+                    {turnoSeleccionado?.fecha === opcion.fecha && turnoSeleccionado?.horario === opcion.horario && (
+                      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    )}
                   </label>
                 ))}
               </div>
             )}
           </div>
-
-          {/* Mensaje de advertencia */}
-          {turnoSeleccionado && (
-            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
-              <p className="text-sm text-yellow-800 dark:text-yellow-300">
-                ⚠️ Al confirmar, se creará una solicitud pendiente de autorización del Jefe.
-              </p>
-            </div>
-          )}
         </div>
 
         {/* Footer */}
@@ -154,19 +135,17 @@ export function ModalSeleccionarTurno({ isOpen, onClose, onConfirmar, oferta }: 
           <div className="flex gap-3 justify-end">
             <button
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg
-                       hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
             >
               Cancelar
             </button>
             <button
               onClick={handleConfirmar}
               disabled={!turnoSeleccionado}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition
-                       disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <CheckCircle className="w-4 h-4" />
-              Confirmar Intercambio
+              {esCobertura ? 'Confirmar cobertura' : 'Confirmar intercambio'}
             </button>
           </div>
         </div>

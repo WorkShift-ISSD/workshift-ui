@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { X, Search } from "lucide-react";
+import { CustomDatePicker } from "@/app/components/CustomDatePicker";
 import { Sancion } from "@/app/api/types";
 import { useSanciones } from "@/hooks/useSanciones";
 import { useEmpleados } from "@/hooks/useEmpleados";
@@ -25,7 +26,7 @@ export function ModalSancion({
   sancion,
   onSancionCreada
 }: Props) {
-  const { crearSancion, actualizarSancion } = useSanciones();
+  const { crearSancion, actualizarSancion, sanciones } = useSanciones();
   const { empleados } = useEmpleados();
 
   const [form, setForm] = useState({
@@ -73,8 +74,8 @@ export function ModalSancion({
       setForm({
         empleado_id: sancion.empleado_id,
         motivo: sancion.motivo,
-        fecha_desde: sancion.fecha_desde,
-        fecha_hasta: sancion.fecha_hasta,
+        fecha_desde: sancion.fecha_desde ? sancion.fecha_desde.split('T')[0] : '',
+        fecha_hasta: sancion.fecha_hasta ? sancion.fecha_hasta.split('T')[0] : '',
       });
       // Cargar nombre del empleado para mostrar
       const emp = (empleados || []).find((e) => e.id === sancion.empleado_id);
@@ -96,7 +97,7 @@ export function ModalSancion({
   }, [sancion, open, empleados]);
 
   // Filtrar empleados mientras escribe
-  const empleadosFiltrados = (empleados || []).filter((emp) => {
+  const empleadosFiltrados = (empleados || []).filter((emp) => (emp.rol as string) !== 'ADMINISTRADOR').filter((emp) => {
     if (!searchEmpleado) return true;
 
     const searchLower = searchEmpleado.toLowerCase().trim();
@@ -150,15 +151,10 @@ export function ModalSancion({
 
     let isValid = true;
 
-    if (!form.empleado_id) {
-      newErrors.empleado_id = "Debe seleccionar un empleado";
-      isValid = false;
-    }
-
     if (!form.fecha_desde) {
       newErrors.fecha_desde = "La fecha desde es requerida";
       isValid = false;
-    } else if (form.fecha_desde < hoy) {
+    } else if (modo === "create" && form.fecha_desde < hoy) {
       newErrors.fecha_desde = "La fecha no puede ser anterior a hoy";
       isValid = false;
     }
@@ -166,12 +162,31 @@ export function ModalSancion({
     if (!form.fecha_hasta) {
       newErrors.fecha_hasta = "La fecha hasta es requerida";
       isValid = false;
-    } else if (form.fecha_hasta < hoy) {
+    } else if (modo === "create" && form.fecha_hasta < hoy) {
       newErrors.fecha_hasta = "La fecha no puede ser anterior a hoy";
       isValid = false;
     } else if (form.fecha_hasta < form.fecha_desde) {
       newErrors.fecha_hasta = "La fecha hasta debe ser posterior a la fecha desde";
       isValid = false;
+    }
+
+    if (form.empleado_id && form.fecha_desde && form.fecha_hasta) {
+      const sancionesDelEmpleado = sanciones.filter(s =>
+        s.empleado_id === form.empleado_id &&
+        s.estado !== 'ANULADA' &&
+        (modo === 'edit' ? s.id !== sancion?.id : true) // excluir la sanción actual si es edición
+      );
+
+      const haySuperpuesta = sancionesDelEmpleado.some(s => {
+        const desdeExistente = s.fecha_desde.split('T')[0];
+        const hastaExistente = s.fecha_hasta.split('T')[0];
+        return form.fecha_desde <= hastaExistente && form.fecha_hasta >= desdeExistente;
+      });
+
+      if (haySuperpuesta) {
+        newErrors.fecha_desde = "Ya existe una sanción activa en ese período para este empleado";
+        isValid = false;
+      }
     }
 
     setErrors(newErrors);
@@ -195,6 +210,7 @@ export function ModalSancion({
       }
 
       if (modo === "edit" && sancion) {
+        console.log('Form que se manda:', form); // ← agregá esto
         await actualizarSancion(sancion.id, form);
         toast.success("Sanción actualizada exitosamente");
         onSancionCreada?.();
@@ -313,7 +329,7 @@ export function ModalSancion({
               ) : (
                 <textarea
                   name="motivo"
-                  value={form.motivo}
+                  value={form.motivo ?? ''}
                   onChange={handleChange}
                   rows={3}
                   className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2
@@ -337,16 +353,12 @@ export function ModalSancion({
                       : '-'}
                   </div>
                 ) : (
-                  <input
-                    type="date"
-                    name="fecha_desde"
+                  <CustomDatePicker
                     value={form.fecha_desde}
-                    onChange={handleChange}
-                    min={hoy}
-                    className={`w-full border rounded-lg p-2
-                 bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                 focus:outline-none focus:ring-2 focus:ring-blue-500
-                 ${errors.fecha_desde ? "border-red-500" : "border-gray-300 dark:border-gray-600"}`}
+                    onChange={v => { setForm({ ...form, fecha_desde: v }); setErrors({ ...errors, fecha_desde: '' }); }}
+                    minDate={new Date(hoy + 'T00:00:00')}
+                    showGrupo={false}
+                    className={`w-full border rounded-lg p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.fecha_desde ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                   />
                 )}
                 {errors.fecha_desde && !soloLectura && (
@@ -368,16 +380,12 @@ export function ModalSancion({
                       : '-'}
                   </div>
                 ) : (
-                  <input
-                    type="date"
-                    name="fecha_hasta"
+                  <CustomDatePicker
                     value={form.fecha_hasta}
-                    onChange={handleChange}
-                    min={form.fecha_desde || hoy}
-                    className={`w-full border rounded-lg p-2
-                 bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                 focus:outline-none focus:ring-2 focus:ring-blue-500
-                 ${errors.fecha_hasta ? "border-red-500" : "border-gray-300 dark:border-gray-600"}`}
+                    onChange={v => { setForm({ ...form, fecha_hasta: v }); setErrors({ ...errors, fecha_hasta: '' }); }}
+                    minDate={new Date((form.fecha_desde || hoy) + 'T00:00:00')}
+                    showGrupo={false}
+                    className={`w-full border rounded-lg p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.fecha_hasta ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                   />
                 )}
                 {errors.fecha_hasta && !soloLectura && (

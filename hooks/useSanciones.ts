@@ -16,9 +16,7 @@ export function useSanciones() {
   const cargarSanciones = async () => {
     setLoading(true);
     try {
-      const data = await fetcher<Sancion[]>(
-        endpoints.sanciones.list()
-      );
+      const data = await fetcher<Sancion[]>('/api/sanciones');
       setSanciones(data);
     } finally {
       setLoading(false);
@@ -50,14 +48,14 @@ export function useSanciones() {
     );
 
     setSanciones((prev) =>
-      prev.map((s) => (s.id === id ? actualizada : s))
-    );
+  prev.map((s) => (s.id === id ? actualizada : s))
+);
   };
 
   
   /* ¿Tiene sanción activa? */
   const tieneSancionActiva = (empleadoId: string): boolean => {
-    const hoy = new Date().toISOString().slice(0, 10);
+    const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
 
     return sanciones.some(
       (s) =>
