@@ -90,7 +90,7 @@ export default function AutorizacionesPage() {
       {tab === 'autorizaciones' && (
         <>
           {/* KPIs */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-5 flex justify-between items-center">
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Total</p>

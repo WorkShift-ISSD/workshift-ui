@@ -597,7 +597,7 @@ useEffect(() => {
         </div>
 
         {/* Selects y botones */}
-        <div className="flex flex-col sm:flex-wrap md:flex-row gap-3 md:gap-4 w-full justify-between items-stretch">
+        <div className="flex flex-col md:flex-row flex-wrap gap-3 md:gap-4 w-full justify-between items-stretch">
           {/* Rol */}
           <select
             className="flex-1 dark:text-white min-w-[180px] px-4 py-2 dark:bg-gray-700 border dark:border-gray-600 border-gray-200 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 text-sm sm:text-base"
@@ -951,7 +951,7 @@ useEffect(() => {
               {/* Parte expandible (detalles adicionales) */}
               {expandedCardId === emp.id && (
                 <div className="px-4 pb-4 bg-gray-50 dark:bg-gray-600 border-t border-gray-200 dark:border-gray-600">
-                  <div className="grid grid-cols-[1fr_1.2fr_1.5fr_1.3fr] gap-3 pt-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3">
                     <div className="text-center">
                       <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Legajo</p>
                       <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">

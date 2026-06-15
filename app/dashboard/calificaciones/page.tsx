@@ -64,7 +64,7 @@ export default function CalificacionesPage() {
           </p>
         </div>
 
-        <div className="flex gap-1 border-b border-gray-700/50">
+        <div className="flex flex-wrap gap-1 border-b border-gray-700/50">
           {TABS.map((t) => (
             <button
               key={t.key}
