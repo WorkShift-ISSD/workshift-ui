@@ -243,6 +243,10 @@ export interface Autorizacion {
   fechaAprobacion?: string | null;
   createdAt: string;
   updatedAt: string;
+  // Objetos anidados — presentes cuando el endpoint hace JOIN completo
+  solicitudDirecta?: SolicitudDirecta | null;
+  oferta?: Oferta | null;
+  licencia?: Licencia | null;
 }
 
 // ─── Stats / Dashboard ────────────────────────────────────────────────────────

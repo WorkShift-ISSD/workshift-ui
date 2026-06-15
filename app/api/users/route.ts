@@ -56,8 +56,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generar contraseña segura
-    const passwordFinal = password || Math.random().toString(36).slice(-8) + 'A1!';
+    // Generar contraseña: iniciales del nombre en mayúscula + apellido con inicial mayúscula + "25"
+    const inicialesNombre = nombre.trim().split(/\s+/).map((n: string) => n[0].toUpperCase()).join('');
+    const apellidoCapital = apellido.trim().charAt(0).toUpperCase() + apellido.trim().slice(1);
+    const passwordFinal = password || `${inicialesNombre}${apellidoCapital}25`;
     const hashedPassword = await bcrypt.hash(passwordFinal, 10);
 
     const [nuevoUsuario] = await sql`

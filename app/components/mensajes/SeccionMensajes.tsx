@@ -58,11 +58,13 @@ export function SeccionMensajes({ ofertaAbrirId, onChatAbierto, onMensajesLeidos
     useEffect(() => { conversacionesRef.current = conversaciones; }, [conversaciones]);
     useEffect(() => { recargarRef.current = recargar; }, [recargar]);
 
-    const conversacionesFiltradas = conversaciones.filter(c =>
+    const conversacionesFiltradas = conversaciones
+    .filter(c =>
         tabActivo === 'activos'
             ? c.conversacionEstado === 'ACTIVA'
             : c.conversacionEstado !== 'ACTIVA'
-    );
+    )
+    .sort((a, b) => new Date(b.ultimoMensajeAt).getTime() - new Date(a.ultimoMensajeAt).getTime());
 
     const totalPaginas = Math.ceil(conversacionesFiltradas.length / ITEMS_POR_PAGINA);
     const conversacionesPaginadas = conversacionesFiltradas.slice(
@@ -221,7 +223,11 @@ export function SeccionMensajes({ ofertaAbrirId, onChatAbierto, onMensajesLeidos
     };
 
     const handleAceptar = (conv: any, turnoParaEnviar: { fecha: string; horario: string } | null) => {
-        if ((conv.fechasDisponibles?.length ?? 0) > 1) {
+        const tieneMultiplesFechas = (conv.fechasDisponibles?.length ?? 0) > 1;
+        const esRango = conv.fechaDesde && conv.fechaHasta;
+        const esOfrezcoCoberturaConMas = conv.ofertaTipo === 'OFREZCO' && conv.modalidadBusqueda === 'ABIERTO';
+
+        if ((tieneMultiplesFechas || esRango) && esOfrezcoCoberturaConMas) {
             setPendienteAceptar({ turnoParaEnviar, conv });
             setModalConfirmarFechas(true);
         } else {

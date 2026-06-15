@@ -5,6 +5,7 @@ import { deleter, fetcher, poster, putter } from '../app/api/fetcher';
 const API_BASE = '/api';
 
 interface Inspector {
+  turnosEsteMes: number;
   turno: string;
   fechaIngreso: string;
   id: string;
@@ -21,6 +22,8 @@ interface Inspector {
   activo: boolean;
   grupoTurno: 'A' | 'B';
   fotoPerfil: string | null;
+  calificacion:      number | null;
+  totalIntercambios: number;
   ultimoLogin: string | null;
   createdAt: string;
   updatedAt: string;

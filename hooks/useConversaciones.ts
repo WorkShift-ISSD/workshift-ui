@@ -18,6 +18,8 @@ export interface Conversacion {
     ofertaTipo: string;
     modalidadBusqueda: string;
     turnoOfrece: { fecha: string; horario: string; grupoTurno: string } | null;
+    fechaDesde?: string | null;
+    fechaHasta?: string | null;
     fechasDisponibles: { fecha: string; horario: string }[] | null;
     ultimoMensaje: string;
     ultimoMensajeAt: string;

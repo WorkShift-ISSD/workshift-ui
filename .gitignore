@@ -8,6 +8,13 @@
 # testing
 /coverage
 
+# testing automatizado
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+e2e/fixtures/users.ts
+
 # next.js
 /.next/
 /out/

@@ -29,7 +29,15 @@ import {
   Clock,
   AlertCircle,
   Award,
+  RefreshCw,
+  Shield,
+  FileText,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
+import { useSanciones } from '@/hooks/useSanciones';
+import { useLicencias } from '@/hooks/useLicencias';
+import { useCambios } from '@/hooks/useCambios';
 
 type Rol = 'SUPERVISOR' | 'INSPECTOR' | 'JEFE' | 'ADMINISTRADOR';
 type GrupoTurno = 'A' | 'B';
@@ -144,6 +152,9 @@ const CustomBarTooltip = ({ active, payload, label }: any) => {
 export default function EstadisticasPage() {
   const { empleados, isLoading: loadingEmpleados } = useEmpleados();
   const { faltas, isLoading: loadingFaltas } = useTodasLasFaltas();
+  const { sanciones, loading: loadingSanciones } = useSanciones();
+  const { licencias, loading: loadingLicencias } = useLicencias();
+  const { cambios, isLoading: loadingCambios } = useCambios();
 
   const [selectedPeriod, setSelectedPeriod] = useState<'mes' | 'trimestre' | 'año'>('mes');
 
@@ -491,6 +502,115 @@ export default function EstadisticasPage() {
     };
   }, [faltas, empleados, selectedPeriod]);
 
+  // ============ ESTADÍSTICAS DE CAMBIOS ============
+  const statsCambios = useMemo(() => {
+    if (!cambios) return null;
+    const now = new Date();
+    const mesActual = now.getMonth();
+    const añoActual = now.getFullYear();
+
+    const filtrados = cambios.filter(c => {
+      const fecha = new Date(c.createdAt);
+      if (selectedPeriod === 'mes') return fecha.getMonth() === mesActual && fecha.getFullYear() === añoActual;
+      if (selectedPeriod === 'trimestre') return Math.floor(fecha.getMonth() / 3) === Math.floor(mesActual / 3) && fecha.getFullYear() === añoActual;
+      return fecha.getFullYear() === añoActual;
+    });
+
+    const porEstado = filtrados.reduce((acc, c) => { acc[c.estado] = (acc[c.estado] || 0) + 1; return acc; }, {} as Record<string, number>);
+    const porTipo = filtrados.reduce((acc, c) => { const t = c.tipoCambio || 'Sin tipo'; acc[t] = (acc[t] || 0) + 1; return acc; }, {} as Record<string, number>);
+    const porEmpleado = filtrados.reduce((acc, c) => {
+      const n = `${c.solicitante.apellido}, ${c.solicitante.nombre}`;
+      acc[n] = (acc[n] || 0) + 1; return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      total: filtrados.length,
+      aprobados: porEstado['APROBADO'] || 0,
+      rechazados: porEstado['RECHAZADO'] || 0,
+      pendientes: porEstado['PENDIENTE'] || 0,
+      realizados: porEstado['REALIZADO'] || 0,
+      pieEstado: [
+        { name: 'Aprobados', value: porEstado['APROBADO'] || 0, fill: '#10B981' },
+        { name: 'Rechazados', value: porEstado['RECHAZADO'] || 0, fill: '#EF4444' },
+        { name: 'Pendientes', value: porEstado['PENDIENTE'] || 0, fill: '#F59E0B' },
+        { name: 'Realizados', value: porEstado['REALIZADO'] || 0, fill: '#3B82F6' },
+      ].filter(d => d.value > 0),
+      porTipo: Object.entries(porTipo).map(([name, value]) => ({ name, value })),
+      topEmpleados: Object.entries(porEmpleado).map(([nombre, total]) => ({ nombre, total })).sort((a, b) => b.total - a.total).slice(0, 5),
+    };
+  }, [cambios, selectedPeriod]);
+
+  // ============ ESTADÍSTICAS DE SANCIONES ============
+  const statsSanciones = useMemo(() => {
+    if (!sanciones) return null;
+    const now = new Date();
+    const mesActual = now.getMonth();
+    const añoActual = now.getFullYear();
+
+    const filtradas = sanciones.filter(s => {
+      if (!s.created_at) return true;
+      const fecha = new Date(s.created_at);
+      if (selectedPeriod === 'mes') return fecha.getMonth() === mesActual && fecha.getFullYear() === añoActual;
+      if (selectedPeriod === 'trimestre') return Math.floor(fecha.getMonth() / 3) === Math.floor(mesActual / 3) && fecha.getFullYear() === añoActual;
+      return fecha.getFullYear() === añoActual;
+    });
+
+    const porEstado = filtradas.reduce((acc, s) => { acc[s.estado] = (acc[s.estado] || 0) + 1; return acc; }, {} as Record<string, number>);
+    const porEmpleado = filtradas.reduce((acc, s) => {
+      const n = s.empleado ? `${s.empleado.apellido}, ${s.empleado.nombre}` : s.empleado_id;
+      acc[n] = (acc[n] || 0) + 1; return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      total: filtradas.length,
+      activas: porEstado['ACTIVA'] || 0,
+      finalizadas: porEstado['FINALIZADA'] || 0,
+      anuladas: porEstado['ANULADA'] || 0,
+      pieData: [
+        { name: 'Activas', value: porEstado['ACTIVA'] || 0, fill: '#EF4444' },
+        { name: 'Finalizadas', value: porEstado['FINALIZADA'] || 0, fill: '#10B981' },
+        { name: 'Anuladas', value: porEstado['ANULADA'] || 0, fill: '#6B7280' },
+      ].filter(d => d.value > 0),
+      topEmpleados: Object.entries(porEmpleado).map(([nombre, total]) => ({ nombre, total })).sort((a, b) => b.total - a.total).slice(0, 5),
+    };
+  }, [sanciones, selectedPeriod]);
+
+  // ============ ESTADÍSTICAS DE LICENCIAS ============
+  const statsLicencias = useMemo(() => {
+    if (!licencias) return null;
+    const TIPO_LABEL: Record<string, string> = { ORDINARIA: 'Ordinaria', ESPECIAL: 'Especial', MEDICA: 'Médica', ESTUDIO: 'Estudio', SIN_GOCE: 'Sin goce' };
+    const now = new Date();
+    const mesActual = now.getMonth();
+    const añoActual = now.getFullYear();
+
+    const filtradas = licencias.filter(l => {
+      if (!l.created_at) return true;
+      const fecha = new Date(l.created_at);
+      if (selectedPeriod === 'mes') return fecha.getMonth() === mesActual && fecha.getFullYear() === añoActual;
+      if (selectedPeriod === 'trimestre') return Math.floor(fecha.getMonth() / 3) === Math.floor(mesActual / 3) && fecha.getFullYear() === añoActual;
+      return fecha.getFullYear() === añoActual;
+    });
+
+    const diasTotal = filtradas.reduce((acc, l) => acc + (l.dias ?? 0), 0);
+    const porTipo = filtradas.reduce((acc, l) => { const t = TIPO_LABEL[l.tipo] ?? l.tipo; acc[t] = (acc[t] || 0) + 1; return acc; }, {} as Record<string, number>);
+    const porEstado = filtradas.reduce((acc, l) => { acc[l.estado] = (acc[l.estado] || 0) + 1; return acc; }, {} as Record<string, number>);
+
+    return {
+      total: filtradas.length,
+      activas: porEstado['ACTIVA'] || 0,
+      pendientes: porEstado['PENDIENTE'] || 0,
+      diasTotal,
+      porTipo: Object.entries(porTipo).map(([name, value]) => ({ name, value })),
+      pieEstado: [
+        { name: 'Activas', value: porEstado['ACTIVA'] || 0, fill: '#10B981' },
+        { name: 'Pendientes', value: porEstado['PENDIENTE'] || 0, fill: '#F59E0B' },
+        { name: 'Aprobadas', value: porEstado['APROBADA'] || 0, fill: '#3B82F6' },
+        { name: 'Finalizadas', value: porEstado['FINALIZADA'] || 0, fill: '#6B7280' },
+        { name: 'Rechazadas', value: porEstado['RECHAZADA'] || 0, fill: '#EF4444' },
+      ].filter(d => d.value > 0),
+    };
+  }, [licencias, selectedPeriod]);
+
   // ============ COLORES ============
   const COLORS = {
     blue: '#3B82F6',
@@ -505,7 +625,7 @@ export default function EstadisticasPage() {
 
   const PIE_COLORS = [COLORS.blue, COLORS.green, COLORS.yellow, COLORS.red, COLORS.purple, COLORS.orange];
 
-  if (loadingEmpleados || loadingFaltas) {
+  if (loadingEmpleados || loadingFaltas || loadingSanciones || loadingLicencias || loadingCambios) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
         <LoadingSpinner />
@@ -534,30 +654,46 @@ export default function EstadisticasPage() {
         </p>
       </div>
 
-      {/* Selector de Período (fixed) */}
-      <div className="mb-6 flex justify-end">
-        <div className="hidden md:block">
-          <div className="fixed right-16 top-24 z-50">
-            <div className="inline-flex gap-2 bg-white dark:bg-gray-800 p-1 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-              {(['mes', 'trimestre', 'año'] as const).map((period) => (
-                <button
-                  key={period}
-                  onClick={() => setSelectedPeriod(period)}
-                  className={`px-4 py-2 rounded-md font-medium transition-colors ${selectedPeriod === period
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                >
-                  {period.charAt(0).toUpperCase() + period.slice(1)}
-                </button>
-              ))}
-            </div>
+      {/* Selector de Período - mobile inline */}
+      <div className="mb-6 flex justify-center md:hidden">
+        <div className="inline-flex gap-1 bg-white dark:bg-gray-800 p-1 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          {(['mes', 'trimestre', 'año'] as const).map((period) => (
+            <button
+              key={period}
+              onClick={() => setSelectedPeriod(period)}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${selectedPeriod === period
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+            >
+              {period.charAt(0).toUpperCase() + period.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Selector de Período - desktop fixed */}
+      <div className="hidden md:block">
+        <div className="fixed right-16 top-24 z-50">
+          <div className="inline-flex gap-2 bg-white dark:bg-gray-800 p-1 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            {(['mes', 'trimestre', 'año'] as const).map((period) => (
+              <button
+                key={period}
+                onClick={() => setSelectedPeriod(period)}
+                className={`px-4 py-2 rounded-md font-medium transition-colors ${selectedPeriod === period
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+              >
+                {period.charAt(0).toUpperCase() + period.slice(1)}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
       {/* Cards de Resumen */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
@@ -1152,6 +1288,185 @@ export default function EstadisticasPage() {
         </div>
       </div>
 
+
+      {/* SECCIÓN: CAMBIOS DE TURNO */}
+      {statsCambios && (
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <RefreshCw className="h-6 w-6" />
+            Cambios de Turno
+          </h2>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total solicitudes</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{statsCambios.total}</p>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Aprobados</p>
+              <p className="text-2xl font-bold text-green-600">{statsCambios.aprobados}</p>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Pendientes</p>
+              <p className="text-2xl font-bold text-yellow-600">{statsCambios.pendientes}</p>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Rechazados</p>
+              <p className="text-2xl font-bold text-red-600">{statsCambios.rechazados}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Distribución por estado</h3>
+              {statsCambios.pieEstado.length > 0 ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <PieChart>
+                    <Pie data={statsCambios.pieEstado} cx="50%" cy="50%" outerRadius={90} dataKey="value"
+                      label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+                      {statsCambios.pieEstado.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                    </Pie>
+                    <Tooltip content={<CustomPieTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : <p className="text-center text-gray-400 py-16">Sin datos para el período</p>}
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Top solicitantes</h3>
+              {statsCambios.topEmpleados.length > 0 ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={statsCambios.topEmpleados} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis type="number" stroke="#9CA3AF" />
+                    <YAxis dataKey="nombre" type="category" stroke="#9CA3AF" width={130} tick={{ fontSize: 11 }} />
+                    <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(59,130,246,0.1)' }} />
+                    <Bar dataKey="total" name="Solicitudes" fill={COLORS.blue} radius={[0, 6, 6, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : <p className="text-center text-gray-400 py-16">Sin datos para el período</p>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SECCIÓN: SANCIONES */}
+      {statsSanciones && (
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <Shield className="h-6 w-6" />
+            Sanciones
+          </h2>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{statsSanciones.total}</p>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Activas</p>
+              <p className="text-2xl font-bold text-red-600">{statsSanciones.activas}</p>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Finalizadas</p>
+              <p className="text-2xl font-bold text-green-600">{statsSanciones.finalizadas}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Por estado</h3>
+              {statsSanciones.pieData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <PieChart>
+                    <Pie data={statsSanciones.pieData} cx="50%" cy="50%" outerRadius={90} dataKey="value"
+                      label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+                      {statsSanciones.pieData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                    </Pie>
+                    <Tooltip content={<CustomPieTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : <p className="text-center text-gray-400 py-16">Sin datos para el período</p>}
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Top empleados sancionados</h3>
+              {statsSanciones.topEmpleados.length > 0 ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={statsSanciones.topEmpleados} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis type="number" stroke="#9CA3AF" />
+                    <YAxis dataKey="nombre" type="category" stroke="#9CA3AF" width={130} tick={{ fontSize: 11 }} />
+                    <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(239,68,68,0.1)' }} />
+                    <Bar dataKey="total" name="Sanciones" fill={COLORS.red} radius={[0, 6, 6, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : <p className="text-center text-gray-400 py-16">Sin datos para el período</p>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SECCIÓN: LICENCIAS */}
+      {statsLicencias && (
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <FileText className="h-6 w-6" />
+            Licencias
+          </h2>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{statsLicencias.total}</p>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Activas</p>
+              <p className="text-2xl font-bold text-green-600">{statsLicencias.activas}</p>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Pendientes</p>
+              <p className="text-2xl font-bold text-yellow-600">{statsLicencias.pendientes}</p>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Días totales</p>
+              <p className="text-2xl font-bold text-purple-600">{statsLicencias.diasTotal}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Por tipo de licencia</h3>
+              {statsLicencias.porTipo.length > 0 ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={statsLicencias.porTipo} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis type="number" stroke="#9CA3AF" />
+                    <YAxis dataKey="name" type="category" stroke="#9CA3AF" width={80} tick={{ fontSize: 11 }} />
+                    <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(139,92,246,0.1)' }} />
+                    <Bar dataKey="value" name="Licencias" fill={COLORS.purple} radius={[0, 6, 6, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : <p className="text-center text-gray-400 py-16">Sin datos para el período</p>}
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Por estado</h3>
+              {statsLicencias.pieEstado.length > 0 ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <PieChart>
+                    <Pie data={statsLicencias.pieEstado} cx="50%" cy="50%" outerRadius={90} dataKey="value"
+                      label={({ name, percent }) => (percent ?? 0) > 0.05 ? `${name} ${((percent ?? 0) * 100).toFixed(0)}%` : ''}>
+                      {statsLicencias.pieEstado.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                    </Pie>
+                    <Tooltip content={<CustomPieTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : <p className="text-center text-gray-400 py-16">Sin datos para el período</p>}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -4,6 +4,15 @@ import { sql } from '@/app/lib/postgres';
 import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
 import { EstadoAutorizacion } from '@/app/lib/enum';
+import Pusher from 'pusher';
+
+const pusher = new Pusher({
+  appId: process.env.PUSHER_APP_ID!,
+  key: process.env.PUSHER_KEY!,
+  secret: process.env.PUSHER_SECRET!,
+  cluster: process.env.PUSHER_CLUSTER!,
+  useTLS: true,
+});
 
 const SECRET_KEY = new TextEncoder().encode(
   process.env.JWT_SECRET || 'Workshift25'
@@ -87,12 +96,21 @@ export async function POST(
   `;
 
       if (solicitud) {
-        // Turno efectivo para el solicitante
-        // Para cobertura: el que trabaja es el destinatario (quien cubre)
-        // Para intercambio: el solicitante trabaja el día del destinatario
+        // solicitante = quien NECESITA cobertura (CEDE), destinatario = quien CUBRE (GANA)
+        // Para intercambio: solicitante = quien inicia, destinatario = quien responde
         const esCobertura = !solicitud.fecha_destinatario;
 
-        // Primer turno efectivo — siempre para el solicitante (Emanuel)
+        // Para cobertura: fetchear horario del que cubre (destinatario) para horario_original
+        let cubridorHorario = solicitud.horario_destinatario;
+        let cubridorGrupo = solicitud.grupo_destinatario;
+        if (esCobertura) {
+          const [cubridor] = await sql`SELECT horario, grupo_turno FROM users WHERE id = ${solicitud.destinatario_id}::uuid`;
+          cubridorHorario = cubridor?.horario;
+          cubridorGrupo = cubridor?.grupo_turno;
+        }
+
+        // Cobertura:   empleado_id = destinatario (GANA/cubre), intercambio_id = solicitante (CEDE/es cubierto)
+        // Intercambio: empleado_id = solicitante (GANA su nuevo día), intercambio_id = destinatario (CEDE ese día)
         await sql`
   INSERT INTO turnos_efectivos (
     id, empleado_id, fecha, horario_original, horario_efectivo,
@@ -100,84 +118,68 @@ export async function POST(
     empleado_intercambio_id, estado, created_at
   ) VALUES (
     gen_random_uuid(),
-    ${solicitud.solicitante_id}::uuid,
+    ${esCobertura ? solicitud.destinatario_id : solicitud.solicitante_id}::uuid,
     ${esCobertura ? solicitud.fecha_solicitante : solicitud.fecha_destinatario}::date,
-    ${esCobertura ? (solicitud.horario_destinatario || solicitud.horario_solicitante) : solicitud.horario_solicitante},
-    ${esCobertura ? (solicitud.horario_destinatario || solicitud.horario_solicitante) : (solicitud.horario_destinatario || solicitud.horario_solicitante)},
-    ${esCobertura ? (solicitud.grupo_destinatario || solicitud.grupo_solicitante) : solicitud.grupo_solicitante},
-    ${esCobertura ? (solicitud.grupo_destinatario || solicitud.grupo_solicitante) : (solicitud.grupo_destinatario || solicitud.grupo_solicitante)},
+    ${esCobertura ? (cubridorHorario || solicitud.horario_solicitante) : solicitud.horario_solicitante},
+    ${esCobertura ? solicitud.horario_solicitante : (solicitud.horario_destinatario || solicitud.horario_solicitante)},
+    ${esCobertura ? (cubridorGrupo || solicitud.grupo_solicitante) : solicitud.grupo_solicitante},
+    ${esCobertura ? solicitud.grupo_solicitante : (solicitud.grupo_destinatario || solicitud.grupo_solicitante)},
     ${esCobertura ? 'COBERTURA' : 'INTERCAMBIO'},
     ${id}::uuid,
-    ${solicitud.destinatario_id}::uuid,
+    ${esCobertura ? solicitud.solicitante_id : solicitud.destinatario_id}::uuid,
     'PENDIENTE',
     NOW()
-  );
+  )
+  ON CONFLICT (empleado_id, fecha) DO NOTHING;
 `;
 
-        // Segundo turno — solo para intercambio (el destinatario gana el día del solicitante)
+        // Segundo turno — solo para intercambio (destinatario gana el día del solicitante)
         if (!esCobertura) {
+          // Solicitante gana el día del destinatario
           await sql`
-    INSERT INTO turnos_efectivos (
-      id, 
-      empleado_id, 
-      fecha, 
-      horario_original, 
-      horario_efectivo,
-      grupo_original, 
-      grupo_efectivo, 
-      tipo_cambio, 
-      autorizacion_id,
-      empleado_intercambio_id, 
-      estado, 
-      created_at
-    ) VALUES (
-      gen_random_uuid(),
-      ${solicitud.destinatario_id}::uuid,
-      ${solicitud.fecha_solicitante}::date,
-      ${solicitud.horario_destinatario},
-      ${solicitud.horario_solicitante},
-      ${solicitud.grupo_destinatario},
-      ${solicitud.grupo_solicitante},
-      'INTERCAMBIO',
-      ${id}::uuid,
-      ${solicitud.solicitante_id}::uuid,
-      'PENDIENTE',
-      NOW()
-    );
-  `;
-        }
+            INSERT INTO turnos_efectivos (
+              id, empleado_id, fecha, horario_original, horario_efectivo,
+              grupo_original, grupo_efectivo, tipo_cambio, autorizacion_id,
+              empleado_intercambio_id, estado, created_at
+            ) VALUES (
+              gen_random_uuid(),
+              ${solicitud.solicitante_id}::uuid,
+              ${solicitud.fecha_destinatario}::date,
+              ${solicitud.horario_solicitante},
+              ${solicitud.horario_destinatario || solicitud.horario_solicitante},
+              ${solicitud.grupo_solicitante},
+              ${solicitud.grupo_destinatario || solicitud.grupo_solicitante},
+              'INTERCAMBIO',
+              ${id}::uuid,
+              ${solicitud.destinatario_id}::uuid,
+              'PENDIENTE',
+              NOW()
+            )
+            ON CONFLICT (empleado_id, fecha) DO NOTHING;
+          `;
 
-        // Si es intercambio (no cobertura), crear también el turno del destinatario
-        if (solicitud.fecha_destinatario) {
+          // Destinatario gana el día del solicitante
           await sql`
-        INSERT INTO turnos_efectivos (
-          id,
-          empleado_id,
-          fecha,S
-          horario_original,
-          horario_efectivo,
-          grupo_original,
-          grupo_efectivo,
-          tipo_cambio,
-          autorizacion_id,
-          empleado_intercambio_id,
-          estado,
-          created_at
-        ) VALUES (
-    gen_random_uuid(),
-    ${solicitud.solicitante_id}::uuid,
-    ${esCobertura ? solicitud.fecha_solicitante : solicitud.fecha_destinatario}::date,
-    ${esCobertura ? (solicitud.horario_destinatario || solicitud.horario_solicitante) : solicitud.horario_solicitante},
-    ${esCobertura ? (solicitud.horario_destinatario || solicitud.horario_solicitante) : (solicitud.horario_destinatario || solicitud.horario_solicitante)},
-    ${esCobertura ? (solicitud.grupo_destinatario || solicitud.grupo_solicitante) : solicitud.grupo_solicitante},
-    ${esCobertura ? (solicitud.grupo_destinatario || solicitud.grupo_solicitante) : (solicitud.grupo_destinatario || solicitud.grupo_solicitante)},
-    ${esCobertura ? 'COBERTURA' : 'INTERCAMBIO'},
-    ${id}::uuid,
-    ${solicitud.destinatario_id}::uuid,
-    'PENDIENTE',
-    NOW()
-  );
-      `;
+            INSERT INTO turnos_efectivos (
+              id, empleado_id, fecha, horario_original, horario_efectivo,
+              grupo_original, grupo_efectivo, tipo_cambio, autorizacion_id,
+              empleado_intercambio_id, estado, created_at
+            ) VALUES (
+              gen_random_uuid(),
+              ${solicitud.destinatario_id}::uuid,
+              ${solicitud.fecha_solicitante}::date,
+              ${solicitud.horario_destinatario},
+              ${solicitud.horario_solicitante},
+              ${solicitud.grupo_destinatario},
+              ${solicitud.grupo_solicitante},
+              'INTERCAMBIO',
+              ${id}::uuid,
+              ${solicitud.solicitante_id}::uuid,
+              'PENDIENTE',
+              NOW()
+            )
+            ON CONFLICT (empleado_id, fecha) DO NOTHING;
+          `;
         }
       }
     }
@@ -190,6 +192,17 @@ export async function POST(
         WHERE id = ${autorizacion.licencia_id}::uuid;
       `;
       console.log('✅ Licencia actualizada a APROBADA');
+    }
+
+    // Notificar al solicitante vía Pusher
+    const solicitanteId = autorizacion.solicitud_id
+      ? (await sql`SELECT solicitante_id FROM solicitudes_directas WHERE id = ${autorizacion.solicitud_id}::uuid`)[0]?.solicitante_id
+      : autorizacion.oferta_id
+        ? (await sql`SELECT ofertante_id FROM ofertas WHERE id = ${autorizacion.oferta_id}::uuid`)[0]?.ofertante_id
+        : null;
+
+    if (solicitanteId) {
+      await pusher.trigger(`usuario-${solicitanteId}`, 'autorizacion-actualizada', { autorizacionId: id });
     }
 
     return NextResponse.json({

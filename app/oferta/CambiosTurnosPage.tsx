@@ -17,6 +17,9 @@ import { SeccionMensajes } from '../components/mensajes/SeccionMensajes';
 import { StatsBar } from '../components/cambios/StatsBar';
 import { AccionesPrincipales } from '../components/cambios/AccionesPrincipales';
 import { useCambiosPage } from '@/hooks/useCambiosPage';
+import { ModalSeleccionarFechaRango } from '../components/mensajes/ModalSeleccionarFechaRango';
+import { useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 export default function CambiosTurnosPage() {
   const {
@@ -35,11 +38,14 @@ export default function CambiosTurnosPage() {
     activeTab, setActiveTab,
     isConsultarOpen, setIsConsultarOpen,
     modalSeleccionarTurno, setModalSeleccionarTurno,
-    ofertaParaSeleccionar,
+    ofertaParaSeleccionar, setOfertaParaSeleccionar,
     turnoSeleccionadoChatRef,
     ofertaChatId, setOfertaChatId,
     solicitudEditando, setSolicitudEditando,
     ofertaEditando, setOfertaEditando,
+    modalSeleccionarFechaRango, setModalSeleccionarFechaRango,
+    fechasRangoDisponibles,
+    handleConfirmarFechaRango,
     handleSubmitSolicitud,
     handleEditarSolicitud,
     handleSubmitOferta,
@@ -47,10 +53,26 @@ export default function CambiosTurnosPage() {
     handleTomarOferta,
     handleConfirmarSeleccion,
     handleMeInteresa,
+    handleCancelarAutorizacion,
     actualizarEstadoOferta,
     actualizarEstado,
     recargarConversaciones,
   } = useCambiosPage();
+
+  const searchParams = useSearchParams();
+
+    useEffect(() => {
+    const tab = searchParams.get('tab');
+
+    if (
+      tab === 'mis-solicitudes' ||
+      tab === 'historico' ||
+      tab === 'recibidas' ||
+      tab === 'ofertas-disponibles'
+    ) {
+      setActiveTab(tab);
+    }
+  }, [searchParams, setActiveTab]);
 
   const tabs = [
     {
@@ -141,6 +163,7 @@ export default function CambiosTurnosPage() {
               solicitudesDirectas={solicitudesDirectas}
               userId={user?.id}
               onTomarOferta={handleTomarOferta}
+              onCancelarAutorizacion={handleCancelarAutorizacion}
             />
           )}
           {activeTab === 'recibidas' && (
@@ -177,6 +200,7 @@ export default function CambiosTurnosPage() {
         solicitudEditando={solicitudEditando}
       />
       <ModalNuevaOferta
+        key={ofertaEditando?.id ?? 'new'}
         isOpen={activeModal === 'nueva-oferta'}
         onClose={() => { setActiveModal(null); setOfertaEditando(null); }}
         onSubmit={handleSubmitOferta}
@@ -191,6 +215,15 @@ export default function CambiosTurnosPage() {
         onClose={() => { setModalSeleccionarTurno(false); }}
         onConfirmar={handleConfirmarSeleccion}
         oferta={ofertaParaSeleccionar}
+      />
+
+      <ModalSeleccionarFechaRango
+        isOpen={modalSeleccionarFechaRango}
+        ofertanteNombre={ofertaParaSeleccionar ? `${ofertaParaSeleccionar.ofertante.nombre} ${ofertaParaSeleccionar.ofertante.apellido}` : ''}
+        fechasDisponibles={fechasRangoDisponibles}
+        horarioUsuario={user?.horario || ''}
+        onConfirmar={handleConfirmarFechaRango}
+        onCerrar={() => { setModalSeleccionarFechaRango(false); setOfertaParaSeleccionar(null); }}
       />
 
       {/* Mensajes */}
