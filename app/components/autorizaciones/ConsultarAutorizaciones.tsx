@@ -5,6 +5,7 @@ import { Download, Search } from 'lucide-react';
 import { useEmpleados } from '@/hooks/useEmpleados';
 import { CustomDatePicker } from '@/app/components/CustomDatePicker';
 import { generarExcel, generarPDF } from '@/app/lib/exportUtils';
+import { Paginacion } from '@/app/components/cambios/Paginacion';
 
 function formatTipo(tipo: string | null | undefined) {
   switch (tipo) {
@@ -36,6 +37,8 @@ export function ConsultarAutorizaciones() {
   const [empleadoId, setEmpleadoId] = useState('TODOS');
   const [tipo, setTipo] = useState('TODOS');
   const [busqueda, setBusqueda] = useState('');
+  const [pagina, setPagina] = useState(1);
+  const [porPagina, setPorPagina] = useState(10);
   const { empleados } = useEmpleados();
 
   useEffect(() => {
@@ -46,6 +49,7 @@ export function ConsultarAutorizaciones() {
     if (tipo !== 'TODOS') params.set('tipo', tipo);
 
     setIsLoading(true);
+    setPagina(1);
     fetch(`/api/reportes/autorizaciones?${params}`, { credentials: 'include' })
       .then(r => r.json())
       .then(d => Array.isArray(d) ? setAutorizaciones(d) : setAutorizaciones([]))
@@ -57,6 +61,9 @@ export function ConsultarAutorizaciones() {
     a.empleado?.toLowerCase().includes(busqueda.toLowerCase()) ||
     a.tipo?.toLowerCase().includes(busqueda.toLowerCase())
   );
+
+  const totalPaginas = Math.max(1, Math.ceil(filtradas.length / porPagina));
+  const paginadas = filtradas.slice((pagina - 1) * porPagina, pagina * porPagina);
 
   const fechaArchivo = new Date().toISOString().slice(0, 10);
 
@@ -197,7 +204,7 @@ export function ConsultarAutorizaciones() {
                 <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-400">Cargando...</td></tr>
               ) : filtradas.length === 0 ? (
                 <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-400">No hay autorizaciones para los filtros seleccionados</td></tr>
-              ) : filtradas.map((a, i) => (
+              ) : paginadas.map((a, i) => (
                 <tr key={i} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
                   <td className="px-4 py-3 text-gray-400 dark:text-gray-500 text-xs font-mono">#{a.id?.slice(-8).toUpperCase()}</td>
                   <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{a.empleado ?? '—'}</td>
@@ -221,6 +228,13 @@ export function ConsultarAutorizaciones() {
           </table>
         </div>
       </div>
+      <Paginacion
+        pagina={pagina}
+        totalPaginas={totalPaginas}
+        porPagina={porPagina}
+        onCambiarPagina={setPagina}
+        onCambiarPorPagina={setPorPagina}
+      />
     </div>
   );
 }

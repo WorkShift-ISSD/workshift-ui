@@ -9,6 +9,7 @@ import { ModalAutorizacion } from './ModalAutorizacion';
 import { ImpactoBadge, Impacto } from './ImpactoBadge';
 import { useAuth } from '@/app/context/AuthContext';
 import { toast } from 'react-toastify';
+import { Paginacion } from '@/app/components/cambios/Paginacion';
 
 interface Props {
   autorizaciones: Autorizacion[];
@@ -30,6 +31,8 @@ export function AutorizacionesTable({
   const [modalOpen, setModalOpen] = useState(false);
   const [autorizacionSeleccionada, setAutorizacionSeleccionada] = useState<Autorizacion | null>(null);
   const [editando, setEditando] = useState<Autorizacion | null>(null);
+  const [pagina, setPagina] = useState(1);
+  const [porPagina, setPorPagina] = useState(10);
   const [obsEdit, setObsEdit] = useState('');
   const [savingObs, setSavingObs] = useState(false);
 
@@ -134,6 +137,9 @@ export function AutorizacionesTable({
     );
   }
 
+  const totalPaginas = Math.max(1, Math.ceil(autorizaciones.length / porPagina));
+  const paginadas = autorizaciones.slice((pagina - 1) * porPagina, pagina * porPagina);
+
   return (
     <>
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
@@ -156,11 +162,10 @@ export function AutorizacionesTable({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {autorizaciones.map((auth, index) => {
+              {paginadas.map((auth, index) => {
                 const impacto     = impactoMap?.[auth.id];
                 const esIntercambio = !!auth.solicitudId;
-                // Últimas 3 filas abren el tooltip hacia abajo para no salir de la tabla
-                const direction   = index >= autorizaciones.length - 3 ? 'down' : 'up';
+                const direction   = index >= paginadas.length - 3 ? 'down' : 'up';
 
                 return (
                   <tr
@@ -225,6 +230,14 @@ export function AutorizacionesTable({
           </table>
         </div>
       </div>
+
+      <Paginacion
+        pagina={pagina}
+        totalPaginas={totalPaginas}
+        porPagina={porPagina}
+        onCambiarPagina={setPagina}
+        onCambiarPorPagina={setPorPagina}
+      />
 
       <ModalAutorizacion
         open={modalOpen}

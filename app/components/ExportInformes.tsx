@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx-js-style';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 
-type TipoInforme = 'asistencia' | 'ausentismo' | 'comparativo' | 'individual' | 'cambios-turno';
+type TipoInforme = 'asistencia' | 'ausentismo' | 'comparativo' | 'individual' | 'cambios-turno' | 'sanciones' | 'licencias';
 
 interface ExportInformesProps {
   tipoInforme: TipoInforme;
@@ -70,6 +70,8 @@ export const ExportInformes: React.FC<ExportInformesProps> = ({
       comparativo: 'Informe Comparativo - Grupos A y B',
       individual: 'Informe Individual - Detalle de Empleado',
       'cambios-turno': 'Informe de Cambios de Turno',
+      sanciones: 'Informe de Sanciones',
+      licencias: 'Informe de Licencias',
     };
     return titulos[tipoInforme] ?? '';
   };

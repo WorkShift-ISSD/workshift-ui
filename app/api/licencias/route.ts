@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     }
 
     // =========================
-    // MODO 2: licencias DEL USUARIO LOGUEADO
+    // MODO 2: licencias según rol
     // =========================
     const cookieStore = await cookies();
     const token = cookieStore.get("auth-token")?.value;
@@ -50,7 +50,36 @@ export async function GET(request: NextRequest) {
 
     const { payload } = await jwtVerify(token, SECRET_KEY);
     const empleadoId = payload.id as string;
+    const rol = payload.rol as string;
 
+    if (rol === "JEFE" || rol === "ADMINISTRADOR") {
+      // Todas las licencias con datos del empleado
+      const licencias = await sql`
+        SELECT
+          l.id::text,
+          l.empleado_id::text,
+          l.tipo,
+          l.articulo,
+          to_char(l.fecha_desde, 'YYYY-MM-DD') as fecha_desde,
+          to_char(l.fecha_hasta, 'YYYY-MM-DD') as fecha_hasta,
+          l.dias,
+          l.estado,
+          l.observaciones,
+          to_char(l.created_at, 'YYYY-MM-DD"T"HH24:MI:SS') as created_at,
+          json_build_object(
+            'id', u.id::text,
+            'nombre', u.nombre,
+            'apellido', u.apellido,
+            'legajo', u.legajo
+          ) as empleado
+        FROM licencias l
+        JOIN users u ON u.id = l.empleado_id
+        ORDER BY l.created_at DESC;
+      `;
+      return NextResponse.json(licencias);
+    }
+
+    // Empleado: solo sus propias licencias
     const licencias = await sql`
       SELECT
         id::text,
