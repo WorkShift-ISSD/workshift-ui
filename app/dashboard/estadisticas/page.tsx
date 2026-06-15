@@ -654,30 +654,46 @@ export default function EstadisticasPage() {
         </p>
       </div>
 
-      {/* Selector de Período (fixed) */}
-      <div className="mb-6 flex justify-end">
-        <div className="hidden md:block">
-          <div className="fixed right-16 top-24 z-50">
-            <div className="inline-flex gap-2 bg-white dark:bg-gray-800 p-1 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-              {(['mes', 'trimestre', 'año'] as const).map((period) => (
-                <button
-                  key={period}
-                  onClick={() => setSelectedPeriod(period)}
-                  className={`px-4 py-2 rounded-md font-medium transition-colors ${selectedPeriod === period
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                >
-                  {period.charAt(0).toUpperCase() + period.slice(1)}
-                </button>
-              ))}
-            </div>
+      {/* Selector de Período - mobile inline */}
+      <div className="mb-6 flex justify-center md:hidden">
+        <div className="inline-flex gap-1 bg-white dark:bg-gray-800 p-1 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          {(['mes', 'trimestre', 'año'] as const).map((period) => (
+            <button
+              key={period}
+              onClick={() => setSelectedPeriod(period)}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${selectedPeriod === period
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+            >
+              {period.charAt(0).toUpperCase() + period.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Selector de Período - desktop fixed */}
+      <div className="hidden md:block">
+        <div className="fixed right-16 top-24 z-50">
+          <div className="inline-flex gap-2 bg-white dark:bg-gray-800 p-1 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            {(['mes', 'trimestre', 'año'] as const).map((period) => (
+              <button
+                key={period}
+                onClick={() => setSelectedPeriod(period)}
+                className={`px-4 py-2 rounded-md font-medium transition-colors ${selectedPeriod === period
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+              >
+                {period.charAt(0).toUpperCase() + period.slice(1)}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
       {/* Cards de Resumen */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">

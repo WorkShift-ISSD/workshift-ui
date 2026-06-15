@@ -324,7 +324,7 @@ export function LicenciasTable({ licencias, onRefetch }: Props) {
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6 border border-gray-200 dark:border-gray-700">
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Editar licencia</h3>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-500">Desde</label>
                   <CustomDatePicker value={editFechaDesde} onChange={setEditFechaDesde}
