@@ -1,7 +1,7 @@
 "use client";
 
 import { useForm } from "react-hook-form";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
 interface ModalFaltaProps {
@@ -23,6 +23,7 @@ export default function ModalFalta({
   fecha,
   mode = falta ? 'edit' : 'create'
 }: ModalFaltaProps) {
+  const [loading, setLoading] = useState(false);
   const { register, handleSubmit, reset, watch } = useForm({
     defaultValues: {
       motivo: "",
@@ -64,6 +65,8 @@ export default function ModalFalta({
   if (!open) return null;
 
   const guardar = async (data: any) => {
+    if (loading) return;
+    setLoading(true);
     try {
       // Validar que la fecha no sea futura
       if (data.fecha > today) {
@@ -109,6 +112,8 @@ export default function ModalFalta({
       const message = err instanceof Error ? err.message : "Error al guardar la falta";
       console.error("❌ Error:", err);
       toast.error(message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -208,11 +213,12 @@ export default function ModalFalta({
 
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg 
-                       hover:bg-blue-700 dark:hover:bg-blue-600 
-                       transition-colors font-medium"
+              disabled={loading}
+              className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg
+                       hover:bg-blue-700 dark:hover:bg-blue-600
+                       transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {falta ? "Actualizar" : "Guardar"}
+              {loading ? "Guardando..." : falta ? "Actualizar" : "Guardar"}
             </button>
           </div>
         </form>

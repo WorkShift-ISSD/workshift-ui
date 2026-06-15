@@ -15,7 +15,7 @@ interface TurnoEfectivo {
 
 interface TurnosEfectivosData {
     ganados: TurnoEfectivo[];
-    cedidos: string[];
+    cedidos: TurnoEfectivo[];
 }
 
 export function useTurnosEfectivos() {
@@ -26,7 +26,8 @@ export function useTurnosEfectivos() {
 
     return {
         turnosEfectivos: data?.ganados || [],
-        fechasCedidas: data?.cedidos || [],
+        cedidosCompletos: data?.cedidos || [],
+        fechasCedidas: (data?.cedidos || []).map((t: TurnoEfectivo) => t.fecha),
         isLoading,
         error,
     };

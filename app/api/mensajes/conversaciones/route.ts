@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     const userId = payload.id as string;
 
     const conversaciones = await sql`
+            SELECT * FROM (
             SELECT DISTINCT ON (oferta_id, otro_participante_id)
                 oferta_id::text,
                 ofertante_id::text,
@@ -25,6 +26,8 @@ export async function GET(request: NextRequest) {
                 oferta_tipo,
                 modalidad_busqueda,
                 turno_ofrece,
+                fecha_desde,
+                fecha_hasta,
                 fechas_disponibles,
                 ultimo_mensaje,
                 ultimo_mensaje_at,
@@ -44,6 +47,8 @@ export async function GET(request: NextRequest) {
                     o.tipo as oferta_tipo,
                     o.modalidad_busqueda,
                     o.turno_ofrece,
+                    o.fecha_desde,
+                    o.fecha_hasta,
                     o.fechas_disponibles,
                     m.contenido as ultimo_mensaje,
                     m.created_at as ultimo_mensaje_at,
@@ -87,11 +92,13 @@ export async function GET(request: NextRequest) {
                   END
                 WHERE m.emisor_id = ${userId}::uuid 
                     OR m.receptor_id = ${userId}::uuid
-                ORDER BY m.oferta_id, 
+                ORDER BY m.oferta_id,
                     CASE WHEN m.emisor_id = ${userId}::uuid THEN m.receptor_id ELSE m.emisor_id END,
                     m.created_at DESC
             ) sub
-            ORDER BY oferta_id, otro_participante_id, ultimo_mensaje_at DESC;
+            ORDER BY oferta_id, otro_participante_id, ultimo_mensaje_at DESC
+            ) conv
+            ORDER BY ultimo_mensaje_at DESC NULLS LAST;
         `;
 
     return NextResponse.json(conversaciones.map((c: any) => ({
@@ -103,6 +110,8 @@ export async function GET(request: NextRequest) {
       modalidadBusqueda: c.modalidad_busqueda,
       turnoOfrece: c.turno_ofrece ? (typeof c.turno_ofrece === 'string' ? JSON.parse(c.turno_ofrece) : c.turno_ofrece) : null,
       fechasDisponibles: c.fechas_disponibles ? (typeof c.fechas_disponibles === 'string' ? JSON.parse(c.fechas_disponibles) : c.fechas_disponibles) : null,
+      fechaDesde: c.fecha_desde || null,
+      fechaHasta: c.fecha_hasta || null,
       ultimoMensaje: c.ultimo_mensaje,
       ultimoMensajeAt: c.ultimo_mensaje_at,
       sinLeer: c.sin_leer,

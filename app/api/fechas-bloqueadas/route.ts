@@ -56,6 +56,31 @@ export async function GET(request: NextRequest) {
             fechasBloqueadas.push(...expandirRango(s.fecha_desde, s.fecha_hasta));
         }
 
+        // Fechas comprometidas en autorizaciones PENDIENTES o APROBADAS
+        // — como solicitante: la fecha que están cediendo
+        const comprometidasComoSolicitante = await sql`
+            SELECT sd.fecha_solicitante::text as fecha
+            FROM solicitudes_directas sd
+            JOIN autorizaciones a ON a.solicitud_id = sd.id
+            WHERE sd.solicitante_id = ${userId}::uuid
+              AND a.estado IN ('PENDIENTE', 'APROBADA')
+              AND sd.fecha_solicitante IS NOT NULL
+              AND sd.fecha_solicitante >= NOW()::date;
+        `;
+        for (const r of comprometidasComoSolicitante) fechasBloqueadas.push(r.fecha);
+
+        // — como destinatario en intercambio: la fecha que están cediendo
+        const comprometidasComoDestinatario = await sql`
+            SELECT sd.fecha_destinatario::text as fecha
+            FROM solicitudes_directas sd
+            JOIN autorizaciones a ON a.solicitud_id = sd.id
+            WHERE sd.destinatario_id = ${userId}::uuid
+              AND a.estado IN ('PENDIENTE', 'APROBADA')
+              AND sd.fecha_destinatario IS NOT NULL
+              AND sd.fecha_destinatario >= NOW()::date;
+        `;
+        for (const r of comprometidasComoDestinatario) fechasBloqueadas.push(r.fecha);
+
         // Deduplicar
         return NextResponse.json([...new Set(fechasBloqueadas)]);
 

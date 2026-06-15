@@ -3,6 +3,8 @@
 import { Pencil, X, RefreshCw, Gift, Clock, CheckCircle } from 'lucide-react';
 import { useFormatters } from '@/hooks/useFormatters';
 import { TipoSolicitud } from '@/app/lib/enum';
+import { useState } from 'react';
+import { Paginacion } from './Paginacion';
 
 interface Props {
   misOfertas: any[];
@@ -38,11 +40,24 @@ export function MisSolicitudesTab({
 }: Props) {
   const { formatDate, formatFechaSafe, formatTimeAgo } = useFormatters();
 
+
   const solicitudesActivas = solicitudesEnviadas.filter(s =>
     ['SOLICITADO', 'APROBADO'].includes(s.estado)
   );
 
+  const [paginaOfertas, setPaginaOfertas] = useState(1);
+  const [porPaginaOfertas, setPorPaginaOfertas] = useState(5);
+  const [paginaSolicitudes, setPaginaSolicitudes] = useState(1);
+  const [porPaginaSolicitudes, setPorPaginaSolicitudes] = useState(5);
+
+  const totalPaginasOfertas = Math.ceil(misOfertas.length / porPaginaOfertas);
+  const ofertasPaginadas = misOfertas.slice((paginaOfertas - 1) * porPaginaOfertas, paginaOfertas * porPaginaOfertas);
+
+  const totalPaginasSolicitudes = Math.ceil(solicitudesActivas.length / porPaginaSolicitudes);
+  const solicitudesPaginadas = solicitudesActivas.slice((paginaSolicitudes - 1) * porPaginaSolicitudes, paginaSolicitudes * porPaginaSolicitudes);
+
   const isEmpty = misOfertas.length === 0 && solicitudesActivas.length === 0;
+
 
   if (isEmpty) {
     return (
@@ -66,7 +81,7 @@ export function MisSolicitudesTab({
             Mis ofertas publicadas
           </h3>
           <div className="space-y-3">
-            {misOfertas.map(oferta => {
+            {ofertasPaginadas.map(oferta => {
               const esIntercambio = oferta.modalidadBusqueda === TipoSolicitud.INTERCAMBIO;
               return (
                 <div
@@ -97,20 +112,39 @@ export function MisSolicitudesTab({
                   </div>
 
                   {/* Resumen de turnos */}
-                  {esIntercambio && oferta.turnoOfrece && (
-                    <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 mb-1">
-                      <span className="font-medium text-blue-700 dark:text-blue-400">
-                        {formatDate(oferta.turnoOfrece.fecha)}
-                      </span>
-                      <span className="text-gray-400">•</span>
-                      <span className="text-gray-500 dark:text-gray-400 text-xs">{oferta.turnoOfrece.horario}</span>
-                      {oferta.turnosBusca?.length > 0 && (
+                  {esIntercambio && (
+                    <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 mb-1 flex-wrap">
+                      {oferta.tipo === 'OFREZCO' ? (
+                        // OFREZCO_INTERCAMBIO: muestra lo que se ofrece a hacer → lo que quiere que le cubren
                         <>
+                          <span className="font-medium text-blue-700 dark:text-blue-400">
+                            {oferta.fechaDesde && oferta.fechaHasta
+                              ? `Del ${formatDate(oferta.fechaDesde)} al ${formatDate(oferta.fechaHasta)}`
+                              : formatDate(oferta.turnosBusca?.[0]?.fecha)
+                            }
+                          </span>
+                          {oferta.turnoOfrece && (
+                            <>
+                              <span className="text-gray-400 mx-1">→</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                a cambio de que le cubran el {formatDate(oferta.turnoOfrece.fecha)} · {oferta.turnoOfrece.horario}
+                              </span>
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        // BUSCO_INTERCAMBIO: muestra el turno que necesita cambiar → lo que ofrece a cambio
+                        <>
+                          <span className="font-medium text-blue-700 dark:text-blue-400">
+                            {formatDate(oferta.turnosBusca?.[0]?.fecha)}
+                          </span>
+                          <span className="text-gray-400">•</span>
+                          <span className="text-gray-500 dark:text-gray-400 text-xs">{oferta.turnosBusca?.[0]?.horario}</span>
                           <span className="text-gray-400 mx-1">→</span>
                           <span className="text-xs text-gray-500 dark:text-gray-400">
-                            a cambio de {oferta.turnosBusca.length === 1
-                              ? formatDate(oferta.turnosBusca[0].fecha)
-                              : `${oferta.turnosBusca.length} fechas`
+                            {oferta.fechaDesde && oferta.fechaHasta
+                              ? `ofrece ir del ${formatDate(oferta.fechaDesde)} al ${formatDate(oferta.fechaHasta)}`
+                              : `ofrece ir el ${formatDate(oferta.fechasDisponibles?.[0]?.fecha)}`
                             }
                           </span>
                         </>
@@ -118,11 +152,15 @@ export function MisSolicitudesTab({
                     </div>
                   )}
 
-                  {!esIntercambio && oferta.fechasDisponibles?.length > 0 && (
+                  {!esIntercambio && (
                     <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                      {oferta.fechasDisponibles.length === 1
-                        ? formatDate(oferta.fechasDisponibles[0].fecha)
-                        : `${oferta.fechasDisponibles.length} fechas disponibles`
+                      {oferta.fechaDesde && oferta.fechaHasta
+                        ? `Del ${formatDate(oferta.fechaDesde)} al ${formatDate(oferta.fechaHasta)}`
+                        : oferta.fechasDisponibles?.length > 0
+                          ? oferta.fechasDisponibles.length === 1
+                            ? formatDate(oferta.fechasDisponibles[0].fecha)
+                            : `${oferta.fechasDisponibles.length} fechas disponibles`
+                          : null
                       }
                     </div>
                   )}
@@ -151,6 +189,14 @@ export function MisSolicitudesTab({
                 </div>
               );
             })}
+
+            <Paginacion pagina={paginaOfertas}
+              totalPaginas={totalPaginasOfertas}
+              porPagina={porPaginaOfertas}
+              onCambiarPagina={setPaginaOfertas}
+              onCambiarPorPagina={setPorPaginaOfertas}
+            />
+
           </div>
         </section>
       )}
@@ -162,7 +208,7 @@ export function MisSolicitudesTab({
             Solicitudes de cambio enviadas
           </h3>
           <div className="space-y-3">
-            {solicitudesActivas.map(solicitud => (
+            {solicitudesPaginadas.map(solicitud => (
               <div
                 key={solicitud.id}
                 className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors"
@@ -251,6 +297,14 @@ export function MisSolicitudesTab({
           </div>
         </section>
       )}
+
+      <Paginacion pagina={paginaSolicitudes}
+        totalPaginas={totalPaginasSolicitudes}
+        porPagina={porPaginaSolicitudes}
+        onCambiarPagina={setPaginaSolicitudes}
+        onCambiarPorPagina={setPorPaginaSolicitudes}
+      />
+
     </div>
   );
 }

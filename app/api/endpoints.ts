@@ -1,5 +1,5 @@
 // lib/api/endpoints.ts
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || '/api';
 
 export const endpoints = {
   // Cambios
@@ -111,6 +111,7 @@ export const endpoints = {
     create: () => `${API_BASE_URL}/autorizaciones`,
     aprobar: (id: string) => `${API_BASE_URL}/autorizaciones/${id}/aprobar`,
     rechazar: (id: string) => `${API_BASE_URL}/autorizaciones/${id}/rechazar`,
+    cancelar: (id: string) => `${API_BASE_URL}/autorizaciones/${id}/cancelar`,
   },
 
 

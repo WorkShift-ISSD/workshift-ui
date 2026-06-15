@@ -10,7 +10,7 @@ async function actualizarSancionesVencidas() {
     SET estado = ${EstadoSancion.FINALIZADA},
         updated_at = NOW()
     WHERE estado = ${EstadoSancion.ACTIVA}
-      AND CURRENT_DATE > fecha_hasta
+      AND (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date > fecha_hasta
   `;
 }
 
@@ -28,8 +28,7 @@ export async function GET(req: Request) {
       sanciones = await sql`
         SELECT *
         FROM sanciones
-        WHERE estado = ${EstadoSancion.ACTIVA}
-          AND ${fecha}::date BETWEEN fecha_desde AND fecha_hasta
+        WHERE ${fecha}::date BETWEEN fecha_desde AND fecha_hasta
         ORDER BY created_at DESC
       `;
     } else {
@@ -65,13 +64,13 @@ export async function POST(req: Request) {
       motivo,
     } = body;
 
-    // 🔒 Validación: sanción activa existente
+    //Validación: sanción activa existente
     const sancionActiva = await sql`
       SELECT 1
       FROM sanciones
       WHERE empleado_id = ${empleado_id}
       AND estado = ${EstadoSancion.ACTIVA}
-      AND CURRENT_DATE BETWEEN fecha_desde AND fecha_hasta
+      AND (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date BETWEEN fecha_desde AND fecha_hasta
     `;
 
     if (sancionActiva.length > 0) {

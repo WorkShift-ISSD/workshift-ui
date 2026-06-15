@@ -20,35 +20,94 @@ export async function GET(request: NextRequest) {
     const { payload } = await jwtVerify(token, SECRET_KEY);
     const userId = payload.id as string;
 
+    const { searchParams } = new URL(request.url);
+    const fecha = searchParams.get('fecha');
+    const targetUserId = searchParams.get('userId') || userId;
+
+    // Si se pasa ?fecha= sin userId, devolver todos los turnos efectivos del día para todos los empleados
+    if (fecha && !searchParams.get('userId')) {
+      const ganados = await sql`
+        SELECT
+          te.empleado_id::text as "empleadoId",
+          TO_CHAR(te.fecha, 'YYYY-MM-DD') as fecha,
+          te.horario_efectivo as "horarioEfectivo",
+          te.grupo_efectivo as "grupoEfectivo",
+          te.tipo_cambio as "tipoCambio",
+          'GANADO' as tipo,
+          u.nombre, u.apellido, u.horario, u.grupo_turno as "grupoTurno",
+          uc.apellido || ', ' || uc.nombre as "companero"
+        FROM turnos_efectivos te
+        JOIN users u ON te.empleado_id = u.id
+        LEFT JOIN users uc ON te.empleado_intercambio_id = uc.id
+        WHERE te.fecha = ${fecha}::date AND te.estado = 'PENDIENTE'
+      `;
+
+      const cedidos = await sql`
+        SELECT
+          te.empleado_intercambio_id::text as "empleadoId",
+          TO_CHAR(te.fecha, 'YYYY-MM-DD') as fecha,
+          te.horario_original as "horarioEfectivo",
+          te.grupo_original as "grupoEfectivo",
+          te.tipo_cambio as "tipoCambio",
+          'CEDIDO' as tipo,
+          u.nombre, u.apellido, u.horario, u.grupo_turno as "grupoTurno"
+        FROM turnos_efectivos te
+        JOIN users u ON te.empleado_intercambio_id = u.id
+        WHERE te.fecha = ${fecha}::date
+          AND te.estado = 'PENDIENTE'
+          AND te.empleado_intercambio_id IS NOT NULL;
+      `;
+
+      return NextResponse.json([...ganados, ...cedidos]);
+    }
+
     const turnosGanados = await sql`
-      SELECT 
-        id::text,
-        TO_CHAR(fecha, 'YYYY-MM-DD') as fecha,
-        horario_original,
-        horario_efectivo,
-        grupo_original,
-        grupo_efectivo,
-        tipo_cambio,
-        estado,
-        'GANADO' as tipo
-      FROM turnos_efectivos
-      WHERE empleado_id = ${userId}::uuid
-        AND estado = 'PENDIENTE'
-        AND fecha >= NOW()::date;
+      SELECT
+        te.id::text,
+        TO_CHAR(te.fecha, 'YYYY-MM-DD') as fecha,
+        te.horario_original,
+        te.horario_efectivo,
+        te.grupo_original,
+        te.grupo_efectivo,
+        te.tipo_cambio,
+        te.estado,
+        'GANADO' as tipo,
+        uc.nombre || ' ' || uc.apellido as companero,
+        COALESCE(sd.motivo, of.descripcion) as motivo
+      FROM turnos_efectivos te
+      LEFT JOIN users uc ON te.empleado_intercambio_id = uc.id
+      LEFT JOIN autorizaciones a ON te.autorizacion_id = a.id
+      LEFT JOIN solicitudes_directas sd ON a.solicitud_id = sd.id
+      LEFT JOIN ofertas of ON a.oferta_id = of.id
+      WHERE te.empleado_id = ${targetUserId}::uuid
+        AND te.estado IN ('PENDIENTE', 'REALIZADO');
     `;
 
     const turnosCedidos = await sql`
-      SELECT 
-        TO_CHAR(fecha, 'YYYY-MM-DD') as fecha
-      FROM turnos_efectivos
-      WHERE empleado_intercambio_id = ${userId}::uuid
-        AND estado = 'PENDIENTE'
-        AND fecha >= NOW()::date;
+      SELECT
+        te.id::text,
+        TO_CHAR(te.fecha, 'YYYY-MM-DD') as fecha,
+        te.horario_original,
+        te.horario_efectivo,
+        te.grupo_original,
+        te.grupo_efectivo,
+        te.tipo_cambio,
+        te.estado,
+        'CEDIDO' as tipo,
+        uc.nombre || ' ' || uc.apellido as companero,
+        COALESCE(sd.motivo, of.descripcion) as motivo
+      FROM turnos_efectivos te
+      LEFT JOIN users uc ON te.empleado_id = uc.id
+      LEFT JOIN autorizaciones a ON te.autorizacion_id = a.id
+      LEFT JOIN solicitudes_directas sd ON a.solicitud_id = sd.id
+      LEFT JOIN ofertas of ON a.oferta_id = of.id
+      WHERE te.empleado_intercambio_id = ${targetUserId}::uuid
+        AND te.estado IN ('PENDIENTE', 'REALIZADO');
     `;
 
     return NextResponse.json({
       ganados: turnosGanados,
-      cedidos: turnosCedidos.map((t: any) => t.fecha)
+      cedidos: turnosCedidos,
     });
 
   } catch (error) {

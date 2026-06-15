@@ -3,7 +3,8 @@
   "scripts": {
     "build": "pnpm install --no-frozen-lockfile && next build",
     "dev": "next dev --turbopack",
-    "start": "next start"
+    "start": "next start",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -45,12 +46,17 @@
     "zod": "^3.25.17"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/bcrypt": "^5.0.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "22.10.7",
+    "@types/pg": "^8.20.0",
     "@types/react": "19.0.7",
     "@types/react-dom": "19.0.3",
-    "@types/twilio": "^3.19.2"
+    "@types/twilio": "^3.19.2",
+    "baseline-browser-mapping": "^2.10.35",
+    "dotenv": "^17.4.2",
+    "pg": "^8.21.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
