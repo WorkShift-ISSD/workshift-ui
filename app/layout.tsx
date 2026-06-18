@@ -1,8 +1,25 @@
 import '@/app/ui/global.css';
 import { inter } from '@/app/ui/fonts';
+import type { Metadata } from 'next';
 
 import ThemeToggle from './components/ThemeToggle';
 import { AuthProvider } from './context/AuthContext';
+
+export const metadata: Metadata = {
+  title: 'WorkShift',
+  description: 'Sistema de gestión de turnos de trabajo',
+  manifest: '/manifest.json',
+  themeColor: '#2563eb',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'WorkShift',
+  },
+  icons: {
+    icon: '/Logo_v4a.png',
+    apple: '/Logo_v4a.png',
+  },
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
