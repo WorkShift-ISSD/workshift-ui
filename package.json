@@ -1,7 +1,7 @@
 {
   "private": true,
   "scripts": {
-    "build": "pnpm install --no-frozen-lockfile && next build",
+    "build": "pnpm install --no-frozen-lockfile && next build --webpack",
     "dev": "next dev --turbopack",
     "start": "next start",
     "test:e2e": "playwright test"

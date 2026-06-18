@@ -76,8 +76,8 @@ export default function FaltasPage() {
     faltas: todasLasFaltas = [],
     refetch: refetchFaltas,
   } = useTodasLasFaltas();
-  const { data: todasLasLicencias = [] } = useSWR<any[]>("/api/licencias", fetcher);
-  const { data: todasLasSanciones = [] } = useSWR<any[]>("/api/sanciones", fetcher);
+  const { data: todasLasLicencias = [] } = useSWR<any[]>("/licencias", () => apiClient.get<any[]>("/licencias"));
+  const { data: todasLasSanciones = [] } = useSWR<any[]>("/sanciones", () => apiClient.get<any[]>("/sanciones"));
 
   const presentesExplicitos = useMemo(() => {
     if (!Array.isArray(presentesData)) return new Set<string>();
