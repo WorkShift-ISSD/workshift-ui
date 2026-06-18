@@ -3,6 +3,7 @@
 import { useForm } from "react-hook-form";
 import { useEffect } from "react";
 import { toast } from "react-toastify";
+import { apiClient } from "@/app/lib/apiclient";
 
 interface ModalFaltaProps {
   open: boolean;
@@ -71,9 +72,6 @@ export default function ModalFalta({
         return;
       }
 
-      const url = falta ? `/api/faltas/${falta.id}` : `/api/faltas`;
-      const method = falta ? "PUT" : "POST";
-
       // Normalizar la fecha (solo YYYY-MM-DD)
       const fechaNormalizada = data.fecha.split('T')[0];
 
@@ -85,21 +83,9 @@ export default function ModalFalta({
         justificada: data.justificada,
       };
 
-      console.log("📤 Enviando falta:", payload);
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Error al guardar");
-      }
-
-      const resultado = await res.json();
-      console.log("✅ Falta guardada:", resultado);
+      const resultado = falta
+        ? await apiClient.put(`/faltas/${falta.id}`, payload)
+        : await apiClient.post('/faltas', payload);
 
       toast.success("Falta guardada correctamente");
       onSaved();
