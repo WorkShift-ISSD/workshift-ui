@@ -5,6 +5,7 @@ import useSWR from "swr";
 import { useLicenciasDelDia } from "@/hooks/useLicenciasPorDia";
 import { useSancionesDelDia } from "@/hooks/useSancionesDelDia";
 import { useFaltas, useTodasLasFaltas } from "@/hooks/useFaltas";
+import { Licencia, Sancion } from "@/app/api/types";
 import { useFormatters } from "@/hooks/useFormatters";
 import { useEmpleados } from "@/hooks/useEmpleados";
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
@@ -76,8 +77,8 @@ export default function FaltasPage() {
     faltas: todasLasFaltas = [],
     refetch: refetchFaltas,
   } = useTodasLasFaltas();
-  const { data: todasLasLicencias = [] } = useSWR<any[]>("/licencias", () => apiClient.get<any[]>("/licencias"));
-  const { data: todasLasSanciones = [] } = useSWR<any[]>("/sanciones", () => apiClient.get<any[]>("/sanciones"));
+  const { data: todasLasLicencias = [] } = useSWR<Licencia[]>("/licencias", () => apiClient.get<Licencia[]>("/licencias"));
+  const { data: todasLasSanciones = [] } = useSWR<Sancion[]>("/sanciones", () => apiClient.get<Sancion[]>("/sanciones"));
 
   const presentesExplicitos = useMemo(() => {
     if (!Array.isArray(presentesData)) return new Set<string>();
