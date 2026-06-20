@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import { fetcher } from "@/app/api/fetcher";
 import { useLicenciasDelDia } from "@/hooks/useLicenciasPorDia";
 import { useSancionesDelDia } from "@/hooks/useSancionesDelDia";
@@ -64,6 +64,7 @@ export default function FaltasPage() {
       });
   }, [selectedDate]);
 
+  const { mutate: globalMutate } = useSWRConfig();
   const { data: presentesData, mutate: mutatePresentes } = useSWR(
     selectedDate ? `/api/presentes?fecha=${selectedDate}` : null,
     fetcher
@@ -297,6 +298,7 @@ export default function FaltasPage() {
       mutatePresentes();
       toast.success("Falta registrada correctamente");
       mutate();
+      globalMutate('/api/faltas');
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error al registrar falta";
       toast.error(message);

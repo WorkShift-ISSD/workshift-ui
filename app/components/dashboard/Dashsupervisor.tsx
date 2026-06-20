@@ -438,7 +438,7 @@ export default function DashboardSupervisor() {
   const [filtroEstado, setFiltroEstado] = useState<'PRESENTE' | 'AUSENTE' | 'LICENCIA' | 'SANCIONADO' | null>(null);
 
   // ── Popup de personas por horario ────────────────────────────────────────
-  type PopupHorario = { horario: string; filtro: 'PRESENTE' | 'AUSENTE' | 'LICENCIA' | 'SANCIONADO' | null };
+  type PopupHorario = { horario: string; filtro: 'PRESENTE' | 'AUSENTE' | 'LICENCIA' | 'SANCIONADO' | 'SIN_REGISTRAR' | null };
   const [popupHorario, setPopupHorario] = useState<PopupHorario | null>(null);
   const [busquedaPopup, setBusquedaPopup] = useState('');
   const [paginaPopup, setPaginaPopup] = useState(1);
@@ -520,7 +520,7 @@ export default function DashboardSupervisor() {
               </span>
             </Link>
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5 capitalize">{user?.rol?.toLowerCase()}</p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5 capitalize">{user?.rol?.toLowerCase()} {user?.grupoTurno}</p>
         </div>
       </div>
 
@@ -665,6 +665,7 @@ export default function DashboardSupervisor() {
                         {/* Contadores clicables */}
                         <div className="flex items-center gap-3 text-xs flex-wrap">
                           {([
+                            { filtro: 'SIN_REGISTRAR' as const, count: sinRegistrar, icon: <Search className="w-3.5 h-3.5" />, cls: 'text-blue-400', label: (n: number) => `${n} empleado${n !== 1 ? 's' : ''}` },
                             { filtro: 'PRESENTE' as const, count: presentes, icon: <UserCheck className="w-3.5 h-3.5" />, cls: 'text-green-500 dark:text-green-400', label: (n: number) => `${n} presente${n !== 1 ? 's' : ''}` },
                             { filtro: 'AUSENTE' as const, count: faltas, icon: <UserX className="w-3.5 h-3.5" />, cls: 'text-red-400', label: (n: number) => `${n} ${n === 1 ? 'falta' : 'faltas'}` },
                             { filtro: 'LICENCIA' as const, count: licencias, icon: <Clock className="w-3.5 h-3.5" />, cls: 'text-orange-400', label: (n: number) => `${n} ${n === 1 ? 'licencia' : 'licencias'}` },
@@ -900,6 +901,7 @@ export default function DashboardSupervisor() {
           AUSENTE: { label: 'Ausente', cls: 'bg-red-500/10 text-red-400 border-red-500/20' },
           LICENCIA: { label: 'En licencia', cls: 'bg-orange-400/10 text-orange-400 border-orange-400/20' },
           SANCIONADO: { label: 'Sancionado', cls: 'bg-red-950/20 text-red-600 dark:text-red-500 border-red-900/30' },
+          SIN_REGISTRAR: { label: 'Sin registrar', cls: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
         };
         const inspHorario = inspectoresDeHoy.filter(i =>
           (i.horario || 'Sin horario') === popupHorario.horario &&
