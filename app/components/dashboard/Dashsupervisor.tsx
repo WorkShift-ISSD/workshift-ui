@@ -363,7 +363,7 @@ export default function DashboardSupervisor() {
 
   // ── Datos de supervisión ─────────────────────────────────────────────────
   const inspectores = useMemo(
-    () => (empleados || []).filter(e => e.rol === 'INSPECTOR'),
+    () => (empleados || []).filter(e => e.rol === 'INSPECTOR' || e.rol === 'SUPERVISOR'),
     [empleados]
   );
 
@@ -439,6 +439,7 @@ export default function DashboardSupervisor() {
 
   // ── Popup de personas por horario ────────────────────────────────────────
   type PopupHorario = { horario: string; filtro: 'PRESENTE' | 'AUSENTE' | 'LICENCIA' | 'SANCIONADO' | 'SIN_REGISTRAR' | null };
+  const [rolSeleccionado, setRolSeleccionado] = useState<'INSPECTOR' | 'SUPERVISOR'>('INSPECTOR');
   const [popupHorario, setPopupHorario] = useState<PopupHorario | null>(null);
   const [busquedaPopup, setBusquedaPopup] = useState('');
   const [paginaPopup, setPaginaPopup] = useState(1);
@@ -460,22 +461,32 @@ export default function DashboardSupervisor() {
   }, [popupHorario]);
 
   // ── Agrupación por horario ───────────────────────────────────────────────
-  const porHorario = useMemo(() => {
+  function agruparPorHorario(lista: typeof inspectoresDeHoy) {
     const map = new Map<string, { presentes: number; faltas: number; licencias: number; sanciones: number; sinRegistrar: number }>();
-    for (const inspector of inspectoresDeHoy) {
-      const horario = inspector.horario || 'Sin horario';
+    for (const persona of lista) {
+      const horario = persona.horario || 'Sin horario';
       if (!map.has(horario)) map.set(horario, { presentes: 0, faltas: 0, licencias: 0, sanciones: 0, sinRegistrar: 0 });
       const entry = map.get(horario)!;
-      if (inspector.estado === 'PRESENTE') entry.presentes++;
-      else if (inspector.estado === 'AUSENTE') entry.faltas++;
-      else if (inspector.estado === 'LICENCIA') entry.licencias++;
-      else if (inspector.estado === 'SANCIONADO') entry.sanciones++;
+      if (persona.estado === 'PRESENTE') entry.presentes++;
+      else if (persona.estado === 'AUSENTE') entry.faltas++;
+      else if (persona.estado === 'LICENCIA') entry.licencias++;
+      else if (persona.estado === 'SANCIONADO') entry.sanciones++;
       else entry.sinRegistrar++;
     }
     return Array.from(map.entries())
       .map(([horario, stats]) => ({ horario, ...stats }))
       .sort((a, b) => a.horario.localeCompare(b.horario));
-  }, [inspectoresDeHoy]);
+  }
+
+  const porHorarioInspectores = useMemo(
+    () => agruparPorHorario(inspectoresDeHoy.filter(i => i.rol === 'INSPECTOR')),
+    [inspectoresDeHoy]
+  );
+
+  const porHorarioSupervisores = useMemo(
+    () => agruparPorHorario(inspectoresDeHoy.filter(i => i.rol === 'SUPERVISOR')),
+    [inspectoresDeHoy]
+  );
 
   // ── Loading / Error ──────────────────────────────────────────────────────
   if (
@@ -616,21 +627,38 @@ export default function DashboardSupervisor() {
               )}
             </div>
 
-            {/* Presentes por horario */}
-            <div className="border-t border-gray-200 dark:border-gray-800 pt-4 px-4 pb-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Shield className="w-4 h-4 text-blue-500 dark:text-blue-400" />
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                  Cobertura por horario — hoy
-                </h3>
-              </div>
-              {porHorario.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No hay inspectores en turno hoy.
-                </p>
+{/* Presentes por horario */}
+            <div className="mb-3 flex items-center gap-2">
+              <button
+                onClick={() => setRolSeleccionado('INSPECTOR')}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                  rolSeleccionado === 'INSPECTOR'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+              >
+                Inspectores
+              </button>
+              <button
+                onClick={() => setRolSeleccionado('SUPERVISOR')}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                  rolSeleccionado === 'SUPERVISOR'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+              >
+                Supervisores
+              </button>
+            </div>
+
+            {(() => {
+              const lista = rolSeleccionado === 'INSPECTOR' ? porHorarioInspectores : porHorarioSupervisores;
+              const vacioLabel = rolSeleccionado === 'INSPECTOR' ? 'inspectores' : 'supervisores';
+              return lista.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">No hay {vacioLabel} en turno hoy.</p>
               ) : (
                 <div className="space-y-2">
-                  {porHorario.map(({ horario, presentes, faltas, licencias, sanciones, sinRegistrar }) => {
+                  {lista.map(({ horario, presentes, faltas, licencias, sanciones, sinRegistrar }) => {
                     const total = presentes + faltas + licencias + sanciones + sinRegistrar;
                     const pct = total === 0 ? 100 : Math.round((presentes / total) * 100);
                     return (
@@ -638,7 +666,6 @@ export default function DashboardSupervisor() {
                         key={horario}
                         className="rounded-xl border border-gray-100 dark:border-gray-700/60 bg-gray-50 dark:bg-gray-800/40 px-4 py-3"
                       >
-                        {/* Fila superior: horario + pct */}
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm font-semibold text-gray-900 dark:text-white">
                             🕐 {horario}
@@ -654,7 +681,6 @@ export default function DashboardSupervisor() {
                             {pct}% cobertura
                           </span>
                         </div>
-                        {/* Barra */}
                         <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mb-2.5 overflow-hidden">
                           <div
                             className={`h-full rounded-full ${pct >= 80 ? 'bg-green-500' : pct >= 60 ? 'bg-amber-400' : 'bg-red-500'
@@ -662,7 +688,6 @@ export default function DashboardSupervisor() {
                             style={{ width: `${pct}%` }}
                           />
                         </div>
-                        {/* Contadores clicables */}
                         <div className="flex items-center gap-3 text-xs flex-wrap">
                           {([
                             { filtro: 'SIN_REGISTRAR' as const, count: sinRegistrar, icon: <Search className="w-3.5 h-3.5" />, cls: 'text-blue-400', label: (n: number) => `${n} empleado${n !== 1 ? 's' : ''}` },
@@ -685,8 +710,8 @@ export default function DashboardSupervisor() {
                     );
                   })}
                 </div>
-              )}
-            </div>
+              );
+            })()}
           </div>
 
           {/* ── Fila: Mis intercambios + Solicitudes ── */}
