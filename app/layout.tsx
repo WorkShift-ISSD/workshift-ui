@@ -7,8 +7,8 @@ import { AuthProvider } from './context/AuthContext';
 
 // ── PWA & SEO metadata ────────────────────────────────────────────────────
 export const metadata: Metadata = {
-  title: 'Gestión de Turnos — Migraciones',
-  description: 'Portal de administración de turnos, intercambios y guardias para Migraciones.',
+  title: 'WSMS - Gestión de Turnos',
+  description: 'Portal de administración de turnos, intercambios y guardias.',
   manifest: '/api/pwa/manifest',
   appleWebApp: {
     capable: true,
@@ -16,8 +16,8 @@ export const metadata: Metadata = {
     statusBarStyle: 'black-translucent',
   },
   icons: {
-    icon: '/icons/icon-192.png',
-    apple: '/icons/icon-192.png',
+    icon: '/icons/WSMSx192.png',
+    apple: '/icons/WSMSx192.png',
   },
 };
 

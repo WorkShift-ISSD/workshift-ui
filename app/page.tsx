@@ -12,7 +12,7 @@ export default function Page() {
     <div className="flex flex-col min-h-screen">
       <main className="flex-1 flex flex-col p-4 bg-white dark:bg-gray-900">
         <div className="flex items-center h-20 shrink-0 rounded-lg p-4 md:h-40 bg-[#cddcea] dark:bg-gray-800">
-          <MigraLogo className="relative w-[40%] h-12 md:h-32" />
+          <WSMSLogo className="relative w-[40%] h-12 md:h-32" />
         </div>
         <div className="flex flex-col gap-4 md:flex-row mt-8 mb-8 md:ml-48">
           <div className="flex flex-col justify-center gap-2 rounded-lg bg-gray-100 dark:bg-gray-800 p-6 md:w-2/5 md:px-10">
@@ -21,7 +21,7 @@ export default function Page() {
               <span className="text-blue-500 dark:text-blue-400">
                 Gestión de turnos
               </span>
-              , tu portal para una administración eficiente, donde puedes solicitar, visualizar o intercambiar tus turnos en Migraciones.
+              , tu portal para una administración eficiente, donde puedes solicitar, visualizar o intercambiar tus turnos.
             </p>
           </div>
           <div className="flex items-center justify-center p-6 md:w-3/5 md:px-28 md:py-1">
