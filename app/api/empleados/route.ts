@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
         direccion, horario, fecha_nacimiento, activo, grupo_turno
       )
       VALUES (
-        ${empleado.legajo}, ${empleado.email}, ${empleado.username}, ${empleado.nombre}
+        ${empleado.legajo}, ${empleado.email}, ${empleado.username}, ${empleado.nombre},
         ${empleado.apellido},  ${empleado.password}, ${empleado.rol}, ${empleado.telefono || null},
         ${empleado.direccion || null}, ${empleado.horario || null}, 
         ${empleado.fechaNacimiento || null}, ${empleado.activo}, ${empleado.grupoTurno}
