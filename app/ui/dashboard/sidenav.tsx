@@ -200,6 +200,7 @@ export default function SideNav() {
         userData={{
           id: user?.id!,
           telefono: user?.telefono,
+          email: user?.email,
           direccion: user?.direccion,
           fecha_nacimiento: user?.fechaNacimiento,
         }}
