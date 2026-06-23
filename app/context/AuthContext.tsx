@@ -7,6 +7,7 @@ interface User {
   id: string;
   legajo: number;
   email: string;
+  username: string;
   nombre: string;
   apellido: string;
   rol: 'ADMINISTRADOR' | 'SUPERVISOR' | 'INSPECTOR' | 'JEFE';

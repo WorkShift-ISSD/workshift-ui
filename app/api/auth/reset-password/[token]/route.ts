@@ -28,7 +28,8 @@ export async function POST(
         prt.used,
         u.nombre,
         u.apellido,
-        u.email
+        u.email,
+        u.username
       FROM password_reset_tokens prt
       JOIN users u ON prt.user_id = u.id
       WHERE prt.token = ${token}

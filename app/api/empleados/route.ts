@@ -9,6 +9,7 @@ export async function GET() {
         id::text,
         legajo,
         email,
+        username,
         nombre,
         apellido,
         rol,
@@ -44,11 +45,11 @@ export async function POST(request: NextRequest) {
     
     const [newEmpleado] = await sql`
       INSERT INTO users (
-        legajo, email, nombre, apellido, password, rol, telefono, 
+        legajo, email, username, nombre, apellido, password, rol, telefono, 
         direccion, horario, fecha_nacimiento, activo, grupo_turno
       )
       VALUES (
-        ${empleado.legajo}, ${empleado.email}, ${empleado.nombre}, 
+        ${empleado.legajo}, ${empleado.email}, ${empleado.username}, ${empleado.nombre}
         ${empleado.apellido},  ${empleado.password}, ${empleado.rol}, ${empleado.telefono || null},
         ${empleado.direccion || null}, ${empleado.horario || null}, 
         ${empleado.fechaNacimiento || null}, ${empleado.activo}, ${empleado.grupoTurno}
@@ -57,6 +58,7 @@ export async function POST(request: NextRequest) {
         id::text,
         legajo,
         email,
+        username,
         nombre,
         apellido,
         password,

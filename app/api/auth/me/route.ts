@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
         id::text,
         legajo,
         email,
+        username,
         nombre,
         apellido,
         horario,

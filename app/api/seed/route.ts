@@ -23,8 +23,9 @@ const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
 // Usuarios del sistema
 const systemUsers = [
   {
-    legajo: 300001,
+    legajo: 1,
     email: 'admin@workshift.com',
+    username: 'Admin',
     nombre: 'Admin',
     apellido: 'General',
     password: 'Workshift25',
@@ -33,61 +34,7 @@ const systemUsers = [
     horario: '00:00-23:59',
     primerIngreso: false
   },
-  {
-    legajo: 300002,
-    email: 'jefe3@workshift.com',
-    nombre: 'Jefe',
-    apellido: 'Principal',
-    password: 'Password.666!',
-    rol: RolUsuario.JEFE,
-    grupoTurno: GrupoTurno.A,
-    horario: '05:00-17:00',
-    primerIngreso: true
-  },
-  {
-    legajo: 300003,
-    email: 'supervisor3@workshift.com',
-    nombre: 'Supervisor',
-    apellido: 'Uno',
-    password: 'Password.1234',
-    rol: RolUsuario.SUPERVISOR,
-    grupoTurno: GrupoTurno.A,
-    horario: '23:00-05:00',
-    primerIngreso: true
-  },
-  {
-    legajo: 300004,
-    email: 'maria.lopez@workshift.com',
-    nombre: 'Maria',
-    apellido: 'Lopez',
-    password: 'familia100%!',
-    rol: RolUsuario.SUPERVISOR,
-    grupoTurno: GrupoTurno.B,
-    horario: '05:00-14:00',
-    primerIngreso: true
-  },
-  {
-    legajo: 300005,
-    email: 'emanuel@workshift.com',
-    nombre: 'Emanuel',
-    apellido: 'Rodriguez',
-    password: 'elcrackDelTrabajo!!',
-    rol: RolUsuario.INSPECTOR,
-    grupoTurno: GrupoTurno.A,
-    horario: '19:00-05:00',
-    primerIngreso: true
-  },
-  {
-    legajo: 300006,
-    email: 'juan.garcia@workshift.com',
-    nombre: 'Juan',
-    apellido: 'Garcia',
-    password: 'Gorreadisimo!!!',
-    rol: RolUsuario.INSPECTOR,
-    grupoTurno: GrupoTurno.B,
-    horario: '14:00-23:00',
-    primerIngreso: true
-  }
+
 ];
 
 async function seedUsers() {
@@ -98,13 +45,14 @@ async function seedUsers() {
       id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
       legajo INTEGER UNIQUE NOT NULL,
       email TEXT NOT NULL UNIQUE,
-      nombre VARCHAR(255) NOT NULL,
-      apellido VARCHAR(255) NOT NULL,
+      username VARCHAR(30) UNIQUE,
+      nombre VARCHAR(50) NOT NULL,
+      apellido VARCHAR(50) NOT NULL,
       password TEXT NOT NULL,
       rol VARCHAR(50) NOT NULL DEFAULT '${RolUsuario.INSPECTOR}' CHECK (rol IN (${getEnumSqlString(RolUsuario)})),
-      telefono VARCHAR(50),
+      telefono VARCHAR(25),
       direccion TEXT,
-      horario VARCHAR(50),
+      horario VARCHAR(40),
       fecha_nacimiento DATE,
       activo BOOLEAN DEFAULT true,
       grupo_turno VARCHAR(10) NOT NULL DEFAULT '${GrupoTurno.A}' CHECK (grupo_turno IN (${getEnumSqlString(GrupoTurno)})),
@@ -124,6 +72,7 @@ async function seedUsers() {
 
   await sql`CREATE INDEX IF NOT EXISTS idx_users_legajo ON users(legajo)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_users_rol ON users(rol)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_users_activo ON users(activo)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_users_primer_ingreso ON users(primer_ingreso)`;
@@ -138,6 +87,7 @@ async function seedUsers() {
           INSERT INTO users (
             legajo, 
             email, 
+            username,
             nombre, 
             apellido, 
             password, 
@@ -153,6 +103,7 @@ async function seedUsers() {
           VALUES (
             ${user.legajo}, 
             ${user.email}, 
+            ${user.username}, 
             ${user.nombre}, 
             ${user.apellido},
             ${hashedPassword}, 
@@ -191,6 +142,7 @@ async function seedUsers() {
             id, 
             legajo, 
             email, 
+            username,
             nombre, 
             apellido, 
             password, 
@@ -210,6 +162,7 @@ async function seedUsers() {
             ${user.id},
             ${user.legajo || 1000 + Math.floor(Math.random() * 9000)},
             ${user.email}, 
+            ${user.username},
             ${user.nombre},
             ${user.apellido || user.nombre.split(' ')[1] || 'Apellido'},
             ${hashedPassword}, 

@@ -22,7 +22,8 @@ export async function POST(request: NextRequest) {
         prt.used,
         u.nombre,
         u.apellido,
-        u.email
+        u.email.
+        u.username
       FROM password_reset_tokens prt
       JOIN users u ON prt.user_id = u.id
       WHERE prt.token = ${token}
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
       user: {
         nombre: resetToken.nombre,
         apellido: resetToken.apellido,
+        username: resetToken.username,
         email: resetToken.email
       }
     });

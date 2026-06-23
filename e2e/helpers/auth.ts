@@ -7,7 +7,7 @@ try {
 } catch {
   users = {
     inspector: {
-      email: 'fallback@test.com',
+      username: 'fallback',
       password: '1234'
     }
   };
@@ -19,7 +19,7 @@ export async function login(page: Page, userKey: string) {
     const user = users[userKey];
     if (!user) throw new Error(`User "${userKey}" not found in fixtures. Do you have fixtures/users.ts locally?`);
     await page.goto('/');
-    await page.fill('input[type="email"]', user.email);
+    await page.fill('input[type="text"]', user.username);
     await page.fill('input[type="password"]', user.password);
     await page.click('button[type="submit"]');
     await page.waitForURL('**/dashboard**');

@@ -11,11 +11,11 @@ const SECRET_KEY = new TextEncoder().encode(
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, rememberMe } = await request.json();
+    const { username, password, rememberMe } = await request.json();
 
-    if (!email || !password) {
+    if (!username || !password) {
       return NextResponse.json(
-        { error: 'Email y contraseña son requeridos' },
+        { error: 'Usuario y contraseña son requeridos' },
         { status: 400 }
       );
     }
@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
         id::text,
         legajo,
         email,
+        username
         nombre,
         apellido,
         password,
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
         activo,
         primer_ingreso as "primerIngreso"
       FROM users 
-      WHERE email = ${email} AND activo = true
+      WHERE username = ${username} AND activo = true
     `;
 
     if (!user) {
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest) {
     const token = await new SignJWT({
       id: user.id,
       email: user.email,
+      username: user.username,
       rol: user.rol,
     })
       .setProtectedHeader({ alg: 'HS256' })

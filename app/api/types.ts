@@ -15,6 +15,7 @@ export interface User {
   nombre: string;
   apellido: string;
   email: string;
+  username: string,
   rol: Rol;
   grupoTurno: GrupoTurno;
   horario: string;

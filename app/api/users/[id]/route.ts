@@ -9,7 +9,7 @@ export async function GET(
     const { id } = await context.params;
     
     const [user] = await sql`
-      SELECT id::text, nombre, email, rol, created_at, updated_at 
+      SELECT id::text, nombre, email, rol, username, created_at, updated_at 
       FROM users 
       WHERE id::text = ${id}
     `;
@@ -45,9 +45,10 @@ export async function PUT(
         nombre = COALESCE(${updates.nombre}, nombre),
         email = COALESCE(${updates.email}, email),
         rol = COALESCE(${updates.rol}, rol),
+        username = COALESCE(${updates.username}, username),
         updated_at = NOW()
       WHERE id::text = ${id}
-      RETURNING id::text, nombre, email, rol, created_at, updated_at
+      RETURNING id::text, nombre, email, rol, username, created_at, updated_at
     `;
     
     if (!updated) {
@@ -77,7 +78,7 @@ export async function DELETE(
     const [deleted] = await sql`
       DELETE FROM users 
       WHERE id::text = ${id}
-      RETURNING id::text, nombre, email, rol
+      RETURNING id::text, nombre, email, rol, username,
     `;
     
     if (!deleted) {
