@@ -14,6 +14,7 @@ interface Inspector {
   id: string;
   legajo: number;
   email: string;
+  username?: string;
   nombre: string;
   apellido: string;
   rol: Rol;
