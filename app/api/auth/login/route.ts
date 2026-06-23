@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
         id::text,
         legajo,
         email,
-        username
+        username,
         nombre,
         apellido,
         password,
@@ -34,6 +34,11 @@ export async function POST(request: NextRequest) {
         grupo_turno as "grupoTurno",
         horario,
         activo,
+        foto_perfil as imagen,
+        cloudinary_public_id,
+        telefono,
+        direccion,
+        fecha_nacimiento as "fechaNacimiento",
         primer_ingreso as "primerIngreso"
       FROM users 
       WHERE username = ${username} AND activo = true
