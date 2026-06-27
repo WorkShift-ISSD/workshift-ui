@@ -49,6 +49,7 @@ import { InformeSanciones } from '@/app/components/informes/InformeSanciones';
 import { InformeLicencias } from '@/app/components/informes/InformeLicencias';
 import { useAuth } from '@/app/context/AuthContext';
 import { useLicencias } from '@/hooks/useLicencias';
+import { useSanciones } from '@/hooks/useSanciones';
 
 type Rol = 'SUPERVISOR' | 'INSPECTOR';
 type GrupoTurno = 'A' | 'B';
@@ -60,6 +61,7 @@ export default function InformesPage() {
   const { empleados, isLoading: loadingEmpleados } = useEmpleados();
   const { faltas, isLoading: loadingFaltas } = useTodasLasFaltas();
   const { licencias } = useLicencias();
+  const { sanciones } = useSanciones();
 
   // Estados para filtros
   const [tipoInforme, setTipoInforme] = useState<TipoInforme>('asistencia');
@@ -371,7 +373,7 @@ export default function InformesPage() {
         total: data.faltas,
       })),
     };
-  }, [empleadosFiltrados, faltasFiltradas]);
+  }, [empleadosFiltrados, faltasFiltradas, licencias, sanciones]);
 
   // Datos comparativos
   const datosComparativos = useMemo(() => {
@@ -380,6 +382,12 @@ export default function InformesPage() {
 
     const faltasA = faltasFiltradas.filter(f => grupoA.some(e => e.id === f.empleadoId)).length;
     const faltasB = faltasFiltradas.filter(f => grupoB.some(e => e.id === f.empleadoId)).length;
+
+    const licenciasA = licencias?.filter(l => grupoA.some(e => e.id === l.empleado_id)).length ?? 0;
+    const licenciasB = licencias?.filter(l => grupoB.some(e => e.id === l.empleado_id)).length ?? 0;
+
+    const sancionesA = sanciones?.filter(s => grupoA.some(e => e.id === s.empleado_id)).length ?? 0;
+    const sancionesB = sanciones?.filter(s => grupoB.some(e => e.id === s.empleado_id)).length ?? 0;
 
     const justificadasA = faltasFiltradas.filter(f =>
       grupoA.some(e => e.id === f.empleadoId) && f.justificada
@@ -390,8 +398,8 @@ export default function InformesPage() {
 
     return {
       comparacion: [
-        { grupo: 'Grupo A', empleados: grupoA.length, faltas: faltasA, justificadas: justificadasA },
-        { grupo: 'Grupo B', empleados: grupoB.length, faltas: faltasB, justificadas: justificadasB },
+        { grupo: 'Grupo A', empleados: grupoA.length, faltas: faltasA, licencias: licenciasA, sanciones: sancionesA },
+        { grupo: 'Grupo B', empleados: grupoB.length, faltas: faltasB, licencias: licenciasB, sanciones: sancionesB },
       ],
       porRol: {
         A: grupoA.reduce((acc, e) => {
@@ -404,7 +412,7 @@ export default function InformesPage() {
         }, {} as Record<string, number>),
       }
     };
-  }, [empleadosFiltrados, faltasFiltradas]);
+  }, [empleadosFiltrados, faltasFiltradas, licencias, sanciones]);
 
 
   // Estadísticas generales
@@ -814,7 +822,7 @@ export default function InformesPage() {
       </div>}
 
       {/* Cards de Estadísticas */}
-      {!['cambios-turno', 'sanciones', 'licencias'].includes(tipoInforme) && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      {!['cambios-turno', 'sanciones', 'licencias'].includes(tipoInforme) && <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-2">
             <Users className="h-8 w-8 text-blue-600" />
@@ -833,10 +841,18 @@ export default function InformesPage() {
 
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-2">
-            <CheckCircle className="h-8 w-8 text-green-600" />
+            <FileText className="h-8 w-8 text-green-600" />
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Justificadas</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">{estadisticas.justificadas}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Licencias</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{licencias?.length ?? 0}</p>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between mb-2">
+            <AlertCircle className="h-8 w-8 text-red-600" />
+          </div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Sanciones</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{sanciones?.length ?? 0}</p>
         </div>
 
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
@@ -1438,7 +1454,12 @@ export default function InformesPage() {
                         <Legend />
                         <Bar dataKey="empleados" fill={COLORS.blue} name="Empleados" radius={[8, 8, 0, 0]} />
                         <Bar dataKey="totalFaltas" fill={COLORS.red} name="Total Faltas" radius={[8, 8, 0, 0]} />
-                        <Bar dataKey="justificadas" fill={COLORS.green} name="Justificadas" radius={[8, 8, 0, 0]} />
+                        <Bar dataKey="licencias" fill={COLORS.green} name="Licencias" radius={[8, 8, 0, 0]}
+                          activeBar={{ fill: '#059669', stroke: '#10B981', strokeWidth: 2 }}
+                        />
+                        <Bar dataKey="sanciones" fill={COLORS.purple} name="Sanciones" radius={[8, 8, 0, 0]}
+                          activeBar={{ fill: '#7C3AED', stroke: '#8B5CF6', strokeWidth: 2 }}
+/>
                         <Bar dataKey="injustificadas" fill={COLORS.orange} name="Injustificadas" radius={[8, 8, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
@@ -1465,7 +1486,8 @@ export default function InformesPage() {
                     const colorMap: Record<string, string> = {
                       'Empleados': '#3B82F6',
                       'Faltas': '#EF4444',
-                      'Justificadas': '#10B981'
+                      'Licencias': '#10B981',
+                      'Sanciones': '#8B5CF6',
                     };
 
                     return (

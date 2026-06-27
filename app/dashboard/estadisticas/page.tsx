@@ -259,7 +259,10 @@ export default function EstadisticasPage() {
     // Total de faltas
     const totalFaltas = faltasFiltradas.length;
     const justificadas = faltasFiltradas.filter(f => f.justificada).length;
-    const injustificadas = totalFaltas - justificadas;
+    const injustificadas = faltasFiltradas.filter(f => !f.justificada).length;
+
+    const licenciasEnPeriodo = licencias?.length || 0;
+    const sancionesEnPeriodo = sanciones?.length || 0;
 
     // Faltas por empleado
     const faltasPorEmpleado = faltasFiltradas.reduce((acc, f) => {
@@ -488,8 +491,9 @@ export default function EstadisticasPage() {
 
     return {
       total: totalFaltas,
-      justificadas,
       injustificadas,
+      licenciasEnPeriodo,
+      sancionesEnPeriodo,
       faltasPorPeriodo: faltasPorPeriodo,
       faltasPorRol: Object.entries(faltasPorRol).map(([name, value]) => ({ name, value })),
       faltasPorTurno: Object.entries(faltasPorTurno).map(([name, value]) => ({ name, value })),
@@ -500,7 +504,7 @@ export default function EstadisticasPage() {
       tendenciaProyeccion: proyeccion?.tendencia || 'estable',
       tasaAusentismo: ((totalFaltas / (empleadosFiltrados.length * 30)) * 100).toFixed(2),
     };
-  }, [faltas, empleados, selectedPeriod]);
+  }, [faltas, empleados, selectedPeriod, sanciones, licencias]);
 
   // ============ ESTADÍSTICAS DE CAMBIOS ============
   const statsCambios = useMemo(() => {
@@ -557,7 +561,8 @@ export default function EstadisticasPage() {
 
     const porEstado = filtradas.reduce((acc, s) => { acc[s.estado] = (acc[s.estado] || 0) + 1; return acc; }, {} as Record<string, number>);
     const porEmpleado = filtradas.reduce((acc, s) => {
-      const n = s.empleado ? `${s.empleado.apellido}, ${s.empleado.nombre}` : s.empleado_id;
+      const emp = empleados?.find(e => e.id === s.empleado_id);
+      const n = emp ? `${emp.apellido}, ${emp.nombre}` : s.empleado_id;
       acc[n] = (acc[n] || 0) + 1; return acc;
     }, {} as Record<string, number>);
 
@@ -573,7 +578,7 @@ export default function EstadisticasPage() {
       ].filter(d => d.value > 0),
       topEmpleados: Object.entries(porEmpleado).map(([nombre, total]) => ({ nombre, total })).sort((a, b) => b.total - a.total).slice(0, 5),
     };
-  }, [sanciones, selectedPeriod]);
+  }, [sanciones, selectedPeriod, empleados]);
 
   // ============ ESTADÍSTICAS DE LICENCIAS ============
   const statsLicencias = useMemo(() => {
@@ -899,33 +904,36 @@ export default function EstadisticasPage() {
         </h2>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Gráfico: Faltas Justificadas vs Injustificadas */}
+          {/* Gráfico: Análisis de Ausentismo */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Faltas Justificadas vs Injustificadas
-            </h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={[
-                    { name: 'Justificadas', value: statsFaltas.justificadas },
-                    { name: 'Injustificadas', value: statsFaltas.injustificadas },
-                  ]}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : 0}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  <Cell fill={COLORS.green} />
-                  <Cell fill={COLORS.red} />
-                </Pie>
-                <Tooltip content={<CustomPieTooltip />} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+              Ausentismo: Licencias, Sanciones o Injustificadas
+          </h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={[
+                  { name: 'Licencias', value: statsFaltas.licenciasEnPeriodo },
+                  { name: 'Sanciones', value: statsFaltas.sancionesEnPeriodo },
+                  { name: 'Injustificadas', value: statsFaltas.injustificadas },
+                ].filter(d => d.value > 0)}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : 0}%`}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                <Cell fill={COLORS.blue} />
+                <Cell fill={COLORS.orange} />
+                <Cell fill={COLORS.red} />
+              </Pie>
+              <Tooltip content={<CustomPieTooltip />} />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
 
           {/* Gráfico: Faltas por Rol */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
@@ -1287,7 +1295,6 @@ export default function EstadisticasPage() {
 
         </div>
       </div>
-
 
       {/* SECCIÓN: CAMBIOS DE TURNO */}
       {statsCambios && (
