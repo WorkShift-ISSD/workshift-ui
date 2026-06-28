@@ -54,7 +54,8 @@ export function InformeSanciones() {
       if (empleadoId !== 'TODOS' && s.empleado_id !== empleadoId) return false;
       if (estado !== 'TODOS' && s.estado !== estado) return false;
       if (busqueda) {
-        const nombre = s.empleado ? `${s.empleado.nombre} ${s.empleado.apellido}`.toLowerCase() : '';
+        const emp = empleados?.find(e => e.id === s.empleado_id);
+        const nombre = emp ? `${emp.nombre} ${emp.apellido}`.toLowerCase() : '';
         const motivo = s.motivo?.toLowerCase() ?? '';
         const q = busqueda.toLowerCase();
         if (!nombre.includes(q) && !motivo.includes(q)) return false;
@@ -80,7 +81,8 @@ export function InformeSanciones() {
     const map: Record<string, { nombre: string; count: number }> = {};
     filtradas.forEach(s => {
       const key = s.empleado_id;
-      const nombre = s.empleado ? `${s.empleado.apellido}, ${s.empleado.nombre}` : '—';
+      const emp = empleados?.find(e => e.id === s.empleado_id);
+      const nombre = emp ? `${emp.apellido}, ${emp.nombre}` : '—';
       if (!map[key]) map[key] = { nombre, count: 0 };
       map[key].count++;
     });
@@ -270,7 +272,10 @@ export function InformeSanciones() {
                 ) : paginadas.map(s => (
                   <tr key={s.id} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
                     <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
-                      {s.empleado ? `${s.empleado.apellido}, ${s.empleado.nombre}` : '—'}
+                      {(() => {
+                        const emp = empleados?.find(e => e.id === s.empleado_id);
+                        return emp ? `${emp.apellido}, ${emp.nombre}` : '—';
+                      })()}
                     </td>
                     <td className="px-4 py-3 text-gray-500 dark:text-gray-400 max-w-[200px] truncate">{s.motivo}</td>
                     <td className="px-4 py-3 text-gray-500 dark:text-gray-400">

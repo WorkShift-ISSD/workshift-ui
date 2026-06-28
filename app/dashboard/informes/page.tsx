@@ -289,14 +289,36 @@ export default function InformesPage() {
 
     const porEmpleado = empleadosFiltrados.map(emp => {
       const faltasEmp = faltasDelPeriodo.filter(f => f.empleadoId === emp.id);
+      const injustificadas = faltasEmp.filter(f => !f.justificada).length;
+
+      const sancionesEmp = sanciones?.filter(s =>
+        s.empleado_id === emp.id &&
+        s.fecha_desde <= fechaFin &&
+        s.fecha_hasta >= fechaInicio
+      ).reduce((total, s) => {
+        // Intersecar el rango de la sanción con el período del informe
+        const desdeEfectivo = s.fecha_desde > fechaInicio ? s.fecha_desde : fechaInicio;
+        const hastaEfectivo = s.fecha_hasta < fechaFin ? s.fecha_hasta : fechaFin;
+        // Contar solo los días que le tocaba trabajar dentro de la sanción
+        return total + calcularDiasTrabajoEnRango(desdeEfectivo, hastaEfectivo, emp.grupoTurno);
+      }, 0) ?? 0;
+
+      const licenciasEmp = licencias?.filter(l =>
+        l.empleado_id === emp.id &&
+        l.fecha_desde <= fechaFin &&
+        l.fecha_hasta >= fechaInicio
+      ) ?? [];
+      const diasLicencia = licenciasEmp.reduce((acc, l) => acc + (l.dias ?? 0), 0);
+
+      const faltasReales = injustificadas + sancionesEmp;
+
+      const diasBase = calcularDiasTrabajoEnRango(fechaInicio, fechaFin, emp.grupoTurno);
+      const diasEfectivos = Math.max(0, diasBase - diasLicencia);
 
       // Calcular usando la lógica de turnos real
-      const estadisticas = calcularPorcentajeAsistenciaReal(
-        fechaInicio,
-        fechaFin,
-        emp.grupoTurno,
-        faltasEmp.length
-      );
+      const porcentajeAsistencia = diasEfectivos > 0
+        ? Math.max(0, Math.round(((diasEfectivos - faltasReales) / diasEfectivos) * 100))
+        : 100;
 
       return {
         id: emp.id,
@@ -304,18 +326,20 @@ export default function InformesPage() {
         legajo: emp.legajo,
         rol: emp.rol,
         turno: emp.grupoTurno,
-        faltas: faltasEmp.length,
-        faltasJustificadas: faltasEmp.filter(f => f.justificada).length,
-        faltasInjustificadas: faltasEmp.filter(f => !f.justificada).length,
-        diasDebioTrabajar: estadisticas.diasDebioTrabajar,
-        diasTrabajados: estadisticas.diasTrabajados,
-        porcentajeAsistencia: estadisticas.porcentajeAsistencia,
+        faltas: faltasReales,
+        licencias: diasLicencia,
+        sanciones: sancionesEmp,
+        faltasInjustificadas: injustificadas,
+        diasDebioTrabajar: diasBase,
+        diasEfectivos,
+        diasTrabajados: Math.max(0, diasEfectivos - faltasReales),
+        porcentajeAsistencia,
       };
     })
       .sort((a, b) => b.porcentajeAsistencia - a.porcentajeAsistencia);
 
     return porEmpleado;
-  }, [empleadosFiltrados, faltasFiltradas, fechaInicio, fechaFin]);
+  }, [empleadosFiltrados, faltasFiltradas, fechaInicio, fechaFin, licencias, sanciones]);
 
   // Datos paginados
   const datosPaginados = useMemo(() => {
@@ -715,7 +739,11 @@ export default function InformesPage() {
                 <input
                   type="date"
                   value={fechaInicio}
-                  onChange={(e) => setFechaInicio(e.target.value)}
+                  onChange={(e) => {
+                    setFechaInicio(e.target.value);
+                    if (e.target.value > fechaFin) setFechaFin(e.target.value);
+                  }}
+                  max={fechaFin}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
@@ -728,7 +756,10 @@ export default function InformesPage() {
                 <input
                   type="date"
                   value={fechaFin}
-                  onChange={(e) => setFechaFin(e.target.value)}
+                  onChange={(e) => {
+                    if (e.target.value >= fechaInicio) setFechaFin(e.target.value);
+                  }}
+                  min={fechaInicio}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
@@ -884,8 +915,9 @@ export default function InformesPage() {
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Turno</th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Días debió trabajar</th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Faltas</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Justif.</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Licencias.</th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Injustif.</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Sanciones.</th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">% Asistencia</th>
                   </tr>
                 </thead>
@@ -908,8 +940,9 @@ export default function InformesPage() {
                         {dato.diasDebioTrabajar}
                       </td>
                       <td className="px-6 py-4 text-center text-sm text-gray-900 dark:text-white">{dato.faltas}</td>
-                      <td className="px-6 py-4 text-center text-sm text-green-600 dark:text-green-400">{dato.faltasJustificadas}</td>
+                      <td className="px-6 py-4 text-center text-sm text-green-600 dark:text-green-400">{dato.licencias}</td>
                       <td className="px-6 py-4 text-center text-sm text-red-600 dark:text-red-400">{dato.faltasInjustificadas}</td>
+                      <td className="px-6 py-4 text-center text-sm text-purple-600 dark:text-purple-400">{dato.sanciones}</td>
                       <td className="px-6 py-4 text-center">
                         <span className={`font-semibold ${dato.porcentajeAsistencia >= 95 ? 'text-green-600' :
                           dato.porcentajeAsistencia >= 90 ? 'text-yellow-600' :
@@ -1718,12 +1751,16 @@ export default function InformesPage() {
                           <p className="text-2xl font-bold text-gray-900 dark:text-white">{datosEmp.faltas}</p>
                         </div>
                         <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Justificadas</p>
-                          <p className="text-2xl font-bold text-green-600">{datosEmp.faltasJustificadas}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Licencias (días)</p>
+                          <p className="text-2xl font-bold text-green-600">{datosEmp.licencias}</p>
                         </div>
                         <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
                           <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Injustificadas</p>
                           <p className="text-2xl font-bold text-red-600">{datosEmp.faltasInjustificadas}</p>
+                        </div>
+                        <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Sanciones (días)</p>
+                          <p className="text-2xl font-bold text-purple-600">{datosEmp.sanciones}</p>
                         </div>
                         <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
                           <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Días Trabajados</p>
