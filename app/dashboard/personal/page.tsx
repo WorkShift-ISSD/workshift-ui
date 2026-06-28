@@ -1232,7 +1232,7 @@ useEffect(() => {
                             }`}
                           value={formData.username || ''}
                           onChange={(e) => {
-                            setFormData({ ...formData, username: e.target.value });
+                            setFormData({ ...formData, username: e.target.value.toLowerCase().replace(/\s/g, '') });
                             if (formError) setFormError('');
                           }}
                           placeholder="Ej: jperez"
