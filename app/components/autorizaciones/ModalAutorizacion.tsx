@@ -89,9 +89,9 @@ export function ModalAutorizacion({
   return (
     <>
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+        <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-3xl max-h-[80vh] overflow-y-auto">
           {/* Header */}
-          <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
+          <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center">
             <div>
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Detalle de Autorización
@@ -109,7 +109,7 @@ export function ModalAutorizacion({
           </div>
 
           {/* Content */}
-          <div className="p-6 space-y-6">
+          <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
             {/* Información General */}
             <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-3">
@@ -506,7 +506,7 @@ export function ModalAutorizacion({
 
 
           {/* Footer */}
-          <div className="sticky bottom-0 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-6 py-4">
+          <div className="sticky bottom-0 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4">
             <div className="flex justify-end gap-3">
               <button
                 onClick={onClose}

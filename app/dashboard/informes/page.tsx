@@ -585,7 +585,7 @@ export default function InformesPage() {
 
       {/* Selector de Tipo de Informe */}
 
-      <div className="mb-6 grid grid-cols-4 lg:grid-cols-7 gap-2 lg:gap-3">
+      <div className="mb-6 grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-7 gap-2 lg:gap-3">
         {/* Asistencia */}
         <button
           onClick={() => setTipoInforme('asistencia')}
@@ -657,7 +657,9 @@ export default function InformesPage() {
         >
           <div className="flex flex-col items-center gap-1">
             <RefreshCw className={`h-5 w-5 ${tipoInforme === 'cambios-turno' ? 'text-blue-500' : 'text-gray-400'}`} />
-            <span className={`text-xs font-semibold text-center ${tipoInforme === 'cambios-turno' ? 'text-blue-500' : 'text-gray-700 dark:text-gray-400'}`}>Cambios de Turno</span>
+           <span className={`text-xs font-semibold text-center leading-tight ${tipoInforme === 'cambios-turno' ? 'text-blue-500' : 'text-gray-700 dark:text-gray-400'}`}>
+              Cambios<br/>Turno
+            </span>
           </div>
         </button>}
 
@@ -730,8 +732,7 @@ export default function InformesPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {/* Fecha Inicio */}
+           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Fecha Inicio
@@ -853,7 +854,7 @@ export default function InformesPage() {
       </div>}
 
       {/* Cards de Estadísticas */}
-      {!['cambios-turno', 'sanciones', 'licencias'].includes(tipoInforme) && <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+      {!['cambios-turno', 'sanciones', 'licencias'].includes(tipoInforme) && <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-2">
             <Users className="h-8 w-8 text-blue-600" />
@@ -905,7 +906,7 @@ export default function InformesPage() {
                 Registro de Asistencia por Empleado
               </h3>
             </div>
-            <div className="overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
@@ -957,8 +958,52 @@ export default function InformesPage() {
               </table>
             </div>
 
+            {/* CARDS - solo móvil */}
+            <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+              {datosPaginados.map((dato) => (
+                <div key={dato.id} className="p-4">
+                  {/* Fila 1: Nombre + % Asistencia */}
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div>
+                      <p className="font-semibold text-gray-900 dark:text-white text-sm">{dato.nombre}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Leg. {dato.legajo}</p>
+                    </div>
+                    <span className={`text-xl font-bold ${dato.porcentajeAsistencia >= 95 ? 'text-green-600' :
+                        dato.porcentajeAsistencia >= 90 ? 'text-yellow-600' : 'text-red-600'
+                      }`}>
+                      {dato.porcentajeAsistencia}%
+                    </span>
+                  </div>
+                  {/* Fila 2: Rol + Turno */}
+                  <div className="flex gap-2 mb-2">
+                    <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs">{dato.rol}</span>
+                    <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded text-xs">Grupo {dato.turno}</span>
+                  </div>
+                  {/* Fila 3: Stats en grid */}
+                  <div className="grid grid-cols-4 gap-1 text-center text-xs">
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded p-1.5">
+                      <p className="text-gray-500 dark:text-gray-400">Días</p>
+                      <p className="font-bold text-gray-900 dark:text-white">{dato.diasDebioTrabajar}</p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded p-1.5">
+                      <p className="text-gray-500 dark:text-gray-400">Faltas</p>
+                      <p className="font-bold text-gray-900 dark:text-white">{dato.faltas}</p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded p-1.5">
+                      <p className="text-gray-500 dark:text-gray-400">Lic.</p>
+                      <p className="font-bold text-green-600">{dato.licencias}</p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded p-1.5">
+                      <p className="text-gray-500 dark:text-gray-400">Sanc.</p>
+                      <p className="font-bold text-purple-600">{dato.sanciones}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             {/* Controles de paginación */}
-            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-700 dark:text-gray-300">
                   Mostrar
@@ -1009,34 +1054,39 @@ export default function InformesPage() {
                   ‹
                 </button>
 
-                {/* Números de página */}
-                {(() => {
-                  const pages = [];
-                  const maxPagesToShow = 5;
-                  let startPage = Math.max(1, paginaActual - Math.floor(maxPagesToShow / 2));
-                  let endPage = Math.min(totalPaginas, startPage + maxPagesToShow - 1);
+                {/* Números de página - solo desktop */}
+                <span className="text-sm text-gray-700 dark:text-gray-300 sm:hidden">
+                  {paginaActual} / {totalPaginas}
+                </span>
+                <span className="hidden sm:contents">
+                  {(() => {
+                    const pages = [];
+                    const maxPagesToShow = 5;
+                    let startPage = Math.max(1, paginaActual - Math.floor(maxPagesToShow / 2));
+                    let endPage = Math.min(totalPaginas, startPage + maxPagesToShow - 1);
 
-                  if (endPage - startPage < maxPagesToShow - 1) {
-                    startPage = Math.max(1, endPage - maxPagesToShow + 1);
-                  }
+                    if (endPage - startPage < maxPagesToShow - 1) {
+                      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+                    }
 
-                  for (let i = startPage; i <= endPage; i++) {
-                    pages.push(
-                      <button
-                        key={i}
-                        onClick={() => setPaginaActual(i)}
-                        className={`px-3 py-1 rounded-lg text-sm ${paginaActual === i
-                          ? 'bg-blue-600 text-white'
-                          : 'border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
-                          }`}
-                      >
-                        {i}
-                      </button>
-                    );
-                  }
+                    for (let i = startPage; i <= endPage; i++) {
+                      pages.push(
+                        <button
+                          key={i}
+                          onClick={() => setPaginaActual(i)}
+                          className={`px-3 py-1 rounded-lg text-sm ${paginaActual === i
+                            ? 'bg-blue-600 text-white'
+                            : 'border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                            }`}
+                        >
+                          {i}
+                        </button>
+                      );
+                    }
 
-                  return pages;
-                })()}
+                    return pages;
+                  })()}
+                </span>
 
                 {/* Botón Siguiente */}
                 <button
@@ -1112,23 +1162,17 @@ export default function InformesPage() {
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={datosAusentismo.porRol}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="rol" stroke="#9CA3AF" />
+                <XAxis dataKey="rol" stroke="#9CA3AF" tick={{ fontSize: 11 }}
+                  tickFormatter={(value) => value === 'INSPECTOR' ? 'Insp.' : value === 'SUPERVISOR' ? 'Sup.' : value }
+                />
                 <YAxis stroke="#9CA3AF" />
                 <Tooltip
                   content={<CustomTooltip labelColor="#F97316" />}
                   cursor={{ fill: 'transparent' }}
                 />
                 <Legend />
-                <Bar
-                  dataKey="promedio"
-                  fill={COLORS.orange}
-                  name="Promedio Faltas"
-                  radius={[8, 8, 0, 0]}
-                  activeBar={{                           // ⭐ NUEVO
-                    fill: '#EA580C',                     // Tono más oscuro de naranja
-                    stroke: '#F97316',                   // Borde naranja
-                    strokeWidth: 2
-                  }}
+                <Bar dataKey="promedio" fill={COLORS.orange} name="Promedio Faltas" radius={[8, 8, 0, 0]}
+                  activeBar={{ fill: '#EA580C', stroke: '#F97316', strokeWidth: 2}}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -1193,47 +1237,63 @@ export default function InformesPage() {
           </div>
 
           {/* Tabla Resumen por Rol */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 lg:col-span-2">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Resumen de Ausentismo
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Rol</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Total Faltas</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Promedio por Empleado</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Nivel</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {datosAusentismo.porRol.map((dato) => (
-                    <tr key={dato.rol} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{dato.rol}</td>
-                      <td className="px-6 py-4 text-center text-sm text-gray-900 dark:text-white">{dato.total}</td>
-                      <td className="px-6 py-4 text-center text-sm text-gray-900 dark:text-white">{dato.promedio}</td>
-                      <td className="px-6 py-4 text-center">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${parseFloat(dato.promedio) >= 5
+          {/* TABLA - solo desktop */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Rol</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Total Faltas</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Promedio por Empleado</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Nivel</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {datosAusentismo.porRol.map((dato) => (
+                  <tr key={dato.rol} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{dato.rol}</td>
+                    <td className="px-6 py-4 text-center text-sm text-gray-900 dark:text-white">{dato.total}</td>
+                    <td className="px-6 py-4 text-center text-sm text-gray-900 dark:text-white">{dato.promedio}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${parseFloat(dato.promedio) >= 5
                           ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                           : parseFloat(dato.promedio) >= 3
                             ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                             : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                          }`}>
-                          {parseFloat(dato.promedio) >= 5 ? 'Crítico' : parseFloat(dato.promedio) >= 3 ? 'Moderado' : 'Bajo'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        }`}>
+                        {parseFloat(dato.promedio) >= 5 ? 'Crítico' : parseFloat(dato.promedio) >= 3 ? 'Moderado' : 'Bajo'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-            </div>
+          {/* CARDS - solo móvil */}
+          <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+            {datosAusentismo.porRol.map((dato) => (
+              <div key={dato.rol} className="p-4 flex items-center justify-between gap-4">
+                <div>
+                  <p className="font-semibold text-gray-900 dark:text-white">{dato.rol}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Total: <span className="font-medium text-gray-900 dark:text-white">{dato.total}</span>
+                    &nbsp;· Promedio: <span className="font-medium text-gray-900 dark:text-white">{dato.promedio}</span>
+                  </p>
+                </div>
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${parseFloat(dato.promedio) >= 5
+                    ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                    : parseFloat(dato.promedio) >= 3
+                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                      : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                  }`}>
+                  {parseFloat(dato.promedio) >= 5 ? 'Crítico' : parseFloat(dato.promedio) >= 3 ? 'Moderado' : 'Bajo'}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}
-
-
 
       {tipoInforme === 'comparativo' && (
         <div className="space-y-6">
@@ -1378,7 +1438,7 @@ export default function InformesPage() {
                   {/* Cards comparativos */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {/* Empleados */}
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Empleados</p>
                       <div className="flex justify-between items-center">
                         <div>
@@ -1397,7 +1457,7 @@ export default function InformesPage() {
                     </div>
 
                     {/* Total Faltas */}
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Total Faltas</p>
                       <div className="flex justify-between items-center">
                         <div>
@@ -1416,7 +1476,7 @@ export default function InformesPage() {
                     </div>
 
                     {/* Promedio Faltas */}
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Promedio Faltas</p>
                       <div className="flex justify-between items-center">
                         <div>
@@ -1435,7 +1495,7 @@ export default function InformesPage() {
                     </div>
 
                     {/* Tasa Ausentismo */}
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Tasa Ausentismo</p>
                       <div className="flex justify-between items-center">
                         <div>
@@ -1791,7 +1851,7 @@ export default function InformesPage() {
                               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Otro trabajó su turno</p>
                             </div>
                           </div>
-                          <div className="overflow-x-auto">
+                          <div className="hidden md:block overflow-x-auto">
                             <table className="w-full text-sm">
                               <thead className="bg-gray-50 dark:bg-gray-700">
                                 <tr>

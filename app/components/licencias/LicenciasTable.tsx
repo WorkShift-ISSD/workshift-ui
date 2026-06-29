@@ -191,7 +191,7 @@ export function LicenciasTable({ licencias, onRefetch }: Props) {
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Licencias solicitadas</h2>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-rowgap-1">
             <button onClick={exportarPDF} className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-xs rounded-lg hover:border-gray-400 transition-all">
               <Download size={13} /> PDF
             </button>
@@ -202,181 +202,212 @@ export function LicenciasTable({ licencias, onRefetch }: Props) {
         </div>
 
         {/* Filtros */}
-        <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 flex flex-wrap gap-3 items-end">
-          <div className="relative flex-1 min-w-[160px]">
+        <div className="px-4 sm:px-6 py-3 border-b border-gray-200 dark:border-gray-700 flex flex-col gap-3">
+          {/* Búsqueda */}
+          <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input type="text" placeholder="Buscar..." value={busqueda} onChange={e => setBusqueda(e.target.value)}
               className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100" />
           </div>
-          <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}
-            className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100">
-            <option value="TODOS">Todos los tipos</option>
-            <option value="ORDINARIA">Ordinaria</option>
-            <option value="MEDICA">Médica</option>
-            <option value="ESPECIAL">Especial</option>
-            <option value="ESTUDIO">Estudio</option>
-            <option value="SIN_GOCE">Sin goce</option>
-          </select>
-          <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}
-            className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100">
-            <option value="TODOS">Todos los estados</option>
-            <option value="PENDIENTE">Pendiente</option>
-            <option value="APROBADA">Aprobada</option>
-            <option value="ACTIVA">Activa</option>
-            <option value="FINALIZADA">Finalizada</option>
-            <option value="CANCELADA">Cancelada</option>
-            <option value="RECHAZADA">Rechazada</option>
-          </select>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-gray-500">Desde</label>
-            <CustomDatePicker value={filtroDesde} onChange={setFiltroDesde} minDate={new Date('2020-01-01')} showGrupo={false}
-              className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-36" />
+          {/* Dropdowns lado a lado */}
+          <div className="grid grid-cols-2 gap-3">
+            <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}
+              className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full">
+              <option value="TODOS">Todos los tipos</option>
+              <option value="ORDINARIA">Ordinaria</option>
+              <option value="MEDICA">Médica</option>
+              <option value="ESPECIAL">Especial</option>
+              <option value="ESTUDIO">Estudio</option>
+              <option value="SIN_GOCE">Sin goce</option>
+            </select>
+            <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}
+              className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full">
+              <option value="TODOS">Todos los estados</option>
+              <option value="PENDIENTE">Pendiente</option>
+              <option value="APROBADA">Aprobada</option>
+              <option value="ACTIVA">Activa</option>
+              <option value="FINALIZADA">Finalizada</option>
+              <option value="CANCELADA">Cancelada</option>
+              <option value="RECHAZADA">Rechazada</option>
+            </select>
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-gray-500">Hasta</label>
-            <CustomDatePicker value={filtroHasta} onChange={setFiltroHasta} minDate={new Date('2020-01-01')} showGrupo={false}
-              className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-36" />
+          {/* Fechas lado a lado */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500">Desde</label>
+              <CustomDatePicker value={filtroDesde} onChange={setFiltroDesde} minDate={new Date('2020-01-01')} showGrupo={false}
+                className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500">Hasta</label>
+              <CustomDatePicker value={filtroHasta} onChange={setFiltroHasta} minDate={new Date('2020-01-01')} showGrupo={false}
+                className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full" />
+            </div>
           </div>
           {(filtroTipo !== 'TODOS' || filtroEstado !== 'TODOS' || filtroDesde || filtroHasta || busqueda) && (
             <button onClick={() => { setFiltroTipo('TODOS'); setFiltroEstado('TODOS'); setFiltroDesde(''); setFiltroHasta(''); setBusqueda(''); }}
-              className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors self-end pb-2">
-              Limpiar
+              className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors text-left">
+              Limpiar filtros
             </button>
           )}
         </div>
 
-        {/* Tabla */}
+        {/* Contenido */}
         {filtradas.length === 0 ? (
           <div className="text-center py-12 text-gray-500 dark:text-gray-400">
             <FileSearch className="w-16 h-16 mx-auto mb-4 opacity-50" />
             No hay licencias registradas
           </div>
         ) : (
-          <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-700">
-              <tr>
-                {['Tipo', 'Desde', 'Hasta', 'Días', 'Estado', 'Observaciones', 'Acciones'].map(h => (
-                  <th key={h} className="px-4 py-3 text-xs uppercase text-gray-600 dark:text-gray-300 text-left">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+          <>
+            {/* TABLA - solo desktop */}
+            <div className="hidden md:block">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    {['Tipo', 'Desde', 'Hasta', 'Días', 'Estado', 'Observaciones', 'Acciones'].map(h => (
+                      <th key={h} className="px-4 py-3 text-xs uppercase text-gray-600 dark:text-gray-300 text-left">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {filtradas.map(l => (
+                    <tr key={l.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                      <td className="px-4 py-3 dark:text-gray-300">{formatTipoLicencia(l.tipo)}</td>
+                      <td className="px-4 py-3 dark:text-gray-300">{formatDate2(l.fecha_desde)}</td>
+                      <td className="px-4 py-3 dark:text-gray-300">{formatDate2(l.fecha_hasta)}</td>
+                      <td className="px-4 py-3 dark:text-gray-300">{l.dias ?? '—'}</td>
+                      <td className="px-4 py-3"><EstadoBadge estado={l.estado} /></td>
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-sm max-w-[160px] truncate">{l.observaciones ?? '—'}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => setViendo(l)} title="Ver detalle" className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"><Eye size={16} /></button>
+                          {puedeModificar(l) && <button onClick={() => abrirEditar(l)} title="Editar" className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"><Pencil size={16} /></button>}
+                          {puedeEliminar(l) && <button onClick={() => setEliminando(l)} title="Eliminar" className="text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors"><Trash2 size={16} /></button>}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* CARDS - solo móvil */}
+            <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
               {filtradas.map(l => (
-                <tr key={l.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                  <td className="px-4 py-3 dark:text-gray-300">{formatTipoLicencia(l.tipo)}</td>
-                  <td className="px-4 py-3 dark:text-gray-300">{formatDate2(l.fecha_desde)}</td>
-                  <td className="px-4 py-3 dark:text-gray-300">{formatDate2(l.fecha_hasta)}</td>
-                  <td className="px-4 py-3 dark:text-gray-300">{l.dias ?? '—'}</td>
-                  <td className="px-4 py-3"><EstadoBadge estado={l.estado} /></td>
-                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-sm max-w-[160px] truncate">{l.observaciones ?? '—'}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => setViendo(l)} title="Ver detalle"
-                        className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
-                        <Eye size={16} />
-                      </button>
-                      {puedeModificar(l) && (
-                        <button onClick={() => abrirEditar(l)} title="Editar"
-                          className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
-                          <Pencil size={16} />
-                        </button>
-                      )}
-                      {puedeEliminar(l) && (
-                        <button onClick={() => setEliminando(l)} title="Eliminar"
-                          className="text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors">
-                          <Trash2 size={16} />
-                        </button>
-                      )}
+                <div key={l.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <p className="font-semibold text-gray-900 dark:text-gray-100">{formatTipoLicencia(l.tipo)}</p>
+                    <EstadoBadge estado={l.estado} />
+                  </div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                    <span className="block whitespace-nowrap">Desde: <span className="text-gray-900 dark:text-gray-200 font-medium">{formatDate2(l.fecha_desde)}</span></span>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <span className="whitespace-nowrap">Hasta: <span className="text-gray-900 dark:text-gray-200 font-medium">{formatDate2(l.fecha_hasta)}</span>{l.dias && <span className="ml-2 text-gray-500 dark:text-gray-400">{l.dias} días</span>}</span>
+                    {/* Acciones inline con las fechas */}
+                    <div className="flex items-center gap-3 ml-2">
+                      <button onClick={() => setViendo(l)} title="Ver detalle" className="text-blue-500 hover:text-blue-700 transition-colors"><Eye size={16} /></button>
+                      {puedeModificar(l) && <button onClick={() => abrirEditar(l)} title="Editar" className="text-gray-500 hover:text-gray-700 transition-colors"><Pencil size={16} /></button>}
+                      {puedeEliminar(l) && <button onClick={() => setEliminando(l)} title="Eliminar" className="text-red-400 hover:text-red-600 transition-colors"><Trash2 size={16} /></button>}
                     </div>
-                  </td>
-                </tr>
+                  </div>
+                  </div>
+                  {l.observaciones && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{l.observaciones}</p>
+                  )}
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </>
         )}
       </div>
 
       {/* Modal Ver */}
-      {viendo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          onClick={e => e.target === e.currentTarget && setViendo(null)}>
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm p-6 border border-gray-200 dark:border-gray-700">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Detalle de licencia</h3>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-gray-500">Tipo</span><span className="font-medium dark:text-gray-200">{formatTipoLicencia(viendo.tipo)}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Desde</span><span className="dark:text-gray-200">{formatDate2(viendo.fecha_desde)}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Hasta</span><span className="dark:text-gray-200">{formatDate2(viendo.fecha_hasta)}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Días</span><span className="dark:text-gray-200">{viendo.dias ?? '—'}</span></div>
-              <div className="flex justify-between items-center"><span className="text-gray-500">Estado</span><EstadoBadge estado={viendo.estado} /></div>
-              {viendo.observaciones && <div><span className="text-gray-500">Observaciones</span><p className="mt-1 text-gray-700 dark:text-gray-300">{viendo.observaciones}</p></div>}
+      {
+        viendo && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={e => e.target === e.currentTarget && setViendo(null)}>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm p-6 border border-gray-200 dark:border-gray-700">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Detalle de licencia</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-gray-500">Tipo</span><span className="font-medium dark:text-gray-200">{formatTipoLicencia(viendo.tipo)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Desde</span><span className="dark:text-gray-200">{formatDate2(viendo.fecha_desde)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Hasta</span><span className="dark:text-gray-200">{formatDate2(viendo.fecha_hasta)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Días</span><span className="dark:text-gray-200">{viendo.dias ?? '—'}</span></div>
+                <div className="flex justify-between items-center"><span className="text-gray-500">Estado</span><EstadoBadge estado={viendo.estado} /></div>
+                {viendo.observaciones && <div><span className="text-gray-500">Observaciones</span><p className="mt-1 text-gray-700 dark:text-gray-300">{viendo.observaciones}</p></div>}
+              </div>
+              <button onClick={() => setViendo(null)} className="mt-5 w-full py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                Cerrar
+              </button>
             </div>
-            <button onClick={() => setViendo(null)} className="mt-5 w-full py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-              Cerrar
-            </button>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Modal Editar */}
-      {editando && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          onClick={e => e.target === e.currentTarget && setEditando(null)}>
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6 border border-gray-200 dark:border-gray-700">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Editar licencia</h3>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-500">Desde</label>
-                  <CustomDatePicker value={editFechaDesde} onChange={setEditFechaDesde}
-                    minDate={new Date(hoy + 'T00:00:00')} showGrupo={false}
-                    className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full" />
+      {
+        editando && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={e => e.target === e.currentTarget && setEditando(null)}>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6 border border-gray-200 dark:border-gray-700">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Editar licencia</h3>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-gray-500">Desde</label>
+                    <CustomDatePicker value={editFechaDesde} onChange={setEditFechaDesde}
+                      minDate={new Date(hoy + 'T00:00:00')} showGrupo={false}
+                      className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-gray-500">Hasta</label>
+                    <CustomDatePicker value={editFechaHasta} onChange={setEditFechaHasta}
+                      minDate={new Date(editFechaDesde + 'T00:00:00')} showGrupo={false}
+                      className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full" />
+                  </div>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-500">Hasta</label>
-                  <CustomDatePicker value={editFechaHasta} onChange={setEditFechaHasta}
-                    minDate={new Date(editFechaDesde + 'T00:00:00')} showGrupo={false}
-                    className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full" />
+                  <label className="text-xs font-medium text-gray-500">Observaciones</label>
+                  <textarea value={editObs} onChange={e => setEditObs(e.target.value)} rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 resize-none" />
                 </div>
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-500">Observaciones</label>
-                <textarea value={editObs} onChange={e => setEditObs(e.target.value)} rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 resize-none" />
+              <div className="flex gap-3 mt-5">
+                <button onClick={() => setEditando(null)} className="flex-1 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                  Cancelar
+                </button>
+                <button onClick={guardarEdicion} disabled={saving} className="flex-1 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-500 disabled:opacity-50 transition">
+                  {saving ? 'Guardando...' : 'Guardar'}
+                </button>
               </div>
-            </div>
-            <div className="flex gap-3 mt-5">
-              <button onClick={() => setEditando(null)} className="flex-1 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                Cancelar
-              </button>
-              <button onClick={guardarEdicion} disabled={saving} className="flex-1 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-500 disabled:opacity-50 transition">
-                {saving ? 'Guardando...' : 'Guardar'}
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Modal Eliminar */}
-      {eliminando && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          onClick={e => e.target === e.currentTarget && setEliminando(null)}>
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm p-6 border border-gray-200 dark:border-gray-700">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">¿Eliminar licencia?</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
-              Se eliminará la licencia {formatTipoLicencia(eliminando.tipo)} del {formatDate2(eliminando.fecha_desde)} al {formatDate2(eliminando.fecha_hasta)}.
-              {eliminando.tipo === 'ORDINARIA' && ' La autorización pendiente también será cancelada.'}
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setEliminando(null)} className="flex-1 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                Cancelar
-              </button>
-              <button onClick={confirmarEliminar} disabled={saving} className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-500 disabled:opacity-50 transition">
-                {saving ? 'Eliminando...' : 'Eliminar'}
-              </button>
+      {
+        eliminando && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={e => e.target === e.currentTarget && setEliminando(null)}>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm p-6 border border-gray-200 dark:border-gray-700">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">¿Eliminar licencia?</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
+                Se eliminará la licencia {formatTipoLicencia(eliminando.tipo)} del {formatDate2(eliminando.fecha_desde)} al {formatDate2(eliminando.fecha_hasta)}.
+                {eliminando.tipo === 'ORDINARIA' && ' La autorización pendiente también será cancelada.'}
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setEliminando(null)} className="flex-1 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                  Cancelar
+                </button>
+                <button onClick={confirmarEliminar} disabled={saving} className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-500 disabled:opacity-50 transition">
+                  {saving ? 'Eliminando...' : 'Eliminar'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
     </>
   );
 }

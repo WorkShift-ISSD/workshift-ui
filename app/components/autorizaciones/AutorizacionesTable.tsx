@@ -143,7 +143,8 @@ export function AutorizacionesTable({
   return (
     <>
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* TABLA - solo desktop */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-100 dark:bg-gray-700">
               <tr>
@@ -228,6 +229,57 @@ export function AutorizacionesTable({
               })}
             </tbody>
           </table>
+        </div>
+        {/* CARDS - solo móvil */}
+        <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+          {paginadas.map((auth) => {
+            const impacto = impactoMap?.[auth.id];
+            const esIntercambio = !!auth.solicitudId;
+            return (
+              <div key={auth.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                {/* Fila 1: Tipo + Estado */}
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                    {getTipoLabel(auth.tipo)}
+                  </p>
+                  {getEstadoBadge(auth.estado)}
+                </div>
+                {/* Fila 2: Empleado + Fecha */}
+                <div className="flex items-center justify-between mb-2 text-sm text-gray-500 dark:text-gray-400">
+                  <span className="text-gray-900 dark:text-gray-200">
+                    {auth.empleado ? `${auth.empleado.apellido}, ${auth.empleado.nombre}` : 'N/A'}
+                  </span>
+                  <span>{formatFechaSafe(auth.createdAt)}</span>
+                </div>
+                {/* Fila 3: Impacto (opcional) + Acciones */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    {mostrarImpacto && impacto && (
+                      <ImpactoBadge
+                        impacto={impacto}
+                        empRol={auth.empleado?.rol}
+                        empGrupo={(auth.empleado as any)?.grupoTurno}
+                        esIntercambio={esIntercambio}
+                        direction="up"
+                      />
+                    )}
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={() => abrirDetalle(auth)} title="Ver detalle"
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 transition">
+                      <Eye size={18} />
+                    </button>
+                    {esJefe && ['APROBADA', 'RECHAZADA'].includes(auth.estado) && (
+                      <button onClick={() => abrirEditar(auth)} title="Editar observaciones"
+                        className="text-gray-500 dark:text-gray-400 hover:text-gray-700 transition">
+                        <Pencil size={16} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

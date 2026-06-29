@@ -190,7 +190,8 @@ export function ConsultarAutorizaciones() {
         <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <p className="text-sm text-gray-500 dark:text-gray-400">{filtradas.length} autorización{filtradas.length !== 1 ? 'es' : ''}</p>
         </div>
-        <div className="overflow-x-auto">
+        {/* TABLA - solo desktop */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-700">
@@ -226,6 +227,49 @@ export function ConsultarAutorizaciones() {
               ))}
             </tbody>
           </table>
+        </div>
+        {/* CARDS - solo móvil */}
+        <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+          {isLoading ? (
+            <p className="px-4 py-10 text-center text-gray-400">Cargando...</p>
+          ) : filtradas.length === 0 ? (
+            <p className="px-4 py-10 text-center text-gray-400">No hay autorizaciones para los filtros seleccionados</p>
+          ) : paginadas.map((a, i) => (
+            <div key={i} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
+              {/* Fila 1: ID + Estado */}
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-xs font-mono text-gray-400 dark:text-gray-500">
+                  #{a.id?.slice(-8).toUpperCase()}
+                </span>
+                <EstadoBadge estado={a.estado} />
+              </div>
+              {/* Fila 2: Empleado */}
+              <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm mb-1">
+                {a.empleado ?? '—'}
+              </p>
+              {/* Fila 3: Tipo + Fecha */}
+              <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+                <span>{formatTipo(a.tipo)}{a.subtipo ? ` · ${a.subtipo}` : ''}</span>
+                <span>
+                  {a.fecha ? new Date(a.fecha + 'T12:00:00').toLocaleDateString('es-AR') : '—'}
+                  {a.fechaDestinatario && ` ↔ ${new Date(a.fechaDestinatario + 'T12:00:00').toLocaleDateString('es-AR')}`}
+                </span>
+              </div>
+              {/* Fila 4: Con + Aprobado por (si existen) */}
+              {(a.otraPersona || a.aprobadoPor) && (
+                <div className="flex flex-wrap gap-x-4 text-xs text-gray-400 dark:text-gray-500">
+                  {a.otraPersona && <span>Con: {a.otraPersona}</span>}
+                  {a.aprobadoPor && <span>Aprobado por: {a.aprobadoPor}</span>}
+                </div>
+              )}
+              {/* Motivo */}
+              {a.motivo && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
+                  {a.motivo}
+                </p>
+              )}
+            </div>
+          ))}
         </div>
       </div>
       <Paginacion
