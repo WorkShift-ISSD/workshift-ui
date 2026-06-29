@@ -13,10 +13,10 @@ import { useSearchParams } from "next/navigation";
 
 type Tab = "pendientes" | "perfil" | "listado";
 
-const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
-  { key: "pendientes", label: "Pendientes", icon: Clock },
-  { key: "perfil", label: "Mi perfil", icon: BarChart2 },
-  { key: "listado", label: "Listado general", icon: List },
+const TABS: { key: Tab; label: string; labelShort: string; icon: React.ElementType }[] = [
+  { key: "pendientes", label: "Pendientes", labelShort: "Pendientes", icon: Clock },
+  { key: "perfil", label: "Mi perfil", labelShort: "Mi Perfil", icon: BarChart2 },
+  { key: "listado", label: "Listado general", labelShort: "Listado", icon: List },
 ];
 
 export default function CalificacionesPage() {
@@ -57,24 +57,25 @@ export default function CalificacionesPage() {
   return (
     <>
       <div className="space-y-6">
-        <div>
+        <div className="pl-6 sm:pl-0">
           <h1 className="text-2xl font-bold text-gray-100">Calificaciones</h1>
-          <p className="text-gray-500 text-sm mt-1">
+          <p className="text-gray-500 text-sm mt-1 ">
             Calificá a tus compañeros luego de completar un cambio de turno.
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-1 border-b border-gray-700/50">
+        <div className="flex gap-0 border-b border-gray-700/50 overflow-x-auto scrollbar-none">
           {TABS.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm border-b-2 transition-all -mb-px ${
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm border-b-2 transition-all -mb-px whitespace-nowrap flex-shrink-0 ${
                 tab === t.key ? "border-blue-500 text-blue-400 font-medium" : "border-transparent text-gray-500 hover:text-gray-300"
               }`}
             >
               <t.icon size={15} />
-              {t.label}
+              <span className="sm:hidden">{t.labelShort}</span>
+              <span className="hidden sm:inline">{t.label}</span>
               {t.key === "pendientes" && pendientes.length > 0 && (
                 <span className="ml-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 leading-none">
                   {pendientes.length}

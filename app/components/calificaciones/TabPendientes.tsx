@@ -65,7 +65,7 @@ export function TabPendientes({ pendientes, historial, miScore, isLoading, onCal
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  className="bg-gray-800 border border-gray-700/50 hover:border-blue-700/50 rounded-xl p-4 flex items-center gap-3 cursor-pointer group transition-all"
+                  className="bg-gray-800 border border-gray-700/50 hover:border-blue-700/50 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 cursor-pointer group transition-all"
                   onClick={() => onCalificar(item)}
                 >
                   <AvatarCalif iniciales={getIniciales(item.otro_nombre)} />
@@ -75,16 +75,18 @@ export function TabPendientes({ pendientes, historial, miScore, isLoading, onCal
                       {formatFecha(item.fecha)} · {item.horario} · Completado hace {diasUsados} día{diasUsados !== 1 ? 's' : ''}
                     </p>
                   </div>
-                  <span className={`text-xs px-2.5 py-1 rounded-md flex-shrink-0 ${urgencyColor(dias)}`}>
-                    {urgencyLabel(dias)}
-                  </span>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onCalificar(item); }}
-                    className="flex-shrink-0 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg transition-colors"
-                  >
-                    Calificar
-                  </button>
-                  <ChevronRight size={16} className="text-gray-600 group-hover:text-gray-400 flex-shrink-0 transition-colors" />
+                  <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+                    <span className={`text-xs px-2.5 py-1 rounded-md flex-shrink-0 ${urgencyColor(dias)}`}>
+                      {urgencyLabel(dias)}
+                    </span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onCalificar(item); }}
+                      className="flex-shrink-0 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg transition-colors"
+                    >
+                      Calificar
+                    </button>
+                    <ChevronRight size={16} className="text-gray-600 group-hover:text-gray-400 flex-shrink-0 transition-colors hidden sm:block" />
+                  </div>
                 </motion.div>
               );
             })}

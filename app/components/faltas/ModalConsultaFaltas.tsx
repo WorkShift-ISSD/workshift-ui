@@ -181,19 +181,19 @@ export default function ModalConsultaFaltas({
         {/* Estadísticas */}
         <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
           <div className="grid grid-cols-3 gap-4">
-            <div className="bg-white dark:bg-gray-800 p-3 rounded-lg">
+            <div className="bg-white dark:bg-gray-800 p-3 rounded-lg text-center">
               <p className="text-sm text-gray-600 dark:text-gray-400">Total</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {stats.total}
               </p>
             </div>
-            <div className="bg-white dark:bg-gray-800 p-3 rounded-lg">
+            <div className="bg-white dark:bg-gray-800 p-3 rounded-lg text-center">
               <p className="text-sm text-gray-600 dark:text-gray-400">Justificadas</p>
               <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                 {stats.justificadas}
               </p>
             </div>
-            <div className="bg-white dark:bg-gray-800 p-3 rounded-lg">
+            <div className="bg-white dark:bg-gray-800 p-3 rounded-lg text-center">
               <p className="text-sm text-gray-600 dark:text-gray-400">No Justificadas</p>
               <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                 {stats.noJustificadas}
@@ -203,113 +203,51 @@ export default function ModalConsultaFaltas({
         </div>
 
         {/* Filtros */}
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 space-y-3">
+          <div className="flex flex-col gap-3">
             {/* Búsqueda */}
-            <div className="lg:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                <Search className="w-4 h-4 inline mr-1" />
-                Buscar
-              </label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Nombre o causa..."
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2
+                placeholder="Buscar por nombre o causa..."
+                className="w-full pl-9 pr-4 border border-gray-300 dark:border-gray-600 rounded-lg p-2
                          bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                          focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               />
             </div>
-
-            {/* Empleado */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                <User className="w-4 h-4 inline mr-1" />
-                Empleado
-              </label>
-              <select
-                value={selectedEmpleado}
-                onChange={(e) => setSelectedEmpleado(e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                         focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-              >
-                <option value="TODOS">Todos</option>
-                {empleados.map((emp) => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.apellido}, {emp.nombre}
-                  </option>
-                ))}
-              </select>
+            {/* Fechas lado a lado */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Desde</label>
+                <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2
+                           bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm
+                           focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Hasta</label>
+                <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2
+                           bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm
+                           focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400" />
+              </div>
             </div>
-
-            {/* Fecha Desde */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                <Calendar className="w-4 h-4 inline mr-1" />
-                Desde
-              </label>
-              <input
-                type="date"
-                value={fechaDesde}
-                onChange={(e) => setFechaDesde(e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                         focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-              />
-            </div>
-
-            {/* Fecha Hasta */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                <Calendar className="w-4 h-4 inline mr-1" />
-                Hasta
-              </label>
-              <input
-                type="date"
-                value={fechaHasta}
-                onChange={(e) => setFechaHasta(e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                         focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-              />
-            </div>
-          </div>
-
-          {/* Filtro Justificada */}
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              <Filter className="w-4 h-4 inline mr-1" />
-              Estado
-            </label>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setSelectedJustificada("TODOS")}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${selectedJustificada === "TODOS"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-                  }`}
-              >
+            {/* Botones estado */}
+            <div className="grid grid-cols-3 gap-2">
+              <button onClick={() => setSelectedEstado("TODOS")}
+                className={`py-2 rounded-lg text-sm font-medium transition-colors ${selectedEstado === "TODOS" ? "bg-blue-600 text-white" : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"}`}>
                 Todas
               </button>
-              <button
-                onClick={() => setSelectedJustificada("SI")}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${selectedJustificada === "SI"
-                  ? "bg-green-600 text-white"
-                  : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-                  }`}
-              >
+              <button onClick={() => setSelectedEstado("JUSTIFICADA")}
+                className={`py-2 rounded-lg text-sm font-medium transition-colors ${selectedEstado === "JUSTIFICADA" ? "bg-green-600 text-white" : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"}`}>
                 Justificadas
               </button>
-              <button
-                onClick={() => setSelectedJustificada("NO")}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${selectedJustificada === "NO"
-                  ? "bg-red-600 text-white"
-                  : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-                  }`}
-              >
-                No Justificadas
+              <button onClick={() => setSelectedEstado("NO_JUSTIFICADA")}
+                className={`py-2 rounded-lg text-sm font-medium transition-colors ${selectedEstado === "NO_JUSTIFICADA" ? "bg-red-600 text-white" : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"}`}>
+                No Justif.
               </button>
             </div>
           </div>
@@ -320,75 +258,76 @@ export default function ModalConsultaFaltas({
           {faltasFiltradas.length === 0 ? (
             <div className="text-center py-12 text-gray-500 dark:text-gray-400">
               <Search className="w-16 h-16 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium">No se encontraron faltas</p>
-              <p className="text-sm">Intenta ajustar los filtros de búsqueda</p>
+              <p className="text-lg font-medium">No se encontraron registros</p>
+              <p className="text-sm">Intenta ajustar los filtros</p>
             </div>
           ) : (
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">
-                    Fecha
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">
-                    Empleado
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">
-                    Causa
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">
-                    Observaciones
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">
-                    Estado
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">
-                    Registrado Por
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+            <>
+              {/* TABLA - solo desktop */}
+              <div className="hidden md:block">
+                <table className="w-full">
+                  <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0">
+                    <tr>
+                      {['Fecha', 'Empleado', 'Causa', 'Observaciones', 'Estado', 'Registrado Por'].map(h => (
+                        <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {faltasFiltradas.map((registro) => (
+                      <tr key={registro.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">{formatDate(registro.fecha)}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">{registro.empleado?.apellido}, {registro.empleado?.nombre}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{registro.tipo === "FALTA" ? registro.causa : registro.motivo}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{registro.tipo === "FALTA" ? (registro.observaciones || "-") : "-"}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-center">
+                          {registro.tipo === "LICENCIA" ? (
+                            <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs font-medium">Licencia</span>
+                          ) : registro.justificada ? (
+                            <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full text-xs font-medium">Justificada</span>
+                          ) : (
+                            <span className="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded-full text-xs font-medium">No Justificada</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                          {registro.tipo === "FALTA" && registro.registradoPor ? `${registro.registradoPor.nombre} ${registro.registradoPor.apellido}` : "-"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* CARDS - solo móvil */}
+              <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
                 {faltasFiltradas.map((registro) => (
-                  <tr
-                    key={registro.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      {formatDate(registro.fecha)}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      {registro.empleado?.apellido}, {registro.empleado?.nombre}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                      {registro.tipo === "FALTA" ? registro.causa : registro.motivo}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                      {registro.tipo === "FALTA" ? (registro.observaciones || "-") : "-"}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-center">
+                  <div key={registro.id} className="p-4">
+                    {/* Nombre + Estado */}
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                        {registro.empleado?.apellido}, {registro.empleado?.nombre}
+                      </p>
                       {registro.tipo === "LICENCIA" ? (
-                        <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs font-medium">
-                          Licencia
-                        </span>
+                        <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs font-medium flex-shrink-0">Licencia</span>
                       ) : registro.justificada ? (
-                        <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full text-xs font-medium">
-                          Justificada
-                        </span>
+                        <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full text-xs font-medium flex-shrink-0">Justificada</span>
                       ) : (
-                        <span className="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded-full text-xs font-medium">
-                          No Justificada
-                        </span>
+                        <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded-full text-xs font-medium flex-shrink-0">No Justificada</span>
                       )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                      {registro.tipo === "FALTA" && registro.registradoPor
-                        ? `${registro.registradoPor.nombre} ${registro.registradoPor.apellido}`
-                        : "-"}
-                    </td>
-                  </tr>
+                    </div>
+                    {/* Fecha + Causa */}
+                    <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mb-1">
+                      <span>{formatDate(registro.fecha)}</span>
+                      <span className="text-gray-900 dark:text-gray-200">{registro.tipo === "FALTA" ? registro.causa : registro.motivo}</span>
+                    </div>
+                    {/* Observaciones */}
+                    {registro.tipo === "FALTA" && registro.observaciones && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{registro.observaciones}</p>
+                    )}
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </>
           )}
         </div>
 
