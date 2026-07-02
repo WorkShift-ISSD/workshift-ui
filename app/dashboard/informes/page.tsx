@@ -1918,7 +1918,7 @@ export default function InformesPage() {
                               {licenciasDelEmpleado.map(l => (
                                 <tr key={l.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                                   <td className="px-4 py-3 text-gray-900 dark:text-white">
-                                    {{ ORDINARIA: 'Ordinaria', ESPECIAL: 'Especial', MEDICA: 'Médica', ESTUDIO: 'Estudio', SIN_GOCE: 'Sin goce' }[l.tipo] ?? l.tipo}
+                                    {{ ORDINARIA: 'Ordinaria', COMPENSATORIO: 'Compensatorio', GREMIAL: 'Gremial', MEDICA: 'Médica', ESTUDIO: 'Estudio', PATERNIDAD: 'Paternidad', SIN_GOCE: 'Sin goce' }[l.tipo] ?? l.tipo}
                                   </td>
                                   <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{l.articulo ?? '—'}</td>
                                   <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
