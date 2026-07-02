@@ -11,7 +11,7 @@ const SECRET_KEY = new TextEncoder().encode(
 
 const pusher = new Pusher({
   appId: process.env.PUSHER_APP_ID!,
-  key: process.env.PUSHER_KEY!,
+  key: process.env.NEXT_PUBLIC_PUSHER_KEY!,
   secret: process.env.PUSHER_SECRET!,
   cluster: process.env.PUSHER_CLUSTER!,
   useTLS: true,
@@ -138,6 +138,7 @@ export async function POST(request: NextRequest) {
   VALUES (${ofertaId}::uuid, ${receptorId}::uuid, ${emisorId}::uuid, 'ACTIVA')
   ON CONFLICT (oferta_id, participante_id, otro_participante_id) DO NOTHING;
 `;
+console.log(mensaje)
 
     const mensajeCompleto = {
       id: mensaje.id,

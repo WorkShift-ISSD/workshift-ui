@@ -81,9 +81,11 @@ export function LicenciaForm() {
                 border-gray-300 dark:border-gray-600"
             >
               <option value="ORDINARIA">Ordinaria</option>
+              <option value="COMPENSATORIO">Compesatorio</option>
+              <option value="GREMIAL">Gremial</option>
               <option value="MEDICA">Médica</option>
-              <option value="ESPECIAL">Especial</option>
               <option value="ESTUDIO">Estudio</option>
+              <option value="PATERNIDAD">Paternidad</option>
               <option value="SIN_GOCE">Sin goce</option>
 
             </select>

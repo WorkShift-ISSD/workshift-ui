@@ -137,9 +137,11 @@ export interface NuevaOferta {
 
 export type TipoLicencia =
   | 'ORDINARIA'
-  | 'ESPECIAL'
+  | 'COMPENSATORIO'
+  | 'GREMIAL'
   | 'MEDICA'
   | 'ESTUDIO'
+  | 'PATERNIDAD'
   | 'SIN_GOCE';
 
 export type EstadoLicencia =
