@@ -10,15 +10,9 @@
   "icons": [
     {
       "src": "/Logo_v4a.png",
-      "sizes": "192x192",
+      "sizes": "720x720",
       "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/Logo_v4a.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ]
 }

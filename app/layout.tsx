@@ -1,23 +1,30 @@
 import '@/app/ui/global.css';
 import { inter } from '@/app/ui/fonts';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 
 import ThemeToggle from './components/ThemeToggle';
 import { AuthProvider } from './context/AuthContext';
 
+export const viewport: Viewport = {
+  themeColor: '#3b82f6',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export const metadata: Metadata = {
-  title: 'WorkShift',
-  description: 'Sistema de gestión de turnos de trabajo',
-  manifest: '/manifest.json',
-  themeColor: '#2563eb',
+  title: 'Gestión de Turnos — Migraciones',
+  description: 'Portal de administración de turnos, intercambios y guardias para Migraciones.',
+  manifest: '/api/pwa/manifest',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
-    title: 'WorkShift',
+    title: 'Turnos',
+    statusBarStyle: 'black-translucent',
   },
   icons: {
-    icon: '/Logo_v4a.png',
-    apple: '/Logo_v4a.png',
+    icon: '/logo192.png',
+    apple: '/logo180.png',
   },
 };
 

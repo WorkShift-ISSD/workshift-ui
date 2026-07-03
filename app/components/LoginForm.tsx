@@ -48,7 +48,7 @@ export default function LoginForm() {
       const data = await apiClient.post<any>('/auth/login', { email, password, rememberMe });
 
       if (data?.error || data?.message === 'Unauthorized' || data?.statusCode === 401) {
-        setError(data.error || data.message || "Credenciales incorrectas");
+        setError(data.message || data.error || "Credenciales incorrectas");
         return;
       }
 

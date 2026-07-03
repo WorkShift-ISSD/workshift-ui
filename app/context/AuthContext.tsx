@@ -47,11 +47,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Verificar autenticación
   const checkAuth = async () => {
     try {
-      const res = await apiClient.get<any>('/users/me');
-      
-      if (res.ok) {
-        const data = await res.json();
-        setUser(data.user);
+      const data = await apiClient.get<any>('/users/me');
+      if (data?.id) {
+        setUser(data);
       } else {
         setUser(null);
       }
