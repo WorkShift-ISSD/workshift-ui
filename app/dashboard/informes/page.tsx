@@ -7,7 +7,6 @@ import { LoadingSpinner } from '@/app/components/LoadingSpinner';
 import { ExportInformes } from '@/app/components/ExportInformes';
 import { CustomTooltip } from '@/app/components/CustomTooltip';
 import { calcularGrupoTrabaja, calcularDiasTrabajoEnRango, calcularPorcentajeAsistenciaReal } from '@/app/lib/turnosUtils';
-import { apiClient } from '@/app/lib/apiclient';
 import {
   FileText,
   Download,
@@ -50,6 +49,7 @@ import { InformeSanciones } from '@/app/components/informes/InformeSanciones';
 import { InformeLicencias } from '@/app/components/informes/InformeLicencias';
 import { useAuth } from '@/app/context/AuthContext';
 import { useLicencias } from '@/hooks/useLicencias';
+import { apiClient } from '@/app/lib/apiclient';
 
 type Rol = 'SUPERVISOR' | 'INSPECTOR';
 type GrupoTurno = 'A' | 'B';
@@ -518,7 +518,7 @@ export default function InformesPage() {
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex justify-between items-start">
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
               Informes y Reportes
@@ -553,124 +553,109 @@ export default function InformesPage() {
 
       {/* Selector de Tipo de Informe */}
 
-      <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+      <div className="mb-6 grid grid-cols-4 lg:grid-cols-7 gap-2 lg:gap-3">
         {/* Asistencia */}
         <button
           onClick={() => setTipoInforme('asistencia')}
+          title="Asistencia"
           className={`p-3 rounded-lg border-2 transition-all ${tipoInforme === 'asistencia'
             ? 'border-blue-500 bg-blue-500/10 dark:bg-blue-500/20'
             : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
             }`}
         >
-          <div className="flex items-center gap-3">
-            <CheckCircle className={`h-6 w-6 ${tipoInforme === 'asistencia' ? 'text-blue-500' : 'text-gray-400'
-              }`} />
-            <span className={`font-semibold ${tipoInforme === 'asistencia' ? 'text-blue-500' : 'text-gray-700 dark:text-gray-400'
-              }`}>
-              Asistencia
-            </span>
+          <div className="flex flex-col items-center gap-1">
+            <CheckCircle className={`h-5 w-5 ${tipoInforme === 'asistencia' ? 'text-blue-500' : 'text-gray-400'}`} />
+            <span className={`text-xs font-semibold text-center ${tipoInforme === 'asistencia' ? 'text-blue-500' : 'text-gray-700 dark:text-gray-400'}`}>Asistencia</span>
           </div>
         </button>
 
         {/* Ausentismo */}
         <button
           onClick={() => setTipoInforme('ausentismo')}
-          className={`p-4 rounded-lg border-2 transition-all ${tipoInforme === 'ausentismo'
+          title="Ausentismo"
+          className={`p-3 rounded-lg border-2 transition-all ${tipoInforme === 'ausentismo'
             ? 'border-red-500 bg-red-500/10 dark:bg-red-500/20'
             : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
             }`}
         >
-          <div className="flex items-center gap-3">
-            <UserX className={`h-6 w-6 ${tipoInforme === 'ausentismo' ? 'text-red-500' : 'text-gray-400'
-              }`} />
-            <span className={`font-semibold ${tipoInforme === 'ausentismo' ? 'text-red-500' : 'text-gray-700 dark:text-gray-400'
-              }`}>
-              Ausentismo
-            </span>
+          <div className="flex flex-col items-center gap-1">
+            <UserX className={`h-5 w-5 ${tipoInforme === 'ausentismo' ? 'text-red-500' : 'text-gray-400'}`} />
+            <span className={`text-xs font-semibold text-center ${tipoInforme === 'ausentismo' ? 'text-red-500' : 'text-gray-700 dark:text-gray-400'}`}>Ausentismo</span>
           </div>
         </button>
 
         {/* Comparativo */}
         <button
           onClick={() => setTipoInforme('comparativo')}
-          className={`p-4 rounded-lg border-2 transition-all ${tipoInforme === 'comparativo'
+          title="Comparativo"
+          className={`p-3 rounded-lg border-2 transition-all ${tipoInforme === 'comparativo'
             ? 'border-purple-500 bg-purple-500/10 dark:bg-purple-500/20'
             : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
             }`}
         >
-          <div className="flex items-center gap-3">
-            <BarChart3 className={`h-6 w-6 ${tipoInforme === 'comparativo' ? 'text-purple-500' : 'text-gray-400'
-              }`} />
-            <span className={`font-semibold ${tipoInforme === 'comparativo' ? 'text-purple-500' : 'text-gray-700 dark:text-gray-400'
-              }`}>
-              Comparativo
-            </span>
+          <div className="flex flex-col items-center gap-1">
+            <BarChart3 className={`h-5 w-5 ${tipoInforme === 'comparativo' ? 'text-purple-500' : 'text-gray-400'}`} />
+            <span className={`text-xs font-semibold text-center ${tipoInforme === 'comparativo' ? 'text-purple-500' : 'text-gray-700 dark:text-gray-400'}`}>Comparativo</span>
           </div>
         </button>
 
         {/* Individual */}
         <button
           onClick={() => setTipoInforme('individual')}
-          className={`p-4 rounded-lg border-2 transition-all ${tipoInforme === 'individual'
+          title="Individual"
+          className={`p-3 rounded-lg border-2 transition-all ${tipoInforme === 'individual'
             ? 'border-green-500 bg-green-500/10 dark:bg-green-500/20'
             : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
             }`}
         >
-          <div className="flex items-center gap-3">
-            <FileBarChart className={`h-6 w-6 ${tipoInforme === 'individual' ? 'text-green-500' : 'text-gray-400'
-              }`} />
-            <span className={`font-semibold ${tipoInforme === 'individual' ? 'text-green-500' : 'text-gray-700 dark:text-gray-400'
-              }`}>
-              Individual
-            </span>
+          <div className="flex flex-col items-center gap-1">
+            <FileBarChart className={`h-5 w-5 ${tipoInforme === 'individual' ? 'text-green-500' : 'text-gray-400'}`} />
+            <span className={`text-xs font-semibold text-center ${tipoInforme === 'individual' ? 'text-green-500' : 'text-gray-700 dark:text-gray-400'}`}>Individual</span>
           </div>
         </button>
 
         {/* Cambios de Turno — solo jefe */}
         {esJefe && <button
           onClick={() => setTipoInforme('cambios-turno')}
-          className={`p-4 rounded-lg border-2 transition-all ${tipoInforme === 'cambios-turno'
+          title="Cambios de Turno"
+          className={`p-3 rounded-lg border-2 transition-all ${tipoInforme === 'cambios-turno'
             ? 'border-blue-500 bg-blue-500/10 dark:bg-blue-500/20'
             : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
             }`}
         >
-          <div className="flex items-center gap-3">
-            <RefreshCw className={`h-6 w-6 ${tipoInforme === 'cambios-turno' ? 'text-blue-500' : 'text-gray-400'}`} />
-            <span className={`font-semibold ${tipoInforme === 'cambios-turno' ? 'text-blue-500' : 'text-gray-700 dark:text-gray-400'}`}>
-              Cambios de Turno
-            </span>
+          <div className="flex flex-col items-center gap-1">
+            <RefreshCw className={`h-5 w-5 ${tipoInforme === 'cambios-turno' ? 'text-blue-500' : 'text-gray-400'}`} />
+            <span className={`text-xs font-semibold text-center ${tipoInforme === 'cambios-turno' ? 'text-blue-500' : 'text-gray-700 dark:text-gray-400'}`}>Cambios de Turno</span>
           </div>
         </button>}
 
         {/* Sanciones */}
         <button
           onClick={() => setTipoInforme('sanciones')}
-          className={`p-4 rounded-lg border-2 transition-all ${tipoInforme === 'sanciones'
+          title="Sanciones"
+          className={`p-3 rounded-lg border-2 transition-all ${tipoInforme === 'sanciones'
             ? 'border-red-500 bg-red-500/10 dark:bg-red-500/20'
             : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
             }`}
         >
-          <div className="flex items-center gap-3">
-            <AlertCircle className={`h-6 w-6 ${tipoInforme === 'sanciones' ? 'text-red-500' : 'text-gray-400'}`} />
-            <span className={`font-semibold ${tipoInforme === 'sanciones' ? 'text-red-500' : 'text-gray-700 dark:text-gray-400'}`}>
-              Sanciones
-            </span>
+          <div className="flex flex-col items-center gap-1">
+            <AlertCircle className={`h-5 w-5 ${tipoInforme === 'sanciones' ? 'text-red-500' : 'text-gray-400'}`} />
+            <span className={`text-xs font-semibold text-center ${tipoInforme === 'sanciones' ? 'text-red-500' : 'text-gray-700 dark:text-gray-400'}`}>Sanciones</span>
           </div>
         </button>
 
         {/* Licencias */}
         <button
           onClick={() => setTipoInforme('licencias')}
-          className={`p-4 rounded-lg border-2 transition-all ${tipoInforme === 'licencias'
+          title="Licencias"
+          className={`p-3 rounded-lg border-2 transition-all ${tipoInforme === 'licencias'
             ? 'border-purple-500 bg-purple-500/10 dark:bg-purple-500/20'
             : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
             }`}
         >
-          <div className="flex items-center gap-3">
-            <Calendar className={`h-6 w-6 ${tipoInforme === 'licencias' ? 'text-purple-500' : 'text-gray-400'}`} />
-            <span className={`font-semibold ${tipoInforme === 'licencias' ? 'text-purple-500' : 'text-gray-700 dark:text-gray-400'}`}>
-              Licencias
-            </span>
+          <div className="flex flex-col items-center gap-1">
+            <Calendar className={`h-5 w-5 ${tipoInforme === 'licencias' ? 'text-purple-500' : 'text-gray-400'}`} />
+            <span className={`text-xs font-semibold text-center ${tipoInforme === 'licencias' ? 'text-purple-500' : 'text-gray-700 dark:text-gray-400'}`}>Licencias</span>
           </div>
         </button>
       </div>
@@ -713,7 +698,7 @@ export default function InformesPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               {/* Fecha Inicio */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1342,7 +1327,7 @@ export default function InformesPage() {
               {compararActivo && estadisticasComparativas && (
                 <div className="space-y-6">
                   {/* Cards comparativos */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {/* Empleados */}
                     <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Empleados</p>
@@ -1705,7 +1690,7 @@ export default function InformesPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                           <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Faltas</p>
                           <p className="text-2xl font-bold text-gray-900 dark:text-white">{datosEmp.faltas}</p>
