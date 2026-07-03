@@ -79,7 +79,7 @@ export function SeccionMensajes({ ofertaAbrirId, onChatAbierto, onMensajesLeidos
         setLoadingMensajes(true);
         try {
             const res = await apiClient.get<any>(`/mensajes?ofertaId=${ofertaId}&otroId=${otroId}`);
-            setMensajes(res.data);
+            setMensajes(Array.isArray(res) ? res : []);
         } catch (err) {
             console.error('Error cargando mensajes:', err);
         } finally {
