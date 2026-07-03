@@ -164,18 +164,18 @@ export function InformeLicencias() {
     <div className="space-y-6">
       {/* Filtros */}
       <div className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-          <div className="flex flex-col gap-1">
+        <div className="flex flex-wrap gap-4 items-end">
+          <div className="flex flex-col gap-1 min-w-[160px]">
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Desde</label>
             <CustomDatePicker value={desde} onChange={v => { setDesde(v); setPagina(1); }} minDate={new Date('2020-01-01')} showGrupo={false}
               className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full" />
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 min-w-[160px]">
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Hasta</label>
             <CustomDatePicker value={hasta} onChange={v => { setHasta(v); setPagina(1); }} minDate={new Date('2020-01-01')} showGrupo={false}
               className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full" />
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 min-w-[200px]">
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Empleado</label>
             <select value={empleadoId} onChange={e => { setEmpleadoId(e.target.value); setPagina(1); }}
               className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100">
@@ -185,7 +185,7 @@ export function InformeLicencias() {
               ))}
             </select>
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 min-w-[160px]">
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Tipo</label>
             <select value={tipo} onChange={e => { setTipo(e.target.value); setPagina(1); }}
               className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100">
@@ -203,7 +203,7 @@ export function InformeLicencias() {
       </div>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard icon={FileText} label="Total licencias" value={stats.total} color="bg-blue-500" />
         <StatCard icon={CheckCircle} label="Activas" value={stats.activas} color="bg-green-500" />
         <StatCard icon={Clock} label="Pendientes" value={stats.pendientes} color="bg-amber-500" />
@@ -211,7 +211,7 @@ export function InformeLicencias() {
       </div>
 
       {/* Gráfico + Tabla */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Por tipo de licencia</h3>
           {porTipo.length > 0 ? (
