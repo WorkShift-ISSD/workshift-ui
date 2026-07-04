@@ -6,6 +6,9 @@ import { jwtVerify } from "jose";
 
 const SECRET_KEY = new TextEncoder().encode(process.env.JWT_SECRET || "Workshift25");
 
+// ✅ CAMBIO: tipos de licencia que requieren autorización del jefe
+const TIPOS_CON_AUTORIZACION = ["ORDINARIA", "COMPENSATORIO"];
+
 async function getUserId() {
   const cookieStore = await cookies();
   const token = cookieStore.get("auth-token")?.value;
@@ -66,12 +69,12 @@ export async function PUT(
     if (licencia.empleado_id !== userId) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
     const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
-    const esOrdinaria = licencia.tipo === 'ORDINARIA';
+    const esOrdinaria = TIPOS_CON_AUTORIZACION.includes(licencia.tipo); // ✅ CAMBIO
     const esPendiente = licencia.estado === 'PENDIENTE';
     const noEmpezó = licencia.fecha_desde > hoy;
 
     if (esOrdinaria && !esPendiente) {
-      return NextResponse.json({ error: "Solo podés modificar licencias ordinarias pendientes de aprobación" }, { status: 400 });
+      return NextResponse.json({ error: "Solo podés modificar licencias ordinarias o compensatorios pendientes de aprobación" }, { status: 400 });
     }
     if (!esOrdinaria && !noEmpezó) {
       return NextResponse.json({ error: "No podés modificar una licencia que ya inició" }, { status: 400 });
@@ -82,6 +85,18 @@ export async function PUT(
 
     if (fecha_desde && fecha_desde < hoy) {
       return NextResponse.json({ error: "La fecha de inicio no puede ser anterior a hoy" }, { status: 400 });
+    }
+
+    // ✅ CAMBIO: COMPENSATORIO sigue siendo de un solo día al editar
+    if (licencia.tipo === "COMPENSATORIO") {
+      const nuevaDesde = fecha_desde ?? licencia.fecha_desde;
+      const nuevaHasta = fecha_hasta ?? nuevaDesde;
+      if (nuevaDesde !== nuevaHasta) {
+        return NextResponse.json(
+          { error: "El compensatorio se solicita para un solo día (fecha desde y hasta deben coincidir)" },
+          { status: 400 }
+        );
+      }
     }
 
     const [updated] = await sql`
@@ -99,7 +114,7 @@ export async function PUT(
       RETURNING id::text;
     `;
 
-    // Si es ORDINARIA PENDIENTE, actualizar la autorización vinculada también
+    // Si es ORDINARIA o COMPENSATORIO PENDIENTE, actualizar la autorización vinculada también
     if (esOrdinaria && esPendiente && (fecha_desde || fecha_hasta)) {
       await sql`
         UPDATE autorizaciones SET updated_at = NOW()
@@ -134,12 +149,12 @@ export async function DELETE(
     if (licencia.empleado_id !== userId) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
     const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
-    const esOrdinaria = licencia.tipo === 'ORDINARIA';
+    const esOrdinaria = TIPOS_CON_AUTORIZACION.includes(licencia.tipo); // ✅ CAMBIO
     const esPendiente = licencia.estado === 'PENDIENTE';
     const noEmpezó = licencia.fecha_desde > hoy;
 
     if (esOrdinaria && !esPendiente) {
-      return NextResponse.json({ error: "Solo podés eliminar licencias ordinarias pendientes de aprobación" }, { status: 400 });
+      return NextResponse.json({ error: "Solo podés eliminar licencias ordinarias o compensatorios pendientes de aprobación" }, { status: 400 });
     }
     if (!esOrdinaria && !noEmpezó) {
       return NextResponse.json({ error: "No podés eliminar una licencia que ya inició" }, { status: 400 });

@@ -3,10 +3,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/app/lib/postgres";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
+import { TipoAutorizacion } from "@/app/lib/enum"; // ✅ CAMBIO: para usar el enum en vez de un string suelto
 
 const SECRET_KEY = new TextEncoder().encode(
   process.env.JWT_SECRET || "Workshift25"
 );
+
+// ✅ CAMBIO: tipos de licencia que requieren autorización del jefe (quedan PENDIENTE)
+const TIPOS_CON_AUTORIZACION = ["ORDINARIA", "COMPENSATORIO"];
 
 // GET - listar licencias
 export async function GET(request: NextRequest) {
@@ -123,6 +127,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ✅ CAMBIO: COMPENSATORIO se solicita para un único día
+    if (tipo === "COMPENSATORIO" && fecha_desde !== fecha_hasta) {
+      return NextResponse.json(
+        { error: "El compensatorio se solicita para un solo día (fecha desde y hasta deben coincidir)" },
+        { status: 400 }
+      );
+    }
+
     // Usuario logueado (empleado)
     const cookieStore = await cookies();
     const token = cookieStore.get("auth-token")?.value;
@@ -180,10 +192,10 @@ export async function POST(request: NextRequest) {
         (1000 * 60 * 60 * 24)
       ) + 1;
 
-    // ✅ DETERMINAR ESTADO
-    // ORDINARIA → PENDIENTE (requiere autorización del Jefe)
-    // Otras → APROBADA (no requieren autorización)
-    const estado = tipo === "ORDINARIA" ? "PENDIENTE" : "APROBADA";
+    // ✅ CAMBIO: DETERMINAR ESTADO
+    // ORDINARIA y COMPENSATORIO → PENDIENTE (requieren autorización del Jefe)
+    // Otras (MEDICA, ESTUDIO, GREMIAL, COMISION, SIN_GOCE) → APROBADA
+    const estado = TIPOS_CON_AUTORIZACION.includes(tipo) ? "PENDIENTE" : "APROBADA";
 
     const [licencia] = await sql`
       INSERT INTO licencias (
@@ -222,11 +234,16 @@ export async function POST(request: NextRequest) {
         observaciones;
     `;
 
-    // ✅ CREAR AUTORIZACIÓN AUTOMÁTICAMENTE SI ES ORDINARIA
-    if (tipo === "ORDINARIA") {
-      console.log('🔄 Creando autorización para licencia ordinaria:', licencia.id);
+    // ✅ CAMBIO: CREAR AUTORIZACIÓN AUTOMÁTICAMENTE SI ES ORDINARIA O COMPENSATORIO
+    if (TIPOS_CON_AUTORIZACION.includes(tipo)) {
+      console.log('🔄 Creando autorización para licencia', tipo, ':', licencia.id);
 
       try {
+        const tipoAutorizacion =
+          tipo === "ORDINARIA"
+            ? TipoAutorizacion.LICENCIA_ORDINARIA
+            : TipoAutorizacion.LICENCIA_COMPENSATORIO;
+
         const [autorizacion] = await sql`
           INSERT INTO autorizaciones (
             tipo,
@@ -234,7 +251,7 @@ export async function POST(request: NextRequest) {
             licencia_id,
             estado
           ) VALUES (
-            'LICENCIA_ORDINARIA',
+            ${tipoAutorizacion},
             ${empleadoId}::uuid,
             ${licencia.id}::uuid,
             'PENDIENTE'

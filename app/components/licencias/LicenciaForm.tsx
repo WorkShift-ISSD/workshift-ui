@@ -21,6 +21,17 @@ export function LicenciaForm() {
   const [loading, setLoading] = useState(false);
   const { formatDate, formatDate2 } = useFormatters();
 
+  const esCompensatorio = tipo === "COMPENSATORIO";
+
+  const handleFechaDesdeChange = (value: string) => {
+    setFechaDesde(value);
+    if (esCompensatorio) setFechaHasta(value);
+  };
+
+  const handleTipoChange = (value: TipoLicencia) => {
+    setTipo(value);
+    if (value === "COMPENSATORIO") setFechaHasta(fechaDesde);
+  };
 
   const formValido =
     tipo &&
@@ -43,7 +54,7 @@ export function LicenciaForm() {
       });
 
       toast.success(
-        tipo === "ORDINARIA"
+        tipo === "ORDINARIA" || tipo === "COMPENSATORIO"
           ? "Licencia enviada para autorización del jefe"
           : "Licencia aprobada correctamente"
       );
@@ -75,7 +86,7 @@ export function LicenciaForm() {
             </label>
             <select
               value={tipo}
-              onChange={(e) => setTipo(e.target.value as TipoLicencia)}
+              onChange={(e) => handleTipoChange(e.target.value as TipoLicencia)}
               className="w-full border rounded-lg p-2.5
                 bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                 border-gray-300 dark:border-gray-600"
@@ -86,6 +97,7 @@ export function LicenciaForm() {
               <option value="MEDICA">Médica</option>
               <option value="ESTUDIO">Estudio</option>
               <option value="PATERNIDAD">Paternidad</option>
+              <option value="COMISION">Comisión</option>
               <option value="SIN_GOCE">Sin goce</option>
 
             </select>
@@ -94,12 +106,12 @@ export function LicenciaForm() {
           {/* DESDE */}
           <div>
             <label className="font-semibold text-gray-700 dark:text-gray-300 mb-2 block">
-              Fecha Desde
+              {esCompensatorio ? "Fecha" : "Fecha Desde"}
             </label>
             <CustomDatePicker
               id="licencia-fecha-desde"
               value={fechaDesde}
-              onChange={setFechaDesde}
+              onChange={handleFechaDesdeChange}
               minDate={new Date(today + 'T00:00:00')}
               showGrupo={false}
               className="w-full border rounded-lg p-2.5
@@ -109,21 +121,24 @@ export function LicenciaForm() {
           </div>
 
           {/* HASTA */}
-          <div>
-            <label className="font-semibold text-gray-700 dark:text-gray-300 mb-2 block">
-              Fecha Hasta
-            </label>
-            <CustomDatePicker
-              id="licencia-fecha-hasta"
-              value={fechaHasta}
-              onChange={setFechaHasta}
-              minDate={new Date(fechaDesde + 'T00:00:00')}
-              showGrupo={false}
-              className="w-full border rounded-lg p-2.5
-                bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                border-gray-300 dark:border-gray-600"
-            />
-          </div>
+          {!esCompensatorio && (
+            <div>
+              <label className="font-semibold text-gray-700 dark:text-gray-300 mb-2 block">
+                Fecha Hasta
+              </label>
+              <CustomDatePicker
+                id="licencia-fecha-hasta"
+                value={fechaHasta}
+                onChange={setFechaHasta}
+                minDate={new Date(fechaDesde + 'T00:00:00')}
+                showGrupo={false}
+                className="w-full border rounded-lg p-2.5
+                  bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                  border-gray-300 dark:border-gray-600"
+              />
+            </div>
+          )}
+
 
           {/* OBS */}
           <div className="md:col-span-2">
@@ -152,32 +167,33 @@ export function LicenciaForm() {
         >
           Solicitar Licencia
         </button>
-      </div>
+      </div >
 
-      {/* MODAL CONFIRMACIÓN */}
-      {showConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">
-              Confirmar solicitud
-            </h3>
+      {/* MODAL CONFIRMACIÓN */ }
+  {
+    showConfirm && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-md w-full">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">
+            Confirmar solicitud
+          </h3>
 
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
-              Está por solicitar una licencia{" "}
-              <span className="font-semibold">{tipo}</span>
-              <br />
-              desde el{" "}
-              <span className="font-semibold">
-                {formatDate2(fechaDesde)}
-              </span>{" "}
-              hasta el{" "}
-              <span className="font-semibold">
-                {formatDate2(fechaHasta)}
-              </span>.
+          <p className="text-gray-700 dark:text-gray-300 mb-4">
+            Está por solicitar una licencia{" "}
+            <span className="font-semibold">{tipo}</span>
+            <br />
+            desde el{" "}
+            <span className="font-semibold">
+              {formatDate2(fechaDesde)}
+            </span>{" "}
+            hasta el{" "}
+            <span className="font-semibold">
+              {formatDate2(fechaHasta)}
+            </span>.
 
             </p>
 
-            {tipo === "ORDINARIA" ? (
+            {tipo === "ORDINARIA" || tipo === "COMPENSATORIO" ? (
               <p className="text-sm text-yellow-600 dark:text-yellow-400 mb-6">
                 ⚠️ Requiere autorización del jefe (estado pendiente)
               </p>

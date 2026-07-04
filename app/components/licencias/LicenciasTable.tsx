@@ -10,13 +10,16 @@ import { generarExcel, generarPDF } from "@/app/lib/exportUtils";
 
 function formatTipoLicencia(tipo: string) {
   switch (tipo) {
-    case 'ORDINARIA':   return 'Ordinaria';
-    case 'MEDICA':      return 'Médica';
-    case 'ESPECIAL':    return 'Especial';
-    case 'ESTUDIO':     return 'Estudio';
-    case 'SIN_GOCE':    return 'Sin goce';
-    case 'ENFERMEDAD':  return 'Enfermedad';
-    default:            return tipo;
+    case 'ORDINARIA':     return 'Ordinaria';
+    case 'COMPENSATORIO': return 'Compensatorio';
+    case 'GREMIAL':       return 'Gremial';
+    case 'MEDICA':        return 'Médica';
+    case 'ESTUDIO':       return 'Estudio';
+    case 'PATERNIDAD':    return 'Paternidad';
+    case 'COMISION':      return 'Comisión';
+    case 'SIN_GOCE':      return 'Sin goce';
+    case 'ENFERMEDAD':    return 'Enfermedad';
+    default:              return tipo;
   }
 }
 
@@ -73,11 +76,13 @@ export function LicenciasTable({ licencias, onRefetch }: Props) {
   const [eliminando, setEliminando] = useState<Licencia | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const TIPOS_CON_AUTORIZACION = ['ORDINARIA', 'COMPENSATORIO'];
+
   const puedeModificar = (l: Licencia) =>
-    l.estado === 'PENDIENTE' || (l.tipo !== 'ORDINARIA' && l.fecha_desde > hoy);
+    l.estado === 'PENDIENTE' || (!TIPOS_CON_AUTORIZACION.includes(l.tipo) && l.fecha_desde > hoy);
 
   const puedeEliminar = (l: Licencia) =>
-    l.estado === 'PENDIENTE' || (l.tipo !== 'ORDINARIA' && l.fecha_desde > hoy);
+    l.estado === 'PENDIENTE' || (!TIPOS_CON_AUTORIZACION.includes(l.tipo) && l.fecha_desde > hoy);
 
   const filtradas = licencias.filter(l => {
     if (filtroTipo !== 'TODOS' && l.tipo !== filtroTipo) return false;
@@ -215,9 +220,12 @@ export function LicenciasTable({ licencias, onRefetch }: Props) {
               className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full">
               <option value="TODOS">Todos los tipos</option>
               <option value="ORDINARIA">Ordinaria</option>
+              <option value="COMPENSATORIO">Compensatorio</option>
+              <option value="GREMIAL">Gremial</option>
               <option value="MEDICA">Médica</option>
-              <option value="ESPECIAL">Especial</option>
+              <option value="PATERNIDAD">Paternidad</option>
               <option value="ESTUDIO">Estudio</option>
+              <option value="COMISION">Comisión</option>
               <option value="SIN_GOCE">Sin goce</option>
             </select>
             <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}
@@ -395,7 +403,7 @@ export function LicenciasTable({ licencias, onRefetch }: Props) {
               <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">¿Eliminar licencia?</h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
                 Se eliminará la licencia {formatTipoLicencia(eliminando.tipo)} del {formatDate2(eliminando.fecha_desde)} al {formatDate2(eliminando.fecha_hasta)}.
-                {eliminando.tipo === 'ORDINARIA' && ' La autorización pendiente también será cancelada.'}
+                {TIPOS_CON_AUTORIZACION.includes(eliminando.tipo) && ' La autorización pendiente también será cancelada.'}
               </p>
               <div className="flex gap-3">
                 <button onClick={() => setEliminando(null)} className="flex-1 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">

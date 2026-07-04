@@ -142,6 +142,7 @@ export type TipoLicencia =
   | 'MEDICA'
   | 'ESTUDIO'
   | 'PATERNIDAD'
+  | 'COMISION'
   | 'SIN_GOCE';
 
 export type EstadoLicencia =
