@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
       const ganados = await sql`
         SELECT
           te.empleado_id::text as "empleadoId",
+          te.empleado_intercambio_id::text as "intercambioId",
           TO_CHAR(te.fecha, 'YYYY-MM-DD') as fecha,
           te.horario_efectivo as "horarioEfectivo",
           te.grupo_efectivo as "grupoEfectivo",
@@ -41,6 +42,28 @@ export async function GET(request: NextRequest) {
         LEFT JOIN users uc ON te.empleado_intercambio_id = uc.id
         WHERE te.fecha = ${fecha}::date AND te.estado = 'PENDIENTE'
       `;
+
+      // Mapa para rastrear la cadena: empleadoId -> { intercambioId, companero }
+      const mapaGanados = new Map(
+        ganados.map((t: any) => [t.empleadoId, { intercambioId: t.intercambioId, companero: t.companero }])
+      );
+
+      // Para cada GANADO, seguir la cadena hasta el titular original
+      const ganadosConCadena = ganados.map((t: any) => {
+        const cadena: string[] = [];
+        const visitados = new Set([t.empleadoId]);
+        let currentId: string | null = t.intercambioId;
+
+        while (currentId && !visitados.has(currentId)) {
+          const siguiente = mapaGanados.get(currentId) as any;
+          if (!siguiente) break;
+          cadena.push(siguiente.companero); // nombre del siguiente en la cadena
+          visitados.add(currentId);
+          currentId = siguiente.intercambioId;
+        }
+
+        return { ...t, cadena };
+      });
 
       const cedidos = await sql`
         SELECT
@@ -58,7 +81,7 @@ export async function GET(request: NextRequest) {
           AND te.empleado_intercambio_id IS NOT NULL;
       `;
 
-      return NextResponse.json([...ganados, ...cedidos]);
+      return NextResponse.json([...ganadosConCadena, ...cedidos]);
     }
 
     const turnosGanados = await sql`

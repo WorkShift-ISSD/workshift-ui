@@ -81,7 +81,7 @@ export function SeccionMensajes({ ofertaAbrirId, onChatAbierto, onMensajesLeidos
                 credentials: 'include',
             });
             const data = await res.json();
-            setMensajes(data);
+            setMensajes(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Error cargando mensajes:', err);
         } finally {

@@ -562,7 +562,7 @@ export default function FaltasPage() {
                           {emp.apellido}, {emp.nombre}
                           {turnoGanado?.companero && (
                             <span className="ml-2 text-xs font-normal text-amber-400 dark:text-amber-300">
-                              (cambio x {turnoGanado.companero})
+                              (cambio x {[turnoGanado.companero, ...(turnoGanado.cadena ?? [])].join(' ← ')})
                             </span>
                           )}
                         </td>
