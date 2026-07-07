@@ -98,6 +98,7 @@ export function LicenciaForm() {
               <option value="ESTUDIO">Estudio</option>
               <option value="PATERNIDAD">Paternidad</option>
               <option value="COMISION">Comisión</option>
+              <option value="CURSO">Curso</option>
               <option value="SIN_GOCE">Sin goce</option>
 
             </select>

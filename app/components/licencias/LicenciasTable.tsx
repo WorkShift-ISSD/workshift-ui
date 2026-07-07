@@ -17,6 +17,7 @@ function formatTipoLicencia(tipo: string) {
     case 'ESTUDIO':       return 'Estudio';
     case 'PATERNIDAD':    return 'Paternidad';
     case 'COMISION':      return 'Comisión';
+    case 'CURSO':         return 'Curso';
     case 'SIN_GOCE':      return 'Sin goce';
     case 'ENFERMEDAD':    return 'Enfermedad';
     default:              return tipo;
@@ -226,6 +227,7 @@ export function LicenciasTable({ licencias, onRefetch }: Props) {
               <option value="PATERNIDAD">Paternidad</option>
               <option value="ESTUDIO">Estudio</option>
               <option value="COMISION">Comisión</option>
+              <option value="CURSO">Curso</option>
               <option value="SIN_GOCE">Sin goce</option>
             </select>
             <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}

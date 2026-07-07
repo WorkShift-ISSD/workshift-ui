@@ -143,6 +143,7 @@ export type TipoLicencia =
   | 'ESTUDIO'
   | 'PATERNIDAD'
   | 'COMISION'
+  | 'CURSO'
   | 'SIN_GOCE';
 
 export type EstadoLicencia =

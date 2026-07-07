@@ -13,6 +13,7 @@ import ModalConsultaFaltas from '@/app/components/faltas/ModalConsultaFaltas';
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { CustomDatePicker } from '@/app/components/CustomDatePicker';
+import { formatTipoLicencia } from "@/app/lib/lic";
 
 import {
   UserCircle,
@@ -197,10 +198,24 @@ export default function FaltasPage() {
   const empleadosConFalta = (faltas || []).map((f) => f.empleadoId);
 
   const empleadosConLicencia = useMemo(() => {
-    return new Set(
-      (licenciasDelDia || []).map((l: any) => l.empleado_id)
+    return new Map(
+      (licenciasDelDia || []).map((l: any) => [l.empleado_id, l.tipo])
     );
   }, [licenciasDelDia]);
+
+  const formatTipoLicencia = (tipo: string) => {
+    switch (tipo) {
+      case 'ORDINARIA':      return 'Ordinaria';
+      case 'COMPENSATORIO':  return 'Franco Compensatorio';
+      case 'GREMIAL':        return 'Gremial';
+      case 'MEDICA':         return 'Médica';
+      case 'ESTUDIO':        return 'Estudio';
+      case 'COMISION':       return 'Comisión';
+      case 'CURSO':          return 'Curso';
+      case 'SIN_GOCE':       return 'Sin goce';
+      default:               return tipo;
+    }
+  };
 
   const empleadosConSancion = useMemo(() => {
     const data = Array.isArray(sancionesDelDia) ? sancionesDelDia : [];
@@ -542,7 +557,8 @@ export default function FaltasPage() {
                   {empleadosDelDia.slice((paginaActual - 1) * ITEMS_POR_PAGINA, paginaActual * ITEMS_POR_PAGINA).map((emp) => {
                     const falta = faltas?.find((f) => f.empleadoId === emp.id);
                     const enFalta = !!falta;
-                    const enLicencia = empleadosConLicencia.has(emp.id);
+                    const tipoLicencia = empleadosConLicencia.get(emp.id);
+                    const enLicencia = !!tipoLicencia;
                     const enSancion = empleadosConSancion.has(String(emp.id));
                     const esPresenteExplicito = presentesExplicitos.has(String(emp.id));
                     const turnoGanado = turnosEfectivosDelDia.find((t: any) => t.tipo === 'GANADO' && t.empleadoId === emp.id);
@@ -576,7 +592,7 @@ export default function FaltasPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           {enLicencia ? (
                             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-200">
-                              <Calendar className="w-4 h-4" /> Licencia
+                              <Calendar className="w-4 h-4" /> {formatTipoLicencia(tipoLicencia)}
                             </span>
                           ) : enSancion ? (
                             // 4. Mostrar Badge de Sanción
@@ -603,7 +619,7 @@ export default function FaltasPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           {(enLicencia || enSancion) ? (
                             <span className="text-sm text-gray-500 italic">
-                              {enLicencia ? "En licencia" : "Sancionado"}
+                              {enLicencia ? `En licencia (${formatTipoLicencia(tipoLicencia)})` : "Sancionado"}
                             </span>
                           ) : (
                             <div className="flex gap-2 justify-center items-center min-w-[200px]">
@@ -682,7 +698,8 @@ export default function FaltasPage() {
               {empleadosDelDia.slice((paginaActual - 1) * ITEMS_POR_PAGINA, paginaActual * ITEMS_POR_PAGINA).map((emp) => {
                 const falta = faltas?.find((f) => f.empleadoId === emp.id);
                 const enFalta = !!falta;
-                const enLicencia = empleadosConLicencia.has(emp.id);
+                const tipoLicencia = empleadosConLicencia.get(emp.id);
+                const enLicencia = !!tipoLicencia;
                 const enSancion = empleadosConSancion.has(String(emp.id));
                 const esPresenteExplicito = presentesExplicitos.has(String(emp.id));
                 const turnoGanado = turnosEfectivosDelDia.find((t: any) => t.tipo === 'GANADO' && t.empleadoId === emp.id);
@@ -710,7 +727,7 @@ export default function FaltasPage() {
                       <div className="flex-shrink-0">
                         {enLicencia ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-200">
-                            <Calendar className="w-3 h-3" /> Licencia
+                            <Calendar className="w-3 h-3" /> {formatTipoLicencia(tipoLicencia)}
                           </span>
                         ) : enSancion ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-200">
@@ -743,7 +760,7 @@ export default function FaltasPage() {
                     {/* Fila 3: Botones */}
                     {(enLicencia || enSancion) ? (
                       <p className="text-xs text-gray-500 dark:text-gray-400 italic text-center py-1">
-                        {enLicencia ? "En licencia — sin acciones disponibles" : "Sancionado — sin acciones disponibles"}
+                        {enLicencia ? "En licencia (${formatTipoLicencia(tipoLicencia)}) — sin acciones disponibles" : "Sancionado — sin acciones disponibles"}
                       </p>
                     ) : (
                       <div className="flex gap-2 items-center">

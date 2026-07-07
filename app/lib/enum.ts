@@ -48,6 +48,7 @@ export enum TipoLicencia {
   ESTUDIO = "ESTUDIO",
   PATERNIDAD = "PATERNIDAD",
   COMISION = "COMISION",
+  CURSO = "Curso",
   SIN_GOCE = "SIN_GOCE",
 }
 
