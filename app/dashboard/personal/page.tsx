@@ -100,7 +100,7 @@ export default function DashboardPage() {
   const employees = empleados || [];
 
   const horariosPorRol: Record<Rol, string[]> = {
-    INSPECTOR: ["04:00-14:00", "06:00-16:00", "10:00-20:00", "13:00-23:00", "19:00-05:00"],
+    INSPECTOR: ["04:00-14:00", "06:00-16:00", "09:00-19:00", "13:00-23:00", "19:00-05:00"],
     SUPERVISOR: ["05:00-14:00", "14:00-23:00", "23:00-05:00"],
     JEFE: ["05:00-17:00", "17:00-05:00"],
     ADMINISTRADOR: ["00:00-23:59"],

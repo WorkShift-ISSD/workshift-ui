@@ -57,8 +57,9 @@ export async function GET(request: NextRequest) {
         while (currentId && !visitados.has(currentId)) {
           const siguiente = mapaGanados.get(currentId) as any;
           if (!siguiente) break;
-          cadena.push(siguiente.companero); // nombre del siguiente en la cadena
           visitados.add(currentId);
+          if (visitados.has(siguiente.intercambioId)) break; // cierra el círculo: no es una cadena real
+          cadena.push(siguiente.companero);
           currentId = siguiente.intercambioId;
         }
 
