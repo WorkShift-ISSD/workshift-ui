@@ -13,7 +13,6 @@ import ModalConsultaFaltas from '@/app/components/faltas/ModalConsultaFaltas';
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { CustomDatePicker } from '@/app/components/CustomDatePicker';
-import { formatTipoLicencia } from "@/app/lib/lic";
 
 import {
   UserCircle,
