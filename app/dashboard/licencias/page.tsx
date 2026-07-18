@@ -25,6 +25,9 @@ export default function LicenciasPage() {
 
   const { licencias, crearLicencia, loading, refetch } = useLicencias();
 
+  // Arranca en Pendientes, igual que en Autorizaciones.
+  const [filtroEstado, setFiltroEstado] = useState<string | undefined>("PENDIENTE");
+
 
   const stats = useMemo(() => {
     return {
@@ -77,8 +80,30 @@ export default function LicenciasPage() {
       {/* FORMULARIO */}
       <LicenciaForm />
 
+      {/* Filtros por estado */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+          <button onClick={() => setFiltroEstado(undefined)}
+            className={`w-full sm:w-auto px-4 py-2 rounded-lg font-medium transition ${filtroEstado === undefined ? "bg-blue-600 text-white" : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"}`}>
+            Todas
+          </button>
+          <button onClick={() => setFiltroEstado("PENDIENTE")}
+            className={`w-full sm:w-auto px-4 py-2 rounded-lg font-medium transition ${filtroEstado === "PENDIENTE" ? "bg-yellow-600 text-white" : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"}`}>
+            Pendientes ({stats.solicitadas})
+          </button>
+          <button onClick={() => setFiltroEstado("APROBADA")}
+            className={`w-full sm:w-auto px-4 py-2 rounded-lg font-medium transition ${filtroEstado === "APROBADA" ? "bg-green-600 text-white" : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"}`}>
+            Aprobadas
+          </button>
+          <button onClick={() => setFiltroEstado("RECHAZADA")}
+            className={`w-full sm:w-auto px-4 py-2 rounded-lg font-medium transition ${filtroEstado === "RECHAZADA" ? "bg-red-600 text-white" : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"}`}>
+            Rechazadas
+          </button>
+        </div>
+      </div>
+
       {/* LISTADO */}
-      <LicenciasTable licencias={licencias} onRefetch={refetch} />
+      <LicenciasTable licencias={licencias} onRefetch={refetch} filtroEstado={filtroEstado} />
 
     </div>
   );

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FileSearch, Eye, Pencil, Trash2, Download, Search } from "lucide-react";
 import { Licencia } from "@/app/api/types";
 import { useFormatters } from "@/hooks/useFormatters";
 import { toast } from "react-toastify";
 import { CustomDatePicker } from "@/app/components/CustomDatePicker";
 import { generarExcel, generarPDF } from "@/app/lib/exportUtils";
+import { Paginacion } from "@/app/components/cambios/Paginacion";
 
 function formatTipoLicencia(tipo: string) {
   switch (tipo) {
@@ -55,18 +56,55 @@ function EstadoBadge({ estado }: { estado: string }) {
 interface Props {
   licencias: Licencia[];
   onRefetch: () => void;
+  // Estado controlado desde la página (chips), igual que en Autorizaciones.
+  // undefined = todos los estados.
+  filtroEstado?: string;
 }
 
-export function LicenciasTable({ licencias, onRefetch }: Props) {
+export function LicenciasTable({ licencias, onRefetch, filtroEstado }: Props) {
   const { formatDate2 } = useFormatters();
   const hoy = new Date().toISOString().split('T')[0];
 
   // Filtros
   const [filtroTipo, setFiltroTipo] = useState('TODOS');
-  const [filtroEstado, setFiltroEstado] = useState('TODOS');
+  const [rangoFecha, setRangoFecha] = useState<'' | 'hoy' | 'semana' | 'mes' | 'personalizado'>('');
   const [filtroDesde, setFiltroDesde] = useState('');
   const [filtroHasta, setFiltroHasta] = useState('');
   const [busqueda, setBusqueda] = useState('');
+
+  // El filtro de fecha no aplica a Pendientes: ahí lo que importa es resolver, no buscar en el tiempo.
+  const mostrarFiltroFecha = filtroEstado !== 'PENDIENTE';
+
+  const toISODate = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const aplicarRango = (preset: typeof rangoFecha) => {
+    setRangoFecha(preset);
+    const hoyDate = new Date();
+    if (preset === 'hoy') {
+      setFiltroDesde(toISODate(hoyDate));
+      setFiltroHasta(toISODate(hoyDate));
+    } else if (preset === 'semana') {
+      const diaSemana = hoyDate.getDay();
+      const offsetLunes = diaSemana === 0 ? 6 : diaSemana - 1;
+      const lunes = new Date(hoyDate);
+      lunes.setDate(hoyDate.getDate() - offsetLunes);
+      setFiltroDesde(toISODate(lunes));
+      setFiltroHasta(toISODate(hoyDate));
+    } else if (preset === 'mes') {
+      const primerDia = new Date(hoyDate.getFullYear(), hoyDate.getMonth(), 1);
+      setFiltroDesde(toISODate(primerDia));
+      setFiltroHasta(toISODate(hoyDate));
+    } else if (preset === '') {
+      setFiltroDesde('');
+      setFiltroHasta('');
+    }
+    // 'personalizado' deja las fechas como estén para que el usuario las edite
+  };
 
   // Modales
   const [viendo, setViendo] = useState<Licencia | null>(null);
@@ -87,12 +125,23 @@ export function LicenciasTable({ licencias, onRefetch }: Props) {
 
   const filtradas = licencias.filter(l => {
     if (filtroTipo !== 'TODOS' && l.tipo !== filtroTipo) return false;
-    if (filtroEstado !== 'TODOS' && l.estado !== filtroEstado) return false;
-    if (filtroDesde && l.fecha_desde < filtroDesde) return false;
-    if (filtroHasta && l.fecha_hasta > filtroHasta) return false;
+    if (filtroEstado && l.estado !== filtroEstado) return false;
+    if (mostrarFiltroFecha && filtroDesde && l.fecha_hasta < filtroDesde) return false;
+    if (mostrarFiltroFecha && filtroHasta && l.fecha_desde > filtroHasta) return false;
     if (busqueda && !formatTipoLicencia(l.tipo).toLowerCase().includes(busqueda.toLowerCase())) return false;
     return true;
   });
+
+  // Paginado
+  const [pagina, setPagina] = useState(1);
+  const [porPagina, setPorPagina] = useState(10);
+  const totalPaginas = Math.max(1, Math.ceil(filtradas.length / porPagina));
+  const paginadas = filtradas.slice((pagina - 1) * porPagina, pagina * porPagina);
+
+  // Si cambian los filtros (o el estado que llega por prop), volver a la página 1
+  useEffect(() => {
+    setPagina(1);
+  }, [filtroTipo, filtroEstado, filtroDesde, filtroHasta, busqueda]);
 
   const abrirEditar = (l: Licencia) => {
     setEditando(l);
@@ -215,47 +264,69 @@ export function LicenciasTable({ licencias, onRefetch }: Props) {
             <input type="text" placeholder="Buscar..." value={busqueda} onChange={e => setBusqueda(e.target.value)}
               className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100" />
           </div>
-          {/* Dropdowns lado a lado */}
-          <div className="grid grid-cols-2 gap-3">
-            <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}
-              className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full">
-              <option value="TODOS">Todos los tipos</option>
-              <option value="ORDINARIA">Ordinaria</option>
-              <option value="COMPENSATORIO">Compensatorio</option>
-              <option value="GREMIAL">Gremial</option>
-              <option value="MEDICA">Médica</option>
-              <option value="PATERNIDAD">Paternidad</option>
-              <option value="ESTUDIO">Estudio</option>
-              <option value="COMISION">Comisión</option>
-              <option value="CURSO">Curso</option>
-              <option value="SIN_GOCE">Sin goce</option>
-            </select>
-            <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}
-              className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full">
-              <option value="TODOS">Todos los estados</option>
-              <option value="PENDIENTE">Pendiente</option>
-              <option value="APROBADA">Aprobada</option>
-              <option value="ACTIVA">Activa</option>
-              <option value="FINALIZADA">Finalizada</option>
-              <option value="CANCELADA">Cancelada</option>
-              <option value="RECHAZADA">Rechazada</option>
-            </select>
-          </div>
-          {/* Fechas lado a lado */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-gray-500">Desde</label>
-              <CustomDatePicker value={filtroDesde} onChange={setFiltroDesde} minDate={new Date('2020-01-01')} showGrupo={false}
-                className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full" />
+          {/* Tipo */}
+          <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}
+            className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full">
+            <option value="TODOS">Todos los tipos</option>
+            <option value="ORDINARIA">Ordinaria</option>
+            <option value="COMPENSATORIO">Compensatorio</option>
+            <option value="GREMIAL">Gremial</option>
+            <option value="MEDICA">Médica</option>
+            <option value="PATERNIDAD">Paternidad</option>
+            <option value="ESTUDIO">Estudio</option>
+            <option value="COMISION">Comisión</option>
+            <option value="CURSO">Curso</option>
+            <option value="SIN_GOCE">Sin goce</option>
+          </select>
+          {/* Periodo: oculto cuando se están viendo Pendientes */}
+          {mostrarFiltroFecha && (
+            <div className="flex flex-wrap gap-3 items-end">
+              <div className="flex flex-col gap-1 min-w-[160px]">
+                <div className="flex items-center gap-1.5">
+                  <label className="text-xs text-gray-500">Periodo</label>
+                  <div className="relative group">
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      className="w-4 h-4 flex items-center justify-center rounded border border-gray-400 dark:border-gray-500 text-gray-400 dark:text-gray-500 text-[10px] leading-none hover:border-gray-500 dark:hover:border-gray-400 hover:text-gray-500 dark:hover:text-gray-400 transition-colors"
+                    >
+                      ?
+                    </button>
+                    <div className="pointer-events-none absolute left-0 bottom-full mb-2 w-56 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-600 dark:text-gray-300 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                      Se muestran las licencias que se superponen con el rango elegido, aunque hayan comenzado antes o terminen después.
+                    </div>
+                  </div>
+                </div>
+                <select
+                  value={rangoFecha}
+                  onChange={e => aplicarRango(e.target.value as typeof rangoFecha)}
+                  className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full"
+                >
+                  <option value="">Todo el periodo</option>
+                  <option value="hoy">Hoy</option>
+                  <option value="semana">Esta semana</option>
+                  <option value="mes">Este mes</option>
+                  <option value="personalizado">Personalizado</option>
+                </select>
+              </div>
+              {rangoFecha === 'personalizado' && (
+                <>
+                  <div className="flex flex-col gap-1 min-w-[140px]">
+                    <label className="text-xs text-gray-500">Desde</label>
+                    <CustomDatePicker value={filtroDesde} onChange={setFiltroDesde} minDate={new Date('2020-01-01')} showGrupo={false}
+                      className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full" />
+                  </div>
+                  <div className="flex flex-col gap-1 min-w-[140px]">
+                    <label className="text-xs text-gray-500">Hasta</label>
+                    <CustomDatePicker value={filtroHasta} onChange={setFiltroHasta} minDate={new Date('2020-01-01')} showGrupo={false}
+                      className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full" />
+                  </div>
+                </>
+              )}
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-gray-500">Hasta</label>
-              <CustomDatePicker value={filtroHasta} onChange={setFiltroHasta} minDate={new Date('2020-01-01')} showGrupo={false}
-                className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full" />
-            </div>
-          </div>
-          {(filtroTipo !== 'TODOS' || filtroEstado !== 'TODOS' || filtroDesde || filtroHasta || busqueda) && (
-            <button onClick={() => { setFiltroTipo('TODOS'); setFiltroEstado('TODOS'); setFiltroDesde(''); setFiltroHasta(''); setBusqueda(''); }}
+          )}
+          {(filtroTipo !== 'TODOS' || rangoFecha !== '' || busqueda) && (
+            <button onClick={() => { setFiltroTipo('TODOS'); aplicarRango(''); setBusqueda(''); }}
               className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors text-left">
               Limpiar filtros
             </button>
@@ -281,7 +352,7 @@ export function LicenciasTable({ licencias, onRefetch }: Props) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {filtradas.map(l => (
+                  {paginadas.map(l => (
                     <tr key={l.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                       <td className="px-4 py-3 dark:text-gray-300">{formatTipoLicencia(l.tipo)}</td>
                       <td className="px-4 py-3 dark:text-gray-300">{formatDate2(l.fecha_desde)}</td>
@@ -304,7 +375,7 @@ export function LicenciasTable({ licencias, onRefetch }: Props) {
 
             {/* CARDS - solo móvil */}
             <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
-              {filtradas.map(l => (
+              {paginadas.map(l => (
                 <div key={l.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <p className="font-semibold text-gray-900 dark:text-gray-100">{formatTipoLicencia(l.tipo)}</p>
@@ -331,6 +402,16 @@ export function LicenciasTable({ licencias, onRefetch }: Props) {
           </>
         )}
       </div>
+
+      {filtradas.length > 0 && (
+        <Paginacion
+          pagina={pagina}
+          totalPaginas={totalPaginas}
+          porPagina={porPagina}
+          onCambiarPagina={setPagina}
+          onCambiarPorPagina={setPorPagina}
+        />
+      )}
 
       {/* Modal Ver */}
       {
