@@ -27,7 +27,9 @@ function StatCard({ icon: Icon, label, value, sub, color }: { icon: any; label: 
   );
 }
 
-export function InformeCambiosTurno() {
+type CambiosTurnoData = { data: any; filtros: { desde: string; hasta: string; empleadoId: string } };
+
+export function InformeCambiosTurno({ onDataChange }: { onDataChange?: (payload: CambiosTurnoData) => void } = {}) {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [desde, setDesde] = useState('');
@@ -49,6 +51,10 @@ export function InformeCambiosTurno() {
   };
 
   useEffect(() => { fetchData(); }, [desde, hasta, empleadoId]);
+
+    useEffect(() => {
+    onDataChange?.({ data, filtros: { desde, hasta, empleadoId } });
+  }, [data, desde, hasta, empleadoId, onDataChange]);
 
   const stats = data?.stats;
   const tasaAprobacion = stats && (stats.aprobados + stats.rechazados) > 0

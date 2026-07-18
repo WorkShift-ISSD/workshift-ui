@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle, XCircle, Shield, Download } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useSanciones } from '@/hooks/useSanciones';
@@ -36,7 +36,12 @@ function EstadoBadge({ estado }: { estado: string }) {
   );
 }
 
-export function InformeSanciones() {
+type SancionesExportData = {
+  data: { tabla: any[]; stats: any };
+  filtros: { desde: string; hasta: string; empleadoId: string; estado: string };
+};
+
+export function InformeSanciones({ onDataChange }: { onDataChange?: (payload: SancionesExportData) => void } = {}) {
   const { sanciones, loading } = useSanciones();
   const { empleados } = useEmpleados();
   const [desde, setDesde] = useState('');
@@ -64,12 +69,30 @@ export function InformeSanciones() {
     });
   }, [sanciones, desde, hasta, empleadoId, estado, busqueda]);
 
-  const stats = useMemo(() => ({
+const stats = useMemo(() => ({
     total: filtradas.length,
     activas: filtradas.filter(s => s.estado === 'ACTIVA').length,
     finalizadas: filtradas.filter(s => s.estado === 'FINALIZADA').length,
     anuladas: filtradas.filter(s => s.estado === 'ANULADA').length,
   }), [filtradas]);
+
+  const tablaExport = useMemo(() => filtradas.map(s => {
+    const emp = empleados?.find(e => e.id === s.empleado_id);
+    return {
+      empleado: emp ? `${emp.apellido}, ${emp.nombre}` : '—',
+      motivo: s.motivo || '—',
+      fecha_desde: s.fecha_desde,
+      fecha_hasta: s.fecha_hasta,
+      estado: s.estado,
+    };
+  }), [filtradas, empleados]);
+
+  useEffect(() => {
+    onDataChange?.({
+      data: { tabla: tablaExport, stats },
+      filtros: { desde, hasta, empleadoId, estado },
+    });
+  }, [tablaExport, stats, desde, hasta, empleadoId, estado, onDataChange]);
 
   const pieData = [
     { name: 'Activas', value: stats.activas, fill: '#EF4444' },
@@ -130,13 +153,16 @@ export function InformeSanciones() {
         { header: 'HASTA', width: 14 },
         { header: 'ESTADO', width: 14 },
       ],
-      filtradas.map(s => [
-        s.empleado ? `${s.empleado.apellido}, ${s.empleado.nombre}` : '—',
-        s.motivo,
-        new Date(s.fecha_desde + 'T12:00:00').toLocaleDateString('es-AR'),
-        new Date(s.fecha_hasta + 'T12:00:00').toLocaleDateString('es-AR'),
-        s.estado,
-      ])
+filtradas.map(s => {
+        const emp = empleados?.find(e => e.id === s.empleado_id);
+        return [
+          emp ? `${emp.apellido}, ${emp.nombre}` : '—',
+          s.motivo,
+          new Date(s.fecha_desde + 'T12:00:00').toLocaleDateString('es-AR'),
+          new Date(s.fecha_hasta + 'T12:00:00').toLocaleDateString('es-AR'),
+          s.estado,
+        ];
+      })
     );
   };
 
@@ -150,15 +176,18 @@ export function InformeSanciones() {
         { label: 'Hasta', x: 184, w: 28 },
         { label: 'Estado', x: 214, w: 28 },
       ],
-      filtradas.map(s => (_doc: any) => ({
-        cells: [
-          s.empleado ? `${s.empleado.apellido}, ${s.empleado.nombre}` : '—',
-          s.motivo,
-          new Date(s.fecha_desde + 'T12:00:00').toLocaleDateString('es-AR'),
-          new Date(s.fecha_hasta + 'T12:00:00').toLocaleDateString('es-AR'),
-          s.estado,
-        ],
-      }))
+filtradas.map(s => (_doc: any) => {
+        const emp = empleados?.find(e => e.id === s.empleado_id);
+        return {
+          cells: [
+            emp ? `${emp.apellido}, ${emp.nombre}` : '—',
+            s.motivo,
+            new Date(s.fecha_desde + 'T12:00:00').toLocaleDateString('es-AR'),
+            new Date(s.fecha_hasta + 'T12:00:00').toLocaleDateString('es-AR'),
+            s.estado,
+          ],
+        };
+      })
     );
   };
 
