@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Eye, EyeOff, Lock, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { LoadingSpinner } from "@/app/components/LoadingSpinner";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -134,7 +135,7 @@ export default function ResetPasswordPage() {
     return (
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center p-4">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 text-center">
-          <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <LoadingSpinner size="xs" padding="p-1" />
           <p className="text-gray-600 dark:text-gray-400">Verificando enlace...</p>
         </div>
       </div>
@@ -184,7 +185,7 @@ export default function ResetPasswordPage() {
               Tu contraseña ha sido actualizada exitosamente. Serás redirigido al login...
             </p>
             <div className="flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <LoadingSpinner size="large" />
               <span>Redirigiendo...</span>
             </div>
           </div>
@@ -332,7 +333,7 @@ export default function ResetPasswordPage() {
           >
             {loading ? (
               <>
-                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                <LoadingSpinner size="xs" padding="p-1" />
                 Actualizando...
               </>
             ) : (

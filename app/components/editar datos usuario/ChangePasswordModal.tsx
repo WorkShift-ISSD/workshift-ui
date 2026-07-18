@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { Eye, EyeOff, Lock, AlertCircle, CheckCircle2 } from "lucide-react";
+import { LoadingSpinner } from "../LoadingSpinner";
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -291,7 +292,7 @@ export default function ChangePasswordModal({
             >
               {loading ? (
                 <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  <LoadingSpinner size="xs" padding="p-1" />
                   {isPrimerIngreso ? "Guardando..." : "Actualizando..."}
                 </>
               ) : (

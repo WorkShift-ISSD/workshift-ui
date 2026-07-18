@@ -8,6 +8,7 @@ import {
 } from 'recharts';
 import { useEmpleados } from '@/hooks/useEmpleados';
 import { CustomDatePicker } from '@/app/components/CustomDatePicker';
+import { LoadingSpinner } from '@/app/components/LoadingSpinner';
 import { generarExcel, generarPDF } from '@/app/lib/exportUtils';
 
 const COLORS = ['#3B82F6', '#F59E0B', '#EF4444', '#10B981', '#8B5CF6'];
@@ -158,9 +159,7 @@ export function InformeCambiosTurno({ onDataChange }: { onDataChange?: (payload:
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-20">
-          <div className="h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        </div>
+        <LoadingSpinner size="large" />
       ) : (
         <>
           {/* Cards */}

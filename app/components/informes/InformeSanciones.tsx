@@ -8,6 +8,7 @@ import { useEmpleados } from '@/hooks/useEmpleados';
 import { CustomDatePicker } from '@/app/components/CustomDatePicker';
 import { generarExcel, generarPDF } from '@/app/lib/exportUtils';
 import { Paginacion } from '@/app/components/cambios/Paginacion';
+import { LoadingSpinner } from '../LoadingSpinner';
 
 function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: string | number; color: string }) {
   return (
@@ -193,7 +194,7 @@ filtradas.map(s => (_doc: any) => {
 
   if (loading) return (
     <div className="flex justify-center py-20">
-      <div className="h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      <LoadingSpinner size="large" />
     </div>
   );
 

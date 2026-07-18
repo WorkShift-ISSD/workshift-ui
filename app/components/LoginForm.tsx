@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Eye, EyeOff, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import ChangePasswordModal from "./editar datos usuario/ChangePasswordModal";
+import { LoadingSpinner } from "./LoadingSpinner";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -208,7 +209,7 @@ export default function LoginForm() {
           >
             {loading ? (
               <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                <LoadingSpinner size="xs" padding="p-1" />
                 Iniciando sesión...
               </>
             ) : (
@@ -293,7 +294,7 @@ export default function LoginForm() {
                 >
                   {resetLoading ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      <LoadingSpinner size="xs" />
                       Enviando...
                     </>
                   ) : (

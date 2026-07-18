@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Image as ImageIcon, X, AlertCircle } from "lucide-react";
+import { LoadingSpinner } from "../LoadingSpinner";
 
 interface ChangeImageModalProps {
   isOpen: boolean;
@@ -205,7 +206,7 @@ export default function ChangeImageModal({
           >
             {loading ? (
               <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                <LoadingSpinner size="default"  />
                 Subiendo...
               </>
             ) : (

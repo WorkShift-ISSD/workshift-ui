@@ -5,6 +5,7 @@ import { X, Check, XCircle, User, FileText, ArrowRightLeft } from "lucide-react"
 import { Autorizacion } from "@/app/api/types";
 import { useFormatters } from '@/hooks/useFormatters';
 import { toast } from "react-toastify";
+import { LoadingSpinner } from "../LoadingSpinner";
 
 interface Props {
   open: boolean;
@@ -580,7 +581,7 @@ export function ModalAutorizacion({
               >
                 {loading ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <LoadingSpinner size="default"  />
                     Aprobando...
                   </>
                 ) : (
@@ -629,7 +630,7 @@ export function ModalAutorizacion({
               >
                 {loading ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <LoadingSpinner size="default"  />
                     Rechazando...
                   </>
                 ) : (

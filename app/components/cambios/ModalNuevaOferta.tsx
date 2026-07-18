@@ -9,6 +9,7 @@ import type { NuevaOfertaForm, TipoOferta, Prioridad, ModalidadBusqueda } from '
 import { useTurnosEfectivos } from '@/hooks/useTurnosEfectivos';
 import { useFechasBloqueadas } from '@/hooks/useFechasBloqueadas';
 import { FormularioOferta } from './FormularioOferta';
+import { LoadingSpinner } from '../LoadingSpinner';
 
 type ModoOferta =
   | 'OFREZCO_COBERTURA'
@@ -307,7 +308,7 @@ export function ModalNuevaOferta({ isOpen, onClose, onSubmit, ofertaEditando }: 
             >
               {submitting ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <LoadingSpinner size="default"  />
                   {esEdicion ? 'Actualizando...' : 'Publicando...'}
                 </>
               ) : esEdicion ? 'Actualizar oferta' : 'Publicar oferta'}

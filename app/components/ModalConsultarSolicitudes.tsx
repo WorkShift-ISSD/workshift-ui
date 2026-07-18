@@ -6,6 +6,7 @@ import { useFormatters } from '@/hooks/useFormatters';
 import { useAuth } from '@/app/context/AuthContext';
 import { generarExcel, generarPDF } from '@/app/lib/exportUtils';
 import { CustomDatePicker } from '@/app/components/CustomDatePicker';
+import { LoadingSpinner } from './LoadingSpinner';
 
 type Tab = 'solicitudes' | 'ofertas' | 'cambios';
 
@@ -78,7 +79,7 @@ function TabSolicitudes() {
 
       <div className="flex-1 overflow-y-auto space-y-3">
         {isLoading ? (
-          <div className="flex justify-center py-12"><Loader className="h-8 w-8 text-blue-500 animate-spin" /></div>
+          <LoadingSpinner size="default"  />
         ) : filtradas.length === 0 ? (
           <div className="text-center py-12 text-gray-500 dark:text-gray-400 text-sm">No hay solicitudes para mostrar</div>
         ) : filtradas.map(s => (
@@ -175,7 +176,7 @@ function TabOfertas() {
 
       <div className="flex-1 overflow-y-auto space-y-3">
         {isLoading ? (
-          <div className="flex justify-center py-12"><Loader className="h-8 w-8 text-blue-500 animate-spin" /></div>
+          <LoadingSpinner size="default"  />
         ) : filtradas.length === 0 ? (
           <div className="text-center py-12 text-gray-500 dark:text-gray-400 text-sm">No hay ofertas para mostrar</div>
         ) : filtradas.map(o => {
@@ -402,7 +403,7 @@ function TabCambios() {
 
       <div className="flex-1 overflow-y-auto space-y-2">
         {isLoading ? (
-          <div className="flex justify-center py-12"><Loader className="h-8 w-8 text-blue-500 animate-spin" /></div>
+          <LoadingSpinner size="default"  />
         ) : todos.length === 0 ? (
           <div className="text-center py-12 text-gray-500 dark:text-gray-400 text-sm">No hay cambios efectivos para mostrar</div>
         ) : todos.map((t, i) => (

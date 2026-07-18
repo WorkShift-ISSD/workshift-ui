@@ -21,6 +21,7 @@ import {
   MapPin,
   Briefcase,
   Loader2,
+  ChevronDown,
 } from 'lucide-react';
 import { useEmpleados } from '@/hooks/useEmpleados';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
@@ -696,27 +697,30 @@ useEffect(() => {
       <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-4">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
           {/* Selector de items por página */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600 dark:text-gray-400">
-              Mostrar:
-            </label>
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-600 dark:text-gray-400">
+            Mostrar:
+          </label>
+          <div className="relative">
             <select
               value={itemsPerPage}
+              style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
               onChange={(e) => {
                 setItemsPerPage(Number(e.target.value));
                 setCurrentPage(1);
               }}
-              className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="appearance-none pl-3 pr-8 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value={5}>5</option>
               <option value={10}>10</option>
               <option value={20}>20</option>
               <option value={50}>50</option>
             </select>
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              empleados por página
-            </span>
           </div>
+          <span className="text-sm text-gray-600 dark:text-gray-400">
+            empleados por página
+          </span>
+        </div>
 
           {/* Info de registros */}
           <div className="text-sm text-gray-600 dark:text-gray-400">

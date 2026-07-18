@@ -10,6 +10,7 @@ import { useTurnosEfectivos } from '@/hooks/useTurnosEfectivos';
 import { useFechasBloqueadas } from '@/hooks/useFechasBloqueadas';
 import { useRef } from 'react';
 import { Search } from 'lucide-react';
+import { LoadingSpinner } from '../LoadingSpinner';
 
 
 type TipoCambio = 'INTERCAMBIO' | 'COBERTURA';
@@ -550,7 +551,7 @@ export function ModalSolicitudDirecta({ isOpen, onClose, onSubmit, solicitudEdit
             >
               {submitting ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <LoadingSpinner size="default"  />
                   {esEdicion ? 'Actualizando...' : 'Enviando...'}
                 </>
               ) : esEdicion ? (
