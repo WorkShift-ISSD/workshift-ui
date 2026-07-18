@@ -35,22 +35,22 @@ export function TabPendientes({ pendientes, historial, miScore, isLoading, onCal
     <div className="space-y-5">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {stats.map((s) => (
-          <div key={s.label} className="bg-gray-800 rounded-xl p-4 border border-gray-700/50">
-            <p className="text-gray-500 text-xs mb-1">{s.label}</p>
+          <div key={s.label} className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-400 dark:border-gray-700/50">
+            <p className="text-gray-500 dark:text-gray-500 text-xs mb-1">{s.label}</p>
             <p className={`text-2xl font-medium ${s.color}`}>{s.value}</p>
-            <p className="text-gray-600 text-xs mt-1">{s.sub}</p>
+            <p className="text-gray-400 dark:text-gray-600 text-xs mt-1">{s.sub}</p>
           </div>
         ))}
       </div>
 
       <div>
-        <p className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-3">
+        <p className="text-gray-500 dark:text-gray-500 text-xs font-medium uppercase tracking-wider mb-3">
           Cambios completados sin calificar
         </p>
         {pendientes.length === 0 ? (
-          <div className="bg-gray-800 rounded-xl p-10 border border-gray-700/50 text-center">
-            <CheckCircle size={32} className="text-green-400 mx-auto mb-3" />
-            <p className="text-gray-400 text-sm">No tenés calificaciones pendientes.</p>
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-10 border border-gray-400 dark:border-gray-700/50 text-center">
+            <CheckCircle size={32} className="text-green-500 dark:text-green-400 mx-auto mb-3" />
+            <p className="text-gray-500 dark:text-gray-400 text-sm">No tenés calificaciones pendientes.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -65,13 +65,13 @@ export function TabPendientes({ pendientes, historial, miScore, isLoading, onCal
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  className="bg-gray-800 border border-gray-700/50 hover:border-blue-700/50 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 cursor-pointer group transition-all"
+                  className="bg-white dark:bg-gray-800 border border-gray-400 dark:border-gray-700/50 hover:border-blue-400 dark:hover:border-blue-700/50 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 cursor-pointer group transition-all"
                   onClick={() => onCalificar(item)}
                 >
                   <AvatarCalif iniciales={getIniciales(item.otro_nombre)} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-medium">{item.otro_nombre}</p>
-                    <p className="text-gray-500 text-xs mt-0.5">
+                    <p className="text-gray-900 dark:text-white text-sm font-medium">{item.otro_nombre}</p>
+                    <p className="text-gray-500 dark:text-gray-500 text-xs mt-0.5">
                       {formatFecha(item.fecha)} · {item.horario} · Completado hace {diasUsados} día{diasUsados !== 1 ? 's' : ''}
                     </p>
                   </div>
@@ -85,7 +85,7 @@ export function TabPendientes({ pendientes, historial, miScore, isLoading, onCal
                     >
                       Calificar
                     </button>
-                    <ChevronRight size={16} className="text-gray-600 group-hover:text-gray-400 flex-shrink-0 transition-colors hidden sm:block" />
+                    <ChevronRight size={16} className="text-gray-400 dark:text-gray-600 group-hover:text-gray-600 dark:group-hover:text-gray-400 flex-shrink-0 transition-colors hidden sm:block" />
                   </div>
                 </motion.div>
               );

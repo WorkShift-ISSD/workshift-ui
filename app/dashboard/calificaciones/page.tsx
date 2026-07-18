@@ -58,20 +58,20 @@ export default function CalificacionesPage() {
     <>
       <div className="space-y-6">
         <div className="pl-6 sm:pl-0">
-          <h1 className="text-2xl font-bold text-gray-100">Calificaciones</h1>
-          <p className="text-gray-500 text-sm mt-1 ">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Calificaciones</h1>
+          <p className="text-gray-600 dark:text-gray-500 text-sm mt-1">
             Calificá a tus compañeros luego de completar un cambio de turno.
           </p>
         </div>
 
-        <div className="flex gap-0 border-b border-gray-700/50 overflow-x-auto scrollbar-none">
+        <div className="flex gap-0 border-b border-gray-300 dark:border-gray-700/50 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {TABS.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm border-b-2 transition-all -mb-px whitespace-nowrap flex-shrink-0 ${
-                tab === t.key ? "border-blue-500 text-blue-400 font-medium" : "border-transparent text-gray-500 hover:text-gray-300"
-              }`}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm border-b-2 transition-all -mb-px whitespace-nowrap flex-shrink-0 ${tab === t.key ? "border-blue-500 text-blue-600 dark:text-blue-400 font-medium"
+                  : "border-transparent text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                }`}
             >
               <t.icon size={15} />
               <span className="sm:hidden">{t.labelShort}</span>
