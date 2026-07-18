@@ -204,12 +204,12 @@ filtradas.map(s => (_doc: any) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Desde</label>
-            <CustomDatePicker value={desde} onChange={v => { setDesde(v); setPagina(1); }} minDate={new Date('2020-01-01')} showGrupo={false}
+            <CustomDatePicker value={desde} onChange={v => { setDesde(v); if (hasta && v > hasta) setHasta(v); setPagina(1); }} minDate={new Date('2020-01-01')} showGrupo={false}
               className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full" />
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Hasta</label>
-            <CustomDatePicker value={hasta} onChange={v => { setHasta(v); setPagina(1); }} minDate={new Date('2020-01-01')} showGrupo={false}
+            <CustomDatePicker value={hasta} onChange={v => { setHasta(v); setPagina(1); }} minDate={desde ? new Date(desde + 'T00:00:00') : new Date('2020-01-01')} showGrupo={false}
               className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full" />
           </div>
           <div className="flex flex-col gap-1">

@@ -252,6 +252,7 @@ const porTipo = useMemo(() => {
               value={desde}
               onChange={(v) => {
                 setDesde(v);
+                if (hasta && v > hasta) setHasta(v);
                 setPagina(1);
               }}
               minDate={new Date("2020-01-01")}
@@ -269,7 +270,7 @@ const porTipo = useMemo(() => {
                 setHasta(v);
                 setPagina(1);
               }}
-              minDate={new Date("2020-01-01")}
+              minDate={desde ? new Date(desde + "T00:00:00") : new Date("2020-01-01")}
               showGrupo={false}
               className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full"
             />

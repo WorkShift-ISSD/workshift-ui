@@ -5,6 +5,7 @@ import { useEmpleados } from "@/hooks/useEmpleados";
 import { useTodasLasFaltas } from "@/hooks/useFaltas";
 import { LoadingSpinner } from "@/app/components/LoadingSpinner";
 import { ExportInformes } from "@/app/components/ExportInformes";
+import { CustomDatePicker } from "@/app/components/CustomDatePicker";
 import { CustomTooltip } from "@/app/components/CustomTooltip";
 import {
   calcularGrupoTrabaja,
@@ -1060,15 +1061,14 @@ fechaFin={
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Fecha Inicio
                   </label>
-                  <input
-                    type="date"
+                  <CustomDatePicker
                     value={fechaInicio}
-                    onChange={(e) => {
-                      setFechaInicio(e.target.value);
-                      if (e.target.value > fechaFin)
-                        setFechaFin(e.target.value);
+                    onChange={(v) => {
+                      setFechaInicio(v);
+                      if (v > fechaFin) setFechaFin(v);
                     }}
-                    max={fechaFin}
+                    minDate={new Date("2020-01-01")}
+                    showGrupo={false}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
@@ -1078,14 +1078,17 @@ fechaFin={
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Fecha Fin
                   </label>
-                  <input
-                    type="date"
+                  <CustomDatePicker
                     value={fechaFin}
-                    onChange={(e) => {
-                      if (e.target.value >= fechaInicio)
-                        setFechaFin(e.target.value);
+                    onChange={(v) => {
+                      if (v >= fechaInicio) setFechaFin(v);
                     }}
-                    min={fechaInicio}
+                    minDate={
+                      fechaInicio
+                        ? new Date(fechaInicio + "T00:00:00")
+                        : new Date("2020-01-01")
+                    }
+                    showGrupo={false}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
@@ -1888,12 +1891,15 @@ fechaFin={
                               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 Fecha Inicio
                               </label>
-                              <input
-                                type="date"
+                              <CustomDatePicker
                                 value={fechaInicioComparacion}
-                                onChange={(e) =>
-                                  setFechaInicioComparacion(e.target.value)
-                                }
+                                onChange={(v) => {
+                                  setFechaInicioComparacion(v);
+                                  if (v > fechaFinComparacion)
+                                    setFechaFinComparacion(v);
+                                }}
+                                minDate={new Date("2020-01-01")}
+                                showGrupo={false}
                                 className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                               />
                             </div>
@@ -1901,12 +1907,18 @@ fechaFin={
                               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 Fecha Fin
                               </label>
-                              <input
-                                type="date"
+                              <CustomDatePicker
                                 value={fechaFinComparacion}
-                                onChange={(e) =>
-                                  setFechaFinComparacion(e.target.value)
+                                onChange={(v) => {
+                                  if (v >= fechaInicioComparacion)
+                                    setFechaFinComparacion(v);
+                                }}
+                                minDate={
+                                  fechaInicioComparacion
+                                    ? new Date(fechaInicioComparacion + "T00:00:00")
+                                    : new Date("2020-01-01")
                                 }
+                                showGrupo={false}
                                 className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                               />
                             </div>
