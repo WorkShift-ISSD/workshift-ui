@@ -27,7 +27,9 @@ function StatCard({ icon: Icon, label, value, sub, color }: { icon: any; label: 
   );
 }
 
-export function InformeCambiosTurno() {
+type CambiosTurnoData = { data: any; filtros: { desde: string; hasta: string; empleadoId: string } };
+
+export function InformeCambiosTurno({ onDataChange }: { onDataChange?: (payload: CambiosTurnoData) => void } = {}) {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [desde, setDesde] = useState('');
@@ -49,6 +51,10 @@ export function InformeCambiosTurno() {
   };
 
   useEffect(() => { fetchData(); }, [desde, hasta, empleadoId]);
+
+    useEffect(() => {
+    onDataChange?.({ data, filtros: { desde, hasta, empleadoId } });
+  }, [data, desde, hasta, empleadoId, onDataChange]);
 
   const stats = data?.stats;
   const tasaAprobacion = stats && (stats.aprobados + stats.rechazados) > 0
@@ -124,12 +130,12 @@ export function InformeCambiosTurno() {
         <div className="flex flex-wrap gap-4 items-end">
           <div className="flex flex-col gap-1 min-w-[160px]">
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Desde</label>
-            <CustomDatePicker value={desde} onChange={setDesde} minDate={new Date('2020-01-01')} showGrupo={false}
+            <CustomDatePicker value={desde} onChange={v => { setDesde(v); if (hasta && v > hasta) setHasta(v); }} minDate={new Date('2020-01-01')} showGrupo={false}
               className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full" />
           </div>
           <div className="flex flex-col gap-1 min-w-[160px]">
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Hasta</label>
-            <CustomDatePicker value={hasta} onChange={setHasta} minDate={new Date('2020-01-01')} showGrupo={false}
+            <CustomDatePicker value={hasta} onChange={setHasta} minDate={desde ? new Date(desde + 'T00:00:00') : new Date('2020-01-01')} showGrupo={false}
               className="py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 w-full" />
           </div>
           <div className="flex flex-col gap-1 min-w-[200px]">
