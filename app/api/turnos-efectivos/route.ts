@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
         FROM turnos_efectivos te
         JOIN users u ON te.empleado_id = u.id
         LEFT JOIN users uc ON te.empleado_intercambio_id = uc.id
-        WHERE te.fecha = ${fecha}::date AND te.estado = 'PENDIENTE'
+        WHERE te.fecha = ${fecha}::date AND te.estado IN ('PENDIENTE', 'REALIZADO')
       `;
 
       // Mapa para rastrear la cadena: empleadoId -> { intercambioId, companero }
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
         FROM turnos_efectivos te
         JOIN users u ON te.empleado_intercambio_id = u.id
         WHERE te.fecha = ${fecha}::date
-          AND te.estado = 'PENDIENTE'
+          AND te.estado IN ('PENDIENTE', 'REALIZADO')
           AND te.empleado_intercambio_id IS NOT NULL
       `;
 
