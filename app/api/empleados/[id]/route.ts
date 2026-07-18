@@ -19,6 +19,7 @@ export async function GET(
         id::text,
         legajo,
         email,
+        username,
         nombre,
         apellido,
         rol,
@@ -61,6 +62,7 @@ export async function PUT(
       SET 
         legajo = COALESCE(${updates.legajo || null}, legajo),
         email = COALESCE(${updates.email || null}, email),
+        username = COALESCE(${updates.username || null}, username),
         nombre = COALESCE(${updates.nombre || null}, nombre),
         apellido = COALESCE(${updates.apellido || null}, apellido),
         rol = COALESCE(${updates.rol || null}, rol),
@@ -76,6 +78,7 @@ export async function PUT(
         id::text,
         legajo,
         email,
+        username,
         nombre,
         apellido,
         rol,

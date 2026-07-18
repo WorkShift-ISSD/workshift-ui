@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { User, Phone, MapPin, AlertCircle, Calendar } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { User, Phone, MapPin, AlertCircle, Calendar, Mail } from "lucide-react";
 import { useEmpleados } from "@/hooks/useEmpleados";
 import { useFormatters } from '@/hooks/useFormatters';
+import { string } from "zod";
 
 
 
@@ -14,6 +15,7 @@ interface EditProfileModalProps {
     userData: {
         id: string;
         telefono?: string;
+        email?: string;
         direccion?: string;
         fecha_nacimiento?: string | null;
     };
@@ -27,6 +29,7 @@ export default function EditProfileModal({
     onSuccess
 }: EditProfileModalProps) {
     const [telefono, setTelefono] = useState(userData.telefono || "");
+    const [email, setEmail] = useState(userData.email || "");
     const [direccion, setDireccion] = useState(userData.direccion || "");
     const [fechaNacimiento, setFechaNacimiento] = useState(
         userData.fecha_nacimiento
@@ -39,6 +42,19 @@ export default function EditProfileModal({
     const { empleados, updateEmpleado } = useEmpleados();
     const { parseFechaLocal } = useFormatters();
     const [displayFecha, setDisplayFecha] = useState("");
+
+    useEffect(() => {
+        if (userData) {
+            setEmail(userData.email || "");
+            setTelefono(userData.telefono || "");
+            setDireccion(userData.direccion || "");
+            setFechaNacimiento(
+                userData.fecha_nacimiento
+                    ? userData.fecha_nacimiento.substring(0, 10)
+                    : ""
+            );
+        }
+    }, [userData]);
 
     if (!isOpen) return null;
 
@@ -79,6 +95,7 @@ export default function EditProfileModal({
         try {
             await updateEmpleado(userData.id, {
                 telefono,
+                email,
                 direccion,
                 fechaNacimiento: fechaFinal || null,
             });
@@ -137,6 +154,7 @@ export default function EditProfileModal({
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+
                     {/* Teléfono */}
                     <div>
                         <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
@@ -152,6 +170,24 @@ export default function EditProfileModal({
                                 disabled={loading}
                             />
                             <Phone className="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        </div>
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                        <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+                            Email
+                        </label>
+                        <div className="relative">
+                            <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="w-full px-4 py-2 pr-10 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                placeholder="Ejemplo: usuario@email.com"
+                                disabled={loading}
+                            />
+                            <Mail className="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
                         </div>
                     </div>
 
@@ -178,8 +214,8 @@ export default function EditProfileModal({
                         <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
                             Fecha de Nacimiento
                         </label>
+
                         <div className="relative">
-                            {/* Input visible para escribir */}
                             <input
                                 type="text"
                                 value={displayFecha}
@@ -190,7 +226,6 @@ export default function EditProfileModal({
                                 style={{ position: 'relative', zIndex: 10 }}
                             />
 
-                            {/* Input oculto del calendario */}
                             <input
                                 ref={dateInputRef}
                                 type="date"
@@ -198,7 +233,7 @@ export default function EditProfileModal({
                                 onChange={(e) => {
                                     const isoDate = e.target.value;
                                     setFechaNacimiento(isoDate);
-                                    // Actualizar el display cuando seleccionan del calendario
+
                                     if (isoDate) {
                                         const [yyyy, mm, dd] = isoDate.split('-');
                                         setDisplayFecha(`${dd}/${mm}/${yyyy}`);
@@ -210,7 +245,6 @@ export default function EditProfileModal({
                                 style={{ width: '40px', cursor: 'pointer', zIndex: 20 }}
                             />
 
-                            {/* Botón del icono */}
                             <button
                                 type="button"
                                 onClick={() => dateInputRef.current?.showPicker?.()}
@@ -221,7 +255,6 @@ export default function EditProfileModal({
                             </button>
                         </div>
                     </div>
-
 
                     {/* Botones */}
                     <div className="flex gap-3 pt-4">
@@ -241,6 +274,7 @@ export default function EditProfileModal({
                             {loading ? "Guardando..." : "Guardar Cambios"}
                         </button>
                     </div>
+
                 </form>
             </div>
         </div>

@@ -8,7 +8,7 @@ import Pusher from 'pusher';
 
 const pusher = new Pusher({
   appId: process.env.PUSHER_APP_ID!,
-  key: process.env.PUSHER_KEY!,
+  key: process.env.NEXT_PUBLIC_PUSHER_KEY!,
   secret: process.env.PUSHER_SECRET!,
   cluster: process.env.PUSHER_CLUSTER!,
   useTLS: true,
@@ -130,7 +130,13 @@ export async function POST(
     'PENDIENTE',
     NOW()
   )
-  ON CONFLICT (empleado_id, fecha) DO NOTHING;
+  ON CONFLICT (empleado_id, fecha) DO UPDATE SET
+    horario_efectivo = EXCLUDED.horario_efectivo,
+    grupo_efectivo = EXCLUDED.grupo_efectivo,
+    empleado_intercambio_id = EXCLUDED.empleado_intercambio_id,
+    tipo_cambio = EXCLUDED.tipo_cambio,
+    autorizacion_id = EXCLUDED.autorizacion_id,
+    updated_at = NOW();
 `;
 
         // Segundo turno — solo para intercambio (destinatario gana el día del solicitante)
@@ -155,7 +161,13 @@ export async function POST(
               'PENDIENTE',
               NOW()
             )
-            ON CONFLICT (empleado_id, fecha) DO NOTHING;
+            ON CONFLICT (empleado_id, fecha) DO UPDATE SET
+              horario_efectivo = EXCLUDED.horario_efectivo,
+              grupo_efectivo = EXCLUDED.grupo_efectivo,
+              empleado_intercambio_id = EXCLUDED.empleado_intercambio_id,
+              tipo_cambio = EXCLUDED.tipo_cambio,
+              autorizacion_id = EXCLUDED.autorizacion_id,
+              updated_at = NOW();
           `;
 
           // Destinatario gana el día del solicitante
@@ -178,7 +190,13 @@ export async function POST(
               'PENDIENTE',
               NOW()
             )
-            ON CONFLICT (empleado_id, fecha) DO NOTHING;
+            ON CONFLICT (empleado_id, fecha) DO UPDATE SET
+              horario_efectivo = EXCLUDED.horario_efectivo,
+              grupo_efectivo = EXCLUDED.grupo_efectivo,
+              empleado_intercambio_id = EXCLUDED.empleado_intercambio_id,
+              tipo_cambio = EXCLUDED.tipo_cambio,
+              autorizacion_id = EXCLUDED.autorizacion_id,
+              updated_at = NOW();
           `;
         }
       }

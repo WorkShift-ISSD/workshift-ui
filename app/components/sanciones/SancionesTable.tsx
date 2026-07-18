@@ -69,7 +69,7 @@ export function SancionesTable({
             </div>
 
             {/* TABLE */}
-            <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
                 {loading ? (
                     <div className="p-8 text-center text-gray-500 dark:text-gray-400">
                         Cargando sanciones...
@@ -79,81 +79,90 @@ export function SancionesTable({
                         No hay sanciones registradas
                     </div>
                 ) : (
-                    <table className="w-full text-sm">
-                        <thead className="bg-gray-100 dark:bg-gray-700">
-                            <tr>
-                                <th className="p-3 text-left text-gray-700 dark:text-gray-400">
-                                    Empleado
-                                </th>
-                                <th className="p-3 text-gray-700 dark:text-gray-400">
-                                    Desde
-                                </th>
-                                <th className="p-3 text-gray-700 dark:text-gray-400">
-                                    Hasta
-                                </th>
-                                <th className="p-3 text-gray-700 dark:text-gray-400">
-                                    Estado
-                                </th>
-                                <th className="p-3 text-center text-gray-700 dark:text-gray-400">
-                                    Acciones
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {sanciones.map((s) => {
-                                const empleado = empleados?.find(
-                                    (e) => e.id === s.empleado_id
-                                );
+                    <>
+                        {/* TABLA - solo desktop */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead className="bg-gray-100 dark:bg-gray-700">
+                                    <tr>
+                                        <th className="p-3 text-left text-gray-700 dark:text-gray-400">Empleado</th>
+                                        <th className="p-3 text-gray-700 dark:text-gray-400">Desde</th>
+                                        <th className="p-3 text-gray-700 dark:text-gray-400">Hasta</th>
+                                        <th className="p-3 text-gray-700 dark:text-gray-400">Estado</th>
+                                        <th className="p-3 text-center text-gray-700 dark:text-gray-400">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {sanciones.map((s) => {
+                                        const empleado = empleados?.find((e) => e.id === s.empleado_id);
+                                        return (
+                                            <tr key={s.id} className="border-t dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                                                <td className="p-3 text-gray-900 dark:text-white">
+                                                    {empleado ? `${empleado.apellido}, ${empleado.nombre}` : "Empleado no encontrado"}
+                                                </td>
+                                                <td className="p-3 text-center text-gray-900 dark:text-white">{formatDate2(s.fecha_desde)}</td>
+                                                <td className="p-3 text-center text-gray-900 dark:text-white">{formatDate2(s.fecha_hasta)}</td>
+                                                <td className="p-3 text-center">
+                                                    <span className={`px-2 py-1 rounded text-xs font-medium ${s.estado === "ACTIVA" ? "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400"
+                                                            : s.estado === "FINALIZADA" ? "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                                                                : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400"
+                                                        }`}>
+                                                        {s.estado}
+                                                    </span>
+                                                </td>
+                                                <td className="p-3 flex justify-center gap-2">
+                                                    <button onClick={() => abrirVer(s)} title="Ver" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition">
+                                                        <Eye size={18} />
+                                                    </button>
+                                                    <button onClick={() => abrirEditar(s)} title="Editar" className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300 transition">
+                                                        <Pencil size={18} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
 
+                        {/* CARDS - solo móvil */}
+                        <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+                            {sanciones.map((s) => {
+                                const empleado = empleados?.find((e) => e.id === s.empleado_id);
                                 return (
-                                    <tr
-                                        key={s.id}
-                                        className="border-t dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition"
-                                    >
-                                        <td className="p-3 text-gray-900 dark:text-white">
-                                            {empleado
-                                                ? `${empleado.apellido}, ${empleado.nombre}`
-                                                : "Empleado no encontrado"}
-                                        </td>
-                                        <td className="p-3 text-center text-gray-900 dark:text-white">
-                                            {formatDate2(s.fecha_desde)}
-                                        </td>
-                                        <td className="p-3 text-center text-gray-900 dark:text-white">
-                                            {formatDate2(s.fecha_hasta)}
-                                        </td>
-                                        <td className="p-3 text-center">
-                                            <span
-                                                className={`px-2 py-1 rounded text-xs font-medium ${s.estado === "ACTIVA"
-                                                    ? "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400"
-                                                    : s.estado === "FINALIZADA"
-                                                        ? "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                                    <div key={s.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                                        {/* Nombre + Estado */}
+                                        <div className="flex items-center justify-between gap-3 mb-2">
+                                            <p className="font-semibold text-gray-900 dark:text-white truncate">
+                                                {empleado ? `${empleado.apellido}, ${empleado.nombre}` : "Empleado no encontrado"}
+                                            </p>
+                                            <span className={`flex-shrink-0 px-2 py-1 rounded text-xs font-medium ${s.estado === "ACTIVA" ? "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400"
+                                                    : s.estado === "FINALIZADA" ? "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
                                                         : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400"
-                                                    }`}
-                                            >
+                                                }`}>
                                                 {s.estado}
                                             </span>
-                                        </td>
-                                        <td className="p-3 flex justify-center gap-2">
-                                            <button
-                                                onClick={() => abrirVer(s)}
-                                                title="Ver"
-                                                className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition"
-                                            >
-                                                <Eye size={18} />
-                                            </button>
-                                            <button
-                                                onClick={() => abrirEditar(s)}
-                                                title="Editar"
-                                                className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300 transition"
-                                            >
-                                                <Pencil size={18} />
-                                            </button>
-                                        </td>
-                                    </tr>
+                                        </div>
+                                        {/* Fechas + Acciones */}
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex gap-4 text-sm text-gray-500 dark:text-gray-400">
+                                                <span>Desde: <span className="text-gray-900 dark:text-white font-medium">{formatDate2(s.fecha_desde)}</span></span>
+                                                <span>Hasta: <span className="text-gray-900 dark:text-white font-medium">{formatDate2(s.fecha_hasta)}</span></span>
+                                            </div>
+                                            <div className="flex gap-3">
+                                                <button onClick={() => abrirVer(s)} title="Ver" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 transition">
+                                                    <Eye size={18} />
+                                                </button>
+                                                <button onClick={() => abrirEditar(s)} title="Editar" className="text-gray-600 dark:text-gray-400 hover:text-gray-800 transition">
+                                                    <Pencil size={18} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 );
                             })}
-                        </tbody>
-                    </table>
+                        </div>
+                    </>
                 )}
             </div>
 

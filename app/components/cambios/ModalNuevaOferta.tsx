@@ -58,9 +58,9 @@ export function ModalNuevaOferta({ isOpen, onClose, onSubmit, ofertaEditando }: 
   const { fechasBloqueadas: fechasBloqueadasPropias } = useFechasBloqueadas();
 
   const HORARIOS = useMemo(() => {
-    if (!user) return ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '19:00-05:00'];
+    if (!user) return ['04:00-14:00', '06:00-16:00', '09:00-19:00', '13:00-23:00', '19:00-05:00'];
     if (user.rol === 'SUPERVISOR') return ['05:00-14:00', '14:00-23:00', '23:00-05:00'];
-    return ['04:00-14:00', '06:00-16:00', '10:00-20:00', '13:00-23:00', '19:00-05:00'];
+    return ['04:00-14:00', '06:00-16:00', '09:00-19:00', '13:00-23:00', '19:00-05:00'];
   }, [user]);
 
   const FORM_INICIAL: NuevaOfertaForm = useMemo(() => ({

@@ -72,7 +72,7 @@ export function TabMiPerfil({ historial, miScore, isLoading, onEditar, onElimina
         ) : (
           <div className="space-y-2">
             {historial.map((item) => (
-              <div key={item.id} className="bg-gray-800 border border-gray-700/50 rounded-xl p-4 flex items-center gap-3">
+              <div key={item.id} className="bg-gray-800 border border-gray-700/50 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
                 <AvatarCalif iniciales={getIniciales(item.otro_nombre)} />
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-sm font-medium">{item.otro_nombre}</p>

@@ -42,9 +42,13 @@ export enum EstadoLicencia {
 
 export enum TipoLicencia {
   ORDINARIA = "ORDINARIA",
-  ENFERMEDAD = "ENFERMEDAD",
-  ESPECIAL = "ESPECIAL",
+  COMPENSATORIO = "COMPENSATORIO",
+  GREMIAL = "GREMIAL",
+  MEDICA = "MEDICA",
   ESTUDIO = "ESTUDIO",
+  PATERNIDAD = "PATERNIDAD",
+  COMISION = "COMISION",
+  CURSO = "Curso",
   SIN_GOCE = "SIN_GOCE",
 }
 
@@ -95,7 +99,8 @@ export enum EstadoAutorizacion {
 
 export enum TipoAutorizacion {
   CAMBIO_TURNO = 'CAMBIO_TURNO',
-  LICENCIA_ORDINARIA = 'LICENCIA_ORDINARIA'
+  LICENCIA_ORDINARIA = 'LICENCIA_ORDINARIA',
+  LICENCIA_COMPENSATORIO = 'LICENCIA_COMPENSATORIO'
 }
 
 // Helper para obtener valores como string SQL

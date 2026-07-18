@@ -29,7 +29,9 @@ export async function PUT(
         motivo = COALESCE(${motivo ?? null}, motivo),
         updated_at = NOW()
       WHERE id = ${id}
-      RETURNING *
+      RETURNING *,
+          fecha_desde::text,
+          fecha_hasta::text
     `;
 
     return NextResponse.json(updated);

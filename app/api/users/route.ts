@@ -12,6 +12,7 @@ export async function GET() {
         nombre, 
         apellido,
         email,
+        username,
         rol,
         grupo_turno as "grupoTurno",
         horario,
@@ -41,6 +42,7 @@ export async function POST(request: Request) {
       nombre,
       apellido,
       password,
+      username,
       rol,
       telefono,
       direccion,
@@ -49,7 +51,7 @@ export async function POST(request: Request) {
       grupo_turno
     } = body;
 
-    if (!legajo || !email || !nombre || !apellido || !rol) {
+    if (!legajo || !email || !nombre || !apellido || username || !rol) {
       return NextResponse.json(
         { error: 'Faltan campos obligatorios' },
         { status: 400 }
@@ -71,6 +73,7 @@ export async function POST(request: Request) {
         apellido,
         password,
         rol,
+        username,
         telefono,
         direccion,
         horario,
@@ -88,6 +91,7 @@ export async function POST(request: Request) {
         ${apellido},
         ${hashedPassword},
         ${rol},
+        ${username},
         ${telefono || null},
         ${direccion || null},
         ${horario || '04:00-14:00'},
@@ -98,7 +102,7 @@ export async function POST(request: Request) {
         0,
         true
       )
-      RETURNING id::text, legajo, nombre, apellido, email, rol;
+      RETURNING id::text, legajo, nombre, apellido, email, rol, username;
     `;
 
     return NextResponse.json(nuevoUsuario, { status: 201 });

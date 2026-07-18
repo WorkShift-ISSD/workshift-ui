@@ -49,6 +49,7 @@ import { InformeSanciones } from '@/app/components/informes/InformeSanciones';
 import { InformeLicencias } from '@/app/components/informes/InformeLicencias';
 import { useAuth } from '@/app/context/AuthContext';
 import { useLicencias } from '@/hooks/useLicencias';
+import { useSanciones } from '@/hooks/useSanciones';
 
 type Rol = 'SUPERVISOR' | 'INSPECTOR';
 type GrupoTurno = 'A' | 'B';
@@ -60,6 +61,7 @@ export default function InformesPage() {
   const { empleados, isLoading: loadingEmpleados } = useEmpleados();
   const { faltas, isLoading: loadingFaltas } = useTodasLasFaltas();
   const { licencias } = useLicencias();
+  const { sanciones } = useSanciones();
 
   // Estados para filtros
   const [tipoInforme, setTipoInforme] = useState<TipoInforme>('asistencia');
@@ -146,7 +148,7 @@ export default function InformesPage() {
 
 
   const horariosPorRol: Record<Rol, string[]> = {
-    INSPECTOR: ["04:00-14:00", "06:00-16:00", "10:00-20:00", "13:00-23:00", "19:00-05:00"],
+    INSPECTOR: ["04:00-14:00", "06:00-16:00", "09:00-19:00", "13:00-23:00", "19:00-05:00"],
     SUPERVISOR: ["05:00-14:00", "14:00-23:00", "23:00-05:00"],
   };
 
@@ -287,14 +289,36 @@ export default function InformesPage() {
 
     const porEmpleado = empleadosFiltrados.map(emp => {
       const faltasEmp = faltasDelPeriodo.filter(f => f.empleadoId === emp.id);
+      const injustificadas = faltasEmp.filter(f => !f.justificada).length;
+
+      const sancionesEmp = sanciones?.filter(s =>
+        s.empleado_id === emp.id &&
+        s.fecha_desde <= fechaFin &&
+        s.fecha_hasta >= fechaInicio
+      ).reduce((total, s) => {
+        // Intersecar el rango de la sanción con el período del informe
+        const desdeEfectivo = s.fecha_desde > fechaInicio ? s.fecha_desde : fechaInicio;
+        const hastaEfectivo = s.fecha_hasta < fechaFin ? s.fecha_hasta : fechaFin;
+        // Contar solo los días que le tocaba trabajar dentro de la sanción
+        return total + calcularDiasTrabajoEnRango(desdeEfectivo, hastaEfectivo, emp.grupoTurno);
+      }, 0) ?? 0;
+
+      const licenciasEmp = licencias?.filter(l =>
+        l.empleado_id === emp.id &&
+        l.fecha_desde <= fechaFin &&
+        l.fecha_hasta >= fechaInicio
+      ) ?? [];
+      const diasLicencia = licenciasEmp.reduce((acc, l) => acc + (l.dias ?? 0), 0);
+
+      const faltasReales = injustificadas + sancionesEmp;
+
+      const diasBase = calcularDiasTrabajoEnRango(fechaInicio, fechaFin, emp.grupoTurno);
+      const diasEfectivos = Math.max(0, diasBase - diasLicencia);
 
       // Calcular usando la lógica de turnos real
-      const estadisticas = calcularPorcentajeAsistenciaReal(
-        fechaInicio,
-        fechaFin,
-        emp.grupoTurno,
-        faltasEmp.length
-      );
+      const porcentajeAsistencia = diasEfectivos > 0
+        ? Math.max(0, Math.round(((diasEfectivos - faltasReales) / diasEfectivos) * 100))
+        : 100;
 
       return {
         id: emp.id,
@@ -302,18 +326,20 @@ export default function InformesPage() {
         legajo: emp.legajo,
         rol: emp.rol,
         turno: emp.grupoTurno,
-        faltas: faltasEmp.length,
-        faltasJustificadas: faltasEmp.filter(f => f.justificada).length,
-        faltasInjustificadas: faltasEmp.filter(f => !f.justificada).length,
-        diasDebioTrabajar: estadisticas.diasDebioTrabajar,
-        diasTrabajados: estadisticas.diasTrabajados,
-        porcentajeAsistencia: estadisticas.porcentajeAsistencia,
+        faltas: faltasReales,
+        licencias: diasLicencia,
+        sanciones: sancionesEmp,
+        faltasInjustificadas: injustificadas,
+        diasDebioTrabajar: diasBase,
+        diasEfectivos,
+        diasTrabajados: Math.max(0, diasEfectivos - faltasReales),
+        porcentajeAsistencia,
       };
     })
       .sort((a, b) => b.porcentajeAsistencia - a.porcentajeAsistencia);
 
     return porEmpleado;
-  }, [empleadosFiltrados, faltasFiltradas, fechaInicio, fechaFin]);
+  }, [empleadosFiltrados, faltasFiltradas, fechaInicio, fechaFin, licencias, sanciones]);
 
   // Datos paginados
   const datosPaginados = useMemo(() => {
@@ -371,7 +397,7 @@ export default function InformesPage() {
         total: data.faltas,
       })),
     };
-  }, [empleadosFiltrados, faltasFiltradas]);
+  }, [empleadosFiltrados, faltasFiltradas, licencias, sanciones]);
 
   // Datos comparativos
   const datosComparativos = useMemo(() => {
@@ -380,6 +406,12 @@ export default function InformesPage() {
 
     const faltasA = faltasFiltradas.filter(f => grupoA.some(e => e.id === f.empleadoId)).length;
     const faltasB = faltasFiltradas.filter(f => grupoB.some(e => e.id === f.empleadoId)).length;
+
+    const licenciasA = licencias?.filter(l => grupoA.some(e => e.id === l.empleado_id)).length ?? 0;
+    const licenciasB = licencias?.filter(l => grupoB.some(e => e.id === l.empleado_id)).length ?? 0;
+
+    const sancionesA = sanciones?.filter(s => grupoA.some(e => e.id === s.empleado_id)).length ?? 0;
+    const sancionesB = sanciones?.filter(s => grupoB.some(e => e.id === s.empleado_id)).length ?? 0;
 
     const justificadasA = faltasFiltradas.filter(f =>
       grupoA.some(e => e.id === f.empleadoId) && f.justificada
@@ -390,8 +422,8 @@ export default function InformesPage() {
 
     return {
       comparacion: [
-        { grupo: 'Grupo A', empleados: grupoA.length, faltas: faltasA, justificadas: justificadasA },
-        { grupo: 'Grupo B', empleados: grupoB.length, faltas: faltasB, justificadas: justificadasB },
+        { grupo: 'Grupo A', empleados: grupoA.length, faltas: faltasA, licencias: licenciasA, sanciones: sancionesA },
+        { grupo: 'Grupo B', empleados: grupoB.length, faltas: faltasB, licencias: licenciasB, sanciones: sancionesB },
       ],
       porRol: {
         A: grupoA.reduce((acc, e) => {
@@ -404,7 +436,7 @@ export default function InformesPage() {
         }, {} as Record<string, number>),
       }
     };
-  }, [empleadosFiltrados, faltasFiltradas]);
+  }, [empleadosFiltrados, faltasFiltradas, licencias, sanciones]);
 
 
   // Estadísticas generales
@@ -553,7 +585,7 @@ export default function InformesPage() {
 
       {/* Selector de Tipo de Informe */}
 
-      <div className="mb-6 grid grid-cols-4 lg:grid-cols-7 gap-2 lg:gap-3">
+      <div className="mb-6 grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-7 gap-2 lg:gap-3">
         {/* Asistencia */}
         <button
           onClick={() => setTipoInforme('asistencia')}
@@ -625,7 +657,9 @@ export default function InformesPage() {
         >
           <div className="flex flex-col items-center gap-1">
             <RefreshCw className={`h-5 w-5 ${tipoInforme === 'cambios-turno' ? 'text-blue-500' : 'text-gray-400'}`} />
-            <span className={`text-xs font-semibold text-center ${tipoInforme === 'cambios-turno' ? 'text-blue-500' : 'text-gray-700 dark:text-gray-400'}`}>Cambios de Turno</span>
+           <span className={`text-xs font-semibold text-center leading-tight ${tipoInforme === 'cambios-turno' ? 'text-blue-500' : 'text-gray-700 dark:text-gray-400'}`}>
+              Cambios<br/>Turno
+            </span>
           </div>
         </button>}
 
@@ -698,8 +732,7 @@ export default function InformesPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {/* Fecha Inicio */}
+           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Fecha Inicio
@@ -707,7 +740,11 @@ export default function InformesPage() {
                 <input
                   type="date"
                   value={fechaInicio}
-                  onChange={(e) => setFechaInicio(e.target.value)}
+                  onChange={(e) => {
+                    setFechaInicio(e.target.value);
+                    if (e.target.value > fechaFin) setFechaFin(e.target.value);
+                  }}
+                  max={fechaFin}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
@@ -720,7 +757,10 @@ export default function InformesPage() {
                 <input
                   type="date"
                   value={fechaFin}
-                  onChange={(e) => setFechaFin(e.target.value)}
+                  onChange={(e) => {
+                    if (e.target.value >= fechaInicio) setFechaFin(e.target.value);
+                  }}
+                  min={fechaInicio}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
@@ -814,7 +854,7 @@ export default function InformesPage() {
       </div>}
 
       {/* Cards de Estadísticas */}
-      {!['cambios-turno', 'sanciones', 'licencias'].includes(tipoInforme) && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      {!['cambios-turno', 'sanciones', 'licencias'].includes(tipoInforme) && <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-2">
             <Users className="h-8 w-8 text-blue-600" />
@@ -833,10 +873,18 @@ export default function InformesPage() {
 
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-2">
-            <CheckCircle className="h-8 w-8 text-green-600" />
+            <FileText className="h-8 w-8 text-green-600" />
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Justificadas</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">{estadisticas.justificadas}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Licencias</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{licencias?.length ?? 0}</p>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between mb-2">
+            <AlertCircle className="h-8 w-8 text-red-600" />
+          </div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Sanciones</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{sanciones?.length ?? 0}</p>
         </div>
 
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
@@ -858,7 +906,7 @@ export default function InformesPage() {
                 Registro de Asistencia por Empleado
               </h3>
             </div>
-            <div className="overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
@@ -868,8 +916,9 @@ export default function InformesPage() {
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Turno</th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Días debió trabajar</th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Faltas</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Justif.</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Licencias.</th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Injustif.</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Sanciones.</th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">% Asistencia</th>
                   </tr>
                 </thead>
@@ -892,8 +941,9 @@ export default function InformesPage() {
                         {dato.diasDebioTrabajar}
                       </td>
                       <td className="px-6 py-4 text-center text-sm text-gray-900 dark:text-white">{dato.faltas}</td>
-                      <td className="px-6 py-4 text-center text-sm text-green-600 dark:text-green-400">{dato.faltasJustificadas}</td>
+                      <td className="px-6 py-4 text-center text-sm text-green-600 dark:text-green-400">{dato.licencias}</td>
                       <td className="px-6 py-4 text-center text-sm text-red-600 dark:text-red-400">{dato.faltasInjustificadas}</td>
+                      <td className="px-6 py-4 text-center text-sm text-purple-600 dark:text-purple-400">{dato.sanciones}</td>
                       <td className="px-6 py-4 text-center">
                         <span className={`font-semibold ${dato.porcentajeAsistencia >= 95 ? 'text-green-600' :
                           dato.porcentajeAsistencia >= 90 ? 'text-yellow-600' :
@@ -908,8 +958,52 @@ export default function InformesPage() {
               </table>
             </div>
 
+            {/* CARDS - solo móvil */}
+            <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+              {datosPaginados.map((dato) => (
+                <div key={dato.id} className="p-4">
+                  {/* Fila 1: Nombre + % Asistencia */}
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div>
+                      <p className="font-semibold text-gray-900 dark:text-white text-sm">{dato.nombre}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Leg. {dato.legajo}</p>
+                    </div>
+                    <span className={`text-xl font-bold ${dato.porcentajeAsistencia >= 95 ? 'text-green-600' :
+                        dato.porcentajeAsistencia >= 90 ? 'text-yellow-600' : 'text-red-600'
+                      }`}>
+                      {dato.porcentajeAsistencia}%
+                    </span>
+                  </div>
+                  {/* Fila 2: Rol + Turno */}
+                  <div className="flex gap-2 mb-2">
+                    <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded text-xs">{dato.rol}</span>
+                    <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded text-xs">Grupo {dato.turno}</span>
+                  </div>
+                  {/* Fila 3: Stats en grid */}
+                  <div className="grid grid-cols-4 gap-1 text-center text-xs">
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded p-1.5">
+                      <p className="text-gray-500 dark:text-gray-400">Días</p>
+                      <p className="font-bold text-gray-900 dark:text-white">{dato.diasDebioTrabajar}</p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded p-1.5">
+                      <p className="text-gray-500 dark:text-gray-400">Faltas</p>
+                      <p className="font-bold text-gray-900 dark:text-white">{dato.faltas}</p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded p-1.5">
+                      <p className="text-gray-500 dark:text-gray-400">Lic.</p>
+                      <p className="font-bold text-green-600">{dato.licencias}</p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded p-1.5">
+                      <p className="text-gray-500 dark:text-gray-400">Sanc.</p>
+                      <p className="font-bold text-purple-600">{dato.sanciones}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             {/* Controles de paginación */}
-            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-700 dark:text-gray-300">
                   Mostrar
@@ -960,34 +1054,39 @@ export default function InformesPage() {
                   ‹
                 </button>
 
-                {/* Números de página */}
-                {(() => {
-                  const pages = [];
-                  const maxPagesToShow = 5;
-                  let startPage = Math.max(1, paginaActual - Math.floor(maxPagesToShow / 2));
-                  let endPage = Math.min(totalPaginas, startPage + maxPagesToShow - 1);
+                {/* Números de página - solo desktop */}
+                <span className="text-sm text-gray-700 dark:text-gray-300 sm:hidden">
+                  {paginaActual} / {totalPaginas}
+                </span>
+                <span className="hidden sm:contents">
+                  {(() => {
+                    const pages = [];
+                    const maxPagesToShow = 5;
+                    let startPage = Math.max(1, paginaActual - Math.floor(maxPagesToShow / 2));
+                    let endPage = Math.min(totalPaginas, startPage + maxPagesToShow - 1);
 
-                  if (endPage - startPage < maxPagesToShow - 1) {
-                    startPage = Math.max(1, endPage - maxPagesToShow + 1);
-                  }
+                    if (endPage - startPage < maxPagesToShow - 1) {
+                      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+                    }
 
-                  for (let i = startPage; i <= endPage; i++) {
-                    pages.push(
-                      <button
-                        key={i}
-                        onClick={() => setPaginaActual(i)}
-                        className={`px-3 py-1 rounded-lg text-sm ${paginaActual === i
-                          ? 'bg-blue-600 text-white'
-                          : 'border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
-                          }`}
-                      >
-                        {i}
-                      </button>
-                    );
-                  }
+                    for (let i = startPage; i <= endPage; i++) {
+                      pages.push(
+                        <button
+                          key={i}
+                          onClick={() => setPaginaActual(i)}
+                          className={`px-3 py-1 rounded-lg text-sm ${paginaActual === i
+                            ? 'bg-blue-600 text-white'
+                            : 'border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                            }`}
+                        >
+                          {i}
+                        </button>
+                      );
+                    }
 
-                  return pages;
-                })()}
+                    return pages;
+                  })()}
+                </span>
 
                 {/* Botón Siguiente */}
                 <button
@@ -1063,23 +1162,17 @@ export default function InformesPage() {
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={datosAusentismo.porRol}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="rol" stroke="#9CA3AF" />
+                <XAxis dataKey="rol" stroke="#9CA3AF" tick={{ fontSize: 11 }}
+                  tickFormatter={(value) => value === 'INSPECTOR' ? 'Insp.' : value === 'SUPERVISOR' ? 'Sup.' : value }
+                />
                 <YAxis stroke="#9CA3AF" />
                 <Tooltip
                   content={<CustomTooltip labelColor="#F97316" />}
                   cursor={{ fill: 'transparent' }}
                 />
                 <Legend />
-                <Bar
-                  dataKey="promedio"
-                  fill={COLORS.orange}
-                  name="Promedio Faltas"
-                  radius={[8, 8, 0, 0]}
-                  activeBar={{                           // ⭐ NUEVO
-                    fill: '#EA580C',                     // Tono más oscuro de naranja
-                    stroke: '#F97316',                   // Borde naranja
-                    strokeWidth: 2
-                  }}
+                <Bar dataKey="promedio" fill={COLORS.orange} name="Promedio Faltas" radius={[8, 8, 0, 0]}
+                  activeBar={{ fill: '#EA580C', stroke: '#F97316', strokeWidth: 2}}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -1144,47 +1237,63 @@ export default function InformesPage() {
           </div>
 
           {/* Tabla Resumen por Rol */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 lg:col-span-2">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Resumen de Ausentismo
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Rol</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Total Faltas</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Promedio por Empleado</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Nivel</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {datosAusentismo.porRol.map((dato) => (
-                    <tr key={dato.rol} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{dato.rol}</td>
-                      <td className="px-6 py-4 text-center text-sm text-gray-900 dark:text-white">{dato.total}</td>
-                      <td className="px-6 py-4 text-center text-sm text-gray-900 dark:text-white">{dato.promedio}</td>
-                      <td className="px-6 py-4 text-center">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${parseFloat(dato.promedio) >= 5
+          {/* TABLA - solo desktop */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Rol</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Total Faltas</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Promedio por Empleado</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Nivel</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {datosAusentismo.porRol.map((dato) => (
+                  <tr key={dato.rol} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{dato.rol}</td>
+                    <td className="px-6 py-4 text-center text-sm text-gray-900 dark:text-white">{dato.total}</td>
+                    <td className="px-6 py-4 text-center text-sm text-gray-900 dark:text-white">{dato.promedio}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${parseFloat(dato.promedio) >= 5
                           ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                           : parseFloat(dato.promedio) >= 3
                             ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                             : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                          }`}>
-                          {parseFloat(dato.promedio) >= 5 ? 'Crítico' : parseFloat(dato.promedio) >= 3 ? 'Moderado' : 'Bajo'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        }`}>
+                        {parseFloat(dato.promedio) >= 5 ? 'Crítico' : parseFloat(dato.promedio) >= 3 ? 'Moderado' : 'Bajo'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-            </div>
+          {/* CARDS - solo móvil */}
+          <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+            {datosAusentismo.porRol.map((dato) => (
+              <div key={dato.rol} className="p-4 flex items-center justify-between gap-4">
+                <div>
+                  <p className="font-semibold text-gray-900 dark:text-white">{dato.rol}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Total: <span className="font-medium text-gray-900 dark:text-white">{dato.total}</span>
+                    &nbsp;· Promedio: <span className="font-medium text-gray-900 dark:text-white">{dato.promedio}</span>
+                  </p>
+                </div>
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${parseFloat(dato.promedio) >= 5
+                    ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                    : parseFloat(dato.promedio) >= 3
+                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                      : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                  }`}>
+                  {parseFloat(dato.promedio) >= 5 ? 'Crítico' : parseFloat(dato.promedio) >= 3 ? 'Moderado' : 'Bajo'}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}
-
-
 
       {tipoInforme === 'comparativo' && (
         <div className="space-y-6">
@@ -1329,7 +1438,7 @@ export default function InformesPage() {
                   {/* Cards comparativos */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {/* Empleados */}
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Empleados</p>
                       <div className="flex justify-between items-center">
                         <div>
@@ -1348,7 +1457,7 @@ export default function InformesPage() {
                     </div>
 
                     {/* Total Faltas */}
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Total Faltas</p>
                       <div className="flex justify-between items-center">
                         <div>
@@ -1367,7 +1476,7 @@ export default function InformesPage() {
                     </div>
 
                     {/* Promedio Faltas */}
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Promedio Faltas</p>
                       <div className="flex justify-between items-center">
                         <div>
@@ -1386,7 +1495,7 @@ export default function InformesPage() {
                     </div>
 
                     {/* Tasa Ausentismo */}
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Tasa Ausentismo</p>
                       <div className="flex justify-between items-center">
                         <div>
@@ -1438,7 +1547,12 @@ export default function InformesPage() {
                         <Legend />
                         <Bar dataKey="empleados" fill={COLORS.blue} name="Empleados" radius={[8, 8, 0, 0]} />
                         <Bar dataKey="totalFaltas" fill={COLORS.red} name="Total Faltas" radius={[8, 8, 0, 0]} />
-                        <Bar dataKey="justificadas" fill={COLORS.green} name="Justificadas" radius={[8, 8, 0, 0]} />
+                        <Bar dataKey="licencias" fill={COLORS.green} name="Licencias" radius={[8, 8, 0, 0]}
+                          activeBar={{ fill: '#059669', stroke: '#10B981', strokeWidth: 2 }}
+                        />
+                        <Bar dataKey="sanciones" fill={COLORS.purple} name="Sanciones" radius={[8, 8, 0, 0]}
+                          activeBar={{ fill: '#7C3AED', stroke: '#8B5CF6', strokeWidth: 2 }}
+/>
                         <Bar dataKey="injustificadas" fill={COLORS.orange} name="Injustificadas" radius={[8, 8, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
@@ -1465,7 +1579,8 @@ export default function InformesPage() {
                     const colorMap: Record<string, string> = {
                       'Empleados': '#3B82F6',
                       'Faltas': '#EF4444',
-                      'Justificadas': '#10B981'
+                      'Licencias': '#10B981',
+                      'Sanciones': '#8B5CF6',
                     };
 
                     return (
@@ -1696,12 +1811,16 @@ export default function InformesPage() {
                           <p className="text-2xl font-bold text-gray-900 dark:text-white">{datosEmp.faltas}</p>
                         </div>
                         <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Justificadas</p>
-                          <p className="text-2xl font-bold text-green-600">{datosEmp.faltasJustificadas}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Licencias (días)</p>
+                          <p className="text-2xl font-bold text-green-600">{datosEmp.licencias}</p>
                         </div>
                         <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
                           <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Injustificadas</p>
                           <p className="text-2xl font-bold text-red-600">{datosEmp.faltasInjustificadas}</p>
+                        </div>
+                        <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Sanciones (días)</p>
+                          <p className="text-2xl font-bold text-purple-600">{datosEmp.sanciones}</p>
                         </div>
                         <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
                           <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Días Trabajados</p>
@@ -1732,7 +1851,7 @@ export default function InformesPage() {
                               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Otro trabajó su turno</p>
                             </div>
                           </div>
-                          <div className="overflow-x-auto">
+                          <div className="hidden md:block overflow-x-auto">
                             <table className="w-full text-sm">
                               <thead className="bg-gray-50 dark:bg-gray-700">
                                 <tr>
@@ -1799,7 +1918,7 @@ export default function InformesPage() {
                               {licenciasDelEmpleado.map(l => (
                                 <tr key={l.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                                   <td className="px-4 py-3 text-gray-900 dark:text-white">
-                                    {{ ORDINARIA: 'Ordinaria', ESPECIAL: 'Especial', MEDICA: 'Médica', ESTUDIO: 'Estudio', SIN_GOCE: 'Sin goce' }[l.tipo] ?? l.tipo}
+                                    {{ ORDINARIA: 'Ordinaria', COMPENSATORIO: 'Compensatorio', GREMIAL: 'Gremial', MEDICA: 'Médica', ESTUDIO: 'Estudio', PATERNIDAD: 'Paternidad', COMISION: 'Comisión', CURSO: 'Curso', SIN_GOCE: 'Sin goce' }[l.tipo] ?? l.tipo}
                                   </td>
                                   <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{l.articulo ?? '—'}</td>
                                   <td className="px-4 py-3 text-gray-600 dark:text-gray-400">

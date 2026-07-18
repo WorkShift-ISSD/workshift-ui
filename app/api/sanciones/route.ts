@@ -26,7 +26,9 @@ export async function GET(req: Request) {
     if (fecha) {
       // Solo sanciones activas vigentes para la fecha
       sanciones = await sql`
-        SELECT *
+        SELECT *,
+              fecha_desde::text,
+              fecha_hasta::text
         FROM sanciones
         WHERE ${fecha}::date BETWEEN fecha_desde AND fecha_hasta
         ORDER BY created_at DESC
@@ -34,7 +36,9 @@ export async function GET(req: Request) {
     } else {
       // Todas las sanciones (históricas y activas)
       sanciones = await sql`
-        SELECT *
+        SELECT *,
+              fecha_desde::text,
+              fecha_hasta::text
         FROM sanciones
         ORDER BY created_at DESC
       `;
@@ -95,7 +99,9 @@ export async function POST(req: Request) {
         ${motivo || null},
         ${EstadoSancion.ACTIVA}
       )
-      RETURNING *
+      RETURNING *,
+          fecha_desde::text,
+          fecha_hasta::text
     `;
 
     return NextResponse.json(nueva, { status: 201 });

@@ -15,6 +15,7 @@ export interface User {
   nombre: string;
   apellido: string;
   email: string;
+  username: string,
   rol: Rol;
   grupoTurno: GrupoTurno;
   horario: string;
@@ -136,9 +137,13 @@ export interface NuevaOferta {
 
 export type TipoLicencia =
   | 'ORDINARIA'
-  | 'ESPECIAL'
+  | 'COMPENSATORIO'
+  | 'GREMIAL'
   | 'MEDICA'
   | 'ESTUDIO'
+  | 'PATERNIDAD'
+  | 'COMISION'
+  | 'CURSO'
   | 'SIN_GOCE';
 
 export type EstadoLicencia =

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import NavLinks from "@/app/ui/dashboard/nav-links";
+import WSMSLogo from "@/app/ui/WSMSLogo";
 import MigraLogo from "@/app/ui/MigraLogo";
 import LogoutButton from "@/app/components/LogoutButton";
 import { MenuIcon, Lock, User, UserCog, Image } from "lucide-react";
@@ -47,10 +48,10 @@ export default function SideNav() {
             onClick={() => setOpen(false)}
             className="block md:hidden w-10 h-10 hover:opacity-80 transition-opacity"
           >
-            <MigraLogo iconOnly={true} className="w-full h-full" />
+            <WSMSLogo iconOnly={true} className="w-full h-full" />
           </button>
           <div className="hidden md:block w-[80%] h-[60px]">
-            <MigraLogo className="w-full h-full" />
+            <WSMSLogo className="w-full h-full" />
           </div>
         </div>
 
@@ -199,6 +200,7 @@ export default function SideNav() {
         userData={{
           id: user?.id!,
           telefono: user?.telefono,
+          email: user?.email,
           direccion: user?.direccion,
           fecha_nacimiento: user?.fechaNacimiento,
         }}

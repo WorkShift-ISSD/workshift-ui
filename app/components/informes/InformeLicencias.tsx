@@ -248,36 +248,62 @@ export function InformeLicencias() {
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
-                  {['Empleado', 'Tipo', 'Artículo', 'Desde', 'Hasta', 'Días', 'Estado'].map(h => (
-                    <th key={h} className="text-left px-4 py-3 text-gray-500 dark:text-gray-400 font-medium">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {paginadas.length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-400">No hay licencias para los filtros seleccionados</td></tr>
-                ) : paginadas.map(l => (
-                  <tr key={l.id} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
-                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
-                      {l.empleado ? `${l.empleado.apellido}, ${l.empleado.nombre}` : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{TIPO_LABEL[l.tipo] ?? l.tipo}</td>
-                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{l.articulo ?? '—'}</td>
-                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
-                      {new Date(l.fecha_desde + 'T12:00:00').toLocaleDateString('es-AR')}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
-                      {new Date(l.fecha_hasta + 'T12:00:00').toLocaleDateString('es-AR')}
-                    </td>
-                    <td className="px-4 py-3 text-center font-semibold text-gray-900 dark:text-gray-100">{l.dias}</td>
-                    <td className="px-4 py-3"><EstadoBadge estado={l.estado} /></td>
+            {/* TABLA - solo desktop */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                    {['Empleado', 'Tipo', 'Artículo', 'Desde', 'Hasta', 'Días', 'Estado'].map(h => (
+                      <th key={h} className="text-left px-4 py-3 text-gray-500 dark:text-gray-400 font-medium">{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {paginadas.length === 0 ? (
+                    <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-400">No hay licencias para los filtros seleccionados</td></tr>
+                  ) : paginadas.map(l => (
+                    <tr key={l.id} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
+                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{l.empleado ? `${l.empleado.apellido}, ${l.empleado.nombre}` : '—'}</td>
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{TIPO_LABEL[l.tipo] ?? l.tipo}</td>
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{l.articulo ?? '—'}</td>
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{new Date(l.fecha_desde + 'T12:00:00').toLocaleDateString('es-AR')}</td>
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{new Date(l.fecha_hasta + 'T12:00:00').toLocaleDateString('es-AR')}</td>
+                      <td className="px-4 py-3 text-center font-semibold text-gray-900 dark:text-gray-100">{l.dias}</td>
+                      <td className="px-4 py-3"><EstadoBadge estado={l.estado} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* CARDS - solo móvil */}
+            <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+              {paginadas.length === 0 ? (
+                <p className="px-4 py-10 text-center text-gray-400 text-sm">No hay licencias para los filtros seleccionados</p>
+              ) : paginadas.map(l => (
+                <div key={l.id} className="p-4">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate">
+                      {l.empleado ? `${l.empleado.apellido}, ${l.empleado.nombre}` : '—'}
+                    </p>
+                    <EstadoBadge estado={l.estado} />
+                  </div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 rounded-full">
+                      {TIPO_LABEL[l.tipo] ?? l.tipo}
+                    </span>
+                    {l.articulo && <span className="text-xs text-gray-500 dark:text-gray-400">{l.articulo}</span>}
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <div className="flex gap-3">
+                      <span>Desde: <span className="font-medium text-gray-900 dark:text-gray-200">{new Date(l.fecha_desde + 'T12:00:00').toLocaleDateString('es-AR')}</span></span>
+                      <span>Hasta: <span className="font-medium text-gray-900 dark:text-gray-200">{new Date(l.fecha_hasta + 'T12:00:00').toLocaleDateString('es-AR')}</span></span>
+                    </div>
+                    {l.dias && <span className="font-semibold text-gray-900 dark:text-gray-100">{l.dias}d</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

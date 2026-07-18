@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import { fetcher } from "@/app/api/fetcher";
 import { useLicenciasDelDia } from "@/hooks/useLicenciasPorDia";
 import { useSancionesDelDia } from "@/hooks/useSancionesDelDia";
@@ -64,6 +64,7 @@ export default function FaltasPage() {
       });
   }, [selectedDate]);
 
+  const { mutate: globalMutate } = useSWRConfig();
   const { data: presentesData, mutate: mutatePresentes } = useSWR(
     selectedDate ? `/api/presentes?fecha=${selectedDate}` : null,
     fetcher
@@ -196,10 +197,24 @@ export default function FaltasPage() {
   const empleadosConFalta = (faltas || []).map((f) => f.empleadoId);
 
   const empleadosConLicencia = useMemo(() => {
-    return new Set(
-      (licenciasDelDia || []).map((l: any) => l.empleado_id)
+    return new Map(
+      (licenciasDelDia || []).map((l: any) => [l.empleado_id, l.tipo])
     );
   }, [licenciasDelDia]);
+
+  const formatTipoLicencia = (tipo: string) => {
+    switch (tipo) {
+      case 'ORDINARIA':      return 'Ordinaria';
+      case 'COMPENSATORIO':  return 'Franco Compensatorio';
+      case 'GREMIAL':        return 'Gremial';
+      case 'MEDICA':         return 'Médica';
+      case 'ESTUDIO':        return 'Estudio';
+      case 'COMISION':       return 'Comisión';
+      case 'CURSO':          return 'Curso';
+      case 'SIN_GOCE':       return 'Sin goce';
+      default:               return tipo;
+    }
+  };
 
   const empleadosConSancion = useMemo(() => {
     const data = Array.isArray(sancionesDelDia) ? sancionesDelDia : [];
@@ -297,6 +312,7 @@ export default function FaltasPage() {
       mutatePresentes();
       toast.success("Falta registrada correctamente");
       mutate();
+      globalMutate('/api/faltas');
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error al registrar falta";
       toast.error(message);
@@ -512,109 +528,111 @@ export default function FaltasPage() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Turno
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Apellido y Nombre
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Rol
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Estado
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Acciones
-                  </th>
-                </tr>
-              </thead>
+          <>
+            {/* TABLA - solo desktop */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Turno
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Apellido y Nombre
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Rol
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Estado
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Acciones
+                    </th>
+                  </tr>
+                </thead>
 
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {empleadosDelDia.slice((paginaActual - 1) * ITEMS_POR_PAGINA, paginaActual * ITEMS_POR_PAGINA).map((emp) => {
-                  const falta = faltas?.find((f) => f.empleadoId === emp.id);
-                  const enFalta = !!falta;
-                  const enLicencia = empleadosConLicencia.has(emp.id);
-                  const enSancion = empleadosConSancion.has(String(emp.id));
-                  const esPresenteExplicito = presentesExplicitos.has(String(emp.id));
-                  const turnoGanado = turnosEfectivosDelDia.find((t: any) => t.tipo === 'GANADO' && t.empleadoId === emp.id);
-                  const horarioMostrar = turnoGanado ? turnoGanado.horarioEfectivo : emp.horario;
-                  const esFechaHoy = selectedDate === today;
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {empleadosDelDia.slice((paginaActual - 1) * ITEMS_POR_PAGINA, paginaActual * ITEMS_POR_PAGINA).map((emp) => {
+                    const falta = faltas?.find((f) => f.empleadoId === emp.id);
+                    const enFalta = !!falta;
+                    const tipoLicencia = empleadosConLicencia.get(emp.id);
+                    const enLicencia = !!tipoLicencia;
+                    const enSancion = empleadosConSancion.has(String(emp.id));
+                    const esPresenteExplicito = presentesExplicitos.has(String(emp.id));
+                    const turnoGanado = turnosEfectivosDelDia.find((t: any) => t.tipo === 'GANADO' && t.empleadoId === emp.id);
+                    const horarioMostrar = turnoGanado ? turnoGanado.horarioEfectivo : emp.horario;
+                    const esFechaHoy = selectedDate === today;
 
-                  return (
-                    <tr
-                      key={emp.id}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-600 dark:text-gray-400">
-                        {horarioMostrar}
-                      </td>
+                    return (
+                      <tr
+                        key={emp.id}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-600 dark:text-gray-400">
+                          {horarioMostrar}
+                        </td>
 
-                      <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium text-gray-900 dark:text-white">
-                        {emp.apellido}, {emp.nombre}
-                        {turnoGanado?.companero && (
-                          <span className="ml-2 text-xs font-normal text-amber-400 dark:text-amber-300">
-                            (cambio x {turnoGanado.companero})
+                        <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium text-gray-900 dark:text-white">
+                          {emp.apellido}, {emp.nombre}
+                          {turnoGanado?.companero && (
+                            <span className="ml-2 text-xs font-normal text-amber-400 dark:text-amber-300">
+                              (cambio x {[turnoGanado.companero, ...(turnoGanado.cadena ?? [])].join(' ← ')})
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600 dark:text-gray-400">
+                          <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs font-medium">
+                            {emp.rol}
                           </span>
-                        )}
-                      </td>
+                        </td>
 
-                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600 dark:text-gray-400">
-                        <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs font-medium">
-                          {emp.rol}
-                        </span>
-                      </td>
-
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        {enLicencia ? (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-200">
-                            <Calendar className="w-4 h-4" /> Licencia
-                          </span>
-                        ) : enSancion ? (
-                          // 4. Mostrar Badge de Sanción
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-200">
-                            <AlertCircle className="w-4 h-4" /> Sancionado
-                          </span>
-                        ) : enFalta ? (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200">
-                            <XCircle className="w-4 h-4" /> Falta
-                          </span>
-                        ) : (
-                          esPresenteExplicito ? (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200">
-                              <CheckCircle className="w-4 h-4" /> Presente
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          {enLicencia ? (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-200">
+                              <Calendar className="w-4 h-4" /> {formatTipoLicencia(tipoLicencia)}
+                            </span>
+                          ) : enSancion ? (
+                            // 4. Mostrar Badge de Sanción
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-200">
+                              <AlertCircle className="w-4 h-4" /> Sancionado
+                            </span>
+                          ) : enFalta ? (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200">
+                              <XCircle className="w-4 h-4" /> Falta
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold text-gray-400 dark:text-gray-500">
-                              —
+                            esPresenteExplicito ? (
+                              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200">
+                                <CheckCircle className="w-4 h-4" /> Presente
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold text-gray-400 dark:text-gray-500">
+                                —
+                              </span>
+                            )
+                          )}
+                        </td>
+
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          {(enLicencia || enSancion) ? (
+                            <span className="text-sm text-gray-500 italic">
+                              {enLicencia ? `En licencia (${formatTipoLicencia(tipoLicencia)})` : "Sancionado"}
                             </span>
-                          )
-                        )}
-                      </td>
+                          ) : (
+                            <div className="flex gap-2 justify-center items-center min-w-[200px]">
 
-
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        {(enLicencia || enSancion) ? (
-                          <span className="text-sm text-gray-500 italic">
-                            {enLicencia ? "En licencia" : "Sancionado"}
-                          </span>
-                        ) : (
-                          <div className="flex gap-2 justify-center items-center min-w-[200px]">
-
-                            <button
-                              onClick={() => !(esPresenteExplicito && !enFalta) && handleRegistrarPresente(String(emp.id), falta || undefined)}
-                              disabled={procesando.has(String(emp.id)) || (esPresenteExplicito && !enFalta || !esFechaHoy)}
-                              className={`px-4 py-2 rounded-lg font-medium transition-colors
+                              <button
+                                onClick={() => !(esPresenteExplicito && !enFalta) && handleRegistrarPresente(String(emp.id), falta || undefined)}
+                                disabled={procesando.has(String(emp.id)) || (esPresenteExplicito && !enFalta || !esFechaHoy)}
+                                className={`px-4 py-2 rounded-lg font-medium transition-colors
                                 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2
                                 dark:focus:ring-offset-gray-800 text-white
                                 ${procesando.has(String(emp.id)) || (esPresenteExplicito && !enFalta || !esFechaHoy)
-                                  ? "bg-green-300 dark:bg-green-900 cursor-not-allowed opacity-50"
-                                  : "bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"
-                                }`}
+                                    ? "bg-green-300 dark:bg-green-900 cursor-not-allowed opacity-50"
+                                    : "bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"
+                                  }`}
                               >
                                 Presente
                               </button>
@@ -632,47 +650,176 @@ export default function FaltasPage() {
                                 Falta
                               </button>
 
-                                <button
-                                  title="Limpiar estado"
-                                  onClick={async () => {
-                                    const id = String(emp.id);
-                                    if (procesando.has(id)) return;
-                                    setProcesando(prev => new Set(prev).add(id));
-                                    try {
-                                      if (enFalta) {
-                                        await eliminarFalta(falta!.id);
-                                        mutate();
-                                      }
-                                      await fetch('/api/presentes', {
-                                        method: 'DELETE',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ empleadoId: id, fecha: selectedDate }),
-                                      });
-                                      mutatePresentes();
-                                      toast.success("Estado limpiado");
-                                    } finally {
-                                      setProcesando(prev => { const s = new Set(prev); s.delete(id); return s; });
+                              <button
+                                title="Limpiar estado"
+                                onClick={async () => {
+                                  const id = String(emp.id);
+                                  if (procesando.has(id)) return;
+                                  setProcesando(prev => new Set(prev).add(id));
+                                  try {
+                                    if (enFalta) {
+                                      await eliminarFalta(falta!.id);
+                                      mutate();
                                     }
-                                  }}
+                                    await fetch('/api/presentes', {
+                                      method: 'DELETE',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ empleadoId: id, fecha: selectedDate }),
+                                    });
+                                    mutatePresentes();
+                                    toast.success("Estado limpiado");
+                                  } finally {
+                                    setProcesando(prev => { const s = new Set(prev); s.delete(id); return s; });
+                                  }
+                                }}
                                 disabled={procesando.has(String(emp.id)) || (!enFalta && !esPresenteExplicito || !esFechaHoy)}
                                 className={`p-2 rounded-lg transition-colors
                                   ${(enFalta || esPresenteExplicito) && esFechaHoy
                                     ? "text-gray-400 hover:text-white hover:bg-gray-600 dark:hover:bg-gray-500 cursor-pointer"
                                     : "invisible cursor-default"
                                   }`}
-                                >
-                                  <XCircle className="w-4 h-4" />
-                                </button>
-                          </div>
-                        )}
-                      </td>
+                              >
+                                <XCircle className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )}
+                        </td>
 
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* CARDS - solo móvil */}
+            <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+              {empleadosDelDia.slice((paginaActual - 1) * ITEMS_POR_PAGINA, paginaActual * ITEMS_POR_PAGINA).map((emp) => {
+                const falta = faltas?.find((f) => f.empleadoId === emp.id);
+                const enFalta = !!falta;
+                const tipoLicencia = empleadosConLicencia.get(emp.id);
+                const enLicencia = !!tipoLicencia;
+                const enSancion = empleadosConSancion.has(String(emp.id));
+                const esPresenteExplicito = presentesExplicitos.has(String(emp.id));
+                const turnoGanado = turnosEfectivosDelDia.find((t: any) => t.tipo === 'GANADO' && t.empleadoId === emp.id);
+                const horarioMostrar = turnoGanado ? turnoGanado.horarioEfectivo : emp.horario;
+                const esFechaHoy = selectedDate === today;
+
+                return (
+                  <div key={emp.id} className="p-4 border-b border-gray-200 dark:border-gray-700 last:border-0">
+                    {/* Fila 1: Avatar + Nombre + Badge estado */}
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold flex-shrink-0 text-sm">
+                        {emp.nombre[0]}{emp.apellido[0]}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                          {emp.apellido}, {emp.nombre}
+                        </p>
+                        {turnoGanado?.companero && (
+                          <p className="text-xs text-amber-500 dark:text-amber-300">
+                            cambio x {turnoGanado.companero}
+                          </p>
+                        )}
+                      </div>
+                      {/* Badge estado — siempre a la derecha del nombre */}
+                      <div className="flex-shrink-0">
+                        {enLicencia ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-200">
+                            <Calendar className="w-3 h-3" /> {formatTipoLicencia(tipoLicencia)}
+                          </span>
+                        ) : enSancion ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-200">
+                            <AlertCircle className="w-3 h-3" /> Sancionado
+                          </span>
+                        ) : enFalta ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200">
+                            <XCircle className="w-3 h-3" /> Falta
+                          </span>
+                        ) : esPresenteExplicito ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200">
+                            <CheckCircle className="w-3 h-3" /> Presente
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 dark:text-gray-500 text-sm">—</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Fila 2: Rol + Horario */}
+                    <div className="flex items-center gap-2 mb-3 ml-13 pl-1">
+                      <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs font-medium">
+                        {emp.rol}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> {horarioMostrar}
+                      </span>
+                    </div>
+
+                    {/* Fila 3: Botones */}
+                    {(enLicencia || enSancion) ? (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 italic text-center py-1">
+                        {enLicencia ? "En licencia (${formatTipoLicencia(tipoLicencia)}) — sin acciones disponibles" : "Sancionado — sin acciones disponibles"}
+                      </p>
+                    ) : (
+                      <div className="flex gap-2 items-center">
+                        <button
+                          onClick={() => !(esPresenteExplicito && !enFalta) && handleRegistrarPresente(String(emp.id), falta || undefined)}
+                          disabled={procesando.has(String(emp.id)) || (esPresenteExplicito && !enFalta) || !esFechaHoy}
+                          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors text-white
+                          ${procesando.has(String(emp.id)) || (esPresenteExplicito && !enFalta) || !esFechaHoy
+                              ? "bg-green-300 dark:bg-green-900 cursor-not-allowed opacity-50"
+                              : "bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"
+                            }`}
+                        >
+                          Presente
+                        </button>
+                        <button
+                          onClick={() => !enFalta && handleRegistrarFalta(emp)}
+                          disabled={procesando.has(String(emp.id)) || enFalta || !esFechaHoy}
+                          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors text-white
+                          ${procesando.has(String(emp.id)) || enFalta || !esFechaHoy
+                              ? "bg-red-300 dark:bg-red-900 cursor-not-allowed opacity-50"
+                              : "bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
+                            }`}
+                        >
+                          Falta
+                        </button>
+                        {(enFalta || esPresenteExplicito) && esFechaHoy && (
+                          <button
+                            title="Limpiar estado"
+                            onClick={async () => {
+                              const id = String(emp.id);
+                              if (procesando.has(id)) return;
+                              setProcesando(prev => new Set(prev).add(id));
+                              try {
+                                if (enFalta && falta) {
+                                  await eliminarFalta(falta.id);
+                                  mutate();
+                                }
+                                await fetch('/api/presentes', {
+                                  method: 'DELETE',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ empleadoId: id, fecha: selectedDate }),
+                                });
+                                mutatePresentes();
+                                toast.success("Estado limpiado");
+                              } finally {
+                                setProcesando(prev => { const s = new Set(prev); s.delete(id); return s; });
+                              }
+                            }}
+                            className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-600 dark:hover:bg-gray-500 transition-colors"
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
 

@@ -1,5 +1,5 @@
 // hooks/useFaltas.ts
-import useSWR from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import { endpoints } from '@/app/api/endpoints';
 import { deleter, fetcher, poster, putter } from '@/app/api/fetcher';
 
@@ -58,6 +58,7 @@ const normalizarFecha = (fecha: string): string => {
 
 // Hook para obtener faltas de una fecha específica
 export function useFaltas(fecha?: string) {
+  const { mutate: globalMutate } = useSWRConfig();
   // Normalizar la fecha antes de hacer la petición
   const fechaNormalizada = fecha ? normalizarFecha(fecha) : undefined;
 
@@ -84,6 +85,7 @@ export function useFaltas(fecha?: string) {
 
     // Actualizar cache local
     mutate([...(data || []), newFalta], false);
+    globalMutate('/api/faltas');
     return newFalta;
   };
 
@@ -111,6 +113,7 @@ export function useFaltas(fecha?: string) {
       data?.filter((f) => f.id !== id),
       false
     );
+     globalMutate('/api/faltas');
   };
 
   return {
@@ -130,8 +133,8 @@ export function useTodasLasFaltas() {
     '/api/faltas',
     fetcher,
     {
-      revalidateOnFocus: false,
-      dedupingInterval: 60000, // Cache de 1 minuto
+      revalidateOnFocus: true,
+      dedupingInterval: 5000, 
     }
   );
 

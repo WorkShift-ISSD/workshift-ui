@@ -9,7 +9,7 @@ import ChangePasswordModal from "./editar datos usuario/ChangePasswordModal";
 export default function LoginForm() {
   const router = useRouter();
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
@@ -30,9 +30,9 @@ export default function LoginForm() {
   // Cargar email guardado al montar
   useState(() => {
     if (typeof window !== 'undefined') {
-      const savedEmail = localStorage.getItem('remembered-email');
-      if (savedEmail) {
-        setEmail(savedEmail);
+      const saveUsername = localStorage.getItem('remembered-username')
+      if (saveUsername) {
+        setUsername(saveUsername);
         setRememberMe(true);
       }
     }
@@ -48,7 +48,7 @@ export default function LoginForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email, password, rememberMe }),
+        body: JSON.stringify({ username, password, rememberMe }),
       });
 
       const data = await response.json();
@@ -56,9 +56,9 @@ export default function LoginForm() {
       if (response.ok) {
         // Guardar o eliminar email según checkbox
         if (rememberMe) {
-          localStorage.setItem('remembered-email', email);
+          localStorage.setItem('remembered-username', username);
         } else {
-          localStorage.removeItem('remembered-email');
+          localStorage.removeItem('remembered-username');
         }
 
         // Verificar si es primer ingreso
@@ -147,10 +147,10 @@ export default function LoginForm() {
           )}
 
           <input
-            type="email"
-            placeholder="Correo electrónico"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="text"
+            placeholder="Nombre de usuario"
+            value={username}
+            onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, ''))}
             disabled={loading}
             required
             className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring focus:ring-blue-300 rounded w-full mb-4 px-3 py-2 transition-colors disabled:opacity-50"

@@ -54,7 +54,8 @@ export function InformeSanciones() {
       if (empleadoId !== 'TODOS' && s.empleado_id !== empleadoId) return false;
       if (estado !== 'TODOS' && s.estado !== estado) return false;
       if (busqueda) {
-        const nombre = s.empleado ? `${s.empleado.nombre} ${s.empleado.apellido}`.toLowerCase() : '';
+        const emp = empleados?.find(e => e.id === s.empleado_id);
+        const nombre = emp ? `${emp.nombre} ${emp.apellido}`.toLowerCase() : '';
         const motivo = s.motivo?.toLowerCase() ?? '';
         const q = busqueda.toLowerCase();
         if (!nombre.includes(q) && !motivo.includes(q)) return false;
@@ -80,7 +81,8 @@ export function InformeSanciones() {
     const map: Record<string, { nombre: string; count: number }> = {};
     filtradas.forEach(s => {
       const key = s.empleado_id;
-      const nombre = s.empleado ? `${s.empleado.apellido}, ${s.empleado.nombre}` : '—';
+      const emp = empleados?.find(e => e.id === s.empleado_id);
+      const nombre = emp ? `${emp.apellido}, ${emp.nombre}` : '—';
       if (!map[key]) map[key] = { nombre, count: 0 };
       map[key].count++;
     });
@@ -256,34 +258,57 @@ export function InformeSanciones() {
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
-                  {['Empleado', 'Motivo', 'Desde', 'Hasta', 'Estado'].map(h => (
-                    <th key={h} className="text-left px-4 py-3 text-gray-500 dark:text-gray-400 font-medium">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {paginadas.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-10 text-center text-gray-400">No hay sanciones para los filtros seleccionados</td></tr>
-                ) : paginadas.map(s => (
-                  <tr key={s.id} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
-                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
-                      {s.empleado ? `${s.empleado.apellido}, ${s.empleado.nombre}` : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400 max-w-[200px] truncate">{s.motivo}</td>
-                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
-                      {new Date(s.fecha_desde + 'T12:00:00').toLocaleDateString('es-AR')}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
-                      {new Date(s.fecha_hasta + 'T12:00:00').toLocaleDateString('es-AR')}
-                    </td>
-                    <td className="px-4 py-3"><EstadoBadge estado={s.estado} /></td>
+            {/* TABLA - solo desktop */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                    {['Empleado', 'Motivo', 'Desde', 'Hasta', 'Estado'].map(h => (
+                      <th key={h} className="text-left px-4 py-3 text-gray-500 dark:text-gray-400 font-medium">{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {paginadas.length === 0 ? (
+                    <tr><td colSpan={5} className="px-4 py-10 text-center text-gray-400">No hay sanciones para los filtros seleccionados</td></tr>
+                  ) : paginadas.map(s => (
+                    <tr key={s.id} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
+                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
+                        {(() => { const emp = empleados?.find(e => e.id === s.empleado_id); return emp ? `${emp.apellido}, ${emp.nombre}` : '—'; })()}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400 max-w-[200px] truncate">{s.motivo}</td>
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{new Date(s.fecha_desde + 'T12:00:00').toLocaleDateString('es-AR')}</td>
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{new Date(s.fecha_hasta + 'T12:00:00').toLocaleDateString('es-AR')}</td>
+                      <td className="px-4 py-3"><EstadoBadge estado={s.estado} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* CARDS - solo móvil */}
+            <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+              {paginadas.length === 0 ? (
+                <p className="px-4 py-10 text-center text-gray-400 text-sm">No hay sanciones para los filtros seleccionados</p>
+              ) : paginadas.map(s => {
+                const emp = empleados?.find(e => e.id === s.empleado_id);
+                return (
+                  <div key={s.id} className="p-4">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate">
+                        {emp ? `${emp.apellido}, ${emp.nombre}` : '—'}
+                      </p>
+                      <EstadoBadge estado={s.estado} />
+                    </div>
+                    {s.motivo && <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 truncate">{s.motivo}</p>}
+                    <div className="flex gap-4 text-xs text-gray-500 dark:text-gray-400">
+                      <span>Desde: <span className="font-medium text-gray-900 dark:text-gray-200">{new Date(s.fecha_desde + 'T12:00:00').toLocaleDateString('es-AR')}</span></span>
+                      <span>Hasta: <span className="font-medium text-gray-900 dark:text-gray-200">{new Date(s.fecha_hasta + 'T12:00:00').toLocaleDateString('es-AR')}</span></span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

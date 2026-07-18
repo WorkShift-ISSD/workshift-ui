@@ -40,6 +40,7 @@ interface Inspector {
   id: string;
   legajo: number;
   email: string;
+  username?: string;
   nombre: string;
   apellido: string;
   rol: Rol;
@@ -99,7 +100,7 @@ export default function DashboardPage() {
   const employees = empleados || [];
 
   const horariosPorRol: Record<Rol, string[]> = {
-    INSPECTOR: ["04:00-14:00", "06:00-16:00", "10:00-20:00", "13:00-23:00", "19:00-05:00"],
+    INSPECTOR: ["04:00-14:00", "06:00-16:00", "09:00-19:00", "13:00-23:00", "19:00-05:00"],
     SUPERVISOR: ["05:00-14:00", "14:00-23:00", "23:00-05:00"],
     JEFE: ["05:00-17:00", "17:00-05:00"],
     ADMINISTRADOR: ["00:00-23:59"],
@@ -225,6 +226,7 @@ useEffect(() => {
         nombre: '',
         apellido: '',
         legajo: undefined,
+        username: '',
         email: '',
         rol: 'INSPECTOR',
         grupoTurno: 'A',
@@ -286,6 +288,31 @@ useEffect(() => {
 
     if (isNaN(Number(formData.legajo)) || Number(formData.legajo) <= 0 || !Number.isInteger(Number(formData.legajo))) {
       setFormError('El legajo debe ser un número entero positivo');
+      return;
+    }
+
+    if (!formData.username || formData.username.trim() === '') {
+      setFormError('El nombre de usuario es obligatorio');
+      return;
+    }
+
+    const username = formData.username.trim();
+
+    // solo letras (sin números, sin espacios, sin caracteres especiales)
+    const usernameRegex = /^[a-zA-Z]+$/;
+
+    if (!usernameRegex.test(username)) {
+      setFormError('El usuario solo puede contener letras (sin números ni caracteres especiales)');
+      return;
+    }
+
+    if (username.length < 7) {
+      setFormError('El usuario debe tener al menos 7 caracteres');
+      return;
+    }
+
+    if (username.length > 20) {
+      setFormError('El usuario no puede superar los 20 caracteres');
       return;
     }
 
@@ -386,6 +413,7 @@ useEffect(() => {
         await createEmpleado({
           legajo: formData.legajo!,
           email: formData.email!,
+          username: formData.username!,
           nombre: formData.nombre!,
           apellido: formData.apellido!,
           password: hashedPassword,
@@ -702,14 +730,16 @@ useEffect(() => {
               disabled={currentPage === 1}
               className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
             >
-              Primera
+              <span className="hidden sm:inline">Primera</span>
+              <span className="sm:hidden">«</span>
             </button>
             <button
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
               className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
             >
-              Anterior
+              <span className="hidden sm:inline">Anterior</span>
+              <span className="sm:hidden">‹</span>
             </button>
 
             <span className="px-3 py-1 text-sm text-gray-700 dark:text-gray-300">
@@ -721,14 +751,16 @@ useEffect(() => {
               disabled={currentPage === totalPages || totalPages === 0}
               className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
             >
-              Siguiente
+              <span className="hidden sm:inline">Siguiente</span>
+              <span className="sm:hidden">›</span>
             </button>
             <button
               onClick={() => setCurrentPage(totalPages)}
               disabled={currentPage === totalPages || totalPages === 0}
               className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
             >
-              Última
+              <span className="hidden sm:inline">Última</span>
+              <span className="sm:hidden">»</span>
             </button>
           </div>
         </div>
@@ -1004,8 +1036,8 @@ useEffect(() => {
       {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center p-4 z-50">
-          <div ref={modalRef} className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl transition-colors">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+          <div ref={modalRef} className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-xl transition-colors">
+            <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                   {modalMode === 'create' ? 'Nuevo Empleado' :
@@ -1021,7 +1053,7 @@ useEffect(() => {
               </div>
             </div>
 
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {/* Error message */}
               {formError && (
                 <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -1058,9 +1090,14 @@ useEffect(() => {
                       <p className="font-semibold text-gray-900 dark:text-gray-100">{selectedEmployee.nombre} {selectedEmployee.apellido}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Email</p>
-                      <p className="font-semibold text-gray-900 dark:text-gray-100 break-all">{selectedEmployee.email}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Nombre de Usuario</p>
+                      <p className="font-semibold text-gray-900 dark:text-gray-100">{selectedEmployee.username || 'No asignado'}</p>
                     </div>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Email</p>
+                    <p className="font-semibold text-gray-900 dark:text-gray-100 break-all">{selectedEmployee.email}</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -1125,66 +1162,94 @@ useEffect(() => {
                 </div>
               ) : (
                 // Edit/Create form
-                <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Nombre <span className="text-red-500 dark:text-red-400">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${formError && (!formData.nombre || formData.nombre.trim() === '')
-                          ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
-                          : 'border-gray-300 dark:border-gray-600'
-                          }`}
-                        value={formData.nombre || ''}
-                        onChange={(e) => {
-                          setFormData({ ...formData, nombre: e.target.value });
-                          if (formError) setFormError('');
-                        }}
-                        placeholder="Ej: Juan"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Apellido <span className="text-red-500 dark:text-red-400">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${formError && (!formData.apellido || formData.apellido.trim() === '')
-                          ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
-                          : 'border-gray-300 dark:border-gray-600'
-                          }`}
-                        value={formData.apellido || ''}
-                        onChange={(e) => {
-                          setFormData({ ...formData, apellido: e.target.value });
-                          if (formError) setFormError('');
-                        }}
-                        placeholder="Ej: Pérez"
-                      />
-                    </div>
-                  </div>
+                  <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Legajo <span className="text-red-500 dark:text-red-400">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${formError && (!formData.legajo || isNaN(Number(formData.legajo)) || Number(formData.legajo) <= 0 || !Number.isInteger(Number(formData.legajo)))
-                          ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
-                          : 'border-gray-300 dark:border-gray-600'
-                          }`}
-                        value={formData.legajo || ''}
-                        onChange={(e) => {
-                          setFormData({ ...formData, legajo: e.target.value ? Number(e.target.value) : undefined });
-                          if (formError) setFormError('');
-                        }}
-                        placeholder="Ej: 12345"
-                      />
+                    {/* Nombre / Apellido */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Nombre <span className="text-red-500 dark:text-red-400">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${formError && (!formData.nombre || formData.nombre.trim() === '')
+                              ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
+                              : 'border-gray-300 dark:border-gray-600'
+                            }`}
+                          value={formData.nombre || ''}
+                          onChange={(e) => {
+                            setFormData({ ...formData, nombre: e.target.value });
+                            if (formError) setFormError('');
+                          }}
+                          placeholder="Ej: Juan"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Apellido <span className="text-red-500 dark:text-red-400">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${formError && (!formData.apellido || formData.apellido.trim() === '')
+                              ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
+                              : 'border-gray-300 dark:border-gray-600'
+                            }`}
+                          value={formData.apellido || ''}
+                          onChange={(e) => {
+                            setFormData({ ...formData, apellido: e.target.value });
+                            if (formError) setFormError('');
+                          }}
+                          placeholder="Ej: Pérez"
+                        />
+                      </div>
                     </div>
 
+                    {/* Legajo / Username */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Legajo <span className="text-red-500 dark:text-red-400">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${formError && (!formData.legajo || isNaN(Number(formData.legajo)) || Number(formData.legajo) <= 0 || !Number.isInteger(Number(formData.legajo)))
+                              ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
+                              : 'border-gray-300 dark:border-gray-600'
+                            }`}
+                          value={formData.legajo || ''}
+                          onChange={(e) => {
+                            setFormData({
+                              ...formData,
+                              legajo: e.target.value ? Number(e.target.value) : undefined,
+                            });
+                            if (formError) setFormError('');
+                          }}
+                          placeholder="Ej: 12345"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Nombre de Usuario <span className="text-red-500 dark:text-red-400">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${formError && (!formData.username || formData.username.trim() === '')
+                              ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
+                              : 'border-gray-300 dark:border-gray-600'
+                            }`}
+                          value={formData.username || ''}
+                          onChange={(e) => {
+                            setFormData({ ...formData, username: e.target.value.toLowerCase().replace(/\s/g, '') });
+                            if (formError) setFormError('');
+                          }}
+                          placeholder="Ej: jperez"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Email */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Email <span className="text-red-500 dark:text-red-400">*</span>
@@ -1192,8 +1257,8 @@ useEffect(() => {
                       <input
                         type="email"
                         className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${formError && (!formData.email || formData.email.trim() === '')
-                          ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
-                          : 'border-gray-300 dark:border-gray-600'
+                            ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20'
+                            : 'border-gray-300 dark:border-gray-600'
                           }`}
                         value={formData.email || ''}
                         onChange={(e) => {
@@ -1203,125 +1268,137 @@ useEffect(() => {
                         placeholder="Ej: juan.perez@email.com"
                       />
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                    {/* Rol / Grupo */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Rol
+                        </label>
+                        <select
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+                          value={formData.rol || 'INSPECTOR'}
+                          onChange={(e) => {
+                            const nuevoRol = e.target.value as Rol;
+                            setFormData({
+                              ...formData,
+                              rol: nuevoRol,
+                              horario: horariosPorRol[nuevoRol][0],
+                            });
+                            if (formError) setFormError('');
+                          }}
+                        >
+                          <option value="INSPECTOR">Inspector</option>
+                          <option value="SUPERVISOR">Supervisor</option>
+                          <option value="JEFE">Jefe</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Grupo de Turno
+                        </label>
+                        <select
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+                          value={formData.grupoTurno || 'A'}
+                          onChange={(e) => {
+                            setFormData({ ...formData, grupoTurno: e.target.value as GrupoTurno });
+                            if (formError) setFormError('');
+                          }}
+                        >
+                          <option value="A">Turno A</option>
+                          <option value="B">Turno B</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Horario */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Rol
+                        Horario Laboral
                       </label>
                       <select
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
-                        value={formData.rol || 'INSPECTOR'}
-                        onChange={(e) => {
-                          const nuevoRol = e.target.value as Rol;
-                          setFormData({
-                            ...formData,
-                            rol: nuevoRol,
-                            horario: horariosPorRol[nuevoRol][0],
-                          });
-                          if (formError) setFormError('');
-                        }}
+                        value={formData.horario || horariosPorRol[formData.rol || "INSPECTOR"][0]}
+                        onChange={(e) => setFormData({ ...formData, horario: e.target.value })}
                       >
-                        <option value="INSPECTOR">Inspector</option>
-                        <option value="SUPERVISOR">Supervisor</option>
-                        <option value="JEFE">Jefe</option>
+                        {horariosPorRol[formData.rol || "INSPECTOR"].map((horario) => (
+                          <option key={horario} value={horario}>
+                            {horario}
+                          </option>
+                        ))}
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Grupo de Turno
-                      </label>
-                      <select
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
-                        value={formData.grupoTurno || 'A'}
-                        onChange={(e) => {
-                          setFormData({ ...formData, grupoTurno: e.target.value as GrupoTurno });
-                          if (formError) setFormError('');
-                        }}
-                      >
-                        <option value="A">Turno A</option>
-                        <option value="B">Turno B</option>
-                      </select>
+
+                    {/* Tel / Fecha */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Teléfono
+                        </label>
+                        <input
+                          type="tel"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+                          value={formData.telefono || ''}
+                          onChange={(e) => {
+                            setFormData({ ...formData, telefono: e.target.value });
+                            if (formError) setFormError('');
+                          }}
+                          placeholder="Ej: +54 221 123-4567"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Fecha de Nacimiento
+                        </label>
+                        <input
+                          type="date"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
+                          value={formData.fechaNacimiento ? formData.fechaNacimiento.split('T')[0] : ''}
+                          onChange={(e) =>
+                            setFormData({ ...formData, fechaNacimiento: e.target.value })
+                          }
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Horario Laboral
-                    </label>
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
-                      value={formData.horario || horariosPorRol[formData.rol || "INSPECTOR"][0]}
-                      onChange={(e) => setFormData({ ...formData, horario: e.target.value })}
-                    >
-                      {horariosPorRol[formData.rol || "INSPECTOR"].map((horario) => (
-                        <option key={horario} value={horario}>
-                          {horario}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
+                    {/* Dirección */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Teléfono
+                        Dirección
                       </label>
                       <input
-                        type="tel"
+                        type="text"
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
-                        value={formData.telefono || ''}
+                        value={formData.direccion || ''}
                         onChange={(e) => {
-                          setFormData({ ...formData, telefono: e.target.value });
+                          setFormData({ ...formData, direccion: e.target.value });
                           if (formError) setFormError('');
                         }}
-                        placeholder="Ej: +54 221 123-4567"
+                        placeholder="Ej: Calle 123, Cipolletti"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Fecha de Nacimiento
-                      </label>
+
+                    {/* Activo */}
+                    <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                       <input
-                        type="date"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
-                        value={formData.fechaNacimiento ? formData.fechaNacimiento.split('T')[0] : ''}
-                        onChange={(e) => setFormData({ ...formData, fechaNacimiento: e.target.value })}
+                        type="checkbox"
+                        id="activo-checkbox"
+                        className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-500 focus:ring-blue-500 dark:focus:ring-blue-400 h-4 w-4 bg-white dark:bg-gray-700"
+                        checked={formData.activo !== undefined ? formData.activo : true}
+                        onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
                       />
+                      <label htmlFor="activo-checkbox" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+                        Cuenta activa
+                      </label>
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Dirección
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
-                      value={formData.direccion || ''}
-                      onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                      placeholder="Ej: Calle 123, Cipolletti"
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                    <input
-                      type="checkbox"
-                      id="activo-checkbox"
-                      className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-500 focus:ring-blue-500 dark:focus:ring-blue-400 h-4 w-4 bg-white dark:bg-gray-700"
-                      checked={formData.activo !== undefined ? formData.activo : true}
-                      onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
-                    />
-                    <label htmlFor="activo-checkbox" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
-                      Cuenta activa
-                    </label>
-                  </div>
-                </form>
+                  </form>
               )}
             </div>
 
-            <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+            <div className="p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
               <button
                 onClick={closeModal}
                 className="px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"

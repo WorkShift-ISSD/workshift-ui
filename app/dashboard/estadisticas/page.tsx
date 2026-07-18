@@ -164,6 +164,8 @@ export default function EstadisticasPage() {
     y: number;
   } | null>(null);
 
+  const [expandedEmpleado, setExpandedEmpleado] = useState<string | null>(null);
+
   const statsPersonal = useMemo(() => {
     if (!empleados) return null;
 
@@ -259,7 +261,10 @@ export default function EstadisticasPage() {
     // Total de faltas
     const totalFaltas = faltasFiltradas.length;
     const justificadas = faltasFiltradas.filter(f => f.justificada).length;
-    const injustificadas = totalFaltas - justificadas;
+    const injustificadas = faltasFiltradas.filter(f => !f.justificada).length;
+
+    const licenciasEnPeriodo = licencias?.length || 0;
+    const sancionesEnPeriodo = sanciones?.length || 0;
 
     // Faltas por empleado
     const faltasPorEmpleado = faltasFiltradas.reduce((acc, f) => {
@@ -488,8 +493,9 @@ export default function EstadisticasPage() {
 
     return {
       total: totalFaltas,
-      justificadas,
       injustificadas,
+      licenciasEnPeriodo,
+      sancionesEnPeriodo,
       faltasPorPeriodo: faltasPorPeriodo,
       faltasPorRol: Object.entries(faltasPorRol).map(([name, value]) => ({ name, value })),
       faltasPorTurno: Object.entries(faltasPorTurno).map(([name, value]) => ({ name, value })),
@@ -500,7 +506,7 @@ export default function EstadisticasPage() {
       tendenciaProyeccion: proyeccion?.tendencia || 'estable',
       tasaAusentismo: ((totalFaltas / (empleadosFiltrados.length * 30)) * 100).toFixed(2),
     };
-  }, [faltas, empleados, selectedPeriod]);
+  }, [faltas, empleados, selectedPeriod, sanciones, licencias]);
 
   // ============ ESTADÍSTICAS DE CAMBIOS ============
   const statsCambios = useMemo(() => {
@@ -557,7 +563,8 @@ export default function EstadisticasPage() {
 
     const porEstado = filtradas.reduce((acc, s) => { acc[s.estado] = (acc[s.estado] || 0) + 1; return acc; }, {} as Record<string, number>);
     const porEmpleado = filtradas.reduce((acc, s) => {
-      const n = s.empleado ? `${s.empleado.apellido}, ${s.empleado.nombre}` : s.empleado_id;
+      const emp = empleados?.find(e => e.id === s.empleado_id);
+      const n = emp ? `${emp.apellido}, ${emp.nombre}` : s.empleado_id;
       acc[n] = (acc[n] || 0) + 1; return acc;
     }, {} as Record<string, number>);
 
@@ -573,7 +580,7 @@ export default function EstadisticasPage() {
       ].filter(d => d.value > 0),
       topEmpleados: Object.entries(porEmpleado).map(([nombre, total]) => ({ nombre, total })).sort((a, b) => b.total - a.total).slice(0, 5),
     };
-  }, [sanciones, selectedPeriod]);
+  }, [sanciones, selectedPeriod, empleados]);
 
   // ============ ESTADÍSTICAS DE LICENCIAS ============
   const statsLicencias = useMemo(() => {
@@ -655,7 +662,7 @@ export default function EstadisticasPage() {
       </div>
 
       {/* Selector de Período - mobile inline */}
-      <div className="mb-6 flex justify-center md:hidden">
+      <div className="sticky top-16 z-30 mb-6 flex justify-center md:hidden">
         <div className="inline-flex gap-1 bg-white dark:bg-gray-800 p-1 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           {(['mes', 'trimestre', 'año'] as const).map((period) => (
             <button
@@ -899,18 +906,19 @@ export default function EstadisticasPage() {
         </h2>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Gráfico: Faltas Justificadas vs Injustificadas */}
+          {/* Gráfico: Análisis de Ausentismo */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Faltas Justificadas vs Injustificadas
+              Ausentismo: Licencias, Sanciones o Injustificadas
             </h3>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
                   data={[
-                    { name: 'Justificadas', value: statsFaltas.justificadas },
+                    { name: 'Licencias', value: statsFaltas.licenciasEnPeriodo },
+                    { name: 'Sanciones', value: statsFaltas.sancionesEnPeriodo },
                     { name: 'Injustificadas', value: statsFaltas.injustificadas },
-                  ]}
+                  ].filter(d => d.value > 0)}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -919,10 +927,12 @@ export default function EstadisticasPage() {
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  <Cell fill={COLORS.green} />
+                  <Cell fill={COLORS.blue} />
+                  <Cell fill={COLORS.orange} />
                   <Cell fill={COLORS.red} />
                 </Pie>
                 <Tooltip content={<CustomPieTooltip />} />
+                <Legend />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -1012,55 +1022,55 @@ export default function EstadisticasPage() {
               Comparativa de Períodos
             </h3>
             <ResponsiveContainer width="100%" height={300}>
-<BarChart
-  data={[
-    {
-      periodo: selectedPeriod === 'mes' ? 'Mes Anterior' :
-        selectedPeriod === 'trimestre' ? 'Trimestre Anterior' :
-          'Año Anterior',
-      cantidad: statsFaltas.comparativaPeriodos.anterior,
-      fill: COLORS.cyan
-    },
-    {
-      periodo: selectedPeriod === 'mes' ? 'Mes Actual' :
-        selectedPeriod === 'trimestre' ? 'Trimestre Actual' :
-          'Año Actual',
-      cantidad: statsFaltas.comparativaPeriodos.actual,
-      fill: statsFaltas.comparativaPeriodos.mejoro ? COLORS.green : COLORS.red
-    }
-  ]}
->
+              <BarChart
+                data={[
+                  {
+                    periodo: selectedPeriod === 'mes' ? 'Mes Anterior' :
+                      selectedPeriod === 'trimestre' ? 'Trimestre Anterior' :
+                        'Año Anterior',
+                    cantidad: statsFaltas.comparativaPeriodos.anterior,
+                    fill: COLORS.cyan
+                  },
+                  {
+                    periodo: selectedPeriod === 'mes' ? 'Mes Actual' :
+                      selectedPeriod === 'trimestre' ? 'Trimestre Actual' :
+                        'Año Actual',
+                    cantidad: statsFaltas.comparativaPeriodos.actual,
+                    fill: statsFaltas.comparativaPeriodos.mejoro ? COLORS.green : COLORS.red
+                  }
+                ]}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis dataKey="periodo" stroke="#9CA3AF" />
                 <YAxis stroke="#9CA3AF" />
-<Tooltip
-  content={({ active, payload, label }) => {
-    if (!active || !payload || !payload.length) return null;
+                <Tooltip
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload || !payload.length) return null;
 
-    const entry = payload[0];
-    const barColor = entry?.payload?.fill || '#10B981';
+                    const entry = payload[0];
+                    const barColor = entry?.payload?.fill || '#10B981';
 
-    return (
-      <div className="bg-gray-800 dark:bg-gray-700 border border-gray-600 dark:border-gray-500 rounded-lg shadow-lg px-3 py-2">
-        <p className="text-white font-semibold mb-1">{label}</p>
-        <p className="text-white">
-          <span style={{ color: barColor }}>Cantidad:</span>{' '}
-          <span className="font-bold">{entry.value}</span>
-        </p>
-      </div>
-    );
-  }}
-  cursor={{ fill: 'transparent' }}
-/>
-<Bar
-  dataKey="cantidad"
-  name="Cantidad"
-  radius={[8, 8, 0, 0]}
->
-  {[COLORS.cyan, statsFaltas.comparativaPeriodos.mejoro ? COLORS.green : COLORS.red].map((color, index) => (
-    <Cell key={`cell-${index}`} fill={color} />
-  ))}
-</Bar>
+                    return (
+                      <div className="bg-gray-800 dark:bg-gray-700 border border-gray-600 dark:border-gray-500 rounded-lg shadow-lg px-3 py-2">
+                        <p className="text-white font-semibold mb-1">{label}</p>
+                        <p className="text-white">
+                          <span style={{ color: barColor }}>Cantidad:</span>{' '}
+                          <span className="font-bold">{entry.value}</span>
+                        </p>
+                      </div>
+                    );
+                  }}
+                  cursor={{ fill: 'transparent' }}
+                />
+                <Bar
+                  dataKey="cantidad"
+                  name="Cantidad"
+                  radius={[8, 8, 0, 0]}
+                >
+                  {[COLORS.cyan, statsFaltas.comparativaPeriodos.mejoro ? COLORS.green : COLORS.red].map((color, index) => (
+                    <Cell key={`cell-${index}`} fill={color} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
             <div className="mt-4 flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -1184,22 +1194,16 @@ export default function EstadisticasPage() {
               <Award className="h-5 w-5 text-yellow-500" />
               Top 10 - Empleados con Mayor Ausentismo
             </h3>
-            <div className="overflow-x-auto relative">
+
+            {/* Vista Desktop: tabla con tooltip hover */}
+            <div className="hidden sm:block overflow-x-auto relative">
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">
-                      Posición
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">
-                      Empleado
-                    </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">
-                      Faltas
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">
-                      Nivel
-                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Posición</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Empleado</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Faltas</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Nivel</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -1207,30 +1211,18 @@ export default function EstadisticasPage() {
                     <tr
                       key={index}
                       className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-                      onMouseMove={(e) => {
-                        setHoveredEmpleado({
-                          empleadoId: item.empleadoId,
-                          x: e.clientX,
-                          y: e.clientY
-                        });
-                      }}
+                      onMouseMove={(e) => setHoveredEmpleado({ empleadoId: item.empleadoId, x: e.clientX, y: e.clientY })}
                       onMouseLeave={() => setHoveredEmpleado(null)}
                     >
-                      <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-white">
-                        #{index + 1}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                        {item.name}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-center font-semibold text-gray-900 dark:text-white">
-                        {item.value}
-                      </td>
+                      <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-white">#{index + 1}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.name}</td>
+                      <td className="px-4 py-3 text-sm text-center font-semibold text-gray-900 dark:text-white">{item.value}</td>
                       <td className="px-4 py-3 text-sm text-right">
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${item.value >= 5
-                          ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                          : item.value >= 3
-                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                            : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                            ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                            : item.value >= 3
+                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                              : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                           }`}>
                           {item.value >= 5 ? 'Crítico' : item.value >= 3 ? 'Moderado' : 'Bajo'}
                         </span>
@@ -1240,30 +1232,21 @@ export default function EstadisticasPage() {
                 </tbody>
               </table>
 
-              {/* Tooltip flotante que sigue al mouse */}
+              {/* Tooltip flotante desktop */}
               {hoveredEmpleado && statsFaltas.topFaltas.find(item => item.empleadoId === hoveredEmpleado.empleadoId) && (
                 <div
                   className="fixed z-50 pointer-events-none"
-                  style={{
-                    left: `${hoveredEmpleado.x + 15}px`,
-                    top: `${hoveredEmpleado.y + 15}px`
-                  }}
+                  style={{ left: `${hoveredEmpleado.x + 15}px`, top: `${hoveredEmpleado.y + 15}px` }}
                 >
                   <div className="bg-gray-900 dark:bg-gray-700 text-white px-4 py-3 rounded-lg shadow-xl border border-gray-700 dark:border-gray-600 min-w-[250px]">
-                    <p className="font-semibold text-sm mb-2 border-b border-gray-600 pb-2">
-                      Causas de las faltas:
-                    </p>
+                    <p className="font-semibold text-sm mb-2 border-b border-gray-600 pb-2">Causas de las faltas:</p>
                     <div className="space-y-1">
                       {statsFaltas.topFaltas
                         .find(item => item.empleadoId === hoveredEmpleado.empleadoId)
                         ?.causas.map((causa, idx) => (
                           <div key={idx} className="flex justify-between items-center text-xs">
-                            <span className="text-gray-300 truncate max-w-[180px]">
-                              {causa.motivo}
-                            </span>
-                            <span className="font-bold text-blue-400 ml-2">
-                              {causa.cantidad}
-                            </span>
+                            <span className="text-gray-300 truncate max-w-[180px]">{causa.motivo}</span>
+                            <span className="font-bold text-blue-400 ml-2">{causa.cantidad}</span>
                           </div>
                         ))}
                     </div>
@@ -1277,17 +1260,71 @@ export default function EstadisticasPage() {
                 </div>
               )}
             </div>
+
+            {/* Vista Mobile: cards con acordeón táctil */}
+            <div className="sm:hidden space-y-2">
+              {statsFaltas.topFaltas.map((item, index) => {
+                const isExpanded = expandedEmpleado === item.empleadoId;
+                const nivelClass = item.value >= 5
+                  ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                  : item.value >= 3
+                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                    : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+                const nivelLabel = item.value >= 5 ? 'Crítico' : item.value >= 3 ? 'Moderado' : 'Bajo';
+
+                return (
+                  <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <button
+                      className="w-full flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+                      onClick={() => setExpandedEmpleado(isExpanded ? null : item.empleadoId)}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-sm font-bold text-gray-400 dark:text-gray-500 shrink-0">#{index + 1}</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white truncate">{item.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 ml-2">
+                        <span className="text-sm font-bold text-gray-900 dark:text-white">{item.value}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${nivelClass}`}>{nivelLabel}</span>
+                        <svg
+                          className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                          fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </button>
+
+                    {isExpanded && (
+                      <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
+                          Causas de las faltas
+                        </p>
+                        <div className="space-y-1.5">
+                          {item.causas.map((causa, idx) => (
+                            <div key={idx} className="flex justify-between items-center text-sm">
+                              <span className="text-gray-700 dark:text-gray-300">{causa.motivo}</span>
+                              <span className="font-bold text-blue-600 dark:text-blue-400 ml-3 shrink-0">{causa.cantidad}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600 flex justify-between text-sm">
+                          <span className="text-gray-500 dark:text-gray-400">Total</span>
+                          <span className="font-bold text-gray-900 dark:text-white">{item.value}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
             <div className="mt-4 text-sm text-gray-500 dark:text-gray-400 italic">
-              💡 Pasa el mouse sobre cada empleado para ver el detalle de las causas
+              <span className="hidden sm:inline">💡 Pasa el mouse sobre cada empleado para ver el detalle de las causas</span>
+              <span className="sm:hidden">💡 Tocá cada empleado para ver el detalle de las causas</span>
             </div>
           </div>
-
-
-
-
         </div>
       </div>
-
 
       {/* SECCIÓN: CAMBIOS DE TURNO */}
       {statsCambios && (

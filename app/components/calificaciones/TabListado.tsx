@@ -107,37 +107,42 @@ export function TabListado() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[180px]">
+      <div className="flex flex-col gap-3">
+        {/* Búsqueda - ancho completo */}
+        <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
           <input
             type="text"
             placeholder="Buscar por nombre..."
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-9 pr-4 py-2 bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <select
-          value={turno}
-          onChange={(e) => setTurno(e.target.value as "" | "A" | "B")}
-          className="py-2 px-3 bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Todos los turnos</option>
-          <option value="A">Grupo A</option>
-          <option value="B">Grupo B</option>
-        </select>
-        <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)}
-          className="py-2 px-3 bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)}
-          className="py-2 px-3 bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <div className="flex gap-2 ml-auto">
-          <button onClick={exportToPDF} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 text-xs rounded-lg hover:border-gray-500 hover:text-gray-300 transition-all">
+        {/* Turno + PDF/Excel en la misma fila */}
+        <div className="flex gap-2 items-center">
+          <select
+            value={turno}
+            onChange={(e) => setTurno(e.target.value as "" | "A" | "B")}
+            className="flex-1 py-2 px-3 bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Todos los turnos</option>
+            <option value="A">Grupo A</option>
+            <option value="B">Grupo B</option>
+          </select>
+          <button onClick={exportToPDF} className="flex items-center gap-1.5 px-3 py-2 bg-gray-800 border border-gray-700 text-gray-400 text-xs rounded-lg hover:border-gray-500 hover:text-gray-300 transition-all">
             <Download size={13} /> PDF
           </button>
-          <button onClick={exportToExcel} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 border border-gray-700 text-gray-400 text-xs rounded-lg hover:border-gray-500 hover:text-gray-300 transition-all">
+          <button onClick={exportToExcel} className="flex items-center gap-1.5 px-3 py-2 bg-gray-800 border border-gray-700 text-gray-400 text-xs rounded-lg hover:border-gray-500 hover:text-gray-300 transition-all">
             <Download size={13} /> Excel
           </button>
+        </div>
+        {/* Fechas lado a lado */}
+        <div className="grid grid-cols-2 gap-2">
+          <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)}
+            className="w-full py-2 px-3 bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)}
+            className="w-full py-2 px-3 bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
       </div>
 
@@ -146,54 +151,90 @@ export function TabListado() {
       ) : (
         <div className="bg-gray-800 rounded-xl border border-gray-700/50 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-gray-700/50">
-                  {["Calificado", "Turno", "Calificador", "Fecha", "Promedio", "Cumplió", "Comentario"].map((h) => (
-                    <th key={h} className="text-left px-4 py-3 text-gray-500 font-medium">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
+              {/* TABLA - solo desktop */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-gray-700/50">
+                      {["Calificado", "Turno", "Calificador", "Fecha", "Promedio", "Cumplió", "Comentario"].map((h) => (
+                        <th key={h} className="text-left px-4 py-3 text-gray-500 font-medium">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {listadoFiltrado.length === 0 ? (
+                      <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-500">No hay calificaciones registradas.</td></tr>
+                    ) : listadoFiltrado.map((e) => (
+                      <tr key={e.id} className="border-b border-gray-700/30 hover:bg-gray-700/20 transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <AvatarCalif iniciales={getIniciales(e.calificado_nombre)} size="sm" />
+                            <span className="text-gray-200">{e.calificado_nombre}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded ${e.calificado_turno === 'A' ? 'bg-blue-900/40 text-blue-300' : 'bg-orange-900/40 text-orange-300'}`}>
+                            Grupo {e.calificado_turno}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-400">{e.calificador_nombre}</td>
+                        <td className="px-4 py-3 text-gray-400">{formatFecha(e.fecha)}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            <StarRow value={Math.round(Number(e.promedio))} size={11} />
+                            <span className="text-gray-300">{Number(e.promedio).toFixed(1)}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={e.cumplimiento ? 'text-green-400' : 'text-red-400'}>
+                            {e.cumplimiento ? '✓ Sí' : '✗ No'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 max-w-[160px] truncate">{e.comentario || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* CARDS - solo móvil */}
+              <div className="md:hidden divide-y divide-gray-700/30">
                 {listadoFiltrado.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center text-gray-500">
-                      No hay calificaciones registradas.
-                    </td>
-                  </tr>
+                  <p className="px-4 py-10 text-center text-gray-500 text-sm">No hay calificaciones registradas.</p>
                 ) : listadoFiltrado.map((e) => (
-                  <tr key={e.id} className="border-b border-gray-700/30 hover:bg-gray-700/20 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
+                  <div key={e.id} className="p-4">
+                    {/* Fila 1: Calificado + Turno */}
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <AvatarCalif iniciales={getIniciales(e.calificado_nombre)} size="sm" />
-                        <span className="text-gray-200">{e.calificado_nombre}</span>
+                        <span className="text-gray-200 font-medium text-sm truncate">{e.calificado_nombre}</span>
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded ${e.calificado_turno === 'A' ? 'bg-blue-900/40 text-blue-300' : 'bg-orange-900/40 text-orange-300'}`}>
+                      <span className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded ${e.calificado_turno === 'A' ? 'bg-blue-900/40 text-blue-300' : 'bg-orange-900/40 text-orange-300'}`}>
                         Grupo {e.calificado_turno}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-400">{e.calificador_nombre}</td>
-                    <td className="px-4 py-3 text-gray-400">{formatFecha(e.fecha)}</td>
-                    <td className="px-4 py-3">
+                    </div>
+                    {/* Fila 2: Calificador + Fecha */}
+                    <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
+                      <span>Por: <span className="text-gray-300">{e.calificador_nombre}</span></span>
+                      <span>{formatFecha(e.fecha)}</span>
+                    </div>
+                    {/* Fila 3: Promedio + Cumplió */}
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1">
-                        <StarRow value={Math.round(Number(e.promedio))} size={11} />
-                        <span className="text-gray-300">{Number(e.promedio).toFixed(1)}</span>
+                        <StarRow value={Math.round(Number(e.promedio))} size={12} />
+                        <span className="text-gray-300 text-xs">{Number(e.promedio).toFixed(1)}</span>
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={e.cumplimiento ? 'text-green-400' : 'text-red-400'}>
-                        {e.cumplimiento ? '✓ Sí' : '✗ No'}
+                      <span className={`text-xs font-medium ${e.cumplimiento ? 'text-green-400' : 'text-red-400'}`}>
+                        {e.cumplimiento ? '✓ Cumplió' : '✗ No cumplió'}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 max-w-[160px] truncate">
-                      {e.comentario || '—'}
-                    </td>
-                  </tr>
+                    </div>
+                    {/* Comentario */}
+                    {e.comentario && (
+                      <p className="text-xs text-gray-500 mt-2 truncate">{e.comentario}</p>
+                    )}
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
           </div>
           <div className="px-4 py-2 border-t border-gray-700/50 text-gray-600 text-xs">
             {listadoFiltrado.length} calificación{listadoFiltrado.length !== 1 ? 'es' : ''}
