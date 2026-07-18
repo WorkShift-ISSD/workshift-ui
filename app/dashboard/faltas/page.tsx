@@ -571,7 +571,7 @@ export default function FaltasPage() {
                     const esPresenteExplicito = presentesExplicitos.has(String(emp.id));
                     const turnoGanado = turnosEfectivosDelDia.find((t: any) => t.tipo === 'GANADO' && t.empleadoId === emp.id);
                     const horarioMostrar = turnoGanado ? turnoGanado.horarioEfectivo : emp.horario;
-                    const esFechaHoy =  true; selectedDate === today;
+                    const esFechaHoy = selectedDate === today;
 
                     return (
                       <tr
@@ -834,25 +834,25 @@ export default function FaltasPage() {
 
       {/* Paginación */}
       {empleadosDelDia.length > ITEMS_POR_PAGINA && (
-        <div className="flex items-center justify-between mt-4 px-2">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+        <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-between mt-4 px-2">
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-center sm:text-left">
             Mostrando {(paginaActual - 1) * ITEMS_POR_PAGINA + 1}–{Math.min(paginaActual * ITEMS_POR_PAGINA, empleadosDelDia.length)} de {empleadosDelDia.length} empleados
           </p>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
               disabled={paginaActual === 1}
-              className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
             >
               ← Anterior
             </button>
-            <span className="text-sm text-gray-600 dark:text-gray-400 min-w-[80px] text-center">
-              Página {paginaActual} de {Math.ceil(empleadosDelDia.length / ITEMS_POR_PAGINA)}
+            <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap text-center">
+              {paginaActual} / {Math.ceil(empleadosDelDia.length / ITEMS_POR_PAGINA)}
             </span>
             <button
               onClick={() => setPaginaActual(p => Math.min(Math.ceil(empleadosDelDia.length / ITEMS_POR_PAGINA), p + 1))}
               disabled={paginaActual === Math.ceil(empleadosDelDia.length / ITEMS_POR_PAGINA)}
-              className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
             >
               Siguiente →
             </button>

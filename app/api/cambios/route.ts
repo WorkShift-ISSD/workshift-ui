@@ -20,33 +20,62 @@ export async function GET() {
 
     const { payload } = await jwtVerify(token, SECRET_KEY);
     const userId = payload.id as string;
+    const rol = payload.rol as string;
 
-    const cambios = await sql`
-      SELECT 
-        te.id::text,
-        TO_CHAR(te.fecha, 'YYYY-MM-DD') as fecha,
-        te.horario_efectivo as turno,
-        te.estado,
-        te.tipo_cambio,
-        te.created_at,
-        json_build_object(
-          'id', us.id,
-          'nombre', us.nombre,
-          'apellido', us.apellido
-        ) as solicitante,
-        json_build_object(
-          'id', ui.id,
-          'nombre', ui.nombre,
-          'apellido', ui.apellido
-        ) as destinatario,
-        a.updated_at as fecha_aprobacion
-      FROM turnos_efectivos te
-      JOIN users us ON te.empleado_id = us.id
-      LEFT JOIN users ui ON te.empleado_intercambio_id = ui.id
-      LEFT JOIN autorizaciones a ON a.solicitud_id = te.autorizacion_id
-      WHERE te.empleado_id = ${userId}::uuid
-      ORDER BY te.fecha ASC;
-    `;
+    const esAdmin = rol === 'ADMINISTRADOR' || rol === 'JEFE';
+
+    const cambios = esAdmin
+      ? await sql`
+          SELECT
+            te.id::text,
+            TO_CHAR(te.fecha, 'YYYY-MM-DD') as fecha,
+            te.horario_efectivo as turno,
+            te.estado,
+            te.tipo_cambio,
+            te.created_at,
+            json_build_object(
+              'id', us.id,
+              'nombre', us.nombre,
+              'apellido', us.apellido
+            ) as solicitante,
+            json_build_object(
+              'id', ui.id,
+              'nombre', ui.nombre,
+              'apellido', ui.apellido
+            ) as destinatario,
+            a.updated_at as fecha_aprobacion
+          FROM turnos_efectivos te
+          JOIN users us ON te.empleado_id = us.id
+          LEFT JOIN users ui ON te.empleado_intercambio_id = ui.id
+          LEFT JOIN autorizaciones a ON a.solicitud_id = te.autorizacion_id
+          ORDER BY te.fecha ASC;
+        `
+      : await sql`
+          SELECT
+            te.id::text,
+            TO_CHAR(te.fecha, 'YYYY-MM-DD') as fecha,
+            te.horario_efectivo as turno,
+            te.estado,
+            te.tipo_cambio,
+            te.created_at,
+            json_build_object(
+              'id', us.id,
+              'nombre', us.nombre,
+              'apellido', us.apellido
+            ) as solicitante,
+            json_build_object(
+              'id', ui.id,
+              'nombre', ui.nombre,
+              'apellido', ui.apellido
+            ) as destinatario,
+            a.updated_at as fecha_aprobacion
+          FROM turnos_efectivos te
+          JOIN users us ON te.empleado_id = us.id
+          LEFT JOIN users ui ON te.empleado_intercambio_id = ui.id
+          LEFT JOIN autorizaciones a ON a.solicitud_id = te.autorizacion_id
+          WHERE te.empleado_id = ${userId}::uuid
+          ORDER BY te.fecha ASC;
+        `;
 
     return NextResponse.json(cambios.map(c => ({
       id: c.id,

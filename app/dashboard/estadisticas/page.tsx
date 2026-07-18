@@ -116,6 +116,35 @@ function calcularProyeccion(datos: { periodo: string; cantidad: number; esIncomp
     tendencia: pendiente > 0.5 ? 'creciente' : pendiente < -0.5 ? 'decreciente' : 'estable'
   };
 }
+// Leyenda personalizada para PieChart con porcentajes
+const PieLegend = ({ payload }: any) => {
+  const total = payload?.reduce((sum: number, e: any) => sum + (e.payload?.value ?? 0), 0) ?? 0;
+  return (
+    <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 mt-3">
+      {payload?.map((entry: any, i: number) => (
+        <div key={i} className="flex items-center gap-2 text-sm">
+          <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: entry.payload?.fill ?? entry.color }} />
+          <span className="text-gray-600 dark:text-gray-400">{entry.value}:</span>
+          <span className="font-semibold text-gray-900 dark:text-white">
+            {entry.payload?.value} ({total > 0 ? ((entry.payload?.value / total) * 100).toFixed(0) : 0}%)
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Tooltip informativo para gráficos
+const ChartInfo = ({ text }: { text: string }) => (
+  <div className="relative group inline-flex items-center ml-auto pl-3">
+    <span className="px-1.5 h-5 rounded bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 text-xs flex items-center justify-center cursor-help font-bold leading-none select-none">?</span>
+    <div className="absolute z-50 bottom-full right-0 mb-2 w-64 p-2.5 bg-gray-800 dark:bg-gray-700 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 text-left">
+      {text}
+      <div className="absolute top-full right-2 border-4 border-transparent border-t-gray-800 dark:border-t-gray-700" />
+    </div>
+  </div>
+);
+
 // Componente personalizado para tooltips de PieChart
 const CustomPieTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
@@ -157,6 +186,7 @@ export default function EstadisticasPage() {
   const { cambios, isLoading: loadingCambios } = useCambios();
 
   const [selectedPeriod, setSelectedPeriod] = useState<'mes' | 'trimestre' | 'año'>('mes');
+  const [selectedTab, setSelectedTab] = useState<'personal' | 'faltas' | 'cambios' | 'sanciones' | 'licencias'>('personal');
 
   const [hoveredEmpleado, setHoveredEmpleado] = useState<{
     empleadoId: string;
@@ -516,7 +546,7 @@ export default function EstadisticasPage() {
     const añoActual = now.getFullYear();
 
     const filtrados = cambios.filter(c => {
-      const fecha = new Date(c.createdAt);
+      const fecha = new Date((c.fecha || c.createdAt) + 'T00:00:00');
       if (selectedPeriod === 'mes') return fecha.getMonth() === mesActual && fecha.getFullYear() === añoActual;
       if (selectedPeriod === 'trimestre') return Math.floor(fecha.getMonth() / 3) === Math.floor(mesActual / 3) && fecha.getFullYear() === añoActual;
       return fecha.getFullYear() === añoActual;
@@ -744,8 +774,34 @@ export default function EstadisticasPage() {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
+        <nav className="flex gap-1 overflow-x-auto">
+          {([
+            { key: 'personal', label: 'Personal', icon: Users },
+            { key: 'faltas', label: 'Ausentismo', icon: Calendar },
+            { key: 'cambios', label: 'Cambios', icon: RefreshCw },
+            { key: 'sanciones', label: 'Sanciones', icon: Shield },
+            { key: 'licencias', label: 'Licencias', icon: FileText },
+          ] as const).map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setSelectedTab(key)}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                selectedTab === key
+                  ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
       {/* SECCIÓN: PERSONAL */}
-      <div className="mb-8">
+      {selectedTab === 'personal' && <div className="mb-8">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
           <Users className="h-6 w-6" />
           Distribución de Personal
@@ -754,8 +810,9 @@ export default function EstadisticasPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Gráfico: Personal por Rol */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
               Personal por Rol
+              <ChartInfo text="Distribución del personal activo entre Supervisores e Inspectores." />
             </h3>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
@@ -764,7 +821,6 @@ export default function EstadisticasPage() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : 0}%`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
@@ -774,14 +830,16 @@ export default function EstadisticasPage() {
                   ))}
                 </Pie>
                 <Tooltip content={<CustomPieTooltip />} />
+                <Legend content={<PieLegend />} />
               </PieChart>
             </ResponsiveContainer>
           </div>
 
           {/* Gráfico: Personal por Turno */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
               Personal por Turno
+              <ChartInfo text="Cantidad de empleados activos por grupo de turno (A o B)." />
             </h3>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={statsPersonal.porTurno} style={{ backgroundColor: 'transparent' }}>
@@ -796,8 +854,9 @@ export default function EstadisticasPage() {
 
           {/* Gráficos: Personal por Horario - Separados por Rol */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
               Inspectores - Distribución por Horario
+              <ChartInfo text="Cantidad de inspectores activos por franja horaria asignada." />
             </h3>
             {!statsPersonal?.porHorarioInspectores || statsPersonal.porHorarioInspectores.length === 0 ? (
               <div className="flex items-center justify-center h-[300px] text-gray-500 dark:text-gray-400">
@@ -847,8 +906,9 @@ export default function EstadisticasPage() {
 
           {/* Gráfico: Supervisores */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
               Supervisores - Distribución por Horario
+              <ChartInfo text="Cantidad de supervisores activos por franja horaria asignada." />
             </h3>
             {!statsPersonal?.porHorarioSupervisores || statsPersonal.porHorarioSupervisores.length === 0 ? (
               <div className="flex items-center justify-center h-[300px] text-gray-500 dark:text-gray-400">
@@ -896,10 +956,10 @@ export default function EstadisticasPage() {
             )}
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* SECCIÓN: FALTAS */}
-      <div className="mb-8">
+      {selectedTab === 'faltas' && <div className="mb-8">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
           <Calendar className="h-6 w-6" />
           Análisis de Ausentismo
@@ -908,8 +968,9 @@ export default function EstadisticasPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Gráfico: Análisis de Ausentismo */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
               Ausentismo: Licencias, Sanciones o Injustificadas
+              <ChartInfo text="Compara los tipos de ausencia en el período seleccionado: licencias aprobadas, sanciones activas y faltas injustificadas." />
             </h3>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
@@ -922,7 +983,6 @@ export default function EstadisticasPage() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name}: ${percent ? (percent * 100).toFixed(0) : 0}%`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
@@ -932,15 +992,16 @@ export default function EstadisticasPage() {
                   <Cell fill={COLORS.red} />
                 </Pie>
                 <Tooltip content={<CustomPieTooltip />} />
-                <Legend />
+                <Legend content={<PieLegend />} />
               </PieChart>
             </ResponsiveContainer>
           </div>
 
           {/* Gráfico: Faltas por Rol */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
               Faltas por Rol
+              <ChartInfo text="Cantidad de faltas registradas separadas por rol (Supervisor / Inspector) en el período seleccionado." />
             </h3>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={statsFaltas.faltasPorRol}>
@@ -955,8 +1016,9 @@ export default function EstadisticasPage() {
 
           {/* Gráfico: Faltas por Día de la Semana */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
               Faltas por Día de la Semana
+              <ChartInfo text="Distribución de las faltas según el día en que ocurrieron. Permite identificar qué días concentran más ausencias." />
             </h3>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={statsFaltas.faltasPorDiaSemana}>
@@ -981,8 +1043,9 @@ export default function EstadisticasPage() {
 
           {/* Gráfico: Tendencia de Faltas */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 lg:col-span-2">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
               Tendencia de Faltas ({selectedPeriod === 'mes' ? 'Últimos 30 días' : selectedPeriod === 'trimestre' ? 'Últimas 12 semanas' : 'Últimos 12 meses'})
+              <ChartInfo text="Evolución de las faltas a lo largo del período seleccionado. Permite ver si el ausentismo aumenta o disminuye con el tiempo." />
             </h3>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={statsFaltas.faltasPorPeriodo}>
@@ -1018,8 +1081,9 @@ export default function EstadisticasPage() {
 
           {/* Gráfico: Comparativa Período Actual vs Anterior */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
               Comparativa de Períodos
+              <ChartInfo text="Compara la cantidad de faltas del período actual contra el período anterior del mismo tipo (mes vs mes anterior, trimestre vs trimestre anterior, etc.)." />
             </h3>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart
@@ -1109,6 +1173,7 @@ export default function EstadisticasPage() {
                 }`}>
                 Tendencia {statsFaltas.tendenciaProyeccion}
               </span>
+              <ChartInfo text="Proyección estadística de faltas para los próximos períodos, calculada a partir de la tendencia reciente. Los puntos amarillos son valores proyectados." />
             </h3>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={statsFaltas.datosConProyeccion}>
@@ -1193,6 +1258,7 @@ export default function EstadisticasPage() {
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <Award className="h-5 w-5 text-yellow-500" />
               Top 10 - Empleados con Mayor Ausentismo
+              <ChartInfo text="Listado de los 10 empleados con más faltas en el período. En escritorio, pasá el mouse sobre cada fila para ver el detalle de causas." />
             </h3>
 
             {/* Vista Desktop: tabla con tooltip hover */}
@@ -1324,10 +1390,10 @@ export default function EstadisticasPage() {
             </div>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* SECCIÓN: CAMBIOS DE TURNO */}
-      {statsCambios && (
+      {selectedTab === 'cambios' && statsCambios && (
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
             <RefreshCw className="h-6 w-6" />
@@ -1355,22 +1421,23 @@ export default function EstadisticasPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Distribución por estado</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">Distribución por estado<ChartInfo text="Estado actual de las solicitudes de cambio de turno en el período seleccionado: aprobadas, rechazadas, pendientes y realizadas." /></h3>
               {statsCambios.pieEstado.length > 0 ? (
                 <ResponsiveContainer width="100%" height={280}>
                   <PieChart>
                     <Pie data={statsCambios.pieEstado} cx="50%" cy="50%" outerRadius={90} dataKey="value"
-                      label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+                      labelLine={false}>
                       {statsCambios.pieEstado.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
                     </Pie>
                     <Tooltip content={<CustomPieTooltip />} />
+                    <Legend content={<PieLegend />} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : <p className="text-center text-gray-400 py-16">Sin datos para el período</p>}
             </div>
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Top solicitantes</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">Top solicitantes<ChartInfo text="Empleados que más solicitudes de cambio de turno generaron en el período." /></h3>
               {statsCambios.topEmpleados.length > 0 ? (
                 <ResponsiveContainer width="100%" height={280}>
                   <BarChart data={statsCambios.topEmpleados} layout="vertical">
@@ -1388,7 +1455,7 @@ export default function EstadisticasPage() {
       )}
 
       {/* SECCIÓN: SANCIONES */}
-      {statsSanciones && (
+      {selectedTab === 'sanciones' && statsSanciones && (
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
             <Shield className="h-6 w-6" />
@@ -1412,22 +1479,23 @@ export default function EstadisticasPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Por estado</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">Por estado<ChartInfo text="Distribución de las sanciones según su estado: activas, finalizadas y anuladas." /></h3>
               {statsSanciones.pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={280}>
                   <PieChart>
                     <Pie data={statsSanciones.pieData} cx="50%" cy="50%" outerRadius={90} dataKey="value"
-                      label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+                      labelLine={false}>
                       {statsSanciones.pieData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
                     </Pie>
                     <Tooltip content={<CustomPieTooltip />} />
+                    <Legend content={<PieLegend />} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : <p className="text-center text-gray-400 py-16">Sin datos para el período</p>}
             </div>
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Top empleados sancionados</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">Top empleados sancionados<ChartInfo text="Empleados con mayor cantidad de sanciones registradas en el período seleccionado." /></h3>
               {statsSanciones.topEmpleados.length > 0 ? (
                 <ResponsiveContainer width="100%" height={280}>
                   <BarChart data={statsSanciones.topEmpleados} layout="vertical">
@@ -1445,7 +1513,7 @@ export default function EstadisticasPage() {
       )}
 
       {/* SECCIÓN: LICENCIAS */}
-      {statsLicencias && (
+      {selectedTab === 'licencias' && statsLicencias && (
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
             <FileText className="h-6 w-6" />
@@ -1473,7 +1541,7 @@ export default function EstadisticasPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Por tipo de licencia</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">Por tipo de licencia<ChartInfo text="Distribución de licencias según su tipo (ordinaria, médica, estudio, etc.) en el período seleccionado." /></h3>
               {statsLicencias.porTipo.length > 0 ? (
                 <ResponsiveContainer width="100%" height={280}>
                   <BarChart data={statsLicencias.porTipo} layout="vertical">
@@ -1488,15 +1556,16 @@ export default function EstadisticasPage() {
             </div>
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Por estado</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">Por estado<ChartInfo text="Estado de las licencias en el período: pendientes de aprobación, aprobadas, rechazadas o finalizadas." /></h3>
               {statsLicencias.pieEstado.length > 0 ? (
                 <ResponsiveContainer width="100%" height={280}>
                   <PieChart>
                     <Pie data={statsLicencias.pieEstado} cx="50%" cy="50%" outerRadius={90} dataKey="value"
-                      label={({ name, percent }) => (percent ?? 0) > 0.05 ? `${name} ${((percent ?? 0) * 100).toFixed(0)}%` : ''}>
+                      labelLine={false}>
                       {statsLicencias.pieEstado.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
                     </Pie>
                     <Tooltip content={<CustomPieTooltip />} />
+                    <Legend content={<PieLegend />} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : <p className="text-center text-gray-400 py-16">Sin datos para el período</p>}
