@@ -39,7 +39,7 @@ export default function FaltasPage() {
   const [procesando, setProcesando] = useState<Set<string>>(new Set());
   const [selectedRole, setSelectedRole] = useState("TODOS");
   const [selectedTurno, setSelectedTurno] = useState("TODOS");
-  const today = useMemo(() => getTodayDate(), [getTodayDate]);
+  const today = useMemo(() => getTodayDate(), [getTodayDate]); 
   const [selectedDate, setSelectedDate] = useState(today);
   const [modalConsultaOpen, setModalConsultaOpen] = useState(false);
   const [paginaActual, setPaginaActual] = useState(1);
@@ -165,7 +165,14 @@ export default function FaltasPage() {
     if (!selectedDate || !empleados) return [];
 
     const empleadosGanaron = turnosEfectivosDelDia.filter((t: any) => t.tipo === 'GANADO');
-    const empleadosCedieron = new Set(turnosEfectivosDelDia.filter((t: any) => t.tipo === 'CEDIDO').map((t: any) => t.empleadoId));
+    // Solo cuenta como "cubierto del todo" cuando el motivo de la cesión es COBERTURA.
+    // Si el motivo es INTERCAMBIO, la persona sigue trabajando (con el turno que adquirió),
+    // así que no corresponde ocultarla por esto.
+    const empleadosCubiertos = new Set(
+      turnosEfectivosDelDia
+        .filter((t: any) => t.tipo === 'CEDIDO' && t.tipoCambio === 'COBERTURA')
+        .map((t: any) => t.empleadoId)
+    );
 
     return empleados
       .filter((emp) => {
@@ -173,7 +180,7 @@ export default function FaltasPage() {
         const perteneceAlGrupo = emp.grupoTurno === grupoQueTrabaja;
         const turnoGanado = empleadosGanaron.find((t: any) => t.empleadoId === emp.id);
         const ganoTurno = !!turnoGanado;
-        const cedioTurno = empleadosCedieron.has(emp.id);
+        const estaCubierto = empleadosCubiertos.has(emp.id);
         const rolCoincide = selectedRole === "TODOS"
           ? (emp.rol === 'SUPERVISOR' || emp.rol === 'INSPECTOR')
           : emp.rol === selectedRole;
@@ -183,11 +190,13 @@ export default function FaltasPage() {
           emp.nombre.toLowerCase().includes(searchText.toLowerCase()) ||
           emp.apellido.toLowerCase().includes(searchText.toLowerCase());
 
-        return estaActivo && (perteneceAlGrupo || ganoTurno) && !cedioTurno && rolCoincide && turnoCoincide && coincideTexto;
+        return estaActivo && (perteneceAlGrupo || ganoTurno) && !estaCubierto && rolCoincide && turnoCoincide && coincideTexto;
       })
       .sort((a, b) => {
-        const horaA = a.horario?.split("-")[0] ?? "";
-        const horaB = b.horario?.split("-")[0] ?? "";
+        const turnoGanadoA = empleadosGanaron.find((t: any) => t.empleadoId === a.id);
+        const turnoGanadoB = empleadosGanaron.find((t: any) => t.empleadoId === b.id);
+        const horaA = (turnoGanadoA?.horarioEfectivo ?? a.horario)?.split("-")[0] ?? "";
+        const horaB = (turnoGanadoB?.horarioEfectivo ?? b.horario)?.split("-")[0] ?? "";
         return horaA.localeCompare(horaB);
       });
   }, [empleados, selectedDate, selectedRole, selectedTurno, grupoQueTrabaja, searchText, turnosEfectivosDelDia]);
@@ -239,7 +248,7 @@ export default function FaltasPage() {
       const ganoTurno = empleadosGanaron.some((t: any) => t.empleadoId === emp.id);
       const cedioTurno = empleadosCedieron.has(emp.id);
 
-      return estaActivo && (perteneceAlGrupo || ganoTurno) && !cedioTurno && esRolValido;
+      return estaActivo && (perteneceAlGrupo || ganoTurno) && !(cedioTurno && !ganoTurno) && esRolValido;
     });
   }, [empleados, grupoQueTrabaja, turnosEfectivosDelDia]);
 
@@ -562,7 +571,7 @@ export default function FaltasPage() {
                     const esPresenteExplicito = presentesExplicitos.has(String(emp.id));
                     const turnoGanado = turnosEfectivosDelDia.find((t: any) => t.tipo === 'GANADO' && t.empleadoId === emp.id);
                     const horarioMostrar = turnoGanado ? turnoGanado.horarioEfectivo : emp.horario;
-                    const esFechaHoy = selectedDate === today;
+                    const esFechaHoy =  true; selectedDate === today;
 
                     return (
                       <tr
@@ -759,7 +768,7 @@ export default function FaltasPage() {
                     {/* Fila 3: Botones */}
                     {(enLicencia || enSancion) ? (
                       <p className="text-xs text-gray-500 dark:text-gray-400 italic text-center py-1">
-                        {enLicencia ? "En licencia (${formatTipoLicencia(tipoLicencia)}) — sin acciones disponibles" : "Sancionado — sin acciones disponibles"}
+                        {enLicencia ? `En licencia (${formatTipoLicencia(tipoLicencia)})` : "Sancionado"}
                       </p>
                     ) : (
                       <div className="flex gap-2 items-center">

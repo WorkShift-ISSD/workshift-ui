@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
         JOIN users u ON te.empleado_intercambio_id = u.id
         WHERE te.fecha = ${fecha}::date
           AND te.estado = 'PENDIENTE'
-          AND te.empleado_intercambio_id IS NOT NULL;
+          AND te.empleado_intercambio_id IS NOT NULL
       `;
 
       return NextResponse.json([...ganadosConCadena, ...cedidos]);
