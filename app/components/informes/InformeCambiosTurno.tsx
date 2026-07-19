@@ -38,6 +38,13 @@ export function InformeCambiosTurno({ onDataChange }: { onDataChange?: (payload:
   const [empleadoId, setEmpleadoId] = useState('TODOS');
   const { empleados } = useEmpleados();
 
+  // Paginado de la tabla de detalle
+  const [pagina, setPagina] = useState(1);
+  const [porPagina, setPorPagina] = useState(10);
+  const tabla = data?.tabla ?? [];
+  const totalPaginas = Math.max(1, Math.ceil(tabla.length / porPagina));
+  const tablaPaginada = tabla.slice((pagina - 1) * porPagina, pagina * porPagina);
+
   const fetchData = () => {
     setIsLoading(true);
     const params = new URLSearchParams();
@@ -52,6 +59,8 @@ export function InformeCambiosTurno({ onDataChange }: { onDataChange?: (payload:
   };
 
   useEffect(() => { fetchData(); }, [desde, hasta, empleadoId]);
+
+  useEffect(() => { setPagina(1); }, [desde, hasta, empleadoId, data]);
 
     useEffect(() => {
     onDataChange?.({ data, filtros: { desde, hasta, empleadoId } });
@@ -265,9 +274,9 @@ export function InformeCambiosTurno({ onDataChange }: { onDataChange?: (payload:
                   </tr>
                 </thead>
                 <tbody>
-                  {data?.tabla?.length === 0 ? (
+                  {tabla.length === 0 ? (
                     <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-400">No hay solicitudes para el período seleccionado</td></tr>
-                  ) : data?.tabla?.map((t: any) => (
+                  ) : tablaPaginada.map((t: any) => (
                     <tr key={t.id} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
                       <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{t.empleado}</td>
                       <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{t.rol}</td>
@@ -292,6 +301,123 @@ export function InformeCambiosTurno({ onDataChange }: { onDataChange?: (payload:
                 </tbody>
               </table>
             </div>
+            {tabla.length > 0 && (
+              <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    Mostrar
+                  </span>
+                  <select
+                    value={porPagina}
+                    onChange={(e) => {
+                      setPorPagina(Number(e.target.value));
+                      setPagina(1);
+                    }}
+                    className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    por página
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    Mostrando{" "}
+                    {tabla.length === 0 ? 0 : (pagina - 1) * porPagina + 1}{" "}
+                    a{" "}
+                    {Math.min(pagina * porPagina, tabla.length)}{" "}
+                    de {tabla.length} registros
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  {/* Botón Primera Página */}
+                  <button
+                    onClick={() => setPagina(1)}
+                    disabled={pagina === 1}
+                    className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  >
+                    «
+                  </button>
+
+                  {/* Botón Anterior */}
+                  <button
+                    onClick={() => setPagina((prev) => Math.max(1, prev - 1))}
+                    disabled={pagina === 1}
+                    className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  >
+                    ‹
+                  </button>
+
+                  {/* Números de página - solo desktop */}
+                  <span className="text-sm text-gray-700 dark:text-gray-300 sm:hidden">
+                    {pagina} / {totalPaginas}
+                  </span>
+                  <span className="hidden sm:contents">
+                    {(() => {
+                      const pages = [];
+                      const maxPagesToShow = 5;
+                      let startPage = Math.max(
+                        1,
+                        pagina - Math.floor(maxPagesToShow / 2),
+                      );
+                      let endPage = Math.min(
+                        totalPaginas,
+                        startPage + maxPagesToShow - 1,
+                      );
+
+                      if (endPage - startPage < maxPagesToShow - 1) {
+                        startPage = Math.max(1, endPage - maxPagesToShow + 1);
+                      }
+
+                      for (let i = startPage; i <= endPage; i++) {
+                        pages.push(
+                          <button
+                            key={i}
+                            onClick={() => setPagina(i)}
+                            className={`px-3 py-1 rounded-lg text-sm ${
+                              pagina === i
+                                ? "bg-blue-600 text-white"
+                                : "border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
+                            }`}
+                          >
+                            {i}
+                          </button>,
+                        );
+                      }
+
+                      return pages;
+                    })()}
+                  </span>
+
+                  {/* Botón Siguiente */}
+                  <button
+                    onClick={() =>
+                      setPagina((prev) => Math.min(totalPaginas, prev + 1))
+                    }
+                    disabled={pagina === totalPaginas}
+                    className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  >
+                    ›
+                  </button>
+
+                  {/* Botón Última Página */}
+                  <button
+                    onClick={() => setPagina(totalPaginas)}
+                    disabled={pagina === totalPaginas}
+                    className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  >
+                    »
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}
