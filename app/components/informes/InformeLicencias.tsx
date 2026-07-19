@@ -20,9 +20,13 @@ import { LoadingSpinner } from '../LoadingSpinner';
 
 const TIPO_LABEL: Record<string, string> = {
   ORDINARIA: "Ordinaria",
-  ESPECIAL: "Especial",
+  COMPENSATORIO: "Compesatorio",
+  GREMIAL: "Gremial",
   MEDICA: "Médica",
   ESTUDIO: "Estudio",
+  PATERNIDAD: "Paternidad",
+  COMISION: "Comisión",
+  CURSO: "Curso",
   SIN_GOCE: "Sin goce",
 };
 

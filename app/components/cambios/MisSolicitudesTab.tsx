@@ -189,14 +189,6 @@ export function MisSolicitudesTab({
                 </div>
               );
             })}
-
-            <Paginacion pagina={paginaOfertas}
-              totalPaginas={totalPaginasOfertas}
-              porPagina={porPaginaOfertas}
-              onCambiarPagina={setPaginaOfertas}
-              onCambiarPorPagina={setPorPaginaOfertas}
-            />
-
           </div>
         </section>
       )}

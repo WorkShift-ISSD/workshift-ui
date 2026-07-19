@@ -230,7 +230,6 @@ export async function generarPDF(
     });
 
     if (y > pageHeight - 30) {
-      drawFooter(page, 1);
       doc.addPage();
       page++;
       drawHeader();
@@ -258,6 +257,11 @@ export async function generarPDF(
     y += rowH;
   });
 
-  drawFooter(page, page);
+  const totalPaginas = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPaginas; i++) {
+    doc.setPage(i);
+    drawFooter(i, totalPaginas);
+  }
+
   doc.save(config.filename);
 }
