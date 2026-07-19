@@ -109,35 +109,38 @@ export async function POST(
           cubridorGrupo = cubridor?.grupo_turno;
         }
 
-        // Cobertura:   empleado_id = destinatario (GANA/cubre), intercambio_id = solicitante (CEDE/es cubierto)
-        // Intercambio: empleado_id = solicitante (GANA su nuevo día), intercambio_id = destinatario (CEDE ese día)
-        await sql`
-  INSERT INTO turnos_efectivos (
-    id, empleado_id, fecha, horario_original, horario_efectivo,
-    grupo_original, grupo_efectivo, tipo_cambio, autorizacion_id,
-    empleado_intercambio_id, estado, created_at
-  ) VALUES (
-    gen_random_uuid(),
-    ${esCobertura ? solicitud.destinatario_id : solicitud.solicitante_id}::uuid,
-    ${esCobertura ? solicitud.fecha_solicitante : solicitud.fecha_destinatario}::date,
-    ${esCobertura ? (cubridorHorario || solicitud.horario_solicitante) : solicitud.horario_solicitante},
-    ${esCobertura ? solicitud.horario_solicitante : (solicitud.horario_destinatario || solicitud.horario_solicitante)},
-    ${esCobertura ? (cubridorGrupo || solicitud.grupo_solicitante) : solicitud.grupo_solicitante},
-    ${esCobertura ? solicitud.grupo_solicitante : (solicitud.grupo_destinatario || solicitud.grupo_solicitante)},
-    ${esCobertura ? 'COBERTURA' : 'INTERCAMBIO'},
-    ${id}::uuid,
-    ${esCobertura ? solicitud.solicitante_id : solicitud.destinatario_id}::uuid,
-    'PENDIENTE',
-    NOW()
-  )
-  ON CONFLICT (empleado_id, fecha) DO UPDATE SET
-    horario_efectivo = EXCLUDED.horario_efectivo,
-    grupo_efectivo = EXCLUDED.grupo_efectivo,
-    empleado_intercambio_id = EXCLUDED.empleado_intercambio_id,
-    tipo_cambio = EXCLUDED.tipo_cambio,
-    autorizacion_id = EXCLUDED.autorizacion_id,
-    updated_at = NOW();
-`;
+        // Cobertura: empleado_id = destinatario (GANA/cubre), intercambio_id = solicitante (CEDE/es cubierto)
+        // Para intercambio esta fila queda a cargo de los dos INSERT explícitos de abajo
+        // (insertarla también acá duplicaba exactamente la fila del "solicitante gana el
+        // día del destinatario", disparando el ON CONFLICT en cada aprobación de intercambio).
+        if (esCobertura) {
+          await sql`
+    INSERT INTO turnos_efectivos (
+      id, empleado_id, fecha, horario_original, horario_efectivo,
+      grupo_original, grupo_efectivo, tipo_cambio, autorizacion_id,
+      empleado_intercambio_id, estado, created_at
+    ) VALUES (
+      gen_random_uuid(),
+      ${solicitud.destinatario_id}::uuid,
+      ${solicitud.fecha_solicitante}::date,
+      ${cubridorHorario || solicitud.horario_solicitante},
+      ${solicitud.horario_solicitante},
+      ${cubridorGrupo || solicitud.grupo_solicitante},
+      ${solicitud.grupo_solicitante},
+      'COBERTURA',
+      ${id}::uuid,
+      ${solicitud.solicitante_id}::uuid,
+      'PENDIENTE',
+      NOW()
+    )
+    ON CONFLICT (empleado_id, fecha) DO UPDATE SET
+      horario_efectivo = EXCLUDED.horario_efectivo,
+      grupo_efectivo = EXCLUDED.grupo_efectivo,
+      empleado_intercambio_id = EXCLUDED.empleado_intercambio_id,
+      tipo_cambio = EXCLUDED.tipo_cambio,
+      autorizacion_id = EXCLUDED.autorizacion_id;
+  `;
+        }
 
         // Segundo turno — solo para intercambio (destinatario gana el día del solicitante)
         if (!esCobertura) {
@@ -166,8 +169,7 @@ export async function POST(
               grupo_efectivo = EXCLUDED.grupo_efectivo,
               empleado_intercambio_id = EXCLUDED.empleado_intercambio_id,
               tipo_cambio = EXCLUDED.tipo_cambio,
-              autorizacion_id = EXCLUDED.autorizacion_id,
-              updated_at = NOW();
+              autorizacion_id = EXCLUDED.autorizacion_id;
           `;
 
           // Destinatario gana el día del solicitante
@@ -195,8 +197,7 @@ export async function POST(
               grupo_efectivo = EXCLUDED.grupo_efectivo,
               empleado_intercambio_id = EXCLUDED.empleado_intercambio_id,
               tipo_cambio = EXCLUDED.tipo_cambio,
-              autorizacion_id = EXCLUDED.autorizacion_id,
-              updated_at = NOW();
+              autorizacion_id = EXCLUDED.autorizacion_id;
           `;
         }
       }
@@ -213,14 +214,22 @@ export async function POST(
     }
 
     // Notificar al solicitante vía Pusher
-    const solicitanteId = autorizacion.solicitud_id
-      ? (await sql`SELECT solicitante_id FROM solicitudes_directas WHERE id = ${autorizacion.solicitud_id}::uuid`)[0]?.solicitante_id
-      : autorizacion.oferta_id
-        ? (await sql`SELECT ofertante_id FROM ofertas WHERE id = ${autorizacion.oferta_id}::uuid`)[0]?.ofertante_id
-        : null;
+    // ⚠️ Todo lo de arriba (autorización, solicitud/licencia, turnos_efectivos) YA se
+    // guardó en la base de datos. A partir de acá, cualquier error (credenciales de
+    // Pusher mal configuradas, columna inexistente, etc.) NO debe devolver 500,
+    // porque la aprobación en sí fue exitosa. Por eso queda en su propio try/catch.
+    try {
+      const solicitanteId = autorizacion.solicitud_id
+        ? (await sql`SELECT solicitante_id FROM solicitudes_directas WHERE id = ${autorizacion.solicitud_id}::uuid`)[0]?.solicitante_id
+        : autorizacion.oferta_id
+          ? (await sql`SELECT ofertante_id FROM ofertas WHERE id = ${autorizacion.oferta_id}::uuid`)[0]?.ofertante_id
+          : null;
 
-    if (solicitanteId) {
-      await pusher.trigger(`usuario-${solicitanteId}`, 'autorizacion-actualizada', { autorizacionId: id });
+      if (solicitanteId) {
+        await pusher.trigger(`usuario-${solicitanteId}`, 'autorizacion-actualizada', { autorizacionId: id });
+      }
+    } catch (notifError) {
+      console.error('⚠️ La autorización se aprobó correctamente, pero falló la notificación por Pusher:', notifError);
     }
 
     return NextResponse.json({

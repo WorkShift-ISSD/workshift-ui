@@ -551,7 +551,7 @@ export function ModalSolicitudDirecta({ isOpen, onClose, onSubmit, solicitudEdit
             >
               {submitting ? (
                 <>
-                  <LoadingSpinner size="default"  />
+                  <LoadingSpinner size="xs" padding="p-1" />
                   {esEdicion ? 'Actualizando...' : 'Enviando...'}
                 </>
               ) : esEdicion ? (

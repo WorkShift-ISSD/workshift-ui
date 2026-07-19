@@ -581,7 +581,7 @@ export function ModalAutorizacion({
               >
                 {loading ? (
                   <>
-                    <LoadingSpinner size="default"  />
+                    <LoadingSpinner size="xs" padding="p-1" />
                     Aprobando...
                   </>
                 ) : (
