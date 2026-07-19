@@ -15,7 +15,6 @@ import { useLicencias } from "@/hooks/useLicencias";
 import { useEmpleados } from "@/hooks/useEmpleados";
 import { CustomDatePicker } from "@/app/components/CustomDatePicker";
 import { generarExcel, generarPDF } from "@/app/lib/exportUtils";
-import { Paginacion } from "@/app/components/cambios/Paginacion";
 import { LoadingSpinner } from '../LoadingSpinner';
 
 const TIPO_LABEL: Record<string, string> = {
@@ -574,16 +573,123 @@ const porTipo = useMemo(() => {
         </div>
       </div>
 
-      <Paginacion
-        pagina={pagina}
-        totalPaginas={totalPaginas}
-        porPagina={porPagina}
-        onCambiarPagina={setPagina}
-        onCambiarPorPagina={(n) => {
-          setPorPagina(n);
-          setPagina(1);
-        }}
-      />
+      {filtradas.length > 0 && (
+        <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              Mostrar
+            </span>
+            <select
+              value={porPagina}
+              onChange={(e) => {
+                setPorPagina(Number(e.target.value));
+                setPagina(1);
+              }}
+              className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              por página
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              Mostrando{" "}
+              {filtradas.length === 0 ? 0 : (pagina - 1) * porPagina + 1}{" "}
+              a{" "}
+              {Math.min(pagina * porPagina, filtradas.length)}{" "}
+              de {filtradas.length} registros
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            {/* Botón Primera Página */}
+            <button
+              onClick={() => setPagina(1)}
+              disabled={pagina === 1}
+              className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            >
+              «
+            </button>
+
+            {/* Botón Anterior */}
+            <button
+              onClick={() => setPagina((prev) => Math.max(1, prev - 1))}
+              disabled={pagina === 1}
+              className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            >
+              ‹
+            </button>
+
+            {/* Números de página - solo desktop */}
+            <span className="text-sm text-gray-700 dark:text-gray-300 sm:hidden">
+              {pagina} / {totalPaginas}
+            </span>
+            <span className="hidden sm:contents">
+              {(() => {
+                const pages = [];
+                const maxPagesToShow = 5;
+                let startPage = Math.max(
+                  1,
+                  pagina - Math.floor(maxPagesToShow / 2),
+                );
+                let endPage = Math.min(
+                  totalPaginas,
+                  startPage + maxPagesToShow - 1,
+                );
+
+                if (endPage - startPage < maxPagesToShow - 1) {
+                  startPage = Math.max(1, endPage - maxPagesToShow + 1);
+                }
+
+                for (let i = startPage; i <= endPage; i++) {
+                  pages.push(
+                    <button
+                      key={i}
+                      onClick={() => setPagina(i)}
+                      className={`px-3 py-1 rounded-lg text-sm ${
+                        pagina === i
+                          ? "bg-blue-600 text-white"
+                          : "border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600"
+                      }`}
+                    >
+                      {i}
+                    </button>,
+                  );
+                }
+
+                return pages;
+              })()}
+            </span>
+
+            {/* Botón Siguiente */}
+            <button
+              onClick={() =>
+                setPagina((prev) => Math.min(totalPaginas, prev + 1))
+              }
+              disabled={pagina === totalPaginas}
+              className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            >
+              ›
+            </button>
+
+            {/* Botón Última Página */}
+            <button
+              onClick={() => setPagina(totalPaginas)}
+              disabled={pagina === totalPaginas}
+              className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            >
+              »
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
