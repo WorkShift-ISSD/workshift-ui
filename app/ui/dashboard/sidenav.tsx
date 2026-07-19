@@ -153,11 +153,11 @@ export default function SideNav() {
 
 
         {/* MENÚ PRINCIPAL */}
-        <nav className="flex flex-col flex-grow dark:text-gray-400 px-2 md:px-4 py-4 space-y-2">
+        <nav className="flex flex-col flex-grow min-h-0 overflow-y-auto dark:text-gray-400 px-2 md:px-4 py-4 space-y-2">
           <NavLinks onLinkClick={() => setOpen(false)} />
         </nav>
         {/* BOTÓN DE LOGOUT */}
-        <div className="border-t border-gray-200 dark:border-gray-700 px-2 md:px-4 py-3">
+        <div className="shrink-0 border-t border-gray-200 dark:border-gray-700 px-2 md:px-4 py-3">
           <LogoutButton />
         </div>
       </aside>
