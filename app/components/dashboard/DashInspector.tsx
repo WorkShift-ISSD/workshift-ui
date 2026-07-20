@@ -673,7 +673,7 @@ export default function DashboardHome() {
 
           {/* ── Solicitudes stats ── */}
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Solicitudes</h2>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Mis Solicitudes de este mes</h2>
             <div className="grid grid-cols-3 gap-3">
               <div className="flex flex-col items-center gap-1 p-3 rounded-xl bg-green-500/10 border border-green-500/20">
                 <span className="text-2xl font-bold text-green-500 dark:text-green-400">{statsReales.aprobados}</span>
