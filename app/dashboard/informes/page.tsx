@@ -53,6 +53,7 @@ import { InformeLicencias } from "@/app/components/informes/InformeLicencias";
 import { useAuth } from "@/app/context/AuthContext";
 import { useLicencias } from "@/hooks/useLicencias";
 import { useSanciones } from "@/hooks/useSanciones";
+import { useCambios } from '@/hooks/useCambios';
 
 type Rol = "SUPERVISOR" | "INSPECTOR";
 type GrupoTurno = "A" | "B";
@@ -65,6 +66,47 @@ type TipoInforme =
   | "sanciones"
   | "licencias";
 
+const PieLegend = ({ payload }: any) => {
+  const total = payload?.reduce((sum: number, e: any) => sum + (e.payload?.value ?? 0), 0) ?? 0;
+  return (
+    <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 mt-3">
+      {payload?.map((entry: any, i: number) => (
+        <div key={i} className="flex items-center gap-2 text-sm">
+          <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: entry.payload?.fill ?? entry.color }} />
+          <span className="text-gray-600 dark:text-gray-400">{entry.value}:</span>
+          <span className="font-semibold text-gray-900 dark:text-white">
+            {entry.payload?.value} ({total > 0 ? ((entry.payload?.value / total) * 100).toFixed(0) : 0}%)
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const CustomPieTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0];
+    const color = data.payload.fill || data.fill;
+    return (
+      <div className="bg-gray-800 dark:bg-gray-700 border border-gray-600 dark:border-gray-500 rounded-lg shadow-lg px-3 py-2">
+        <p className="text-white font-semibold">{data.name}</p>
+        <p className="font-bold" style={{ color: color }}>{data.value}</p>
+      </div>
+    );
+  }
+  return null;
+};
+
+const ChartInfo = ({ text }: { text: string }) => (
+  <div className="relative group inline-flex items-center ml-auto pl-3">
+    <span className="px-1.5 h-5 rounded bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 text-xs flex items-center justify-center cursor-help font-bold leading-none select-none">?</span>
+    <div className="absolute z-50 bottom-full right-0 mb-2 w-64 p-2.5 bg-gray-800 dark:bg-gray-700 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 text-left">
+      {text}
+      <div className="absolute top-full right-2 border-4 border-transparent border-t-gray-800 dark:border-t-gray-700" />
+    </div>
+  </div>
+);
+
 export default function InformesPage() {
   const { user } = useAuth();
   const esJefe = user?.rol === "JEFE" || user?.rol === "ADMINISTRADOR";
@@ -72,6 +114,7 @@ export default function InformesPage() {
   const { faltas, isLoading: loadingFaltas } = useTodasLasFaltas();
   const { licencias } = useLicencias();
   const { sanciones } = useSanciones();
+  const { cambios } = useCambios();
 
   // Data recibida desde InformeCambiosTurno para el export general
   const [cambiosTurnoExport, setCambiosTurnoExport] = useState<{
@@ -185,6 +228,7 @@ const [sancionesExport, setSancionesExport] = useState<{
     red: "#EF4444",
     purple: "#8B5CF6",
     orange: "#F97316",
+    teal: '#06B6D4',
   };
 
   const horariosPorRol: Record<Rol, string[]> = {
@@ -675,13 +719,6 @@ const formatFechaCorta = (f: string) =>
       );
     });
 
-    const licenciasA =
-      licencias?.filter((l) => empleadosIdsA.includes(l.empleado_id))
-        .length ?? 0;
-    const sancionesA =
-      sanciones?.filter((s) => empleadosIdsA.includes(s.empleado_id))
-        .length ?? 0;
-
     // Estadísticas Grupo B (filtros de comparación)
     const empleadosIdsB = empleadosComparacion.map((e) => e.id);
     const faltasB = faltasComparacion.filter((f) =>
@@ -697,22 +734,48 @@ const formatFechaCorta = (f: string) =>
       );
     });
 
-    const licenciasB =
-      licencias?.filter((l) => empleadosIdsB.includes(l.empleado_id))
-        .length ?? 0;
-    const sancionesB =
-      sanciones?.filter((s) => empleadosIdsB.includes(s.empleado_id))
-        .length ?? 0;
+    const licenciasA = licencias?.filter(l =>
+      empleadosIdsA.includes(l.empleado_id) &&
+      l.fecha_desde <= fechaFin && l.fecha_hasta >= fechaInicio
+    ).length ?? 0;
+
+    const licenciasB = licencias?.filter(l =>
+      empleadosIdsB.includes(l.empleado_id) &&
+      l.fecha_desde <= fechaFinComparacion && l.fecha_hasta >= fechaInicioComparacion
+    ).length ?? 0;
+
+    const sancionesA = sanciones?.filter(s =>
+      empleadosIdsA.includes(s.empleado_id) &&
+      s.fecha_desde <= fechaFin && s.fecha_hasta >= fechaInicio
+    ).length ?? 0;
+
+    const sancionesB = sanciones?.filter(s =>
+      empleadosIdsB.includes(s.empleado_id) &&
+      s.fecha_desde <= fechaFinComparacion && s.fecha_hasta >= fechaInicioComparacion
+    ).length ?? 0;
+
+    const cambiosA = cambios?.filter(c =>
+      (empleadosIdsA.includes(c.solicitante.id) || empleadosIdsA.includes(c.destinatario?.id ?? '')) &&
+      c.fecha >= fechaInicio && c.fecha <= fechaFin &&
+      ['APROBADO', 'REALIZADO'].includes(c.estado)
+    ).length ?? 0;
+
+    const cambiosB = cambios?.filter(c =>
+      (empleadosIdsB.includes(c.solicitante.id) || empleadosIdsB.includes(c.destinatario?.id ?? '')) &&
+      c.fecha >= fechaInicioComparacion && c.fecha <= fechaFinComparacion &&
+      ['APROBADO', 'REALIZADO'].includes(c.estado)
+    ).length ?? 0;
 
     return {
-grupoA: {
-        nombre: "Grupo 1",
+      grupoA: {
+        nombre: "Referencia",
         empleados: empleadosFiltrados.length,
         totalFaltas: faltasA.length,
         justificadas: faltasA.filter((f) => f.justificada).length,
         injustificadas: faltasA.filter((f) => !f.justificada).length,
         licencias: licenciasA,
         sanciones: sancionesA,
+        cambios: cambiosA,
         diasDebioTrabajar: diasDebieroTrabajarA,
         tasaAusentismo:
           diasDebieroTrabajarA > 0
@@ -723,14 +786,15 @@ grupoA: {
             ? (faltasA.length / empleadosFiltrados.length).toFixed(2)
             : "0.00",
       },
-grupoB: {
-        nombre: "Grupo 2",
+      grupoB: {
+        nombre: "Comparación",
         empleados: empleadosComparacion.length,
         totalFaltas: faltasB.length,
         justificadas: faltasB.filter((f) => f.justificada).length,
         injustificadas: faltasB.filter((f) => !f.justificada).length,
         licencias: licenciasB,
         sanciones: sancionesB,
+        cambios: cambiosB,
         diasDebioTrabajar: diasDebieroTrabajarB,
         tasaAusentismo:
           diasDebieroTrabajarB > 0
@@ -754,6 +818,7 @@ grupoB: {
     fechaFinComparacion,
     licencias,
     sanciones,
+    cambios,
   ]);
 
   if (loadingEmpleados || loadingFaltas) {
@@ -1265,8 +1330,9 @@ fechaFin={
           {/* Tabla de Asistencia */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
                 Registro de Asistencia por Empleado
+                <ChartInfo text="Registro diario de asistencia de cada empleado en el período seleccionado." />
               </h3>
             </div>
             <div className="hidden md:block overflow-x-auto">
@@ -1554,8 +1620,9 @@ fechaFin={
 
           {/* Gráfico Top 10 */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
               Top 10 - Mayor Asistencia
+              <ChartInfo text="Los 10 empleados con mayor cantidad de días de asistencia en el período seleccionado." />
             </h3>
             <ResponsiveContainer width="100%" height={400}>
               <BarChart data={datosAsistencia.slice(0, 10)}>
@@ -1608,8 +1675,9 @@ fechaFin={
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Ausentismo por Rol */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
               Ausentismo por Rol
+              <ChartInfo text="Cantidad de faltas registradas por rol (Supervisor / Inspector) en el período seleccionado." />
             </h3>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={datosAusentismo.porRol}>
@@ -1649,8 +1717,9 @@ fechaFin={
 
           {/* Ausentismo por Turno */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
               Ausentismo por Grupo Turno
+              <ChartInfo text="Distribución de ausencias entre los grupos de turno A y B en el período seleccionado." />
             </h3>
             <h1 className="font-medium text-gray-900 dark:text-white">
               Promedio de faltas por persona
@@ -1666,7 +1735,6 @@ fechaFin={
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, promedio }: any) => `${name} ${promedio}`}
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
@@ -1674,34 +1742,8 @@ fechaFin={
                   <Cell fill={COLORS.green} />
                   <Cell fill={COLORS.blue} />
                 </Pie>
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (!active || !payload || !payload.length) return null;
-
-                    const data = payload[0];
-
-                    // Colores según el grupo
-                    const colorMap: Record<string, string> = {
-                      A: "#3B82F6", // Azul para grupo A
-                      B: "#10B981", // Verde para grupo B
-                    };
-
-                    const color = colorMap[data.name ?? ""] ?? "#6B7280";
-
-                    return (
-                      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-lg">
-                        <p className="m-0">
-                          <span style={{ color: color }} className="font-bold">
-                            {data.name}:
-                          </span>{" "}
-                          <span className="text-gray-900 dark:text-white font-bold">
-                            {data.value}
-                          </span>
-                        </p>
-                      </div>
-                    );
-                  }}
-                />
+                <Tooltip content={<CustomPieTooltip />} />
+                <Legend content={<PieLegend />} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -1815,20 +1857,21 @@ fechaFin={
               <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
                       Comparación Avanzada
+                      <ChartInfo text="Compara métricas de asistencia entre dos empleados seleccionados en el período." />
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      Compara dos grupos diferentes con filtros independientes
+                      <span className="font-semibold text-blue-600 dark:text-blue-400">Grupo 1</span> usa los filtros de la parte superior.{' '}
+                      <span className="font-semibold text-green-600 dark:text-green-400">Grupo 2</span> usa filtros propios. Podés comparar el mismo grupo en distintos períodos, distintos grupos en el mismo período, o cualquier combinación.
                     </p>
                   </div>
                   <button
                     onClick={() => setCompararActivo(!compararActivo)}
-                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                      compararActivo
-                        ? "bg-blue-600 text-white hover:bg-blue-700"
-                        : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
-                    }`}
+                    className={`ml-6 px-4 py-2 rounded-lg font-semibold transition-colors flex-shrink-0 ${compararActivo
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                      }`}
                   >
                     {compararActivo ? "Desactivar" : "Activar"} Comparación
                   </button>
@@ -1993,7 +2036,7 @@ fechaFin={
               {compararActivo && estadisticasComparativas && (
                 <div className="space-y-6">
                   {/* Cards comparativos */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                     {/* Empleados */}
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
@@ -2001,17 +2044,13 @@ fechaFin={
                       </p>
                       <div className="flex justify-between items-center">
                         <div>
-                          <span className="text-xs text-blue-600 dark:text-blue-400">
-                            1:
-                          </span>
+                          <span className="text-xs text-blue-600 dark:text-blue-400">Ref.:</span>
                           <span className="text-lg font-bold text-gray-900 dark:text-white ml-1">
                             {estadisticasComparativas.grupoA.empleados}
                           </span>
                         </div>
                         <div>
-                          <span className="text-xs text-green-600 dark:text-green-400">
-                            2:
-                          </span>
+                          <span className="text-xs text-green-600 dark:text-green-400">Comp.:</span>
                           <span className="text-lg font-bold text-gray-900 dark:text-white ml-1">
                             {estadisticasComparativas.grupoB.empleados}
                           </span>
@@ -2026,17 +2065,13 @@ fechaFin={
                       </p>
                       <div className="flex justify-between items-center">
                         <div>
-                          <span className="text-xs text-blue-600 dark:text-blue-400">
-                            1:
-                          </span>
+                          <span className="text-xs text-blue-600 dark:text-blue-400">Ref.:</span>
                           <span className="text-lg font-bold text-gray-900 dark:text-white ml-1">
                             {estadisticasComparativas.grupoA.totalFaltas}
                           </span>
                         </div>
                         <div>
-                          <span className="text-xs text-green-600 dark:text-green-400">
-                            2:
-                          </span>
+                          <span className="text-xs text-green-600 dark:text-green-400">Comp.:</span>
                           <span className="text-lg font-bold text-gray-900 dark:text-white ml-1">
                             {estadisticasComparativas.grupoB.totalFaltas}
                           </span>
@@ -2051,17 +2086,13 @@ fechaFin={
                       </p>
                       <div className="flex justify-between items-center">
                         <div>
-                          <span className="text-xs text-blue-600 dark:text-blue-400">
-                            1:
-                          </span>
+                          <span className="text-xs text-blue-600 dark:text-blue-400">Ref.:</span>
                           <span className="text-lg font-bold text-gray-900 dark:text-white ml-1">
                             {estadisticasComparativas.grupoA.promedioFaltas}
                           </span>
                         </div>
                         <div>
-                          <span className="text-xs text-green-600 dark:text-green-400">
-                            2:
-                          </span>
+                          <span className="text-xs text-green-600 dark:text-green-400">2:</span>
                           <span className="text-lg font-bold text-gray-900 dark:text-white ml-1">
                             {estadisticasComparativas.grupoB.promedioFaltas}
                           </span>
@@ -2076,19 +2107,72 @@ fechaFin={
                       </p>
                       <div className="flex justify-between items-center">
                         <div>
-                          <span className="text-xs text-blue-600 dark:text-blue-400">
-                            1:
-                          </span>
+                          <span className="text-xs text-blue-600 dark:text-blue-400">1:</span>
                           <span className="text-lg font-bold text-gray-900 dark:text-white ml-1">
                             {estadisticasComparativas.grupoA.tasaAusentismo}%
                           </span>
                         </div>
                         <div>
-                          <span className="text-xs text-green-600 dark:text-green-400">
-                            2:
-                          </span>
+                          <span className="text-xs text-green-600 dark:text-green-400">2:</span>
                           <span className="text-lg font-bold text-gray-900 dark:text-white ml-1">
                             {estadisticasComparativas.grupoB.tasaAusentismo}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Licencias */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Licencias</p>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="text-xs text-blue-600 dark:text-blue-400">Ref.:</span>
+                          <span className="text-lg font-bold text-gray-900 dark:text-white ml-1">
+                            {estadisticasComparativas.grupoA.licencias}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-xs text-green-600 dark:text-green-400">Comp.:</span>
+                          <span className="text-lg font-bold text-gray-900 dark:text-white ml-1">
+                            {estadisticasComparativas.grupoB.licencias}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sanciones */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Sanciones</p>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="text-xs text-blue-600 dark:text-blue-400">Ref.:</span>
+                          <span className="text-lg font-bold text-gray-900 dark:text-white ml-1">
+                            {estadisticasComparativas.grupoA.sanciones}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-xs text-green-600 dark:text-green-400">Comp.:</span>
+                          <span className="text-lg font-bold text-gray-900 dark:text-white ml-1">
+                            {estadisticasComparativas.grupoB.sanciones}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Cambios de Turno */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Cambios de Turno</p>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="text-xs text-blue-600 dark:text-blue-400">Ref.:</span>
+                          <span className="text-lg font-bold text-gray-900 dark:text-white ml-1">
+                            {estadisticasComparativas.grupoA.cambios}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-xs text-green-600 dark:text-green-400">Comp.:</span>
+                          <span className="text-lg font-bold text-gray-900 dark:text-white ml-1">
+                            {estadisticasComparativas.grupoB.cambios}
                           </span>
                         </div>
                       </div>
@@ -2097,8 +2181,9 @@ fechaFin={
 
                   {/* Gráfico comparativo */}
                   <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                       Comparación Detallada
+                      <ChartInfo text="Compara faltas, licencias, sanciones y cambios de turno entre los dos grupos. El eje X muestra 'Referencia' (filtros de arriba) y 'Comparación' (filtros propios de esta sección)." />
                     </h3>
                     <ResponsiveContainer width="100%" height={400}>
                       <BarChart
@@ -2158,23 +2243,10 @@ fechaFin={
                             strokeWidth: 2,
                           }}
                         />
-                        <Bar
-                          dataKey="sanciones"
-                          fill={COLORS.purple}
-                          name="Sanciones"
-                          radius={[8, 8, 0, 0]}
-                          activeBar={{
-                            fill: "#7C3AED",
-                            stroke: "#8B5CF6",
-                            strokeWidth: 2,
-                          }}
-                        />
-                        <Bar
-                          dataKey="injustificadas"
-                          fill={COLORS.orange}
-                          name="Injustificadas"
-                          radius={[8, 8, 0, 0]}
-                        />
+                        <Bar dataKey="sanciones" fill={COLORS.purple} name="Sanciones" radius={[8, 8, 0, 0]}
+                          activeBar={{ fill: '#7C3AED', stroke: '#8B5CF6', strokeWidth: 2 }}
+/>
+                        <Bar dataKey="injustificadas" fill={COLORS.orange} name="Injustificadas" radius={[8, 8, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -2183,103 +2255,12 @@ fechaFin={
             </>
           )}
 
-          {/* Comparación Grupos A y B */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Comparación entre Grupos
-            </h3>
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={datosComparativos.comparacion}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="grupo" stroke="#9CA3AF" />
-                <YAxis stroke="#9CA3AF" />
-                <Tooltip
-                  content={({ active, payload, label }) => {
-                    if (!active || !payload) return null;
-
-                    const colorMap: Record<string, string> = {
-                      Empleados: "#3B82F6",
-                      Faltas: "#EF4444",
-                      Licencias: "#10B981",
-                      Sanciones: "#8B5CF6",
-                    };
-
-                    return (
-                      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-lg">
-                        <p className="text-gray-900 dark:text-gray-100 font-bold mb-1 m-0">
-                          {label}
-                        </p>
-                        {payload.map((entry: any, index: number) => (
-                          <p key={index} className="m-1">
-                            <span style={{ color: colorMap[entry.name] }}>
-                              {entry.name}:
-                            </span>{" "}
-                            <span className="text-gray-900 dark:text-white font-bold">
-                              {entry.value}
-                            </span>
-                          </p>
-                        ))}
-                      </div>
-                    );
-                  }}
-                  cursor={{ fill: "transparent" }}
-                />
-                <Legend />
-                <Bar
-                  dataKey="empleados"
-                  fill={COLORS.blue}
-                  name="Empleados"
-                  radius={[8, 8, 0, 0]}
-                  activeBar={{
-                    // ⭐ NUEVO
-                    fill: "#2563EB", // Azul más oscuro
-                    stroke: "#3B82F6", // Borde azul
-                    strokeWidth: 2,
-                  }}
-                />
-                <Bar
-                  dataKey="faltas"
-                  fill={COLORS.red}
-                  name="Faltas"
-                  radius={[8, 8, 0, 0]}
-                  activeBar={{
-                    // ⭐ NUEVO
-                    fill: "#DC2626", // Rojo más oscuro
-                    stroke: "#EF4444", // Borde rojo
-                    strokeWidth: 2,
-                  }}
-                />
-<Bar
-                  dataKey="licencias"
-                  fill={COLORS.green}
-                  name="Licencias"
-                  radius={[8, 8, 0, 0]}
-                  activeBar={{
-                    fill: "#059669",
-                    stroke: "#10B981",
-                    strokeWidth: 2,
-                  }}
-                />
-                <Bar
-                  dataKey="sanciones"
-                  fill={COLORS.purple}
-                  name="Sanciones"
-                  radius={[8, 8, 0, 0]}
-                  activeBar={{
-                    fill: "#7C3AED",
-                    stroke: "#8B5CF6",
-                    strokeWidth: 2,
-                  }}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
           {/* Distribución de Roles por Grupo */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Distribución de Roles - Grupo A
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                Distribución de Roles - Referencia
+                <ChartInfo text="Distribución de roles (Supervisor / Inspector) del Grupo A de turno." />
               </h3>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
@@ -2290,9 +2271,7 @@ fechaFin={
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }: any) =>
-                      `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`
-                    }
+                    label={({ name, percent }: any) => `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
@@ -2318,22 +2297,20 @@ fechaFin={
 
                       const data = payload[0];
                       const colorMap: Record<string, string> = {
-                        SUPERVISOR: "#3B82F6",
-                        INSPECTOR: "#10B981",
+                        'SUPERVISOR': '#3B82F6',
+                        'INSPECTOR': '#10B981'
                       };
 
-                      const color = colorMap[data.name ?? ""] ?? "#6B7280";
+                      const color = colorMap[data.name ?? ''] ?? '#6B7280';
 
                       return (
                         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-lg">
                           <p className="m-0">
                             <span className="text-gray-900 dark:text-white font-bold">
                               {data.name}:
-                            </span>{" "}
-                            <span
-                              style={{ color: color }}
-                              className="font-bold"
-                            >
+                            </span>
+                            {' '}
+                            <span style={{ color: color }} className="font-bold">
                               {data.value}
                             </span>
                           </p>
@@ -2345,8 +2322,9 @@ fechaFin={
               </ResponsiveContainer>
             </div>
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Distribución de Roles - Grupo B
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                Distribución de Roles - Comparación
+                <ChartInfo text="Distribución de roles (Supervisor / Inspector) del Grupo B de turno." />
               </h3>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
@@ -2357,9 +2335,7 @@ fechaFin={
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }: any) =>
-                      `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`
-                    }
+                    label={({ name, percent }: any) => `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
@@ -2385,28 +2361,25 @@ fechaFin={
 
                       const data = payload[0];
                       const colorMap: Record<string, string> = {
-                        SUPERVISOR: "#60A5FA", // Azul
-                        INSPECTOR: "#34D399", // Verde
+                        'SUPERVISOR': '#60A5FA',  // Azul
+                        'INSPECTOR': '#34D399'    // Verde
                       };
 
-                      const color = colorMap[data.name ?? ""] ?? "#E5E7EB";
+                      const color = colorMap[data.name ?? ''] ?? '#E5E7EB';
 
                       return (
-                        <div
-                          style={{
-                            backgroundColor: "#1F2937",
-                            border: "1px solid #374151",
-                            borderRadius: "8px",
-                            padding: "8px 12px",
-                          }}
-                        >
+                        <div style={{
+                          backgroundColor: '#1F2937',
+                          border: '1px solid #374151',
+                          borderRadius: '8px',
+                          padding: '8px 12px'
+                        }}>
                           <p style={{ margin: 0 }}>
-                            <span
-                              style={{ color: "#FFFFFF", fontWeight: "bold" }}
-                            >
+                            <span style={{ color: '#FFFFFF', fontWeight: 'bold' }}>
                               {data.name}:
-                            </span>{" "}
-                            <span style={{ color: color, fontWeight: "bold" }}>
+                            </span>
+                            {' '}
+                            <span style={{ color: color, fontWeight: 'bold' }}>
                               {data.value}
                             </span>
                           </p>
@@ -2418,6 +2391,7 @@ fechaFin={
               </ResponsiveContainer>
             </div>
           </div>
+          
         </div>
       )}
 
@@ -2524,8 +2498,9 @@ fechaFin={
                     {/* Turnos Efectivos */}
                     {/* Cambios de Turno Efectivos */}
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                         Cambios de Turno Efectivos en el Período
+                        <ChartInfo text="Cambios de turno completados o aprobados para el empleado seleccionado en el período." />
                       </h3>
                       {turnosEfectivosFiltrados.ganados.length === 0 &&
                       turnosEfectivosFiltrados.cedidos.length === 0 ? (
@@ -2634,8 +2609,9 @@ fechaFin={
 
                     {/* Licencias en el período */}
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                         Licencias en el Período
+                        <ChartInfo text="Licencias registradas para el empleado seleccionado en el período, con tipo y estado." />
                       </h3>
                       {licenciasDelEmpleado.length === 0 ? (
                         <p className="text-center text-gray-500 dark:text-gray-400 py-6 text-sm">
@@ -2726,8 +2702,9 @@ fechaFin={
 
                     {/* Detalle de Faltas */}
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                         Detalle de Faltas en el Período
+                        <ChartInfo text="Faltas registradas para el empleado seleccionado en el período, con motivo y estado de justificación." />
                       </h3>
                       {faltasFiltradas.filter(
                         (f) => f.empleadoId === empleadoSeleccionado,

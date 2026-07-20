@@ -13,6 +13,37 @@ import { generarExcel, generarPDF } from '@/app/lib/exportUtils';
 
 const COLORS = ['#3B82F6', '#F59E0B', '#EF4444', '#10B981', '#8B5CF6'];
 
+const PieLegend = ({ payload }: any) => {
+  const total = payload?.reduce((sum: number, e: any) => sum + (e.payload?.value ?? 0), 0) ?? 0;
+  return (
+    <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 mt-3">
+      {payload?.map((entry: any, i: number) => (
+        <div key={i} className="flex items-center gap-2 text-sm">
+          <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: entry.payload?.fill ?? entry.color }} />
+          <span className="text-gray-600 dark:text-gray-400">{entry.value}:</span>
+          <span className="font-semibold text-gray-900 dark:text-white">
+            {entry.payload?.value} ({total > 0 ? ((entry.payload?.value / total) * 100).toFixed(0) : 0}%)
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const CustomPieTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0];
+    const color = data.payload.fill || data.fill || COLORS[0];
+    return (
+      <div className="bg-gray-800 dark:bg-gray-700 border border-gray-600 dark:border-gray-500 rounded-lg shadow-lg px-3 py-2">
+        <p className="text-white font-semibold">{data.name}</p>
+        <p className="font-bold" style={{ color: color }}>{data.value}</p>
+      </div>
+    );
+  }
+  return null;
+};
+
 function StatCard({ icon: Icon, label, value, sub, color }: { icon: any; label: string; value: string | number; sub?: string; color: string }) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700 flex items-center gap-4">
@@ -205,10 +236,11 @@ export function InformeCambiosTurno({ onDataChange }: { onDataChange?: (payload:
               {pieData.some(d => d.value > 0) ? (
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
-                    <Pie data={pieData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+                    <Pie data={pieData} cx="50%" cy="50%" outerRadius={80} dataKey="value" labelLine={false}>
                       {pieData.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
                     </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px', color: '#F9FAFB' }} />
+                    <Tooltip content={<CustomPieTooltip />} />
+                    <Legend content={<PieLegend />} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : <p className="text-center text-gray-400 text-sm py-16">Sin datos para el período</p>}
@@ -239,10 +271,11 @@ export function InformeCambiosTurno({ onDataChange }: { onDataChange?: (payload:
               {estadoData.some(d => d.value > 0) ? (
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
-                    <Pie data={estadoData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }) => (percent ?? 0) > 0 ? `${name} ${((percent ?? 0) * 100).toFixed(0)}%` : ''}>
+                    <Pie data={estadoData} cx="50%" cy="50%" outerRadius={80} dataKey="value" labelLine={false}>
                       {estadoData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
                     </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px', color: '#F9FAFB' }} />
+                    <Tooltip content={<CustomPieTooltip />} />
+                    <Legend content={<PieLegend />} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : <p className="text-center text-gray-400 text-sm py-16">Sin datos para el período</p>}

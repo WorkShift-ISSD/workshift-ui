@@ -2,13 +2,44 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle, XCircle, Shield, Download } from 'lucide-react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useSanciones } from '@/hooks/useSanciones';
 import { useEmpleados } from '@/hooks/useEmpleados';
 import { CustomDatePicker } from '@/app/components/CustomDatePicker';
 import { generarExcel, generarPDF } from '@/app/lib/exportUtils';
 import { Paginacion } from '@/app/components/cambios/Paginacion';
 import { LoadingSpinner } from '../LoadingSpinner';
+
+const PieLegend = ({ payload }: any) => {
+  const total = payload?.reduce((sum: number, e: any) => sum + (e.payload?.value ?? 0), 0) ?? 0;
+  return (
+    <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 mt-3">
+      {payload?.map((entry: any, i: number) => (
+        <div key={i} className="flex items-center gap-2 text-sm">
+          <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: entry.payload?.fill ?? entry.color }} />
+          <span className="text-gray-600 dark:text-gray-400">{entry.value}:</span>
+          <span className="font-semibold text-gray-900 dark:text-white">
+            {entry.payload?.value} ({total > 0 ? ((entry.payload?.value / total) * 100).toFixed(0) : 0}%)
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const CustomPieTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0];
+    const color = data.payload.fill || data.fill;
+    return (
+      <div className="bg-gray-800 dark:bg-gray-700 border border-gray-600 dark:border-gray-500 rounded-lg shadow-lg px-3 py-2">
+        <p className="text-white font-semibold">{data.name}</p>
+        <p className="font-bold" style={{ color: color }}>{data.value}</p>
+      </div>
+    );
+  }
+  return null;
+};
 
 function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: string | number; color: string }) {
   return (
@@ -257,15 +288,11 @@ filtradas.map(s => (_doc: any) => {
           {pieData.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" outerRadius={80} dataKey="value"
-                  label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+                <Pie data={pieData} cx="50%" cy="50%" outerRadius={80} dataKey="value" labelLine={false}>
                   {pieData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
                 </Pie>
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151', borderRadius: '8px' }}
-                  labelStyle={{ color: '#F9FAFB', fontWeight: 'bold' }}
-                  itemStyle={{ color: '#F9FAFB' }}
-                />
+                <Tooltip content={<CustomPieTooltip />} />
+                <Legend content={<PieLegend />} />
               </PieChart>
             </ResponsiveContainer>
           ) : (
