@@ -373,8 +373,11 @@ export default function DashboardHome() {
                   {Number(miScore).toFixed(1)}
                 </span>
               ) : (
-                <span className="text-gray-400 dark:text-gray-500 text-sm font-normal ml-1 hover:text-gray-300 transition-colors cursor-pointer" title="Ver mis calificaciones">
-                  No calificado aún
+                <span className="flex items-center gap-1 ml-1">
+                  <span title="Ver mis calificaciones" className="text-gray-400 dark:text-gray-500 hover:text-gray-300 transition-colors cursor-pointer">
+                    <Star className="w-6 h-6" />
+                  </span>
+                  <span title="No ha sido calificado aún" className="px-1.5 h-5 rounded bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 text-xs flex items-center justify-center cursor-help font-bold leading-none select-none">?</span>
                 </span>
               )}
             </Link>
