@@ -19,11 +19,12 @@ import { LoadingSpinner } from '../LoadingSpinner';
 
 const TIPO_LABEL: Record<string, string> = {
   ORDINARIA: "Ordinaria",
-  COMPENSATORIO: "Compesatorio",
+  COMPENSATORIO: "Compensatorio",
   GREMIAL: "Gremial",
   MEDICA: "Médica",
   ESTUDIO: "Estudio",
   PATERNIDAD: "Paternidad",
+  PETERNIDAD: "Paternidad",
   COMISION: "Comisión",
   CURSO: "Curso",
   SIN_GOCE: "Sin goce",
@@ -128,12 +129,10 @@ export function InformeLicencias({ onDataChange }: { onDataChange?: (payload: Li
 const porTipo = useMemo(() => {
     const map: Record<string, number> = {};
     filtradas.forEach((l) => {
-      map[l.tipo] = (map[l.tipo] ?? 0) + 1;
+      const label = TIPO_LABEL[l.tipo] ?? l.tipo;
+      map[label] = (map[label] ?? 0) + 1;
     });
-    return Object.entries(map).map(([t, value]) => ({
-      name: TIPO_LABEL[t] ?? t,
-      value,
-    }));
+    return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [filtradas]);
 
   const tablaExport = useMemo(() => filtradas.map((l) => {

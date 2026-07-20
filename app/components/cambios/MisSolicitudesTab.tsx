@@ -21,6 +21,7 @@ function EstadoBadge({ estado }: { estado: string }) {
     APROBADO: { label: 'Aceptado', className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
     COMPLETADO: { label: 'Completado', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
     CANCELADO: { label: 'Cancelado', className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
+    EXPIRADO: { label: 'Vencida', className: 'bg-gray-100 text-gray-500 dark:bg-gray-700/50 dark:text-gray-400' },
   };
   const s = map[estado] || { label: estado, className: 'bg-gray-100 text-gray-600' };
   return (
@@ -105,6 +106,9 @@ export function MisSolicitudesTab({
                           Urgente
                         </span>
                       )}
+                      {oferta.estado === 'EXPIRADO' && (
+                        <EstadoBadge estado="EXPIRADO" />
+                      )}
                     </div>
                     <span className="text-xs text-gray-400 dark:text-gray-500">
                       {formatTimeAgo(oferta.publicado)}
@@ -172,20 +176,22 @@ export function MisSolicitudesTab({
                   )}
 
                   {/* Acciones */}
-                  <div className="flex gap-2 mt-3">
-                    <button
-                      onClick={() => onEditarOferta(oferta)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      <Pencil className="h-3 w-3" /> Editar
-                    </button>
-                    <button
-                      onClick={() => onCancelarOferta(oferta.id)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                    >
-                      <X className="h-3 w-3" /> Cancelar oferta
-                    </button>
-                  </div>
+                  {oferta.estado !== 'EXPIRADO' && (
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        onClick={() => onEditarOferta(oferta)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <Pencil className="h-3 w-3" /> Editar
+                      </button>
+                      <button
+                        onClick={() => onCancelarOferta(oferta.id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      >
+                        <X className="h-3 w-3" /> Cancelar oferta
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}

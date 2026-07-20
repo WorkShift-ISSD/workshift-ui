@@ -83,11 +83,12 @@ export async function GET(request: NextRequest) {
   JOIN users u ON o.ofertante_id = u.id
   LEFT JOIN users t ON o.tomador_id = t.id
   WHERE o.estado IN (
-    ${EstadoOferta.DISPONIBLE}, 
-    ${EstadoOferta.SOLICITADO}, 
+    ${EstadoOferta.DISPONIBLE},
+    ${EstadoOferta.SOLICITADO},
     ${EstadoOferta.APROBADO},
     ${EstadoOferta.COMPLETADO},
-    ${EstadoOferta.CANCELADO}
+    ${EstadoOferta.CANCELADO},
+    ${EstadoOferta.EXPIRADO}
   )
   AND (
     o.ofertante_id = ${userId}::uuid

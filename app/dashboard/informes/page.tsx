@@ -156,6 +156,24 @@ const [sancionesExport, setSancionesExport] = useState<{
     useState<string>("TODOS");
 
   const [soloConFaltas, setSoloConFaltas] = useState(false);
+  const [sortColumna, setSortColumna] = useState<string>('porcentajeAsistencia');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (columna: string) => {
+    if (sortColumna === columna) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumna(columna);
+      setSortDir('asc');
+    }
+    setPaginaActual(1);
+  };
+
+  const SortIcon = ({ col }: { col: string }) => (
+    <span className={`text-[9px] leading-none shrink-0 ${sortColumna === col ? 'text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}>
+      {sortColumna === col ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
+    </span>
+  );
 
   // Turnos efectivos del empleado seleccionado
   const [turnosEfectivos, setTurnosEfectivos] = useState<{
@@ -436,10 +454,11 @@ const [sancionesExport, setSancionesExport] = useState<{
               l.fecha_desde <= fechaFin &&
               l.fecha_hasta >= fechaInicio,
           ) ?? [];
-        const diasLicencia = licenciasEmp.reduce(
-          (acc, l) => acc + (l.dias ?? 0),
-          0,
-        );
+        const diasLicencia = licenciasEmp.reduce((acc, l) => {
+          const desdeEfectivo = l.fecha_desde > fechaInicio ? l.fecha_desde : fechaInicio;
+          const hastaEfectivo = l.fecha_hasta < fechaFin ? l.fecha_hasta : fechaFin;
+          return acc + calcularDiasTrabajoEnRango(desdeEfectivo, hastaEfectivo, emp.grupoTurno);
+        }, 0);
 
         const faltasReales = injustificadas + sancionesEmp;
 
@@ -450,13 +469,13 @@ const [sancionesExport, setSancionesExport] = useState<{
         );
         const diasEfectivos = Math.max(0, diasBase - diasLicencia);
 
-        // Calcular usando la lógica de turnos real
+        // % días que estuvo presente (licencias y faltas reducen el porcentaje)
         const porcentajeAsistencia =
-          diasEfectivos > 0
+          diasBase > 0
             ? Math.max(
                 0,
                 Math.round(
-                  ((diasEfectivos - faltasReales) / diasEfectivos) * 100,
+                  ((diasBase - diasLicencia - faltasReales) / diasBase) * 100,
                 ),
               )
             : 100;
@@ -477,7 +496,7 @@ const [sancionesExport, setSancionesExport] = useState<{
           porcentajeAsistencia,
         };
       })
-      .sort((a, b) => b.porcentajeAsistencia - a.porcentajeAsistencia);
+      .sort((a, b) => a.porcentajeAsistencia - b.porcentajeAsistencia);
 
     return porEmpleado;
   }, [
@@ -489,20 +508,31 @@ const [sancionesExport, setSancionesExport] = useState<{
     sanciones,
   ]);
 
+  const datosOrdenados = useMemo(() => {
+    return [...datosAsistencia].sort((a, b) => {
+      const aVal = (a as any)[sortColumna];
+      const bVal = (b as any)[sortColumna];
+      if (typeof aVal === 'string') {
+        return sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+      return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
+    });
+  }, [datosAsistencia, sortColumna, sortDir]);
+
   // Datos paginados
   const datosPaginados = useMemo(() => {
-    if (datosAsistencia.length === 0) return [];
+    if (datosOrdenados.length === 0) return [];
 
     const indexInicio = (paginaActual - 1) * itemsPorPagina;
     const indexFin = indexInicio + itemsPorPagina;
 
-    return datosAsistencia.slice(indexInicio, indexFin);
-  }, [datosAsistencia, paginaActual, itemsPorPagina]);
+    return datosOrdenados.slice(indexInicio, indexFin);
+  }, [datosOrdenados, paginaActual, itemsPorPagina]);
 
   // Calcular número total de páginas
   const totalPaginas = useMemo(() => {
-    return Math.max(1, Math.ceil(datosAsistencia.length / itemsPorPagina));
-  }, [datosAsistencia.length, itemsPorPagina]);
+    return Math.max(1, Math.ceil(datosOrdenados.length / itemsPorPagina));
+  }, [datosOrdenados.length, itemsPorPagina]);
 
   // Resetear página cuando cambian los filtros o si la página actual es mayor al total
   useEffect(() => {
@@ -684,9 +714,24 @@ const formatFechaCorta = (f: string) =>
       );
     });
 
+    let totalDiasLicencia = 0;
+    (licencias ?? [])
+      .filter(
+        (l) =>
+          empleadosFiltrados.some((e) => e.id === l.empleado_id) &&
+          l.fecha_desde <= fechaFin &&
+          l.fecha_hasta >= fechaInicio,
+      )
+      .forEach((l) => {
+        const emp = empleadosFiltrados.find((e) => e.id === l.empleado_id)!;
+        const desdeEfectivo = l.fecha_desde > fechaInicio ? l.fecha_desde : fechaInicio;
+        const hastaEfectivo = l.fecha_hasta < fechaFin ? l.fecha_hasta : fechaFin;
+        totalDiasLicencia += calcularDiasTrabajoEnRango(desdeEfectivo, hastaEfectivo, emp.grupoTurno);
+      });
+
     const tasaAusentismo =
       diasDebieroTrabajarTotal > 0
-        ? ((totalFaltas / diasDebieroTrabajarTotal) * 100).toFixed(2)
+        ? (((totalFaltas + totalDiasLicencia) / diasDebieroTrabajarTotal) * 100).toFixed(2)
         : "0.00";
 
     return {
@@ -698,7 +743,7 @@ const formatFechaCorta = (f: string) =>
       promedioFaltasPorEmpleado:
         totalEmpleados > 0 ? (totalFaltas / totalEmpleados).toFixed(2) : "0.00",
     };
-  }, [empleadosFiltrados, faltasFiltradas, fechaInicio, fechaFin]);
+  }, [empleadosFiltrados, faltasFiltradas, fechaInicio, fechaFin, licencias]);
 
   // Estadísticas para comparación avanzada
   const estadisticasComparativas = useMemo(() => {
@@ -1291,7 +1336,9 @@ fechaFin={
             </p>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">
               {licencias?.filter((l) =>
-                empleadosFiltrados.some((e) => e.id === l.empleado_id),
+                empleadosFiltrados.some((e) => e.id === l.empleado_id) &&
+                l.fecha_desde <= fechaFin &&
+                l.fecha_hasta >= fechaInicio,
               ).length ?? 0}
             </p>
           </div>
@@ -1305,7 +1352,9 @@ fechaFin={
             </p>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">
               {sanciones?.filter((s) =>
-                empleadosFiltrados.some((e) => e.id === s.empleado_id),
+                empleadosFiltrados.some((e) => e.id === s.empleado_id) &&
+                s.fecha_desde <= fechaFin &&
+                s.fecha_hasta >= fechaInicio,
               ).length ?? 0}
             </p>
           </div>
@@ -1339,36 +1388,29 @@ fechaFin={
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">
-                      Legajo
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">
-                      Empleado
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">
-                      Rol
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">
-                      Turno
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">
-                      Días debió trabajar
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">
-                      Faltas
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">
-                      Licencias.
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">
-                      Injustif.
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">
-                      Sanciones.
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">
-                      % Asistencia
-                    </th>
+                    {([
+                      { key: 'legajo', label: 'Legajo', align: 'left' },
+                      { key: 'nombre', label: 'Empleado', align: 'left' },
+                      { key: 'rol', label: 'Rol', align: 'center' },
+                      { key: 'turno', label: 'Turno', align: 'center' },
+                      { key: 'diasDebioTrabajar', label: 'Días debió trabajar', align: 'center' },
+                      { key: 'faltas', label: 'Faltas', align: 'center' },
+                      { key: 'licencias', label: 'Licencias', align: 'center' },
+                      { key: 'faltasInjustificadas', label: 'Injustif.', align: 'center' },
+                      { key: 'sanciones', label: 'Sanciones', align: 'center' },
+                      { key: 'porcentajeAsistencia', label: '% Asistencia', align: 'center' },
+                    ] as const).map(({ key, label, align }) => (
+                      <th
+                        key={key}
+                        onClick={() => handleSort(key)}
+                        className="px-6 py-3 text-xs font-medium text-gray-700 dark:text-gray-300 uppercase cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                      >
+                        <div className={`flex items-center gap-1 ${align === 'center' ? 'justify-center' : 'justify-start'}`}>
+                          <span>{label}</span>
+                          <SortIcon col={key} />
+                        </div>
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -1625,7 +1667,7 @@ fechaFin={
               <ChartInfo text="Los 10 empleados con mayor cantidad de días de asistencia en el período seleccionado." />
             </h3>
             <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={datosAsistencia.slice(0, 10)}>
+              <BarChart data={datosAsistencia.slice(-10).reverse()}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis
                   dataKey="nombre"
@@ -2675,7 +2717,11 @@ fechaFin={
                                     ).toLocaleDateString("es-AR")}
                                   </td>
                                   <td className="px-4 py-3 text-center font-semibold text-gray-900 dark:text-white">
-                                    {l.dias}
+                                    {calcularDiasTrabajoEnRango(
+                                      l.fecha_desde > fechaInicio ? l.fecha_desde : fechaInicio,
+                                      l.fecha_hasta < fechaFin ? l.fecha_hasta : fechaFin,
+                                      empleado.grupoTurno,
+                                    )}
                                   </td>
                                   <td className="px-4 py-3 text-center">
                                     <span

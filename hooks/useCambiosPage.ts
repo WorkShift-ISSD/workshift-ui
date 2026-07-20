@@ -58,7 +58,7 @@ export function useCambiosPage() {
     // Derived data
     const misOfertas = useMemo(
         () => {
-            const resultado = ofertas.filter(o => o.ofertante?.id === user?.id && o.estado === 'DISPONIBLE');
+            const resultado = ofertas.filter(o => o.ofertante?.id === user?.id && ['DISPONIBLE', 'EXPIRADO'].includes(o.estado));
             console.log('misOfertas:', resultado, 'user?.id:', user?.id, 'ofertas total:', ofertas.length);
             return resultado;
         },
