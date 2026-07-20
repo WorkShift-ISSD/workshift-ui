@@ -15,7 +15,7 @@ export enum EstadoOferta {
   APROBADO = 'APROBADO',
   COMPLETADO = 'COMPLETADO',
   CANCELADO = 'CANCELADO',
-  VENCIDO = 'VENCIDO',
+  EXPIRADO = 'EXPIRADO',
 }
 
 export enum RolUsuario {
@@ -48,7 +48,7 @@ export enum TipoLicencia {
   ESTUDIO = "ESTUDIO",
   PATERNIDAD = "PATERNIDAD",
   COMISION = "COMISION",
-  CURSO = "Curso",
+  CURSO = "CURSO",
   SIN_GOCE = "SIN_GOCE",
 }
 

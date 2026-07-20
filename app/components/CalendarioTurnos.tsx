@@ -67,7 +67,7 @@ export default function CalendarioTurnos() {
 
     const esLicencia = licencias?.some(l =>
       l.empleado_id === user?.id &&
-      (l.estado === 'APROBADA' || l.estado === 'ACTIVA') &&
+      (l.estado === 'APROBADA' || l.estado === 'ACTIVA' || l.estado === 'FINALIZADA') &&
       fechaStr >= l.fecha_desde.split('T')[0] &&
       fechaStr <= l.fecha_hasta.split('T')[0]
     ) ?? false;

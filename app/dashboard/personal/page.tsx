@@ -22,12 +22,14 @@ import {
   Briefcase,
   Loader2,
   ChevronDown,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useEmpleados } from '@/hooks/useEmpleados';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
 import { ExportData } from '@/app/components/ExportToPdf';
 import { useAuth } from '@/app/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import ImportarPersonalModal from '@/app/components/personal/ImportarPersonalModal';
 import bcryptjs from 'bcryptjs';
 
 
@@ -76,9 +78,10 @@ export default function DashboardPage() {
   const [formData, setFormData] = useState<Partial<Inspector>>({});
   const [formError, setFormError] = useState('');
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
-  const { can } = usePermissions();
+  const { can, isAdmin } = usePermissions();
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -95,7 +98,8 @@ export default function DashboardPage() {
     error,
     createEmpleado,
     updateEmpleado,
-    deleteEmpleado
+    deleteEmpleado,
+    mutate: refreshEmpleados,
   } = useEmpleados();
 
   const employees = empleados || [];
@@ -690,6 +694,16 @@ useEffect(() => {
             <UserPlus className="h-4 w-4" />
             Nuevo Empleado
           </button>
+
+          {/* {isAdmin && (
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="w-full flex-1 sm:flex-none px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm sm:text-base transition-colors"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Importar Excel
+            </button>
+          )} */}
         </div>
       </div>
 
@@ -1430,6 +1444,15 @@ useEffect(() => {
             </div>
           </div>
         </div>
+      )}
+      {isImportModalOpen && (
+        <ImportarPersonalModal
+          onClose={() => setIsImportModalOpen(false)}
+          onSuccess={() => {
+            refreshEmpleados();
+            setIsImportModalOpen(false);
+          }}
+        />
       )}
     </div>
   );

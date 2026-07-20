@@ -525,10 +525,19 @@ export default function DashboardSupervisor() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             Bienvenido {user?.nombre} {user?.apellido}
             <Link href="/dashboard/calificaciones?tab=perfil">
-              <span className="flex items-center gap-1 text-amber-400 text-base font-semibold ml-1 hover:text-amber-300 transition-colors cursor-pointer" title="Ver mis calificaciones">
-                <Star className="w-6 h-6 fill-amber-400" />
-                {Number(miScore ?? 0).toFixed(1)}
-              </span>
+              {miScore ? (
+                <span className="flex items-center gap-1 text-amber-400 text-base font-semibold ml-1 hover:text-amber-300 transition-colors cursor-pointer" title="Ver mis calificaciones">
+                  <Star className="w-6 h-6 fill-amber-400" />
+                  {Number(miScore).toFixed(1)}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 ml-1">
+                  <span title="Ver mis calificaciones" className="text-gray-400 dark:text-gray-500 hover:text-gray-300 transition-colors cursor-pointer">
+                    <Star className="w-6 h-6" />
+                  </span>
+                  <span title="No ha sido calificado aún" className="px-1.5 h-5 rounded bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 text-xs flex items-center justify-center cursor-help font-bold leading-none select-none">?</span>
+                </span>
+              )}
             </Link>
           </h1>
           <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5 capitalize">{user?.rol?.toLowerCase()} {user?.grupoTurno}</p>

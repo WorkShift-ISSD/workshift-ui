@@ -135,7 +135,7 @@ export default function ResetPasswordPage() {
     return (
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center p-4">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 text-center">
-          <LoadingSpinner size="xs" padding="p-1" />
+          <LoadingSpinner />
           <p className="text-gray-600 dark:text-gray-400">Verificando enlace...</p>
         </div>
       </div>
@@ -196,6 +196,12 @@ export default function ResetPasswordPage() {
 
   // Formulario de reset
   return (
+    <>
+    {loading && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
+        <LoadingSpinner />
+      </div>
+    )}
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center p-4">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-md w-full">
         {/* Header */}
@@ -331,14 +337,7 @@ export default function ResetPasswordPage() {
             disabled={loading}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
-            {loading ? (
-              <>
-                <LoadingSpinner size="xs" padding="p-1" />
-                Actualizando...
-              </>
-            ) : (
-              "Actualizar Contraseña"
-            )}
+            Actualizar Contraseña
           </button>
         </form>
 
@@ -353,5 +352,6 @@ export default function ResetPasswordPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

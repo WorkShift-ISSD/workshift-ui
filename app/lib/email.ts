@@ -16,7 +16,7 @@ export async function sendPasswordResetEmail(
   userName: string
 ) {
   const resend = getResendClient(); // ✅ Crear instancia dentro de la función
-  const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password/${resetToken}`;
+  const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL_EMAILS}/reset-password/${resetToken}`;
 
   try {
     const { data, error } = await resend.emails.send({
@@ -140,7 +140,7 @@ export async function sendPasswordChangedEmail(
               </p>
               
               <div style="text-align: center; margin: 40px 0;">
-                <a href="${process.env.NEXT_PUBLIC_APP_URL}" 
+                <a href="${process.env.NEXT_PUBLIC_APP_URL_EMAILS}" 
                    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                           color: white; 
                           padding: 15px 40px; 
@@ -219,7 +219,7 @@ export async function sendWelcomeEmail(
               </div>
               
               <div style="text-align: center; margin: 40px 0;">
-                <a href="${process.env.NEXT_PUBLIC_APP_URL}" 
+                <a href="${process.env.NEXT_PUBLIC_APP_URL_EMAILS}" 
                    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                           color: white; 
                           padding: 15px 40px; 

@@ -78,7 +78,7 @@ export default function CambiosTurnosPage() {
     {
       id: 'mis-solicitudes' as const,
       label: 'Mis solicitudes',
-      badge: misOfertas.length + solicitudesEnviadas.filter(s => ['SOLICITADO', 'APROBADO'].includes(s.estado)).length || undefined,
+      badge: misOfertas.filter(o => o.estado === 'DISPONIBLE').length + solicitudesEnviadas.filter(s => ['SOLICITADO', 'APROBADO'].includes(s.estado)).length || undefined,
     },
     { id: 'historico' as const, label: 'Histórico' },
     { id: 'recibidas' as const, label: 'Recibidas', badge: solicitudesRecibidas.length || undefined },

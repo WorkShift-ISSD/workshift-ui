@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   ClipboardList,
   AlertTriangle,
   CheckCircle,
   XCircle,
+  FileSpreadsheet,
 } from "lucide-react";
 
 import { ToastContainer } from "react-toastify";
@@ -14,10 +15,15 @@ import "react-toastify/dist/ReactToastify.css";
 import { useSanciones } from "@/hooks/useSanciones";
 import { SancionesTable } from "@/app/components/sanciones/SancionesTable";
 import { useEmpleados } from "@/hooks/useEmpleados";
+import { useAuth } from "@/app/context/AuthContext";
+import ImportarSancionesModal from "@/app/components/sanciones/ImportarSancionesModal";
 
 
 export default function SancionesPage() {
-  const { sanciones, loading, cargarSanciones } = useSanciones()
+  const { sanciones, loading, cargarSanciones } = useSanciones();
+  const { user } = useAuth();
+  const isAdmin = user?.rol === 'ADMINISTRADOR';
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const stats = useMemo(() => {
     return {
@@ -33,13 +39,24 @@ export default function SancionesPage() {
       <ToastContainer theme="colored" />
 
       {/* HEADER */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Gestión de Sanciones
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Registro y consulta de sanciones vigentes
-        </p>
+      <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            Gestión de Sanciones
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Registro y consulta de sanciones vigentes
+          </p>
+        </div>
+        {/* {isAdmin && (
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors shadow-lg"
+          >
+            <FileSpreadsheet className="w-5 h-5" />
+            Importar Excel
+          </button>
+        )} */}
       </div>
 
       {/* KPIs */}
@@ -69,6 +86,16 @@ export default function SancionesPage() {
 
       {/* TABLA + MODAL (todo vive adentro) */}
       <SancionesTable sanciones={sanciones} loading={loading} onRecargar={cargarSanciones} />
+
+      {isImportModalOpen && (
+        <ImportarSancionesModal
+          onClose={() => setIsImportModalOpen(false)}
+          onSuccess={() => {
+            cargarSanciones();
+            setIsImportModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

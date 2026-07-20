@@ -10,6 +10,8 @@ import { useFormatters } from "@/hooks/useFormatters";
 import { useEmpleados } from "@/hooks/useEmpleados";
 import { LoadingSpinner } from '@/app/components/LoadingSpinner';
 import ModalConsultaFaltas from '@/app/components/faltas/ModalConsultaFaltas';
+import ImportarFaltasModal from '@/app/components/faltas/ImportarFaltasModal';
+import { useAuth } from '@/app/context/AuthContext';
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { CustomDatePicker } from '@/app/components/CustomDatePicker';
@@ -23,6 +25,7 @@ import {
   FileSearch,
   AlertCircle,
   Trash2,
+  FileSpreadsheet,
 } from "lucide-react";
 import { calcularGrupoTrabaja, type GrupoTurno } from "@/app/lib/turnosUtils";
 import { ExportData } from "@/app/components/ExportToPdf";
@@ -42,6 +45,9 @@ export default function FaltasPage() {
   const today = useMemo(() => getTodayDate(), [getTodayDate]); 
   const [selectedDate, setSelectedDate] = useState(today);
   const [modalConsultaOpen, setModalConsultaOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const { user } = useAuth();
+  const isAdmin = user?.rol === 'ADMINISTRADOR';
   const [paginaActual, setPaginaActual] = useState(1);
   const { licenciasDelDia } = useLicenciasDelDia(selectedDate);
   const { sancionesDelDia } = useSancionesDelDia(selectedDate);
@@ -369,6 +375,15 @@ export default function FaltasPage() {
         {/* Botones agrupados */}
 
         <div className="flex items-center gap-3">
+          {/* {isAdmin && (
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+            >
+              <FileSpreadsheet className="w-5 h-5" />
+              Importar Excel
+            </button>
+          )} */}
           <button
             onClick={abrirModalConsulta}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700
@@ -868,6 +883,15 @@ export default function FaltasPage() {
         empleados={empleados || []}
       />
 
+      {isImportModalOpen && (
+        <ImportarFaltasModal
+          onClose={() => setIsImportModalOpen(false)}
+          onSuccess={() => {
+            mutate();
+            setIsImportModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

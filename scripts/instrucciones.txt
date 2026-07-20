@@ -1,0 +1,79 @@
+INSTRUCCIONES — planilla_to_excel.py
+=====================================
+
+Este script convierte las planillas diarias de horario (formato GB) a los
+archivos Excel que hay que subir a la app Workshift para registrar los
+cambios de turno y las licencias.
+
+
+INSTALACIÓN (una sola vez)
+---------------------------
+Necesitás tener Python instalado. Luego, en la terminal, corré:
+
+    pip install pandas openpyxl
+
+
+USO
+---
+Abrí una terminal en la carpeta donde tenés el script y la planilla, y corré:
+
+    python planilla_to_excel.py HORARIO_REAL_GB_12-07-2026.xlsx
+
+Si querés que también genere los legajos en el archivo de licencias,
+pasale el listado de empleados:
+
+    python planilla_to_excel.py HORARIO_REAL_GB_12-07-2026.xlsx --empleados Listado_Empleados.xlsx
+
+Si la fecha no se puede leer del nombre del archivo, la podés pasar a mano:
+
+    python planilla_to_excel.py archivo.xlsx --fecha 2026-07-12
+
+Por defecto los archivos de salida se generan en la carpeta actual.
+Para elegir otra carpeta usá --output:
+
+    python planilla_to_excel.py archivo.xlsx --output C:\Users\Mauro\Escritorio\Salida
+
+
+ARCHIVOS QUE GENERA
+--------------------
+  cambios_YYYYMMDD.xlsx    → subir en la app: Autorizaciones > Importar cambios
+  licencias_YYYYMMDD.xlsx  → subir en la app: Licencias > Importar Excel
+  faltas_YYYYMMDD.xlsx     → subir en la app: Faltas > Importar Excel
+
+  Nota: los archivos de licencias y faltas requieren el número de legajo de
+  cada empleado. Si pasás --empleados, el script los completa automáticamente.
+  Si no, la columna legajo queda vacía y hay que completarla a mano antes
+  de subir.
+
+
+CÓMO SUBIR A LA APP
+--------------------
+1. Entrá a la app con tu usuario de administrador.
+2. Para cambios de turno:
+      - Ir a Autorizaciones
+      - Hacer click en "Importar cambios"
+      - Subir el archivo cambios_YYYYMMDD.xlsx
+      - Revisar la preview y confirmar
+3. Para licencias:
+      - Ir a Licencias
+      - Hacer click en "Importar Excel"
+      - Subir el archivo licencias_YYYYMMDD.xlsx
+      - Revisar la preview y confirmar
+4. Para faltas:
+      - Ir a Faltas
+      - Hacer click en "Importar Excel"
+      - Subir el archivo faltas_YYYYMMDD.xlsx
+      - Revisar la preview y confirmar
+
+
+NOTAS
+-----
+- Los nombres en la planilla tienen que coincidir con los que están
+  cargados en el sistema. Si alguno no se encuentra, aparece como error
+  al importar y se puede corregir directamente en el Excel antes de
+  volver a subirlo.
+- Los intercambios que aparecen dos veces en la planilla (una por cada
+  participante) se deduplicam automáticamente.
+- Los casos COMBINADO (intercambio + cobertura encadenada) generan
+  dos filas en el archivo de cambios, que es lo correcto.
+- Las filas marcadas como ACA se ignoran y no generan ningún registro.

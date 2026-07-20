@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     const empleadoId = payload.id as string;
     const rol = payload.rol as string;
 
-    if (rol === "JEFE" || rol === "ADMINISTRADOR") {
+    if (rol === "JEFE" || rol === "ADMINISTRADOR" || rol === "SUPERVISOR") {
       // Todas las licencias con datos del empleado
       const licencias = await sql`
         SELECT

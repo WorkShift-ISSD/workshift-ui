@@ -11,12 +11,19 @@ export async function GET(request: NextRequest) {
 
         const hoy = new Date().toISOString().split('T')[0];
 
-        // Marcar ofertas vencidas como EXPIRADO
+        // Marcar ofertas vencidas como EXPIRADO y cerrar conversaciones activas asociadas
         await sql`
-            UPDATE ofertas
-            SET estado = 'EXPIRADO'
-            WHERE estado = 'DISPONIBLE'
-            AND valido_hasta < NOW();
+            WITH ofertas_expiradas AS (
+                UPDATE ofertas
+                SET estado = 'EXPIRADO'
+                WHERE estado IN ('DISPONIBLE', 'SOLICITADO')
+                AND valido_hasta < NOW()
+                RETURNING id
+            )
+            UPDATE conversaciones
+            SET estado = 'CERRADA'
+            WHERE oferta_id IN (SELECT id FROM ofertas_expiradas)
+            AND estado = 'ACTIVA';
         `;
 
         // Marcar como REALIZADO los turnos efectivos con fecha pasada
