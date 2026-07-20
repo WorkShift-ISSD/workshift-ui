@@ -223,7 +223,7 @@ function PersonalGlobal({ empleados }: { empleados: Empleado[] }) {
               )}
             </div>
             <span className="text-[10px] text-gray-400 dark:text-gray-500 font-mono w-8 text-right flex-shrink-0">
-              {emp.calificacion.toFixed(1)}★
+              {emp.calificacion > 0 ? `${emp.calificacion.toFixed(1)}★` : 's/c'}
             </span>
           </div>
         ))}

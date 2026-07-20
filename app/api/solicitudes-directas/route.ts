@@ -205,22 +205,6 @@ export async function POST(request: NextRequest) {
     }
 
 
-    const [licenciaSolicitante] = await sql`
-  SELECT 1 FROM licencias
-  WHERE empleado_id = ${solicitanteId}::uuid
-    AND estado IN ('APROBADA', 'ACTIVA')
-    AND ${hoy}::date BETWEEN fecha_desde AND fecha_hasta
-  LIMIT 1;
-`;
-    if (licenciaSolicitante) {
-      return NextResponse.json(
-        { error: 'Tenés una licencia activa y no podés realizar solicitudes de cambio' },
-        { status: 400 }
-      );
-    }
-
-
-
     const {
       destinatarioId,
       fechaSolicitante,
