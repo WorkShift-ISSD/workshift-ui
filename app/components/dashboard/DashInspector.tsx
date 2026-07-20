@@ -373,7 +373,7 @@ export default function DashboardHome() {
               </span>
             </Link>
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5 capitalize">{user?.rol?.toLowerCase()}</p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5 capitalize">{user?.rol?.toLowerCase()} · Guardia {user?.grupoTurno}</p>
         </div>
       </div>
 
