@@ -559,7 +559,6 @@ export function HeatmapOperativo({ autorizaciones, empleados }: Props) {
         <span>crítico</span>
         <span className="ml-2 text-blue-400 dark:text-blue-500 font-medium">■ hoy</span>
         <span className="ml-1 text-amber-400 dark:text-amber-500">⬚ futuro planificado</span>
-        <span className="ml-1">· escala: ⏳ pendiente  ✓ aprobada</span>
       </div>
 
       {/* Tooltip fixed */}
