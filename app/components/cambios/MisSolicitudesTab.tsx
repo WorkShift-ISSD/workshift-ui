@@ -231,7 +231,7 @@ export function MisSolicitudesTab({
                   </div>
                 </div>
 
-                {/* Resumen del intercambio — compacto */}
+                {/* Resumen del intercambio • compacto */}
                 <div className="grid grid-cols-2 gap-2 mb-3">
                   <div className="bg-blue-50 dark:bg-blue-950/20 rounded p-2.5 border border-blue-100 dark:border-blue-900">
                     <p className="text-[10px] font-medium text-blue-600 dark:text-blue-400 mb-1">Ofrezco</p>

@@ -11,7 +11,7 @@ export class APIError extends Error {
   }
 }
 
-// Opciones base para todas las requests — manda cookies automáticamente
+// Opciones base para todas las requests • manda cookies automáticamente
 const BASE_OPTIONS: RequestInit = {
   credentials: 'include',
 };

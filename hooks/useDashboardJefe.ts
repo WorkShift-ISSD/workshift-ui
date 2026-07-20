@@ -58,7 +58,7 @@ export function useDashboardJefe() {
     [licencias, hoy, idsDelGrupo]
   );
 
-  // ── Métricas — solo del grupo ─────────────────────────────────────────
+  // ── Métricas • solo del grupo ─────────────────────────────────────────
   const metricas = useMemo(() => {
     const totalActivos = empleadosDelGrupo.length;
     const mesActual    = hoy.slice(0, 7);
@@ -79,7 +79,7 @@ export function useDashboardJefe() {
     };
   }, [empleadosDelGrupo, faltas, hoy, idsDelGrupo]);
 
-  // ── Personal — solo del grupo ─────────────────────────────────────────
+  // ── Personal • solo del grupo ─────────────────────────────────────────
   const personal = useMemo(() => {
     const emps = empleadosDelGrupo.map(e => ({
       id:               e.id,
@@ -99,7 +99,7 @@ export function useDashboardJefe() {
     return { empleados: emps };
   }, [empleadosDelGrupo, idsConFaltaHoy, idsConLicenciaHoy]);
 
-  // ── Heatmap — autorizaciones visibles para el jefe ───────────────────
+  // ── Heatmap • autorizaciones visibles para el jefe ───────────────────
   const heatmap = useMemo(() => {
     const map: Record<string, { total: number; pendientes: number }> = {};
     (autorizaciones ?? [])

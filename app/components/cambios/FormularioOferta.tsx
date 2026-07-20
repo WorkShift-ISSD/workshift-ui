@@ -159,7 +159,7 @@ export function FormularioOferta({
                         </div>
                     </div>
                 ) : (
-                    // MODO DÍA CONCRETO — una sola fecha
+                    // MODO DÍA CONCRETO • una sola fecha
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Fecha</label>
@@ -184,7 +184,7 @@ export function FormularioOferta({
                                 <input
                                     type="text"
                                     disabled
-                                    value={form.fechasDisponibles[0]?.horario || user?.horario || '—'}
+                                    value={form.fechasDisponibles[0]?.horario || user?.horario || '•'}
                                     className="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900/30 text-gray-500 dark:text-gray-400 cursor-not-allowed"
                                 />
                             ) : (
@@ -209,7 +209,7 @@ export function FormularioOferta({
             {/* OFREZCO_INTERCAMBIO */}
             {modo === 'OFREZCO_INTERCAMBIO' && (
                 <>
-                    {/* Bloque 1: turno que me ofrezco a hacer — con toggle rango */}
+                    {/* Bloque 1: turno que me ofrezco a hacer • con toggle rango */}
                     <div className={`border rounded-lg p-4 ${colors.bg}`}>
                         <div className="flex items-center justify-between mb-3">
                             <p className={`text-sm font-medium ${colors.text}`}>Turno que me ofrezco a hacer</p>
@@ -283,7 +283,7 @@ export function FormularioOferta({
                         )}
                     </div>
 
-                    {/* Bloque 2: turno que quiero a cambio — siempre día concreto */}
+                    {/* Bloque 2: turno que quiero a cambio • siempre día concreto */}
                     <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                         <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Turno que querés que te cubran</p>
                         <div className="grid grid-cols-2 gap-3">
@@ -305,7 +305,7 @@ export function FormularioOferta({
                                 <input
                                     type="text"
                                     disabled
-                                    value={form.horarioOfrece || user?.horario || '—'}
+                                    value={form.horarioOfrece || user?.horario || '•'}
                                     className="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900/30 text-gray-500 dark:text-gray-400 cursor-not-allowed"
                                 />
                             </div>
@@ -317,7 +317,7 @@ export function FormularioOferta({
             {/* BUSCO_INTERCAMBIO */}
             {modo === 'BUSCO_INTERCAMBIO' && (
                 <>
-                    {/* Bloque 1: turno que necesito cambiar — siempre día concreto */}
+                    {/* Bloque 1: turno que necesito cambiar • siempre día concreto */}
                     <div className={`border rounded-lg p-4 ${colors.bg}`}>
                         <p className={`text-sm font-medium mb-3 ${colors.text}`}>Turno que necesito cambiar</p>
                         <div className="grid grid-cols-2 gap-3">
@@ -343,14 +343,14 @@ export function FormularioOferta({
                                 <input
                                     type="text"
                                     disabled
-                                    value={form.fechasBusca[0]?.horario || user?.horario || '—'}
+                                    value={form.fechasBusca[0]?.horario || user?.horario || '•'}
                                     className="w-full px-2 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900/30 text-gray-500 dark:text-gray-400 cursor-not-allowed"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    {/* Bloque 2: días que puedo hacer a cambio — con toggle rango */}
+                    {/* Bloque 2: días que puedo hacer a cambio • con toggle rango */}
                     <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-3">
                             <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Días que puedo hacer a cambio</p>

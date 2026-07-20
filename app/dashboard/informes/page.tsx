@@ -1053,7 +1053,7 @@ fechaFin={
           </div>
         </button>
 
-        {/* Cambios de Turno — solo jefe */}
+        {/* Cambios de Turno • solo jefe */}
         {esJefe && (
           <button
             onClick={() => setTipoInforme("cambios-turno")}
@@ -2632,13 +2632,13 @@ fechaFin={
                                         </span>
                                       </td>
                                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
-                                        {t.horario_original || "—"}
+                                        {t.horario_original || "•"}
                                       </td>
                                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
-                                        {t.horario_efectivo || "—"}
+                                        {t.horario_efectivo || "•"}
                                       </td>
                                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
-                                        {t.companero || "—"}
+                                        {t.companero || "•"}
                                       </td>
                                     </tr>
                                   ))}
@@ -2704,7 +2704,7 @@ fechaFin={
                                     }[l.tipo] ?? l.tipo}
                                   </td>
                                   <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
-                                    {l.articulo ?? "—"}
+                                    {l.articulo ?? "•"}
                                   </td>
                                   <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
                                     {new Date(

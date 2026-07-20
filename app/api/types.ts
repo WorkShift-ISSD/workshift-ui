@@ -248,7 +248,7 @@ export interface Autorizacion {
   fechaAprobacion?: string | null;
   createdAt: string;
   updatedAt: string;
-  // Objetos anidados — presentes cuando el endpoint hace JOIN completo
+  // Objetos anidados • presentes cuando el endpoint hace JOIN completo
   solicitudDirecta?: SolicitudDirecta | null;
   oferta?: Oferta | null;
   licencia?: Licencia | null;
@@ -270,7 +270,7 @@ export interface TurnosData {
   total: number;
 }
 
-// ─── Tipos legacy — mantener por compatibilidad mientras se migra ─────────────
+// ─── Tipos legacy • mantener por compatibilidad mientras se migra ─────────────
 // TODO: eliminar estos una vez que todos los componentes usen los tipos nuevos
 
 /** @deprecated usar SolicitudDirecta */

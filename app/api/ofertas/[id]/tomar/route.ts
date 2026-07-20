@@ -257,7 +257,7 @@ export async function POST(
             grupoTurno: ofertanteUser?.grupo_turno,
           }
         : {
-            // OFREZCO_INTERCAMBIO: solicitante = tomador, cede el día — usa su horario real
+            // OFREZCO_INTERCAMBIO: solicitante = tomador, cede el día • usa su horario real
             fecha: turnosBuscaRaw?.[0]?.fecha || turnoSeleccionado?.fecha || fechaTurnoOfertante,
             horario: tomador.horario,
             grupoTurno: tomador.grupo_turno,
@@ -286,7 +286,7 @@ export async function POST(
           }
         : turnoOfertanteRaw
           ? {
-              // OFREZCO_INTERCAMBIO: destinatario = ofertante, cede su turnoOfrece — usa su horario real
+              // OFREZCO_INTERCAMBIO: destinatario = ofertante, cede su turnoOfrece • usa su horario real
               fecha: turnoOfertanteRaw.fecha,
               horario: ofertanteUser?.horario,
               grupoTurno: ofertanteUser?.grupo_turno,
@@ -422,7 +422,7 @@ export async function POST(
     );
 
     // ── Crear solicitud directa entre tomador y ofertante ─────────────────
-    // Estado APROBADO porque ambos ya acordaron — va directo al jefe
+    // Estado APROBADO porque ambos ya acordaron • va directo al jefe
 
     const solicitanteId = esBusco ? oferta.ofertante_id : tomadorId;
     const destinatarioId = esBusco ? tomadorId : oferta.ofertante_id;

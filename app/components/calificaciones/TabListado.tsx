@@ -36,7 +36,7 @@ export function TabListado() {
   const noCumplieron = listadoFiltrado.filter(e => !e.cumplimiento).length;
   const promedioGeneral = listadoFiltrado.length
     ? (listadoFiltrado.reduce((s, e) => s + Number(e.promedio), 0) / listadoFiltrado.length).toFixed(1)
-    : '—';
+    : '•';
 
   const excelColumns = [
     { header: 'CALIFICADO', width: 25 },
@@ -77,7 +77,7 @@ export function TabListado() {
       formatFecha(e.fecha),
       Number(e.promedio).toFixed(1),
       e.cumplimiento ? 'SÍ' : 'NO',
-      e.comentario || '—',
+      e.comentario || '•',
     ]);
     generarExcel(
       { ...exportConfig, filename: `Calificaciones_${fechaArchivo}.xlsx`, sheetName: 'Calificaciones' },
@@ -95,7 +95,7 @@ export function TabListado() {
         formatFecha(e.fecha),
         Number(e.promedio).toFixed(1),
         e.cumplimiento ? 'Sí' : 'No',
-        e.comentario || '—',
+        e.comentario || '•',
       ],
     }));
     await generarPDF(
@@ -190,7 +190,7 @@ export function TabListado() {
                             {e.cumplimiento ? '✓ Sí' : '✗ No'}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-gray-500 dark:text-gray-500 max-w-[160px] truncate">{e.comentario || '—'}</td>
+                        <td className="px-4 py-3 text-gray-500 dark:text-gray-500 max-w-[160px] truncate">{e.comentario || '•'}</td>
                       </tr>
                     ))}
                   </tbody>

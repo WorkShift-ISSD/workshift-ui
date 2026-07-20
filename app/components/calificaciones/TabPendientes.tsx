@@ -24,7 +24,7 @@ export function TabPendientes({ pendientes, historial, miScore, isLoading, onCal
 
   const stats = [
     { label: "Pendientes", value: pendientes.length, color: "text-red-400", sub: "cambios sin calificar" },
-    { label: "Vence más pronto", value: venceMasPronto.dias === 999 ? '—' : `${venceMasPronto.dias} día${venceMasPronto.dias !== 1 ? 's' : ''}`, color: "text-yellow-300", sub: venceMasPronto.nombre || '—' },
+    { label: "Vence más pronto", value: venceMasPronto.dias === 999 ? '•' : `${venceMasPronto.dias} día${venceMasPronto.dias !== 1 ? 's' : ''}`, color: "text-yellow-300", sub: venceMasPronto.nombre || '•' },
     { label: "Emitidas este mes", value: emitidas, color: "text-white", sub: "calificaciones" },
     { label: "Mi promedio", value: `★ ${Number(miScore).toFixed(1)}`, color: "text-amber-400", sub: `${historial.filter(h => h.direccion === 'recibida').length} recibidas` },
   ];

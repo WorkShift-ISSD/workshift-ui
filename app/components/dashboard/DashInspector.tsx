@@ -478,7 +478,7 @@ export default function DashboardHome() {
                         </p>
                         <p className={`text-xs mt-0.5 ${esAprobadoReal ?
                           'text-green-500 dark:text-green-400' : c.estado === 'PENDIENTE' ? 'text-amber-400' : 'text-red-400'}`}>
-                          — {esAprobadoReal ? 'Aprobado' : c.estado === 'PENDIENTE' ? 'Pendiente' : 'Rechazado'}
+                          • {esAprobadoReal ? 'Aprobado' : c.estado === 'PENDIENTE' ? 'Pendiente' : 'Rechazado'}
                         </p>
                       </div>
                     </div>

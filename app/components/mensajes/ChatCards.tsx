@@ -245,9 +245,9 @@ export function ChatCard({
                         <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700">
                             <p className="text-xs text-center text-gray-400 dark:text-gray-500">
                                 {conv.conversacionEstado === 'CANCELADA'
-                                    ? '❌ Esta oferta fue rechazada — la conversación está cerrada'
+                                    ? '❌ Esta oferta fue rechazada • la conversación está cerrada'
                                     : conv.conversacionEstado === 'ACEPTADA'
-                                        ? '✅ Esta oferta fue aceptada — la conversación está cerrada'
+                                        ? '✅ Esta oferta fue aceptada • la conversación está cerrada'
                                         : 'Conversación cerrada'}
                             </p>
                         </div>

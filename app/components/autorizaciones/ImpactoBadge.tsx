@@ -39,7 +39,7 @@ export function ImpactoBadge({
     : 'bajo impacto';
 
   const tooltipText = esIntercambio
-    ? 'Intercambio de un día entre dos empleados. El impacto en cobertura es simétrico — uno cubre al otro.'
+    ? 'Intercambio de un día entre dos empleados. El impacto en cobertura es simétrico • uno cubre al otro.'
     : impacto.total_grupo === 0
       ? 'No hay suficientes datos para calcular el impacto en cobertura.'
       : (() => {
@@ -51,7 +51,7 @@ export function ImpactoBadge({
           return `Si se aprueba: ${ausentes} de ${impacto.total_grupo} ${rolLabel}${grupo} estarían ausentes en ese período (${impacto.pct_impacto}% del grupo).`;
         })();
 
-  // Tooltip width en px — usado para no salirse de la ventana
+  // Tooltip width en px • usado para no salirse de la ventana
   const TT_WIDTH = 256;
 
   const handleMouseEnter = (e: React.MouseEvent) => {
@@ -73,7 +73,7 @@ export function ImpactoBadge({
         {label}
       </span>
 
-      {/* Tooltip — fixed para escapar overflow:hidden de los cards */}
+      {/* Tooltip • fixed para escapar overflow:hidden de los cards */}
       {pos && (
         <div
           className={[
@@ -100,13 +100,13 @@ export function ImpactoBadge({
 
           <p>{tooltipText}</p>
 
-          {/* Escala de referencia — solo para licencias */}
+          {/* Escala de referencia • solo para licencias */}
           {!esIntercambio && impacto.total_grupo > 0 && (
             <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 space-y-0.5">
               <p className="text-gray-400 dark:text-gray-500 font-medium">Escala:</p>
-              <p><span className="text-green-600 dark:text-green-400 font-medium">Bajo</span> — menos del 25% ausente</p>
-              <p><span className="text-amber-600 dark:text-amber-400 font-medium">Medio</span> — entre 25% y 49%</p>
-              <p><span className="text-red-600 dark:text-red-400 font-medium">Alto</span> — 50% o más ausente</p>
+              <p><span className="text-green-600 dark:text-green-400 font-medium">Bajo</span> • menos del 25% ausente</p>
+              <p><span className="text-amber-600 dark:text-amber-400 font-medium">Medio</span> • entre 25% y 49%</p>
+              <p><span className="text-red-600 dark:text-red-400 font-medium">Alto</span> • 50% o más ausente</p>
             </div>
           )}
         </div>

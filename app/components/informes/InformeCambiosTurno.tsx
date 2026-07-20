@@ -102,7 +102,7 @@ export function InformeCambiosTurno({ onDataChange }: { onDataChange?: (payload:
     ? Math.round((stats.aprobados / (stats.aprobados + stats.rechazados)) * 100)
     : 0;
 
-  const empleadoTopNombre = data?.porEmpleado?.[0]?.nombre ?? '—';
+  const empleadoTopNombre = data?.porEmpleado?.[0]?.nombre ?? '•';
 
   const pieData = stats ? [
     { name: 'Intercambios', value: stats.intercambios },
@@ -120,7 +120,7 @@ export function InformeCambiosTurno({ onDataChange }: { onDataChange?: (payload:
 
   const exportarExcel = () => {
     const rows = (data?.tabla || []).map((t: any) => [
-      t.empleado, t.rol, t.tipo_cambio, t.fecha_turno || '—', t.estado, t.motivo || '—', t.aprobado_por || '—',
+      t.empleado, t.rol, t.tipo_cambio, t.fecha_turno || '•', t.estado, t.motivo || '•', t.aprobado_por || '•',
     ]);
     generarExcel(
       {
@@ -149,7 +149,7 @@ export function InformeCambiosTurno({ onDataChange }: { onDataChange?: (payload:
 
   const exportarPDF = async () => {
     const rows = (data?.tabla || []).map((t: any) => (_doc: any) => ({
-      cells: [t.empleado, t.tipo_cambio, t.fecha_turno || '—', t.estado, t.motivo || '—'],
+      cells: [t.empleado, t.tipo_cambio, t.fecha_turno || '•', t.estado, t.motivo || '•'],
     }));
     await generarPDF(
       { subtitle: 'Reporte de Cambios de Turno', orientation: 'landscape', filename: `CambiosTurno_${fechaArchivo}.pdf` },
@@ -318,7 +318,7 @@ export function InformeCambiosTurno({ onDataChange }: { onDataChange?: (payload:
                           {t.tipo_cambio === 'Intercambio' ? <RefreshCw size={10} /> : <Gift size={10} />} {t.tipo_cambio}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{t.fecha_turno || '—'}</td>
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{t.fecha_turno || '•'}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                           t.estado === 'APROBADA' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
@@ -327,8 +327,8 @@ export function InformeCambiosTurno({ onDataChange }: { onDataChange?: (payload:
                           'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
                         }`}>{t.estado}</span>
                       </td>
-                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400 max-w-[160px] truncate">{t.motivo || '—'}</td>
-                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{t.aprobado_por || '—'}</td>
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400 max-w-[160px] truncate">{t.motivo || '•'}</td>
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{t.aprobado_por || '•'}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -764,7 +764,7 @@ export default function DashboardSupervisor() {
                               : 'text-red-400'
                             }`}
                         >
-                          — {esAprobadoReal ? 'Aprobado' : c.estado === 'PENDIENTE' ? 'Pendiente' : 'Rechazado'}
+                          • {esAprobadoReal ? 'Aprobado' : c.estado === 'PENDIENTE' ? 'Pendiente' : 'Rechazado'}
                         </p>
                       </div>
                     </div>

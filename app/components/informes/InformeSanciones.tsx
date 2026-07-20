@@ -111,8 +111,8 @@ const stats = useMemo(() => ({
   const tablaExport = useMemo(() => filtradas.map(s => {
     const emp = empleados?.find(e => e.id === s.empleado_id);
     return {
-      empleado: emp ? `${emp.apellido}, ${emp.nombre}` : '—',
-      motivo: s.motivo || '—',
+      empleado: emp ? `${emp.apellido}, ${emp.nombre}` : '•',
+      motivo: s.motivo || '•',
       fecha_desde: s.fecha_desde,
       fecha_hasta: s.fecha_hasta,
       estado: s.estado,
@@ -137,7 +137,7 @@ const stats = useMemo(() => ({
     filtradas.forEach(s => {
       const key = s.empleado_id;
       const emp = empleados?.find(e => e.id === s.empleado_id);
-      const nombre = emp ? `${emp.apellido}, ${emp.nombre}` : '—';
+      const nombre = emp ? `${emp.apellido}, ${emp.nombre}` : '•';
       if (!map[key]) map[key] = { nombre, count: 0 };
       map[key].count++;
     });
@@ -188,7 +188,7 @@ const stats = useMemo(() => ({
 filtradas.map(s => {
         const emp = empleados?.find(e => e.id === s.empleado_id);
         return [
-          emp ? `${emp.apellido}, ${emp.nombre}` : '—',
+          emp ? `${emp.apellido}, ${emp.nombre}` : '•',
           s.motivo,
           new Date(s.fecha_desde + 'T12:00:00').toLocaleDateString('es-AR'),
           new Date(s.fecha_hasta + 'T12:00:00').toLocaleDateString('es-AR'),
@@ -212,7 +212,7 @@ filtradas.map(s => (_doc: any) => {
         const emp = empleados?.find(e => e.id === s.empleado_id);
         return {
           cells: [
-            emp ? `${emp.apellido}, ${emp.nombre}` : '—',
+            emp ? `${emp.apellido}, ${emp.nombre}` : '•',
             s.motivo,
             new Date(s.fecha_desde + 'T12:00:00').toLocaleDateString('es-AR'),
             new Date(s.fecha_hasta + 'T12:00:00').toLocaleDateString('es-AR'),
@@ -331,7 +331,7 @@ filtradas.map(s => (_doc: any) => {
                   ) : paginadas.map(s => (
                     <tr key={s.id} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
                       <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
-                        {(() => { const emp = empleados?.find(e => e.id === s.empleado_id); return emp ? `${emp.apellido}, ${emp.nombre}` : '—'; })()}
+                        {(() => { const emp = empleados?.find(e => e.id === s.empleado_id); return emp ? `${emp.apellido}, ${emp.nombre}` : '•'; })()}
                       </td>
                       <td className="px-4 py-3 text-gray-500 dark:text-gray-400 max-w-[200px] truncate">{s.motivo}</td>
                       <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{new Date(s.fecha_desde + 'T12:00:00').toLocaleDateString('es-AR')}</td>
@@ -353,7 +353,7 @@ filtradas.map(s => (_doc: any) => {
                   <div key={s.id} className="p-4">
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate">
-                        {emp ? `${emp.apellido}, ${emp.nombre}` : '—'}
+                        {emp ? `${emp.apellido}, ${emp.nombre}` : '•'}
                       </p>
                       <EstadoBadge estado={s.estado} />
                     </div>

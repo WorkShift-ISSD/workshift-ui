@@ -633,7 +633,7 @@ export default function FaltasPage() {
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold text-gray-400 dark:text-gray-500">
-                                —
+                                •
                               </span>
                             )
                           )}
@@ -746,7 +746,7 @@ export default function FaltasPage() {
                           </p>
                         )}
                       </div>
-                      {/* Badge estado — siempre a la derecha del nombre */}
+                      {/* Badge estado • siempre a la derecha del nombre */}
                       <div className="flex-shrink-0">
                         {enLicencia ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-200">
@@ -765,7 +765,7 @@ export default function FaltasPage() {
                             <CheckCircle className="w-3 h-3" /> Presente
                           </span>
                         ) : (
-                          <span className="text-gray-400 dark:text-gray-500 text-sm">—</span>
+                          <span className="text-gray-400 dark:text-gray-500 text-sm">•</span>
                         )}
                       </div>
                     </div>

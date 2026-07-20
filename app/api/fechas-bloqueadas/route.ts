@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Fechas comprometidas en autorizaciones PENDIENTES o APROBADAS
-        // — como solicitante: la fecha que están cediendo
+        // • como solicitante: la fecha que están cediendo
         const comprometidasComoSolicitante = await sql`
             SELECT sd.fecha_solicitante::text as fecha
             FROM solicitudes_directas sd
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
         `;
         for (const r of comprometidasComoSolicitante) fechasBloqueadas.push(r.fecha);
 
-        // — como destinatario en intercambio: la fecha que están cediendo
+        // • como destinatario en intercambio: la fecha que están cediendo
         const comprometidasComoDestinatario = await sql`
             SELECT sd.fecha_destinatario::text as fecha
             FROM solicitudes_directas sd

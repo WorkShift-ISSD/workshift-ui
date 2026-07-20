@@ -373,7 +373,7 @@ export function useCambiosPage() {
             return;
         }
 
-        // Sin rango — lógica existente
+        // Sin rango • lógica existente
         const tieneMultiples = esCobertura
             ? (oferta.fechasDisponibles?.length ?? 0) > 1
             : (oferta.turnosBusca?.length ?? 0) > 1;

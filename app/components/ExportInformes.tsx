@@ -878,19 +878,19 @@ const metricas = [
       const empleado =
         (dato.empleado || "").length > 20
           ? dato.empleado.substring(0, 17) + "..."
-          : dato.empleado || "—";
+          : dato.empleado || "•";
       const motivo =
-        (dato.motivo || "—").length > 30
+        (dato.motivo || "•").length > 30
           ? dato.motivo.substring(0, 27) + "..."
-          : dato.motivo || "—";
+          : dato.motivo || "•";
       const row = [
         empleado,
-        dato.rol || "—",
-        dato.tipo_cambio || "—",
-        dato.fecha_turno || "—",
-        dato.estado || "—",
+        dato.rol || "•",
+        dato.tipo_cambio || "•",
+        dato.fecha_turno || "•",
+        dato.estado || "•",
         motivo,
-        dato.aprobado_por || "—",
+        dato.aprobado_por || "•",
       ];
 
       row.forEach((text, i) => {
@@ -964,16 +964,16 @@ const metricas = [
 
       x = 15;
       const motivo =
-        (dato.motivo || "—").length > 35
+        (dato.motivo || "•").length > 35
           ? dato.motivo.substring(0, 32) + "..."
-          : dato.motivo || "—";
+          : dato.motivo || "•";
       const desde = dato.fecha_desde
         ? new Date(dato.fecha_desde + "T12:00:00").toLocaleDateString("es-AR")
-        : "—";
+        : "•";
       const hasta = dato.fecha_hasta
         ? new Date(dato.fecha_hasta + "T12:00:00").toLocaleDateString("es-AR")
-        : "—";
-      const row = [dato.empleado || "—", motivo, desde, hasta, dato.estado || "—"];
+        : "•";
+      const row = [dato.empleado || "•", motivo, desde, hasta, dato.estado || "•"];
 
       row.forEach((text, i) => {
         doc.setTextColor(0, 0, 0);
@@ -1054,17 +1054,17 @@ const metricas = [
       x = 15;
       const desde = dato.fecha_desde
         ? new Date(dato.fecha_desde + "T12:00:00").toLocaleDateString("es-AR")
-        : "—";
+        : "•";
       const hasta = dato.fecha_hasta
         ? new Date(dato.fecha_hasta + "T12:00:00").toLocaleDateString("es-AR")
-        : "—";
+        : "•";
       const row = [
-        dato.empleado || "—",
-        dato.tipo || "—",
+        dato.empleado || "•",
+        dato.tipo || "•",
         desde,
         hasta,
-        String(dato.dias ?? "—"),
-        dato.estado || "—",
+        String(dato.dias ?? "•"),
+        dato.estado || "•",
       ];
 
       row.forEach((text, i) => {
@@ -1273,10 +1273,10 @@ case "cambios-turno":
             d.empleado,
             d.rol,
             d.tipo_cambio,
-            d.fecha_turno || "—",
+            d.fecha_turno || "•",
             d.estado,
-            d.motivo || "—",
-            d.aprobado_por || "—",
+            d.motivo || "•",
+            d.aprobado_por || "•",
           ]);
         });
         break;
@@ -1286,11 +1286,11 @@ case "sanciones":
         (datos?.tabla || []).forEach((d: any) => {
           const desde = d.fecha_desde
             ? new Date(d.fecha_desde + "T12:00:00").toLocaleDateString("es-AR")
-            : "—";
+            : "•";
           const hasta = d.fecha_hasta
             ? new Date(d.fecha_hasta + "T12:00:00").toLocaleDateString("es-AR")
-            : "—";
-          wsData.push([d.empleado || "—", d.motivo || "—", desde, hasta, d.estado || "—"]);
+            : "•";
+          wsData.push([d.empleado || "•", d.motivo || "•", desde, hasta, d.estado || "•"]);
         });
         break;
 
@@ -1308,19 +1308,19 @@ case "sanciones":
         (datos?.tabla || []).forEach((d: any) => {
           const desde = d.fecha_desde
             ? new Date(d.fecha_desde + "T12:00:00").toLocaleDateString("es-AR")
-            : "—";
+            : "•";
           const hasta = d.fecha_hasta
             ? new Date(d.fecha_hasta + "T12:00:00").toLocaleDateString("es-AR")
-            : "—";
+            : "•";
           wsData.push([
-            d.empleado || "—",
-            d.tipo || "—",
-            d.articulo || "—",
+            d.empleado || "•",
+            d.tipo || "•",
+            d.articulo || "•",
             desde,
             hasta,
             d.dias ?? 0,
-            d.estado || "—",
-            d.observaciones || "—",
+            d.estado || "•",
+            d.observaciones || "•",
           ]);
         });
         break;

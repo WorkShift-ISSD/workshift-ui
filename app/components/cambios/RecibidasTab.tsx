@@ -62,7 +62,7 @@ export function RecibidasTab({ solicitudesRecibidas, onAceptar, onRechazar }: Pr
             )}
           </div>
 
-          {/* Turnos — mismo layout que el formulario papel */}
+          {/* Turnos • mismo layout que el formulario papel */}
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 border border-blue-100 dark:border-blue-900">
               <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-1.5">
@@ -112,7 +112,7 @@ export function RecibidasTab({ solicitudesRecibidas, onAceptar, onRechazar }: Pr
             </p>
           )}
 
-          {/* Acciones — menos agresivas visualmente */}
+          {/* Acciones • menos agresivas visualmente */}
           <div className="flex gap-2">
             <button
               onClick={() => onAceptar(solicitud.id)}

@@ -232,7 +232,7 @@ function MovimientoCard({ t }: { t: any }) {
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatFechaSimple(t.fecha)}</p>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            {t.horarioEfectivo || '—'} · {t.tipoCambio ? (esIntercambio ? 'Intercambio' : 'Cobertura') : '—'}
+            {t.horarioEfectivo || '•'} · {t.tipoCambio ? (esIntercambio ? 'Intercambio' : 'Cobertura') : '•'}
             {t.companero ? ` · con ${t.companero}` : ''}
           </p>
         </div>
@@ -247,7 +247,7 @@ function MovimientoCard({ t }: { t: any }) {
                 {esGanado ? 'Turno ganado' : 'Turno cedido'}
               </p>
               <p className="text-sm font-bold text-gray-900 dark:text-white">{formatFechaSimple(t.fecha)}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{t.horarioEfectivo || '—'}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t.horarioEfectivo || '•'}</p>
               {t.horario_original && t.horario_original !== t.horarioEfectivo && (
                 <p className="text-xs text-gray-400 line-through mt-0.5">{t.horario_original}</p>
               )}
@@ -259,7 +259,7 @@ function MovimientoCard({ t }: { t: any }) {
                 <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
                   {esGanado ? 'Cede' : 'Gana'}: {formatFechaSimple(t.fecha)}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{t.horarioEfectivo || '—'}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t.horarioEfectivo || '•'}</p>
               </div>
             )}
           </div>
@@ -323,12 +323,12 @@ function TabCambios() {
       todos.map(t => [
         formatFechaSimple(t.fecha),
         t.rol === 'ganado' ? 'Ganado' : 'Cedido',
-        t.tipoCambio || '—',
-        t.horarioEfectivo || '—',
-        t.horario_original || '—',
-        t.companero || '—',
-        t.motivo || '—',
-        t.estado || '—',
+        t.tipoCambio || '•',
+        t.horarioEfectivo || '•',
+        t.horario_original || '•',
+        t.companero || '•',
+        t.motivo || '•',
+        t.estado || '•',
       ])
     );
   };
@@ -349,11 +349,11 @@ function TabCambios() {
         cells: [
           formatFechaSimple(t.fecha),
           t.rol === 'ganado' ? 'Ganado' : 'Cedido',
-          t.tipoCambio ? (t.tipoCambio === 'INTERCAMBIO' ? 'Intercambio' : 'Cobertura') : '—',
-          t.horarioEfectivo || '—',
-          t.companero || '—',
-          t.estado || '—',
-          t.motivo || '—',
+          t.tipoCambio ? (t.tipoCambio === 'INTERCAMBIO' ? 'Intercambio' : 'Cobertura') : '•',
+          t.horarioEfectivo || '•',
+          t.companero || '•',
+          t.estado || '•',
+          t.motivo || '•',
         ],
       }))
     );

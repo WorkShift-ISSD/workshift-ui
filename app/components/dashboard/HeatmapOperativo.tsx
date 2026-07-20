@@ -217,7 +217,7 @@ export function HeatmapOperativo({ autorizaciones, empleados }: Props) {
       const tipoLabel   = esIntercambio ? 'Intercambio' : 'Licencia';
       const item        = `${estadoLabel} ${rolLabel} ${apellido} · ${tipoLabel}`;
 
-      // Filtro por personas activas — vacío = mostrar todas
+      // Filtro por personas activas • vacío = mostrar todas
       if (personasActivas.size > 0 && !personasActivas.has(`${rolLabel} ${apellido}`)) return;
 
       if (esIntercambio && auth.solicitudDirecta) {
@@ -249,7 +249,7 @@ export function HeatmapOperativo({ autorizaciones, empleados }: Props) {
         }
 
       } else if (esLicencia && !auth.licencia) {
-        // licencia no populada — inferir desde createdAt y horario del empleado
+        // licencia no populada • inferir desde createdAt y horario del empleado
         const fechaStr = auth.createdAt?.split('T')[0];
         if (!fechaStr || !m[fechaStr]) return;
         const turno = clasificarTurno(emp.horario ?? '');
@@ -429,7 +429,7 @@ export function HeatmapOperativo({ autorizaciones, empleados }: Props) {
                       ? 'text-amber-600 dark:text-amber-400'
                       : 'text-gray-400 dark:text-gray-600',
                   ].join(' ')}>
-                    {totalTurno > 0 ? `${totalTurno} aus.` : '—'}
+                    {totalTurno > 0 ? `${totalTurno} aus.` : '•'}
                   </p>
                 </div>
 
@@ -502,7 +502,7 @@ export function HeatmapOperativo({ autorizaciones, empleados }: Props) {
           {Object.values(acumPorDow).some(v => v > 0) && (
             <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-800 flex items-start gap-4 flex-wrap">
 
-              {/* Mini barras — column-reverse para que crezcan hacia arriba */}
+              {/* Mini barras • column-reverse para que crezcan hacia arriba */}
               <div className="flex-shrink-0">
                 <p className="text-[9px] text-gray-400 dark:text-gray-500 mb-2">
                   Presión por día de la semana
@@ -612,7 +612,7 @@ export function HeatmapOperativo({ autorizaciones, empleados }: Props) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// PersonasInvolucradas — chips agrupados por turno
+// PersonasInvolucradas • chips agrupados por turno
 // ─────────────────────────────────────────────────────────────
 function PersonasInvolucradas({
   matriz,
@@ -745,7 +745,7 @@ function PersonasInvolucradas({
 }
 
 // ─────────────────────────────────────────────────────────────
-// TabGroup — helper interno reutilizable para los controles
+// TabGroup • helper interno reutilizable para los controles
 // ─────────────────────────────────────────────────────────────
 function TabGroup({
   options,

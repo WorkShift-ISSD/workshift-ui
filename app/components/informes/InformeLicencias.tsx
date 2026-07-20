@@ -138,14 +138,14 @@ const porTipo = useMemo(() => {
   const tablaExport = useMemo(() => filtradas.map((l) => {
     const emp = empleados?.find((e) => e.id === l.empleado_id);
     return {
-      empleado: emp ? `${emp.apellido}, ${emp.nombre}` : "—",
+      empleado: emp ? `${emp.apellido}, ${emp.nombre}` : "•",
       tipo: TIPO_LABEL[l.tipo] ?? l.tipo,
-      articulo: l.articulo ?? "—",
+      articulo: l.articulo ?? "•",
       fecha_desde: l.fecha_desde,
       fecha_hasta: l.fecha_hasta,
       dias: l.dias,
       estado: l.estado,
-      observaciones: l.observaciones ?? "—",
+      observaciones: l.observaciones ?? "•",
     };
   }), [filtradas, empleados]);
 
@@ -189,14 +189,14 @@ const porTipo = useMemo(() => {
       filtradas.map((l) => {
         const emp = empleados?.find((e) => e.id === l.empleado_id);
         return [
-          emp ? `${emp.apellido}, ${emp.nombre}` : "—",
+          emp ? `${emp.apellido}, ${emp.nombre}` : "•",
           TIPO_LABEL[l.tipo] ?? l.tipo,
-          l.articulo ?? "—",
+          l.articulo ?? "•",
           new Date(l.fecha_desde + "T12:00:00").toLocaleDateString("es-AR"),
           new Date(l.fecha_hasta + "T12:00:00").toLocaleDateString("es-AR"),
           l.dias,
           l.estado,
-          l.observaciones ?? "—",
+          l.observaciones ?? "•",
         ];
       }),
     );
@@ -222,13 +222,13 @@ const porTipo = useMemo(() => {
         const emp = empleados?.find((e) => e.id === l.empleado_id);
         return {
           cells: [
-            emp ? `${emp.apellido}, ${emp.nombre}` : "—",
+            emp ? `${emp.apellido}, ${emp.nombre}` : "•",
             TIPO_LABEL[l.tipo] ?? l.tipo,
             new Date(l.fecha_desde + "T12:00:00").toLocaleDateString("es-AR"),
             new Date(l.fecha_hasta + "T12:00:00").toLocaleDateString("es-AR"),
             String(l.dias),
             l.estado,
-            l.observaciones ?? "—",
+            l.observaciones ?? "•",
           ],
         };
       }),
@@ -477,14 +477,14 @@ const porTipo = useMemo(() => {
                             const emp = empleados?.find(
                               (e) => e.id === l.empleado_id,
                             );
-                            return emp ? `${emp.apellido}, ${emp.nombre}` : "—";
+                            return emp ? `${emp.apellido}, ${emp.nombre}` : "•";
                           })()}
                         </td>
                         <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
                           {TIPO_LABEL[l.tipo] ?? l.tipo}
                         </td>
                         <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
-                          {l.articulo ?? "—"}
+                          {l.articulo ?? "•"}
                         </td>
                         <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
                           {new Date(
@@ -524,7 +524,7 @@ const porTipo = useMemo(() => {
                           const emp = empleados?.find(
                             (e) => e.id === l.empleado_id,
                           );
-                          return emp ? `${emp.apellido}, ${emp.nombre}` : "—";
+                          return emp ? `${emp.apellido}, ${emp.nombre}` : "•";
                         })()}
                       </p>
                       <EstadoBadge estado={l.estado} />

@@ -293,7 +293,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validar campos obligatorios — fechaDestinatario es opcional (cobertura)
+    // Validar campos obligatorios • fechaDestinatario es opcional (cobertura)
     const camposFaltantes = [];
     if (!destinatarioId) camposFaltantes.push('destinatarioId');
     if (!fechaSolicitante) camposFaltantes.push('fechaSolicitante');

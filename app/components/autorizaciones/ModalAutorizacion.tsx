@@ -180,7 +180,7 @@ export function ModalAutorizacion({
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">Días solicitados</p>
-                    <p className="font-medium text-gray-900 dark:text-white">{licencia.dias ?? '—'}</p>
+                    <p className="font-medium text-gray-900 dark:text-white">{licencia.dias ?? '•'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">Desde</p>
@@ -249,7 +249,7 @@ export function ModalAutorizacion({
                         <div className="space-y-3">
                           <div>
                             <p className="text-xs text-gray-400 dark:text-gray-500 line-through">
-                              Turno original: {turnoSolicitante ? `${formatFechaSafe(turnoSolicitante.fecha)} · ${turnoSolicitante.horario}` : '—'}
+                              Turno original: {turnoSolicitante ? `${formatFechaSafe(turnoSolicitante.fecha)} · ${turnoSolicitante.horario}` : '•'}
                             </p>
                           </div>
                           {turnoDestinatario && (
@@ -261,7 +261,7 @@ export function ModalAutorizacion({
                           )}
                           {!turnoDestinatario && (
                             <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-                              No trabaja este día — solicitó cobertura
+                              No trabaja este día • solicitó cobertura
                             </p>
                           )}
                         </div>
@@ -293,7 +293,7 @@ export function ModalAutorizacion({
                           ) : (
                             <div className="space-y-2">
                               <p className="text-xs text-gray-400 dark:text-gray-500 italic">
-                                Día libre — hace cobertura
+                                Día libre • hace cobertura
                               </p>
                               <div>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Turno que cubre:</p>

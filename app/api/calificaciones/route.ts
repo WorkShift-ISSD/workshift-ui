@@ -5,7 +5,7 @@ import { jwtVerify } from 'jose';
 
 const SECRET_KEY = new TextEncoder().encode(process.env.JWT_SECRET || 'Workshift25');
 
-// GET — turnos efectivos pasados del usuario que puede calificar
+// GET • turnos efectivos pasados del usuario que puede calificar
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies();
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
       LIMIT 20;
     `;
 
-    // Mi score actual — calculado en tiempo real desde la tabla de calificaciones
+    // Mi score actual • calculado en tiempo real desde la tabla de calificaciones
     const [miScore] = await sql`
       SELECT COALESCE(ROUND(AVG(promedio)::numeric, 1), 0) as score
       FROM calificaciones
@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST — crear calificación
+// POST • crear calificación
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = await cookies();

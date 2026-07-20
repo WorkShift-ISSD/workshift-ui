@@ -61,7 +61,7 @@ export function ModalSolicitudDirecta({ isOpen, onClose, onSubmit, solicitudEdit
   const [turnosEfectivosCompanero, setTurnosEfectivosCompanero] = useState<string[]>([]);
 
 
-  // Fechas extra del usuario — días que ganó por intercambios previos
+  // Fechas extra del usuario • días que ganó por intercambios previos
   const fechasExtraUsuario = useMemo(
     () => turnosEfectivos.map((t: { fecha: string }) => t.fecha.split('T')[0]),
     [turnosEfectivos]
@@ -123,7 +123,7 @@ export function ModalSolicitudDirecta({ isOpen, onClose, onSubmit, solicitudEdit
     [turnosEfectivos, form.fechaSolicitante]
   );
 
-  const horarioAMostrar = turnoEfectivoSeleccionado?.horario_efectivo || user?.horario || '—';
+  const horarioAMostrar = turnoEfectivoSeleccionado?.horario_efectivo || user?.horario || '•';
 
   // Al seleccionar compañero, auto-completar su horario y grupo
   useEffect(() => {
@@ -349,13 +349,13 @@ export function ModalSolicitudDirecta({ isOpen, onClose, onSubmit, solicitudEdit
                         type="button"
                         onClick={() => {
                           setForm(prev => ({ ...prev, destinatarioId: u.id }));
-                          setSearchCompanero(`${u.apellido}, ${u.nombre} — Guardia ${u.grupoTurno}`);
+                          setSearchCompanero(`${u.apellido}, ${u.nombre} • Guardia ${u.grupoTurno}`);
                           setShowSuggestions(false);
                         }}
                         className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-gray-900 dark:text-white ${form.destinatarioId === u.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''
                           }`}
                       >
-                        {u.apellido}, {u.nombre} — Guardia {u.grupoTurno}
+                        {u.apellido}, {u.nombre} • Guardia {u.grupoTurno}
                       </button>
                     ))}
                   </div>

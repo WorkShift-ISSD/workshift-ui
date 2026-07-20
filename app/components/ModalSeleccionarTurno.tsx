@@ -59,7 +59,7 @@ export function ModalSeleccionarTurno({ isOpen, onClose, onConfirmar, oferta }: 
 
         {/* Content */}
         <div className="p-6 space-y-4">
-          {/* Turno que ofrece — solo intercambio */}
+          {/* Turno que ofrece • solo intercambio */}
           {!esCobertura && oferta.turnoOfrece && (
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <p className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">

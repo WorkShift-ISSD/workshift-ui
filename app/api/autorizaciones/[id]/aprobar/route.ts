@@ -142,7 +142,7 @@ export async function POST(
   `;
         }
 
-        // Segundo turno — solo para intercambio (destinatario gana el día del solicitante)
+        // Segundo turno • solo para intercambio (destinatario gana el día del solicitante)
         if (!esCobertura) {
           // Solicitante gana el día del destinatario
           await sql`

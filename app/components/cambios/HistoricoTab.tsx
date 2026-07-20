@@ -195,13 +195,13 @@ export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOfer
                             <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
                               📅 {formatDate(fa.fecha)} con {fa.tomadorNombre} {fa.tomadorApellido}
                               {fa.estadoAutorizacion === 'PENDIENTE' && (
-                                <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">— pendiente de aprobación</span>
+                                <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">• pendiente de aprobación</span>
                               )}
                               {fa.estadoAutorizacion === 'APROBADA' && (
-                                <span className="ml-2 text-xs text-green-600 dark:text-green-400">— aprobado</span>
+                                <span className="ml-2 text-xs text-green-600 dark:text-green-400">• aprobado</span>
                               )}
                               {fa.estadoAutorizacion === 'CANCELADA' && (
-                                <span className="ml-2 text-xs text-red-500 dark:text-red-400">— cancelado</span>
+                                <span className="ml-2 text-xs text-red-500 dark:text-red-400">• cancelado</span>
                               )}
                             </p>
                             {puedeCancelar && (
@@ -230,7 +230,7 @@ export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOfer
                   {!oferta.fechaDesde && oferta.fechasDisponibles?.length > 0 && (
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       {oferta.fechasDisponibles.length === 1
-                        ? `${formatDate(oferta.fechasDisponibles[0].fecha)} — disponible`
+                        ? `${formatDate(oferta.fechasDisponibles[0].fecha)} • disponible`
                         : `${oferta.fechasDisponibles.length} fechas disponibles`
                       }
                     </p>
@@ -238,7 +238,7 @@ export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOfer
                 </div>
               )}
 
-              {/* Estado autorización — para intercambio (cobertura lo muestra por fechasAcordadas) */}
+              {/* Estado autorización • para intercambio (cobertura lo muestra por fechasAcordadas) */}
               {esIntercambio && oferta.estadoAutorizacion && (
                 <div className={`mt-2 text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${
                   oferta.estadoAutorizacion === 'APROBADA'
@@ -255,7 +255,7 @@ export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOfer
                 </div>
               )}
 
-              {/* Con quién — solo si no hay fechasAcordadas */}
+              {/* Con quién • solo si no hay fechasAcordadas */}
               {!oferta.fechasAcordadas?.length && otraParte?.nombre && (
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   Con {otraParte.nombre} {otraParte.apellido}
@@ -277,7 +277,7 @@ export function HistoricoTab({ ofertas, solicitudesDirectas, userId, onTomarOfer
                 </button>
               )}
 
-              {/* Estado de espera o aprobación — solo si ninguna fechaAcordada tiene estadoAutorizacion */}
+              {/* Estado de espera o aprobación • solo si ninguna fechaAcordada tiene estadoAutorizacion */}
               {oferta.fechasAcordadas?.length > 0 && !oferta.fechasAcordadas[0]?.estadoAutorizacion && (
                 <div className={`mt-2 text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${oferta.estadoAutorizacion === 'APROBADA'
                   ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'

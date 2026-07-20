@@ -209,9 +209,9 @@ export function LicenciasTable({ licencias, onRefetch, filtroEstado }: Props) {
         formatTipoLicencia(l.tipo),
         formatDate2(l.fecha_desde),
         formatDate2(l.fecha_hasta),
-        l.dias ?? '—',
+        l.dias ?? '•',
         formatEstado(l.estado),
-        l.observaciones ?? '—',
+        l.observaciones ?? '•',
       ])
     );
   };
@@ -232,9 +232,9 @@ export function LicenciasTable({ licencias, onRefetch, filtroEstado }: Props) {
           formatTipoLicencia(l.tipo),
           formatDate2(l.fecha_desde),
           formatDate2(l.fecha_hasta),
-          String(l.dias ?? '—'),
+          String(l.dias ?? '•'),
           formatEstado(l.estado),
-          l.observaciones ?? '—',
+          l.observaciones ?? '•',
         ],
       }))
     );
@@ -357,9 +357,9 @@ export function LicenciasTable({ licencias, onRefetch, filtroEstado }: Props) {
                       <td className="px-4 py-3 dark:text-gray-300">{formatTipoLicencia(l.tipo)}</td>
                       <td className="px-4 py-3 dark:text-gray-300">{formatDate2(l.fecha_desde)}</td>
                       <td className="px-4 py-3 dark:text-gray-300">{formatDate2(l.fecha_hasta)}</td>
-                      <td className="px-4 py-3 dark:text-gray-300">{l.dias ?? '—'}</td>
+                      <td className="px-4 py-3 dark:text-gray-300">{l.dias ?? '•'}</td>
                       <td className="px-4 py-3"><EstadoBadge estado={l.estado} /></td>
-                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-sm max-w-[160px] truncate">{l.observaciones ?? '—'}</td>
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-sm max-w-[160px] truncate">{l.observaciones ?? '•'}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <button onClick={() => setViendo(l)} title="Ver detalle" className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"><Eye size={16} /></button>
@@ -424,7 +424,7 @@ export function LicenciasTable({ licencias, onRefetch, filtroEstado }: Props) {
                 <div className="flex justify-between"><span className="text-gray-500">Tipo</span><span className="font-medium dark:text-gray-200">{formatTipoLicencia(viendo.tipo)}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">Desde</span><span className="dark:text-gray-200">{formatDate2(viendo.fecha_desde)}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">Hasta</span><span className="dark:text-gray-200">{formatDate2(viendo.fecha_hasta)}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Días</span><span className="dark:text-gray-200">{viendo.dias ?? '—'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Días</span><span className="dark:text-gray-200">{viendo.dias ?? '•'}</span></div>
                 <div className="flex justify-between items-center"><span className="text-gray-500">Estado</span><EstadoBadge estado={viendo.estado} /></div>
                 {viendo.observaciones && <div><span className="text-gray-500">Observaciones</span><p className="mt-1 text-gray-700 dark:text-gray-300">{viendo.observaciones}</p></div>}
               </div>

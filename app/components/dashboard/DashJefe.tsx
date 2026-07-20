@@ -250,7 +250,7 @@ function AuthCard({
   const { impacto } = auth;
   const esIntercambio = !!auth.solicitudId;
 
-  // Extraer datos del solicitante — pueden venir como objeto anidado o como campos planos
+  // Extraer datos del solicitante • pueden venir como objeto anidado o como campos planos
   const empNombre  = auth.empleado?.nombre  ?? '';
   const empApellido = auth.empleado?.apellido ?? '';
   const empRol     = auth.empleado?.rol      ?? '';
@@ -413,7 +413,7 @@ function AuthCard({
                 Impacto en cobertura · Grupo {empGrupo}
               </p>
 
-              {/* Duración de la licencia — solo si tenemos los datos */}
+              {/* Duración de la licencia • solo si tenemos los datos */}
               {(auth.licencia?.fechaDesde ?? auth.licencia?.fecha_desde) && (
                 <div className="flex items-center gap-3 py-1.5 px-2 rounded-lg bg-white/60 dark:bg-gray-900/40 border border-gray-200/60 dark:border-gray-700/40">
                   <div className="text-center">
@@ -510,7 +510,7 @@ function AuthCard({
 }
 
 // ─────────────────────────────────────────────────────────────
-// Componente principal — sin referencias a mutate/metricas/personal
+// Componente principal • sin referencias a mutate/metricas/personal
 // que ya no existen en el hook
 // ─────────────────────────────────────────────────────────────
 export default function DashJefe() {
@@ -607,7 +607,7 @@ export default function DashJefe() {
             )}
             <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-500/20">
               <Users className="w-3.5 h-3.5" />
-              {metricas?.total_activos ?? '—'} activos
+              {metricas?.total_activos ?? '•'} activos
             </span>
           </div>
         </div>
@@ -617,7 +617,7 @@ export default function DashJefe() {
           {[
             {
               label:   'Empleados activos',
-              value:   metricas?.total_activos ?? '—',
+              value:   metricas?.total_activos ?? '•',
               aux:     '',
               icon:    <Users className="h-5 w-5 text-blue-500 dark:text-blue-400" />,
               iconBg:  'bg-blue-50 dark:bg-blue-900/30',
@@ -625,7 +625,7 @@ export default function DashJefe() {
             },
             {
               label:   'Ausentismo mes',
-              value:   metricas?.ausentismo_mes_pct != null ? `${metricas.ausentismo_mes_pct}%` : '—',
+              value:   metricas?.ausentismo_mes_pct != null ? `${metricas.ausentismo_mes_pct}%` : '•',
               aux:     `${metricas?.total_faltas_mes ?? 0} faltas registradas`,
               icon:    metricas?.ausentismo_mes_pct > 10
                          ? <TrendingUp className="h-5 w-5 text-red-500 dark:text-red-400" />
@@ -645,7 +645,7 @@ export default function DashJefe() {
             },
             {
               label:   'Faltas justificadas',
-              value:   metricas?.faltas_justificadas ?? '—',
+              value:   metricas?.faltas_justificadas ?? '•',
               aux:     `de ${metricas?.total_faltas_mes ?? 0} totales`,
               icon:    <CheckCircle className="h-5 w-5 text-green-500 dark:text-green-400" />,
               iconBg:  'bg-green-50 dark:bg-green-900/30',

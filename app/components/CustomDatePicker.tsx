@@ -161,11 +161,11 @@ export function CustomDatePicker({
                 ? isPasado
                   ? 'Fecha pasada'
                   : esGrupoIncorrecto && !esFechaExtra && !esFechaCedida && !esFechaBloqueada
-                    ? `Día del Grupo ${grupoDelDia} — solo podés seleccionar días del Grupo ${grupoObjetivo}`
+                    ? `Día del Grupo ${grupoDelDia} • solo podés seleccionar días del Grupo ${grupoObjetivo}`
                     : 'Fecha no disponible por cambio, licencia o sanción'
                 : esFechaExtra
-                  ? `${day} — Turno efectivo (Grupo ${grupoDelDia})`
-                  : `${day} — Grupo ${grupoDelDia}`
+                  ? `${day} • Turno efectivo (Grupo ${grupoDelDia})`
+                  : `${day} • Grupo ${grupoDelDia}`
             }
             className={[
               'w-full h-full rounded-md text-xs font-medium transition-all flex flex-col items-center justify-center',
