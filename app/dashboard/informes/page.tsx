@@ -1897,7 +1897,7 @@ fechaFin={
             <>
               {/* Toggle para activar comparación avanzada */}
               <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
                       Comparación Avanzada
@@ -1910,7 +1910,7 @@ fechaFin={
                   </div>
                   <button
                     onClick={() => setCompararActivo(!compararActivo)}
-                    className={`ml-6 px-4 py-2 rounded-lg font-semibold transition-colors flex-shrink-0 ${compararActivo
+                    className={`px-4 py-2 rounded-lg font-semibold transition-colors flex-shrink-0 self-start sm:self-auto ${compararActivo
                       ? 'bg-blue-600 text-white hover:bg-blue-700'
                       : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                       }`}

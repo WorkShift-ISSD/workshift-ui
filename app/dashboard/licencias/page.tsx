@@ -8,14 +8,18 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  FileSpreadsheet,
 } from "lucide-react";
 
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useLicencias } from "@/hooks/useLicencias";
+import { useEmpleados } from "@/hooks/useEmpleados";
 import { useFormatters } from "@/hooks/useFormatters";
 import { LicenciaForm } from "@/app/components/licencias/LicenciaForm";
 import { LicenciasTable } from "@/app/components/licencias/LicenciasTable";
+import { useAuth } from "@/app/context/AuthContext";
+import ImportarLicenciasModal from "@/app/components/licencias/ImportarLicenciasModal";
 
 
 export default function LicenciasPage() {
@@ -24,19 +28,28 @@ export default function LicenciasPage() {
 
 
   const { licencias, crearLicencia, loading, refetch } = useLicencias();
+  const { empleados } = useEmpleados();
+  const { user } = useAuth();
+  const isAdmin = user?.rol === 'ADMINISTRADOR';
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   // Arranca en Pendientes, igual que en Autorizaciones.
   const [filtroEstado, setFiltroEstado] = useState<string | undefined>("PENDIENTE");
 
 
+  const licenciasActivos = useMemo(
+    () => licencias.filter(l => empleados?.some(e => e.id === l.empleado_id)),
+    [licencias, empleados],
+  );
+
   const stats = useMemo(() => {
     return {
-      total: licencias.length,
-      solicitadas: licencias.filter(l => l.estado === "PENDIENTE").length,
-      aprobadas: licencias.filter(l => l.estado === "APROBADA").length,
-      rechazadas: licencias.filter(l => l.estado === "RECHAZADA").length,
+      total: licenciasActivos.length,
+      solicitadas: licenciasActivos.filter(l => l.estado === "PENDIENTE").length,
+      aprobadas: licenciasActivos.filter(l => l.estado === "APROBADA").length,
+      rechazadas: licenciasActivos.filter(l => l.estado === "RECHAZADA").length,
     };
-  }, [licencias]);
+  }, [licenciasActivos]);
 
 
 
@@ -45,13 +58,24 @@ export default function LicenciasPage() {
       <ToastContainer theme="colored" />
 
       {/* HEADER */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Gestión de Licencias
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Solicita y consulta tus licencias
-        </p>
+      <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            Gestión de Licencias
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Solicita y consulta tus licencias
+          </p>
+        </div>
+        {isAdmin && (
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors shadow-lg"
+          >
+            <FileSpreadsheet className="w-5 h-5" />
+            Importar Excel
+          </button>
+        )}
       </div>
 
       {/* KPIs */}
@@ -105,6 +129,15 @@ export default function LicenciasPage() {
       {/* LISTADO */}
       <LicenciasTable licencias={licencias} onRefetch={refetch} filtroEstado={filtroEstado} />
 
+      {isImportModalOpen && (
+        <ImportarLicenciasModal
+          onClose={() => setIsImportModalOpen(false)}
+          onSuccess={() => {
+            refetch();
+            setIsImportModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
