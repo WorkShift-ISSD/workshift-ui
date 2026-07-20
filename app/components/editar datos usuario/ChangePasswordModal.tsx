@@ -112,6 +112,12 @@ export default function ChangePasswordModal({
   if (!isOpen) return null;
 
   return (
+    <>
+    {loading && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
+        <LoadingSpinner />
+      </div>
+    )}
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-8 border border-gray-200 dark:border-gray-700">
         {/* Header */}
@@ -290,12 +296,7 @@ export default function ChangePasswordModal({
               disabled={loading}
               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              {loading ? (
-                <>
-                  <LoadingSpinner size="xs" padding="p-1" />
-                  {isPrimerIngreso ? "Guardando..." : "Actualizando..."}
-                </>
-              ) : (
+              {(
                 isPrimerIngreso ? "Configurar Contraseña" : "Actualizar Contraseña"
               )}
             </button>
@@ -305,5 +306,6 @@ export default function ChangePasswordModal({
         </form>
       </div>
     </div>
+    </>
   );
 }

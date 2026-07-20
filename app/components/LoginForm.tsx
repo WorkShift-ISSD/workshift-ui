@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, X } from "lucide-react";
+import { LoadingSpinner } from "./LoadingSpinner";
 import { useAuth } from "../context/AuthContext";
 import ChangePasswordModal from "./editar datos usuario/ChangePasswordModal";
-import { LoadingSpinner } from "./LoadingSpinner";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -132,6 +132,11 @@ export default function LoginForm() {
 
   return (
     <>
+      {loading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <LoadingSpinner />
+        </div>
+      )}
       <div className="flex items-center justify-center bg-gray-100 dark:bg-gray-900 rounded-lg transition-colors">
         <form
           onSubmit={handleSubmit}
@@ -205,16 +210,9 @@ export default function LoginForm() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? (
-              <>
-                <LoadingSpinner size="xs" padding="p-1" />
-                Iniciando sesión...
-              </>
-            ) : (
-              "Ingresar"
-            )}
+            Ingresar
           </button>
         </form>
       </div>
@@ -290,16 +288,9 @@ export default function LoginForm() {
                 <button
                   type="submit"
                   disabled={resetLoading}
-                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {resetLoading ? (
-                    <>
-                      <LoadingSpinner size="xs" />
-                      Enviando...
-                    </>
-                  ) : (
-                    "Enviar Instrucciones"
-                  )}
+                  {resetLoading ? "Enviando..." : "Enviar Instrucciones"}
                 </button>
               </div>
             </form>

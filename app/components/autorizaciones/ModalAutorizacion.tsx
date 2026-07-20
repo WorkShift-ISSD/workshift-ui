@@ -89,6 +89,11 @@ export function ModalAutorizacion({
 
   return (
     <>
+      {loading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
+          <LoadingSpinner />
+        </div>
+      )}
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-3xl max-h-[80vh] overflow-y-auto">
           {/* Header */}
@@ -579,12 +584,7 @@ export function ModalAutorizacion({
                 className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition
                          disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                {loading ? (
-                  <>
-                    <LoadingSpinner size="xs" padding="p-1" />
-                    Aprobando...
-                  </>
-                ) : (
+                {(
                   <>
                     <Check className="w-4 h-4" />
                     Confirmar Aprobación
