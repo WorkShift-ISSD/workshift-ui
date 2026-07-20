@@ -1,13 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ClipboardCheck, Clock, CheckCircle, XCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { ClipboardCheck, Clock, CheckCircle, XCircle, ChevronDown, ChevronUp, Upload } from "lucide-react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import { useAutorizaciones } from "@/hooks/useAutorizaciones";
 import { AutorizacionesTable } from "@/app/components/autorizaciones/AutorizacionesTable";
 import { ConsultarAutorizaciones } from "@/app/components/autorizaciones/ConsultarAutorizaciones";
+import ImportarCambiosModal from "@/app/components/cambios/ImportarCambiosModal";
 import { CustomDatePicker } from "@/app/components/CustomDatePicker";
 import { useDashboardJefe } from '@/hooks/useDashboardJefe';
 import { useAuth } from '@/app/context/AuthContext';
@@ -78,6 +79,8 @@ export default function AutorizacionesPage() {
   const { pendientes } = useDashboardJefe();
   const impactoMap = Object.fromEntries(pendientes.map(p => [p.id, p.impacto]));
 
+  const [mostrarImportar, setMostrarImportar] = useState(false);
+
   const autorizacionesFiltradas = useMemo(() => {
     if (!mostrarFiltroFecha || (!desde && !hasta)) return autorizacionesVisibles;
     return autorizacionesVisibles.filter((a) => {
@@ -94,14 +97,32 @@ export default function AutorizacionesPage() {
       <ToastContainer theme="colored" position="top-right" />
 
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Gestión de Autorizaciones
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Aprobar o rechazar solicitudes de cambios de turno y licencias ordinarias
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            Gestión de Autorizaciones
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Aprobar o rechazar solicitudes de cambios de turno y licencias ordinarias
+          </p>
+        </div>
+        {/* {user?.rol === 'ADMINISTRADOR' && (
+          <button
+            onClick={() => setMostrarImportar(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+          >
+            <Upload className="h-4 w-4" />
+            Importar cambios
+          </button>
+        )} */}
       </div>
+
+      {mostrarImportar && (
+        <ImportarCambiosModal
+          onClose={() => setMostrarImportar(false)}
+          onSuccess={() => setMostrarImportar(false)}
+        />
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

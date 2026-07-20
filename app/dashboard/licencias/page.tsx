@@ -67,7 +67,7 @@ export default function LicenciasPage() {
             Solicita y consulta tus licencias
           </p>
         </div>
-        {isAdmin && (
+        {/* {isAdmin && (
           <button
             onClick={() => setIsImportModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors shadow-lg"
@@ -75,7 +75,7 @@ export default function LicenciasPage() {
             <FileSpreadsheet className="w-5 h-5" />
             Importar Excel
           </button>
-        )}
+        )} */}
       </div>
 
       {/* KPIs */}
